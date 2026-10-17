@@ -13,7 +13,7 @@ import {
 } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { db, storage, handleFirestoreError, OperationType, auth } from './config';
-import { Category, Course, Session, Quiz, Enrollment, QuizAttempt, UserProfile, BlogPost } from '../types';
+import { Category, Course, Session, Quiz, Enrollment, QuizAttempt, UserProfile, BlogPost, Consultation } from '../types';
 import { SEED_CATEGORIES, SEED_COURSES, SEED_SESSIONS, SEED_QUIZZES } from '../data/seedData';
 
 // Fixed initial admin emails (User email from runtime and bootstrap admin)
@@ -1207,6 +1207,162 @@ export async function seedDefaultBlogPostsIfEmpty(): Promise<BlogPost[]> {
   } catch (err) {
     console.warn('seedDefaultBlogPostsIfEmpty notice:', err);
     return [];
+  }
+}
+
+// ==========================================
+// CONSULTATION SERVICES (Ruang Konsultasi)
+// ==========================================
+
+export async function createConsultation(data: {
+  title: string;
+  content: string;
+  category: 'learning' | 'private';
+}): Promise<string> {
+  if (!auth.currentUser) {
+    throw new Error('Harus login terlebih dahulu untuk mengajukan pertanyaan konsultasi.');
+  }
+
+  const newRef = doc(collection(db, 'consultations'));
+  const now = new Date().toISOString();
+  
+  const payload: Consultation = {
+    id: newRef.id,
+    studentId: auth.currentUser.uid,
+    studentName: auth.currentUser.displayName || 'Santri',
+    studentEmail: auth.currentUser.email || '',
+    title: data.title.trim(),
+    content: data.content.trim(),
+    category: data.category,
+    status: 'pending',
+    isPublished: false,
+    createdAt: now,
+    updatedAt: now
+  };
+
+  const path = `consultations/${newRef.id}`;
+  try {
+    await setDoc(newRef, payload);
+    return newRef.id;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+    throw error;
+  }
+}
+
+export async function getStudentConsultations(studentId: string): Promise<Consultation[]> {
+  const path = `consultations`;
+  try {
+    const q = query(collection(db, 'consultations'), where('studentId', '==', studentId));
+    const snapshot = await getDocs(q);
+    const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Consultation));
+    list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return list;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, path);
+    return [];
+  }
+}
+
+export async function getAllConsultationsForAdmin(): Promise<Consultation[]> {
+  const path = `consultations`;
+  try {
+    const snapshot = await getDocs(collection(db, 'consultations'));
+    const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Consultation));
+    list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return list;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, path);
+    return [];
+  }
+}
+
+export async function getPublishedPublicQA(): Promise<Consultation[]> {
+  const path = `consultations`;
+  try {
+    const q = query(
+      collection(db, 'consultations'),
+      where('category', '==', 'learning'),
+      where('isPublished', '==', true)
+    );
+    const snapshot = await getDocs(q);
+    const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Consultation));
+    list.sort((a, b) => new Date(b.publishedAt || b.createdAt).getTime() - new Date(a.publishedAt || a.createdAt).getTime());
+    return list;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, path);
+    return [];
+  }
+}
+
+export async function replyConsultation(
+  consultationId: string,
+  replyContent: string,
+  newStatus: 'answered' | 'closed' = 'answered'
+): Promise<void> {
+  const path = `consultations/${consultationId}`;
+  const now = new Date().toISOString();
+  
+  try {
+    const docRef = doc(db, 'consultations', consultationId);
+    await updateDoc(docRef, {
+      replyContent: replyContent.trim(),
+      repliedAt: now,
+      repliedBy: 'Ustaz / Admin',
+      status: newStatus,
+      updatedAt: now
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+    throw error;
+  }
+}
+
+export async function togglePublishConsultation(
+  consultationId: string,
+  isPublished: boolean
+): Promise<void> {
+  const path = `consultations/${consultationId}`;
+  const now = new Date().toISOString();
+
+  try {
+    const docRef = doc(db, 'consultations', consultationId);
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      const data = snap.data() as Consultation;
+      // Private consultations can NEVER be published
+      if (data.category === 'private' && isPublished) {
+        throw new Error('Konsultasi bersifat pribadi dan tidak diperkenankan untuk dipublikasikan.');
+      }
+    }
+
+    await updateDoc(docRef, {
+      isPublished,
+      publishedAt: isPublished ? now : null,
+      updatedAt: now
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+    throw error;
+  }
+}
+
+export async function updateConsultationStatus(
+  consultationId: string,
+  status: 'pending' | 'answered' | 'closed'
+): Promise<void> {
+  const path = `consultations/${consultationId}`;
+  const now = new Date().toISOString();
+
+  try {
+    const docRef = doc(db, 'consultations', consultationId);
+    await updateDoc(docRef, {
+      status,
+      updatedAt: now
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+    throw error;
   }
 }
 

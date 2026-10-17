@@ -160,3 +160,21 @@ export interface BlogCategory {
   description?: string;
 }
 
+export interface Consultation {
+  id: string;
+  studentId: string;
+  studentName?: string;
+  studentEmail?: string;
+  title: string;
+  content: string;
+  category: 'learning' | 'private';
+  status: 'pending' | 'answered' | 'closed';
+  replyContent?: string;
+  repliedAt?: string;
+  repliedBy?: string;
+  isPublished: boolean;
+  publishedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+

@@ -15,7 +15,10 @@ import {
   Settings,
   FileText,
   PanelLeftClose,
-  PanelLeftOpen
+  PanelLeftOpen,
+  Film,
+  MessageSquare,
+  HelpCircle
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
@@ -27,13 +30,15 @@ interface AppSidebarProps {
   setCurrentView: (view: string) => void;
   mobileOpen: boolean;
   setMobileOpen: (open: boolean) => void;
+  onOpenWelcomeModal?: () => void;
 }
 
 export const AppSidebar: React.FC<AppSidebarProps> = ({
   currentView,
   setCurrentView,
   mobileOpen,
-  setMobileOpen
+  setMobileOpen,
+  onOpenWelcomeModal
 }) => {
   const { user, userProfile, isAdmin, openAuthModal, openProfileModal, openLogoutConfirmModal } = useAuth();
   const { t } = useLanguage();
@@ -183,6 +188,49 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                 <FileText className={`w-4 h-4 shrink-0 ${currentView === 'blog' || currentView === 'blog-detail' ? 'text-[#073B2E] dark:text-[#C9A34E]' : ''}`} />
                 {!isCollapsed && <span className="truncate">Blog & Artikel</span>}
               </button>
+
+              {/* Ruang Konsultasi Siswa */}
+              <button
+                onClick={() => navigate('consultation')}
+                title="Ruang Konsultasi Siswa & Tanya Jawab"
+                className={`w-full flex items-center ${isCollapsed ? 'justify-center px-0 py-3' : 'gap-3.5 px-3.5 py-3'} rounded-2xl text-xs font-semibold transition-all duration-200 cursor-pointer active:scale-95 ${
+                  currentView === 'consultation'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border-l-4 border-emerald-600 dark:border-emerald-500 shadow-xs'
+                    : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800/60 hover:text-stone-900 dark:hover:text-stone-100'
+                }`}
+              >
+                <MessageSquare className={`w-4 h-4 shrink-0 ${currentView === 'consultation' ? 'text-[#073B2E] dark:text-[#C9A34E]' : ''}`} />
+                {!isCollapsed && <span className="truncate">Ruang Konsultasi</span>}
+              </button>
+
+              {/* Tanya Jawab Publik */}
+              <button
+                onClick={() => navigate('public-qa')}
+                title="Arsip Tanya Jawab Pembelajaran Publik"
+                className={`w-full flex items-center ${isCollapsed ? 'justify-center px-0 py-3' : 'gap-3.5 px-3.5 py-3'} rounded-2xl text-xs font-semibold transition-all duration-200 cursor-pointer active:scale-95 ${
+                  currentView === 'public-qa'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border-l-4 border-emerald-600 dark:border-emerald-500 shadow-xs'
+                    : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800/60 hover:text-stone-900 dark:hover:text-stone-100'
+                }`}
+              >
+                <HelpCircle className={`w-4 h-4 shrink-0 ${currentView === 'public-qa' ? 'text-[#073B2E] dark:text-[#C9A34E]' : ''}`} />
+                {!isCollapsed && <span className="truncate">Tanya Jawab Publik</span>}
+              </button>
+
+              {/* Video Intro & Sambutan Trigger Button */}
+              {onOpenWelcomeModal && (
+                <button
+                  onClick={() => {
+                    onOpenWelcomeModal();
+                    setMobileOpen(false);
+                  }}
+                  title="Saksikan Video Intro Logo & Sambutan"
+                  className={`w-full flex items-center ${isCollapsed ? 'justify-center px-0 py-3' : 'gap-3.5 px-3.5 py-3'} rounded-2xl text-xs font-semibold text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800/60 hover:text-stone-900 dark:hover:text-stone-100 transition-all duration-200 cursor-pointer active:scale-95`}
+                >
+                  <Film className="w-4 h-4 shrink-0 text-[#C9A34E]" />
+                  {!isCollapsed && <span className="truncate">Video Intro & Sambutan</span>}
+                </button>
+              )}
 
               {/* Logged in student specific items */}
               {user && (

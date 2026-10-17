@@ -71,10 +71,12 @@ import { ConfirmModal } from '../common/ConfirmModal';
 import { Logo, LogoSymbol } from '../common/Logo';
 import { YouTubeEmbed } from '../common/YouTubeEmbed';
 import { AdminBlogManager } from './AdminBlogManager';
+import { AdminConsultationManager } from './AdminConsultationManager';
+import { MessageSquare } from 'lucide-react';
 
 export const AdminDashboard: React.FC<{
   initialCourseId?: string;
-  initialTab?: 'dashboard' | 'courses' | 'categories' | 'sessions' | 'quizzes' | 'users' | 'attempts' | 'firebase' | 'blog';
+  initialTab?: 'dashboard' | 'courses' | 'categories' | 'sessions' | 'quizzes' | 'users' | 'attempts' | 'firebase' | 'blog' | 'consultation';
   autoOpenAddSession?: boolean;
   onClearAutoOpen?: () => void;
   onNavigateToSiswa?: () => void;
@@ -93,7 +95,7 @@ export const AdminDashboard: React.FC<{
   const { theme, effectiveTheme, setTheme } = useTheme();
 
   // Active Menu / Tab in Sidebar
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'courses' | 'categories' | 'sessions' | 'quizzes' | 'users' | 'attempts' | 'firebase' | 'blog'>(initialTab || 'dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'courses' | 'categories' | 'sessions' | 'quizzes' | 'users' | 'attempts' | 'firebase' | 'blog' | 'consultation'>(initialTab || 'dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [quickSearch, setQuickSearch] = useState('');
@@ -998,6 +1000,21 @@ export const AdminDashboard: React.FC<{
                     {blogPosts.length}
                   </span>
                 )}
+              </button>
+
+              <button
+                onClick={() => { setActiveTab('consultation'); setSidebarOpen(false); }}
+                title="Konsultasi & Q&A Siswa"
+                className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3.5 py-2.5'} rounded-xl text-xs font-semibold transition cursor-pointer ${
+                  activeTab === 'consultation'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60 shadow-xs'
+                    : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800/60'
+                }`}
+              >
+                <div className="flex items-center gap-3 truncate">
+                  <MessageSquare className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  {!sidebarCollapsed && <span className="truncate">Konsultasi & Q&A</span>}
+                </div>
               </button>
             </div>
 
@@ -2112,6 +2129,14 @@ export const AdminDashboard: React.FC<{
                   </button>
                 </div>
               </div>
+            </div>
+          )}
+          {/* ========================================================= */}
+          {/* VIEW: CONSULTATION & Q&A MANAGER */}
+          {/* ========================================================= */}
+          {activeTab === 'consultation' && (
+            <div className="animate-fade-in">
+              <AdminConsultationManager />
             </div>
           )}
         </main>

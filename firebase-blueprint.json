@@ -159,6 +159,29 @@
       },
       "required": ["title", "slug", "content", "status"]
     },
+    "Consultation": {
+      "title": "Consultation",
+      "description": "Student Q&A and private consultation records with admin response and Q&A publishing",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "studentId": { "type": "string", "maxLength": 128 },
+        "studentName": { "type": "string", "maxLength": 200 },
+        "studentEmail": { "type": "string", "maxLength": 200 },
+        "title": { "type": "string", "maxLength": 300 },
+        "content": { "type": "string", "maxLength": 10000 },
+        "category": { "type": "string", "enum": ["learning", "private"] },
+        "status": { "type": "string", "enum": ["pending", "answered", "closed"] },
+        "replyContent": { "type": "string", "maxLength": 10000 },
+        "repliedAt": { "type": "string", "maxLength": 100 },
+        "repliedBy": { "type": "string", "maxLength": 200 },
+        "isPublished": { "type": "boolean" },
+        "publishedAt": { "type": "string", "maxLength": 100 },
+        "createdAt": { "type": "string", "maxLength": 100 },
+        "updatedAt": { "type": "string", "maxLength": 100 }
+      },
+      "required": ["studentId", "title", "content", "category", "status", "isPublished"]
+    },
     "SystemInfo": {
       "title": "SystemInfo",
       "description": "System initialization and version status",
@@ -198,6 +221,10 @@
     "/blogPosts/{postId}": {
       "schema": { "$ref": "#/entities/BlogPost" },
       "description": "Public educational blog posts and articles"
+    },
+    "/consultations/{consultationId}": {
+      "schema": { "$ref": "#/entities/Consultation" },
+      "description": "Consultation records, Q&A submissions and admin replies"
     },
     "/enrollments/{enrollmentId}": {
       "schema": { "$ref": "#/entities/Enrollment" },

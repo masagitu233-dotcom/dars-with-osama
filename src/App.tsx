@@ -24,6 +24,7 @@ import { ProfileSettingsModal } from './components/common/ProfileSettingsModal';
 import { CertificateModal } from './components/common/CertificateModal';
 import { LogoutConfirmModal } from './components/common/LogoutConfirmModal';
 import { GuestAccessModal } from './components/common/GuestAccessModal';
+import { WelcomeModal } from './components/common/WelcomeModal';
 import { Toast } from './components/common/Toast';
 import { HomeView } from './components/home/HomeView';
 import { HeroSection } from './components/home/HeroSection';
@@ -36,6 +37,8 @@ import { StudentDashboard } from './components/dashboard/StudentDashboard';
 import { AdminDashboard } from './components/admin/AdminDashboard';
 import { BlogListView } from './components/blog/BlogListView';
 import { BlogDetailView } from './components/blog/BlogDetailView';
+import { StudentConsultationView } from './components/consultation/StudentConsultationView';
+import { PublicQAView } from './components/consultation/PublicQAView';
 import { Course, Category, Session, Quiz, Enrollment, BlogPost } from './types';
 import {
   getCategories,
@@ -80,6 +83,20 @@ function MainApp() {
   // Certificate Modal State
   const [certModalOpen, setCertModalOpen] = useState(false);
   const [certCourse, setCertCourse] = useState<Course | null>(null);
+
+  // Welcome & Video Intro Modal State (First visit in session)
+  const [welcomeModalOpen, setWelcomeModalOpen] = useState<boolean>(() => {
+    return !sessionStorage.getItem('dars_intro_shown');
+  });
+
+  const handleCloseWelcomeModal = () => {
+    sessionStorage.setItem('dars_intro_shown', 'true');
+    setWelcomeModalOpen(false);
+  };
+
+  const handleOpenWelcomeModal = () => {
+    setWelcomeModalOpen(true);
+  };
 
   // Search & Filter State
   const [filterCategoryId, setFilterCategoryId] = useState<string>('all');
@@ -251,6 +268,7 @@ function MainApp() {
               setCurrentView={setCurrentView}
               mobileOpen={mobileMenuOpen}
               setMobileOpen={setMobileMenuOpen}
+              onOpenWelcomeModal={handleOpenWelcomeModal}
             />
 
             {/* Right Main Content Column */}
@@ -263,6 +281,7 @@ function MainApp() {
                 setMobileOpen={setMobileMenuOpen}
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
+                onOpenWelcomeModal={handleOpenWelcomeModal}
               />
 
               {/* Main Body Router */}
@@ -400,6 +419,26 @@ function MainApp() {
                       }}
                     />
                   )}
+
+                  {/* VIEW 9: STUDENT CONSULTATION */}
+                  {currentView === 'consultation' && (
+                    <StudentConsultationView
+                      onNavigateToPublicQA={() => {
+                        setCurrentView('public-qa');
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                    />
+                  )}
+
+                  {/* VIEW 10: PUBLIC Q&A */}
+                  {currentView === 'public-qa' && (
+                    <PublicQAView
+                      onNavigateToConsultation={() => {
+                        setCurrentView('consultation');
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                    />
+                  )}
                 </div>
               </main>
 
@@ -417,6 +456,7 @@ function MainApp() {
         )}
 
         {/* Global Modals */}
+        <WelcomeModal isOpen={welcomeModalOpen} onClose={handleCloseWelcomeModal} />
         <AuthModal />
         <ProfileSettingsModal isOpen={profileModalOpen} onClose={closeProfileModal} />
 

@@ -2,8 +2,104 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        request.auth.token.email == 'osamanursamsil@gmail.com'
+      );
+    }
+
+    match /system/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /courses/{courseId} {
+      allow read: if true;
+      allow write: if isAdmin();
+      
+      match /sessions/{sessionId} {
+        allow read: if true;
+        allow write: if isAdmin();
+      }
+    }
+
+    match /sessions/{sessionId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /quizzes/{quizId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /blogPosts/{postId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /users/{userId} {
+      allow read, write: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+    }
+
+    match /enrollments/{enrollmentId} {
+      allow read, write: if isSignedIn() && (resource == null || resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    match /quizAttempts/{attemptId} {
+      allow read, write: if isSignedIn() && (resource == null || resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // CONSULTATIONS SECURITY RULES (RUANG KONSULTASI)
+    match /consultations/{consultationId} {
+      // 1. Read: Admin OR Student Owner OR Public approved Q&A ('learning' & isPublished == true)
+      allow read: if isAdmin() || 
+        (isSignedIn() && resource.data.studentId == request.auth.uid) || 
+        (resource.data.category == 'learning' && resource.data.isPublished == true);
+
+      // 2. Create: Authenticated student creating for self with status == 'pending' and isPublished == false
+      allow create: if isSignedIn() &&
+        request.resource.data.studentId == request.auth.uid &&
+        request.resource.data.status == 'pending' &&
+        request.resource.data.isPublished == false &&
+        (request.resource.data.category == 'learning' || request.resource.data.category == 'private');
+
+      // 3. Update:
+      // - Admin can update, reply, change status, toggle isPublished
+      //   (SAFETY: 'private' category CAN NEVER be set to isPublished == true)
+      // - Student can update status or student follow-up
+      allow update: if (isAdmin() && (
+        request.resource.data.category != 'private' || request.resource.data.isPublished == false
+      )) || (
+        isSignedIn() && 
+        resource.data.studentId == request.auth.uid &&
+        request.resource.data.studentId == request.auth.uid &&
+        request.resource.data.category == resource.data.category &&
+        request.resource.data.isPublished == false
+      );
+
+      // 4. Delete: Admin only
+      allow delete: if isAdmin();
+    }
+
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
   }
 }
