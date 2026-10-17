@@ -124,3 +124,145 @@ export function autoWrapArabicText(html: string): string {
     return html;
   }
 }
+
+/**
+ * Converts Markdown or raw formatted text into clean semantic HTML structure,
+ * and passes it through autoWrapArabicText for safe bilingual presentation.
+ */
+export function renderFormattedContentHtml(rawContent: string): string {
+  if (!rawContent || typeof rawContent !== 'string') return '';
+  const trimmed = rawContent.trim();
+  if (!trimmed) return '';
+
+  // If already rich HTML
+  let html = trimmed;
+  if (!/<(p|h[1-6]|ul|ol|li|blockquote|table|div|article|section)\b[^>]*>/i.test(trimmed)) {
+    html = formatMarkdownToHtml(trimmed);
+  }
+
+  return autoWrapArabicText(html);
+}
+
+/**
+ * Converts Markdown text (headings, bold, italic, lists, quotes, links) to semantic HTML
+ */
+export function formatMarkdownToHtml(markdown: string): string {
+  if (!markdown || typeof markdown !== 'string') return '';
+  const lines = markdown.split(/\r?\n/);
+  const blocks: string[] = [];
+  let inList: 'ul' | 'ol' | null = null;
+  let blockquoteLines: string[] = [];
+
+  const closeList = () => {
+    if (inList) {
+      blocks.push(`</${inList}>`);
+      inList = null;
+    }
+  };
+
+  const closeBlockquote = () => {
+    if (blockquoteLines.length > 0) {
+      const quoteText = blockquoteLines.join('<br />');
+      blocks.push(
+        `<blockquote class="border-l-4 border-[#073B2E] dark:border-[#C9A34E] pl-4 py-2.5 my-4 bg-[#073B2E]/5 dark:bg-[#0c2b23] rounded-r-2xl italic text-stone-800 dark:text-stone-200">${quoteText}</blockquote>`
+      );
+      blockquoteLines = [];
+    }
+  };
+
+  const processInline = (str: string): string => {
+    let out = str;
+    // Bold **text**
+    out = out.replace(/(\*\*|__)(.*?)\1/g, '<strong class="font-bold text-stone-900 dark:text-white">$2</strong>');
+    // Italic *text*
+    out = out.replace(/(\*|_)(.*?)\1/g, '<em>$2</em>');
+    // Links [label](url)
+    out = out.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-emerald-700 dark:text-emerald-400 font-semibold underline hover:text-emerald-800">$1</a>');
+    return out;
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const rawLine = lines[i];
+    const line = rawLine.trim();
+
+    if (!line) {
+      closeList();
+      closeBlockquote();
+      continue;
+    }
+
+    // Heading H3
+    if (/^###\s+(.*)/.test(line)) {
+      closeList();
+      closeBlockquote();
+      const content = processInline(line.replace(/^###\s+/, ''));
+      blocks.push(`<h3 class="text-lg sm:text-xl font-bold font-serif-brand text-stone-900 dark:text-white mt-6 mb-2.5 leading-snug">${content}</h3>`);
+      continue;
+    }
+
+    // Heading H2
+    if (/^##\s+(.*)/.test(line)) {
+      closeList();
+      closeBlockquote();
+      const content = processInline(line.replace(/^##\s+/, ''));
+      blocks.push(`<h2 class="text-xl sm:text-2xl font-bold font-serif-brand text-stone-900 dark:text-white mt-7 mb-3 leading-snug">${content}</h2>`);
+      continue;
+    }
+
+    // Heading H1
+    if (/^#\s+(.*)/.test(line)) {
+      closeList();
+      closeBlockquote();
+      const content = processInline(line.replace(/^#\s+/, ''));
+      blocks.push(`<h1 class="text-2xl sm:text-3xl font-bold font-serif-brand text-stone-900 dark:text-white mt-8 mb-4 leading-tight">${content}</h1>`);
+      continue;
+    }
+
+    // Blockquote
+    if (/^>\s*(.*)/.test(line)) {
+      closeList();
+      blockquoteLines.push(processInline(line.replace(/^>\s*/, '')));
+      continue;
+    } else {
+      closeBlockquote();
+    }
+
+    // Unordered List
+    if (/^[\-\*]\s+(.*)/.test(line)) {
+      closeBlockquote();
+      if (inList !== 'ul') {
+        closeList();
+        blocks.push('<ul class="list-disc list-inside space-y-1.5 my-3 text-stone-800 dark:text-stone-200 pl-2">');
+        inList = 'ul';
+      }
+      const itemContent = processInline(line.replace(/^[\-\*]\s+/, ''));
+      blocks.push(`<li>${itemContent}</li>`);
+      continue;
+    }
+
+    // Ordered List
+    if (/^\d+\.\s+(.*)/.test(line)) {
+      closeBlockquote();
+      if (inList !== 'ol') {
+        closeList();
+        blocks.push('<ol class="list-decimal list-inside space-y-1.5 my-3 text-stone-800 dark:text-stone-200 pl-2">');
+        inList = 'ol';
+      }
+      const itemContent = processInline(line.replace(/^\d+\.\s+/, ''));
+      blocks.push(`<li>${itemContent}</li>`);
+      continue;
+    }
+
+    // Regular Paragraph
+    closeList();
+    closeBlockquote();
+    const paragraphContent = processInline(line);
+    blocks.push(`<p class="leading-relaxed text-stone-800 dark:text-stone-200 text-sm sm:text-base font-sans">${paragraphContent}</p>`);
+  }
+
+  closeList();
+  closeBlockquote();
+
+  return blocks.join('\n');
+}
+

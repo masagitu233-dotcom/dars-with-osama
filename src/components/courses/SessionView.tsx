@@ -21,6 +21,7 @@ import { PDFViewerModal } from '../common/PDFViewerModal';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { markSessionCompleted } from '../../firebase/services';
+import { autoWrapArabicText, renderFormattedContentHtml } from '../../utils/arabicFontHelper';
 
 interface SessionViewProps {
   course: Course;
@@ -285,19 +286,43 @@ export const SessionView: React.FC<SessionViewProps> = ({
             </div>
           )}
 
-          {/* Lesson Notes & Text */}
+          {/* Arabic Matan / Syarah Naskah Box (if present) */}
+          {session.descriptionAr && (
+            <div className="bg-stone-50 dark:bg-stone-900/90 border border-emerald-200 dark:border-emerald-800/60 p-6 md:p-8 rounded-2xl space-y-3 shadow-xs transition-colors">
+              <div className="text-xs font-sans font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 border-b border-emerald-200 dark:border-emerald-800/60 pb-2 flex items-center justify-between">
+                <span>Matan & Naskah Bahasa Arab</span>
+                <span className="text-[10px] font-normal text-stone-400">Naskah Asli</span>
+              </div>
+              <div
+                className="font-amiri text-right text-lg sm:text-xl text-emerald-900 dark:text-emerald-300 leading-loose space-y-3"
+                dir="rtl"
+                dangerouslySetInnerHTML={{ __html: autoWrapArabicText(session.descriptionAr) }}
+              />
+            </div>
+          )}
+
+          {/* Lesson Notes & Faedah Ilmiah Section with Blog-Quality Typography */}
           {session.lessonNotes && (
-            <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 p-6 md:p-8 rounded-2xl space-y-4 shadow-sm dark:shadow-lg animate-fade-in transition-colors duration-250">
-              <div className="flex items-center gap-2 border-b border-stone-200 dark:border-stone-800 pb-3">
-                <BookOpen className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                <h3 className="text-base font-bold text-stone-900 dark:text-white font-sans">
-                  Catatan Pelajaran & Faedah Ilmiah
-                </h3>
+            <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 p-6 md:p-8 rounded-2xl space-y-5 shadow-sm dark:shadow-lg animate-fade-in transition-colors duration-250">
+              <div className="flex items-center gap-2.5 border-b border-stone-200 dark:border-stone-800 pb-4">
+                <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800/60 shrink-0">
+                  <BookOpen className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-bold font-serif-brand text-stone-900 dark:text-white leading-snug">
+                    Catatan Pelajaran & Faedah Ilmiah
+                  </h3>
+                  <p className="text-xs text-stone-500 dark:text-stone-400 font-sans">
+                    Rangkuman poin penting, syarah, dan dalil-dalil ilmiah pada sesi ini.
+                  </p>
+                </div>
               </div>
 
-              <div className="prose dark:prose-invert max-w-none text-stone-700 dark:text-stone-300 text-sm md:text-base space-y-4 leading-relaxed font-sans whitespace-pre-line">
-                {session.lessonNotes}
-              </div>
+              {/* Rich Blog-Quality Typography Content Renderer */}
+              <div
+                className="prose dark:prose-invert max-w-none text-stone-800 dark:text-stone-200 text-sm sm:text-base leading-relaxed space-y-4 font-sans blog-content"
+                dangerouslySetInnerHTML={{ __html: renderFormattedContentHtml(session.lessonNotes) }}
+              />
             </div>
           )}
 

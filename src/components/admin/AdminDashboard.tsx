@@ -72,6 +72,7 @@ import { Logo, LogoSymbol } from '../common/Logo';
 import { YouTubeEmbed } from '../common/YouTubeEmbed';
 import { AdminBlogManager } from './AdminBlogManager';
 import { AdminConsultationManager } from './AdminConsultationManager';
+import { RichTextEditor } from './RichTextEditor';
 import { MessageSquare } from 'lucide-react';
 
 export const AdminDashboard: React.FC<{
@@ -2424,14 +2425,13 @@ export const AdminDashboard: React.FC<{
                 <div className="space-y-4 animate-fade-in">
                   <div>
                     <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 block mb-1">
-                      Materi Teks / Catatan Pembelajaran (Bahasa Indonesia)
+                      Materi Teks / Catatan Pembelajaran & Faedah Ilmiah (Format Teks Kaya / Markdown)
                     </label>
-                    <textarea
-                      rows={6}
+                    <RichTextEditor
                       value={sessionFormData.lessonNotes}
-                      onChange={(e) => setSessionFormData({ ...sessionFormData, lessonNotes: e.target.value })}
-                      placeholder="Ringkasan poin penting, faedah ilmiah, dan penjelasan materi Bahasa Indonesia..."
-                      className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs text-stone-900 dark:text-white font-sans"
+                      onChange={(html) => setSessionFormData({ ...sessionFormData, lessonNotes: html })}
+                      placeholder="Ringkasan poin penting, faedah ilmiah, dan penjelasan materi..."
+                      minHeight="220px"
                     />
                   </div>
 
