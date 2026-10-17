@@ -1,0 +1,124 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Dedicated platform admins list with case-safe matching without nonexistent methods
+    function isHardcodedAdmin() {
+      return isSignedIn() &&
+        'email' in request.auth.token &&
+        request.auth.token.email != null && (
+          request.auth.token.email == 'masagitu233@gmail.com' ||
+          request.auth.token.email == 'osamanursamsil@gmail.com' ||
+          request.auth.token.email.matches('(?i)^(masagitu233@gmail\\.com|osamanursamsil@gmail\\.com)$')
+        );
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        isHardcodedAdmin() ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin")
+      );
+    }
+
+    // System initialization marker
+    match /system/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Categories (public catalog read, only admin write)
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin() && isValidId(categoryId);
+    }
+
+    // Courses (public catalog metadata)
+    match /courses/{courseId} {
+      allow get: if resource.data.isPublished == true || isAdmin();
+      allow list: if true;
+      allow create, update, delete: if isAdmin() && isValidId(courseId);
+
+      // Protected Sessions subcollection (requires user login)
+      match /sessions/{sessionId} {
+        allow read: if isSignedIn() && (resource.data.isPublished == true || isAdmin());
+        allow create, update, delete: if isAdmin() && isValidId(sessionId);
+      }
+    }
+
+    // Top-level Protected Sessions (requires user login)
+    match /sessions/{sessionId} {
+      allow read: if isSignedIn() && (resource.data.isPublished == true || isAdmin());
+      allow create, update, delete: if isAdmin() && isValidId(sessionId);
+    }
+
+    // Protected Quizzes (requires user login)
+    match /quizzes/{quizId} {
+      allow read: if isSignedIn() && (resource.data.isPublished == true || isAdmin());
+      allow create, update, delete: if isAdmin() && isValidId(quizId);
+    }
+
+    // Blog Posts (Public get/list for published posts, admin full access, safe increment for readers)
+    match /blogPosts/{postId} {
+      allow get: if resource.data.status == 'published' || isAdmin();
+      allow list: if true;
+      allow create, delete: if isAdmin() && isValidId(postId);
+      allow update: if isValidId(postId) && (
+        isAdmin() ||
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewsCount']) &&
+         request.resource.data.viewsCount is number)
+      );
+    }
+
+    // Enrollments
+    match /enrollments/{enrollmentId} {
+      allow read: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid && isValidId(enrollmentId);
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid;
+      allow delete: if isAdmin();
+    }
+
+    // Quiz Attempts
+    match /quizAttempts/{attemptId} {
+      allow read: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid && isValidId(attemptId);
+      allow update, delete: if isAdmin();
+    }
+
+    // User profiles
+    match /users/{userId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow create: if isSignedIn() && request.auth.uid == userId && isValidId(userId) &&
+        (request.resource.data.role != 'admin' || isAdmin());
+      allow update: if isSignedIn() && (request.auth.uid == userId || isAdmin()) &&
+        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']) || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // Admins registry
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin() || (isSignedIn() && isHardcodedAdmin());
+    }
+  }
+}

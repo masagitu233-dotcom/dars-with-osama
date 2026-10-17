@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="id" dir="ltr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dars with Osama | Online Learning Platform</title>
+    <script>
+      (function() {
+        try {
+          var saved = localStorage.getItem('dars_theme_preference');
+          var isDark = saved === 'dark' || ((!saved || saved === 'system') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (isDark) {
+            document.documentElement.classList.add('dark');
+            document.documentElement.style.colorScheme = 'dark';
+          } else {
+            document.documentElement.classList.remove('dark');
+            document.documentElement.style.colorScheme = 'light';
+          }
+        } catch (e) {}
+      })();
+    </script>
+    <meta name="description" content="Platform pembelajaran online modern, profesional dan terstruktur di Dars with Osama dengan materi video, dokumen PDF, kuis otomatis, dan pelacakan progres pembelajaran berbasis Firebase." />
+    <meta property="og:title" content="Dars with Osama | Online Learning Platform" />
+    <meta property="og:description" content="Platform pembelajaran online modern, profesional dan terstruktur di Dars with Osama dengan materi video, dokumen PDF, kuis otomatis, dan pelacakan progres pembelajaran berbasis Firebase." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Cairo:wght@400;600;700&family=Merriweather:ital,wght@0,400;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Scheherazade+New:wght@400;700&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+  </head>
+  <body class="bg-stone-50 dark:bg-stone-950 text-stone-800 dark:text-stone-100 antialiased font-sans selection:bg-emerald-500/20 selection:text-emerald-900 dark:selection:text-emerald-300">
+    <div id="root"></div>
+    <script type="module" src="./src/main.tsx"></script>
+  </body>
+</html>
+

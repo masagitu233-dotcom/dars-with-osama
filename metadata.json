@@ -1,0 +1,8 @@
+{
+  "name": "Remix Dars with Osama | Online Learning Platform",
+  "description": "Platform pembelajaran online modern, profesional dan terstruktur di Dars with Osama dengan materi video, dokumen PDF, kuis otomatis, dan pelacakan progres pembelajaran berbasis Firebase.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

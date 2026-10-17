@@ -1,0 +1,219 @@
+{
+  "entities": {
+    "Category": {
+      "title": "Category",
+      "description": "Educational category such as Fiqh, Aqidah, Hadith, Arabic",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 200 },
+        "nameAr": { "type": "string", "maxLength": 200 },
+        "slug": { "type": "string", "maxLength": 100 },
+        "description": { "type": "string", "maxLength": 1000 },
+        "order": { "type": "number" },
+        "icon": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["name", "slug"]
+    },
+    "Course": {
+      "title": "Course",
+      "description": "Learning course with curriculum, instructor and sessions",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 300 },
+        "titleAr": { "type": "string", "maxLength": 300 },
+        "instructor": { "type": "string", "maxLength": 200 },
+        "instructorTitle": { "type": "string", "maxLength": 200 },
+        "instructorAr": { "type": "string", "maxLength": 200 },
+        "categoryId": { "type": "string", "maxLength": 128 },
+        "level": { "type": "string", "enum": ["beginner", "intermediate", "advanced"] },
+        "description": { "type": "string", "maxLength": 5000 },
+        "descriptionAr": { "type": "string", "maxLength": 5000 },
+        "coverImageUrl": { "type": "string", "maxLength": 2000 },
+        "isPublished": { "type": "boolean" },
+        "hasCertificate": { "type": "boolean" },
+        "passingGrade": { "type": "number" },
+        "totalDuration": { "type": "string", "maxLength": 100 },
+        "order": { "type": "number" }
+      },
+      "required": ["title", "categoryId", "isPublished"]
+    },
+    "Session": {
+      "title": "Session",
+      "description": "Individual lecture or study session within a course",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "courseId": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 300 },
+        "titleAr": { "type": "string", "maxLength": 300 },
+        "description": { "type": "string", "maxLength": 4000 },
+        "order": { "type": "number" },
+        "youtubeUrl": { "type": "string", "maxLength": 1000 },
+        "pdfUrl": { "type": "string", "maxLength": 2000 },
+        "pdfTitle": { "type": "string", "maxLength": 300 },
+        "lessonNotes": { "type": "string", "maxLength": 10000 },
+        "durationMinutes": { "type": "number" },
+        "isPublished": { "type": "boolean" }
+      },
+      "required": ["title", "courseId", "order", "isPublished"]
+    },
+    "Quiz": {
+      "title": "Quiz",
+      "description": "Evaluation quiz tied to a session or course",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "sessionId": { "type": "string", "maxLength": 128 },
+        "courseId": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 300 },
+        "description": { "type": "string", "maxLength": 2000 },
+        "passingScore": { "type": "number" },
+        "timeLimitMinutes": { "type": "number" },
+        "maxAttempts": { "type": "number" },
+        "showAnswersAfterSubmit": { "type": "boolean" },
+        "isPublished": { "type": "boolean" }
+      },
+      "required": ["title", "courseId", "passingScore", "isPublished"]
+    },
+    "Enrollment": {
+      "title": "Enrollment",
+      "description": "User course enrollment and progress tracking",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "courseId": { "type": "string", "maxLength": 128 },
+        "lastSessionId": { "type": "string", "maxLength": 128 },
+        "progressPercent": { "type": "number" },
+        "isCompleted": { "type": "boolean" }
+      },
+      "required": ["userId", "courseId"]
+    },
+    "QuizAttempt": {
+      "title": "QuizAttempt",
+      "description": "Student submission record for a quiz",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "userName": { "type": "string", "maxLength": 200 },
+        "userEmail": { "type": "string", "maxLength": 200 },
+        "quizId": { "type": "string", "maxLength": 128 },
+        "sessionId": { "type": "string", "maxLength": 128 },
+        "courseId": { "type": "string", "maxLength": 128 },
+        "score": { "type": "number" },
+        "passed": { "type": "boolean" },
+        "totalPoints": { "type": "number" },
+        "maxPoints": { "type": "number" },
+        "attemptNumber": { "type": "number" }
+      },
+      "required": ["userId", "quizId", "score", "passed"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile with role and preferences",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 200 },
+        "displayName": { "type": "string", "maxLength": 200 },
+        "role": { "type": "string", "enum": ["admin", "student"] },
+        "photoURL": { "type": "string", "maxLength": 1000 },
+        "bio": { "type": "string", "maxLength": 1000 }
+      },
+      "required": ["email", "displayName"]
+    },
+    "AdminRole": {
+      "title": "AdminRole",
+      "description": "Designated administrator identity record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 200 },
+        "role": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["email", "role"]
+    },
+    "BlogPost": {
+      "title": "BlogPost",
+      "description": "Articles, essays and educational blog posts",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 300 },
+        "titleAr": { "type": "string", "maxLength": 300 },
+        "slug": { "type": "string", "maxLength": 200 },
+        "excerpt": { "type": "string", "maxLength": 1000 },
+        "content": { "type": "string", "maxLength": 50000 },
+        "contentAr": { "type": "string", "maxLength": 50000 },
+        "coverImageUrl": { "type": "string", "maxLength": 2000 },
+        "coverImageCaption": { "type": "string", "maxLength": 300 },
+        "category": { "type": "string", "maxLength": 100 },
+        "status": { "type": "string", "enum": ["published", "draft"] },
+        "authorName": { "type": "string", "maxLength": 200 },
+        "readingTimeMinutes": { "type": "number" },
+        "viewsCount": { "type": "number" },
+        "publishedAt": { "type": "string", "maxLength": 100 }
+      },
+      "required": ["title", "slug", "content", "status"]
+    },
+    "SystemInfo": {
+      "title": "SystemInfo",
+      "description": "System initialization and version status",
+      "type": "object",
+      "properties": {
+        "initialized": { "type": "boolean" },
+        "seededAt": { "type": "string" },
+        "version": { "type": "string" }
+      }
+    }
+  },
+  "firestore": {
+    "/system/{docId}": {
+      "schema": { "$ref": "#/entities/SystemInfo" },
+      "description": "System initialization and seed markers"
+    },
+    "/categories/{categoryId}": {
+      "schema": { "$ref": "#/entities/Category" },
+      "description": "Course categories created and managed by admin"
+    },
+    "/courses/{courseId}": {
+      "schema": { "$ref": "#/entities/Course" },
+      "description": "Courses available on the platform"
+    },
+    "/courses/{courseId}/sessions/{sessionId}": {
+      "schema": { "$ref": "#/entities/Session" },
+      "description": "Sessions for a specific course"
+    },
+    "/sessions/{sessionId}": {
+      "schema": { "$ref": "#/entities/Session" },
+      "description": "Top-level session documents for direct course lesson lookups"
+    },
+    "/quizzes/{quizId}": {
+      "schema": { "$ref": "#/entities/Quiz" },
+      "description": "Quizzes associated with sessions or courses"
+    },
+    "/blogPosts/{postId}": {
+      "schema": { "$ref": "#/entities/BlogPost" },
+      "description": "Public educational blog posts and articles"
+    },
+    "/enrollments/{enrollmentId}": {
+      "schema": { "$ref": "#/entities/Enrollment" },
+      "description": "Course enrollments and session completion per user"
+    },
+    "/quizAttempts/{attemptId}": {
+      "schema": { "$ref": "#/entities/QuizAttempt" },
+      "description": "Quiz submissions, scoring and attempt histories"
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "User profile data"
+    },
+    "/admins/{adminId}": {
+      "schema": { "$ref": "#/entities/AdminRole" },
+      "description": "Authoritative list of platform administrators"
+    }
+  }
+}
