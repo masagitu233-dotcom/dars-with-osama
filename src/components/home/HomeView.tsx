@@ -39,7 +39,7 @@ interface HomeViewProps {
   onExplore: () => void;
   onSearch: (query: string) => void;
   onSelectCategory: (categoryId: string) => void;
-  onNavigate?: (view: string) => void;
+  onNavigate?: (view: string, qaId?: string) => void;
   onOpenAuthModal?: (tab: 'login' | 'register') => void;
 }
 
@@ -231,9 +231,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
   }, [blogPosts]);
 
   // Helper for navigation
-  const handleGo = (view: string) => {
+  const handleGo = (view: string, qaId?: string) => {
     if (onNavigate) {
-      onNavigate(view);
+      onNavigate(view, qaId);
     } else {
       onExplore();
     }
@@ -244,12 +244,12 @@ export const HomeView: React.FC<HomeViewProps> = ({
       openAuthModal('login', {
         type: 'enroll',
         onSuccess: () => {
-          handleGo('public-qa');
+          handleGo('public-qa', itemId);
         }
       });
       return;
     }
-    handleGo('public-qa');
+    handleGo('public-qa', itemId);
   };
 
   const handleAskQuestion = () => {

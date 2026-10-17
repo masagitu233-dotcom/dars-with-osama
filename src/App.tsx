@@ -98,6 +98,24 @@ function MainApp() {
     setWelcomeModalOpen(true);
   };
 
+  // Target direct link QA State
+  const [targetQaId, setTargetQaId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const urlQaId = params.get('qaId');
+      const urlView = params.get('view');
+
+      if (urlQaId) {
+        setTargetQaId(urlQaId);
+        setCurrentView('public-qa');
+      } else if (urlView) {
+        setCurrentView(urlView);
+      }
+    }
+  }, []);
+
   // Search & Filter State
   const [filterCategoryId, setFilterCategoryId] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -313,7 +331,8 @@ function MainApp() {
                         setCurrentView('courses');
                         window.scrollTo({ top: 0, behavior: 'smooth' });
                       }}
-                      onNavigate={(view) => {
+                      onNavigate={(view, qaId) => {
+                        if (qaId) setTargetQaId(qaId);
                         setCurrentView(view);
                         window.scrollTo({ top: 0, behavior: 'smooth' });
                       }}
@@ -433,6 +452,7 @@ function MainApp() {
                   {/* VIEW 10: PUBLIC Q&A */}
                   {currentView === 'public-qa' && (
                     <PublicQAView
+                      initialQaId={targetQaId}
                       onNavigateToConsultation={() => {
                         setCurrentView('consultation');
                         window.scrollTo({ top: 0, behavior: 'smooth' });

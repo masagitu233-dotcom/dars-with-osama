@@ -18,7 +18,9 @@ import {
   MessageCircle,
   X,
   ChevronRight,
-  ShieldCheck
+  ShieldCheck,
+  Share2,
+  Image as ImageIcon
 } from 'lucide-react';
 import { Consultation } from '../../types';
 import {
@@ -30,6 +32,7 @@ import {
 import { getWhatsAppConsultationUrl } from '../../config/whatsappConfig';
 import { RichTextEditor } from './RichTextEditor';
 import { autoWrapArabicText } from '../../utils/arabicFontHelper';
+import { ShareQAModal } from '../consultation/ShareQAModal';
 
 export const AdminConsultationManager: React.FC = () => {
   const [consultations, setConsultations] = useState<Consultation[]>([]);
@@ -46,6 +49,11 @@ export const AdminConsultationManager: React.FC = () => {
   // Active modal for reply/manage
   const [selectedConsultation, setSelectedConsultation] = useState<Consultation | null>(null);
   const [replyInput, setReplyInput] = useState<string>('');
+
+  // Share & Dakwah Card Modal State for Admin
+  const [shareModalOpen, setShareModalOpen] = useState<boolean>(false);
+  const [selectedQaForShare, setSelectedQaForShare] = useState<Consultation | null>(null);
+  const [shareTab, setShareTab] = useState<'share' | 'card'>('share');
 
   const loadConsultations = async () => {
     setLoading(true);
@@ -395,6 +403,22 @@ export const AdminConsultationManager: React.FC = () => {
                   </button>
                 )}
 
+                {item.isPublished && item.category === 'learning' && item.replyContent && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedQaForShare(item);
+                      setShareTab('share');
+                      setShareModalOpen(true);
+                    }}
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold bg-[#123B6D] text-white hover:bg-[#0f2e54] transition flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+                    title="Bagikan Tautan / Buat Gambar Kartu Dakwah"
+                  >
+                    <Share2 className="w-3.5 h-3.5 text-[#F4B942]" />
+                    <span>Bagikan / Buat Kartu</span>
+                  </button>
+                )}
+
                 <a
                   href={getWhatsAppConsultationUrl({
                     id: item.id,
@@ -583,6 +607,14 @@ export const AdminConsultationManager: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* MODAL BAGIKAN & BUAT KARTU DAKWAH */}
+      <ShareQAModal
+        isOpen={shareModalOpen}
+        onClose={() => setShareModalOpen(false)}
+        consultation={selectedQaForShare}
+        initialTab={shareTab}
+      />
 
     </div>
   );

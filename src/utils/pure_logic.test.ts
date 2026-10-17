@@ -28,3 +28,141 @@ test('isPlatformAdminEmail authorizes both designated administrator emails regar
   assert.equal(isPlatformAdminEmail(null), false);
   assert.equal(isPlatformAdminEmail(undefined), false);
 });
+
+test('stripHtml cleans tags, converts breaks, and cleans entities', async () => {
+  const { stripHtml } = await import('./canvasDakwahCard.js');
+  const dirty = '<p>Bismillah <strong>Alhamdulillah</strong></p><br/><div>Kajian &amp; Fiqih</div>';
+  const clean = stripHtml(dirty);
+  assert.equal(clean.includes('<p>'), false);
+  assert.equal(clean.includes('<strong>'), false);
+  assert.equal(clean.includes('&amp;'), false);
+  assert.equal(clean.includes('Bismillah Alhamdulillah'), true);
+  assert.equal(clean.includes('Kajian & Fiqih'), true);
+});
+
+test('partitionContentIntoSlides generates structured slides with question and answer', async () => {
+  const { partitionContentIntoSlides } = await import('./canvasDakwahCard.js');
+  const title = 'Hukum Shalat Berjamaah';
+  const question = 'Bagaimana hukum shalat berjamaah bagi laki-laki?';
+  const answer = 'Shalat berjamaah bagi laki-laki menurut pendapat yang rajih adalah fardhu ain bagi yang mendengar adzan dan tidak memiliki udzur syar\'i.';
+
+  const slides = partitionContentIntoSlides(title, question, answer);
+  assert.equal(Array.isArray(slides), true);
+  assert.ok(slides.length >= 1);
+  assert.equal(slides[0].pageNumber, 1);
+  assert.equal(slides[0].questionTitle, title);
+  assert.ok(slides[0].answerText.includes('Shalat berjamaah'));
+});
+
+// Case 1: Jawaban pendek satu paragraf
+test('Case 1: Jawaban pendek satu paragraf dimuat dalam 1 slide utuh', async () => {
+  const { partitionContentIntoSlides } = await import('./canvasDakwahCard.js');
+  const title = 'Hukum Puasa Rajab';
+  const question = 'Apakah ada hadits khusus tentang puasa di bulan Rajab?';
+  const answer = 'Tidak ada hadits shahih yang secara khusus mengkhususkan puasa pada seluruh bulan Rajab, namun berpuasa sunnah mutlak atau puasa Senin-Kamis tetap dianjurkan.';
+
+  const slides = partitionContentIntoSlides(title, question, answer, '4:5');
+  assert.equal(slides.length, 1);
+  assert.equal(slides[0].pageNumber, 1);
+  assert.equal(slides[0].totalPages, 1);
+  assert.ok(slides[0].answerText.includes('Tidak ada hadits shahih'));
+});
+
+// Case 2: Jawaban panjang dengan beberapa heading dan daftar
+test('Case 2: Jawaban panjang dengan heading dan daftar terstruktur tanpa hilang', async () => {
+  const { parseContentToBlocks } = await import('./canvasDakwahCard.js');
+  const html = `
+    <h3>Syarat Sah Wudhu</h3>
+    <p>Berikut adalah beberapa syarat sah wudhu menurut madzhab Syafi'i:</p>
+    <ul>
+      <li>Islam dan berakal (tamyiz)</li>
+      <li>Bersih dari haid dan nifas</li>
+      <li>Menggunakan air yang suci lagi mensucikan (thahir muthahhir)</li>
+      <li>Tidak ada penghalang air sampai ke kulit</li>
+    </ul>
+  `;
+
+  const blocks = parseContentToBlocks(html);
+  assert.ok(blocks.length >= 5);
+  assert.equal(blocks[0].type, 'heading');
+  assert.equal(blocks[0].text, 'Syarat Sah Wudhu');
+  assert.equal(blocks[1].type, 'paragraph');
+  assert.equal(blocks[2].type, 'list-item');
+  assert.ok(blocks[2].text.includes('Islam dan berakal'));
+});
+
+// Case 3: Kutipan Arab lengkap dengan harakat
+test('Case 3: Kutipan Arab lengkap dengan harakat dikenali dan berstatus isArabic', async () => {
+  const { isArabicBlock, parseContentToBlocks } = await import('./canvasDakwahCard.js');
+  const ayat = 'إِنَّمَا الأَعْمَالُ بِالنِّيَّاتِ وَإِنَّمَا لِكُلِّ امْرِئٍ مَا نَوَى';
+  
+  assert.equal(isArabicBlock(ayat), true);
+
+  const blocks = parseContentToBlocks(`<p>${ayat}</p>`);
+  assert.equal(blocks.length, 1);
+  assert.equal(blocks[0].type, 'arabic');
+  assert.equal(blocks[0].isArabic, true);
+  assert.equal(blocks[0].text, ayat);
+});
+
+// Case 4: Paragraf campuran Arab dan Indonesia
+test('Case 4: Paragraf campuran Arab dan Indonesia dipisahkan secara stabil', async () => {
+  const { parseContentToBlocks } = await import('./canvasDakwahCard.js');
+  const mixed = 'Nabi shallallahu alaihi wa sallam bersabda: "مَنْ سَلَكَ طَرِيقًا يَلْتَمِسُ فِيهِ عِلْمًا سَهَّلَ اللَّهُ لَهُ بِهِ طَرِيقًا إِلَى الْجَنَّةِ" yang maknanya Allah mudahkan jalannya menuju surga.';
+
+  const blocks = parseContentToBlocks(mixed);
+  assert.ok(blocks.length >= 2);
+  // Contains at least one Arabic block
+  const arabicBlock = blocks.find((b) => b.isArabic || b.type === 'arabic');
+  assert.ok(arabicBlock);
+  assert.ok(arabicBlock.text.includes('مَنْ سَلَكَ طَرِيقًا'));
+  // Contains Indonesian intro or outro
+  const indonesianBlock = blocks.find((b) => !b.isArabic);
+  assert.ok(indonesianBlock);
+  assert.ok(indonesianBlock.text.includes('Nabi shallallahu alaihi wa sallam') || indonesianBlock.text.includes('menuju surga'));
+});
+
+// Case 5: Referensi panjang dan tautan tanpa spasi
+test('Case 5: Referensi panjang dan tautan tanpa spasi dipecah aman tanpa overflow', async () => {
+  const { wrapTextLines } = await import('./canvasDakwahCard.js');
+  const longUrl = 'https://darswithosama.com/kajian-fiqih-kitab-safinatun-naja-sesi-1-pembahasan-syarat-sah-shalat-dan-rukun-rukunnya-lengkap';
+  const maxWidth = 300;
+
+  const lines = wrapTextLines(longUrl, maxWidth);
+  assert.ok(lines.length > 1);
+  // Each line must not exceed character safety limit
+  for (const line of lines) {
+    assert.ok(line.length < 35);
+  }
+});
+
+// Case 6: Jawaban yang harus dibagi menjadi beberapa halaman
+test('Case 6: Jawaban panjang dibagi multi-halaman dengan nomor halaman akurat', async () => {
+  const { partitionContentIntoSlides } = await import('./canvasDakwahCard.js');
+  const title = 'Rincian Kaidah Pembatalan Wudhu';
+  const question = 'Apa saja hal-hal yang membatalkan wudhu secara rinci menurut kesepakatan ulama?';
+  
+  const longAnswer = `
+    <h3>Pengantar Kaidah</h3>
+    <p>Para ulama madzhab Syafi'i merinci hal-hal yang membatalkan wudhu ke dalam empat perkara pokok yang wajib dipelajari oleh setiap penuntut ilmu.</p>
+    <p>Perkara pertama adalah keluarnya sesuatu dari dua jalan, yaitu qubul atau dubur, baik berupa benda suci seperti angin atau benda najis seperti air kencing dan kotoran.</p>
+    <p>Perkara kedua adalah hilangnya akal karena tidur yang tidak menetapkan posisi duduknya di atas lantai, atau karena mabuk, pingsan, gila, dan obat-obatan.</p>
+    <p>Perkara ketiga adalah bersentuhan kulit antara laki-laki dan perempuan ajnabi (bukan mahram) tanpa ada pembatas (penghalang kain), yang telah mencapai batas usia yang menimbulkan syahwat menurut pandangan syariat.</p>
+    <p>Perkara keempat adalah menyentuh kemaluan manusia (qubul maupun dubur) dengan telapak tangan bagian dalam atau jari-jari bagian dalam, baik kemaluan sendiri maupun orang lain, baik anak kecil maupun dewasa.</p>
+    <p>Dalil mengenai hal ini sebagaimana ditegaskan dalam hadits shahih dan kitab matan Safinatun Naja serta Fathul Qarib Al-Mujib fi Syarhi Alfazh At-Taqrib.</p>
+  `;
+
+  const slides = partitionContentIntoSlides(title, question, longAnswer, '4:5');
+  assert.ok(slides.length >= 2);
+  assert.equal(slides[0].pageNumber, 1);
+  assert.equal(slides[0].totalPages, slides.length);
+  assert.equal(slides[1].pageNumber, 2);
+  assert.equal(slides[1].isContinuation, true);
+  // All pages have content
+  for (const slide of slides) {
+    assert.ok(slide.blocks.length > 0);
+    assert.ok(slide.answerText.length > 0);
+  }
+});
+
+

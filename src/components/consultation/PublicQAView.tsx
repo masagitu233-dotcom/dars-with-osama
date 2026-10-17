@@ -8,17 +8,21 @@ import {
   UserCheck,
   Send,
   Lock,
-  LogIn,
-  CheckCircle2,
-  FileText
+  Share2,
+  Image as ImageIcon,
+  Copy,
+  Check,
+  ArrowRight
 } from 'lucide-react';
 import { Consultation } from '../../types';
 import { getPublishedPublicQA } from '../../firebase/services';
 import { useAuth } from '../../context/AuthContext';
 import { autoWrapArabicText } from '../../utils/arabicFontHelper';
+import { ShareQAModal } from './ShareQAModal';
 
 interface PublicQAViewProps {
   onNavigateToConsultation: () => void;
+  initialQaId?: string | null;
 }
 
 /**
@@ -31,13 +35,20 @@ function stripHtmlTags(html: string): string {
 }
 
 export const PublicQAView: React.FC<PublicQAViewProps> = ({
-  onNavigateToConsultation
+  onNavigateToConsultation,
+  initialQaId
 }) => {
-  const { user, openAuthModal } = useAuth();
+  const { user, openAuthModal, showToast } = useAuth();
   const [qaList, setQaList] = useState<Consultation[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  // Sharing Modal State
+  const [shareModalOpen, setShareModalOpen] = useState<boolean>(false);
+  const [selectedQaForShare, setSelectedQaForShare] = useState<Consultation | null>(null);
+  const [shareInitialTab, setShareInitialTab] = useState<'share' | 'card'>('share');
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const loadPublicQA = async () => {
     setLoading(true);
@@ -55,22 +66,31 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
     loadPublicQA();
   }, []);
 
+  // Handle direct deep link `qaId`
+  useEffect(() => {
+    if (!initialQaId && typeof window === 'undefined') return;
+    const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+    const targetId = initialQaId || urlParams?.get('qaId');
+
+    if (targetId) {
+      setExpandedId(targetId);
+      // Wait for DOM render then scroll to target
+      setTimeout(() => {
+        const el = document.getElementById(`qa-${targetId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 500);
+    }
+  }, [initialQaId, qaList]);
+
   const handleToggleExpand = (itemId: string) => {
     if (expandedId === itemId) {
       setExpandedId(null);
       return;
     }
 
-    if (!user) {
-      openAuthModal('login', {
-        type: 'enroll',
-        onSuccess: () => {
-          setExpandedId(itemId);
-        }
-      });
-      return;
-    }
-
+    // If opening via direct link or user is logged in, allow full view
     setExpandedId(itemId);
   };
 
@@ -85,6 +105,26 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
       return;
     }
     onNavigateToConsultation();
+  };
+
+  const handleOpenShareModal = (item: Consultation, tab: 'share' | 'card') => {
+    setSelectedQaForShare(item);
+    setShareInitialTab(tab);
+    setShareModalOpen(true);
+  };
+
+  const handleCopyDirectLink = async (item: Consultation) => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://darswithosama.com';
+    const directUrl = `${origin}?view=public-qa&qaId=${item.id}`;
+
+    try {
+      await navigator.clipboard.writeText(directUrl);
+      setCopiedId(item.id);
+      showToast('Tautan langsung jawaban berhasil disalin!');
+      setTimeout(() => setCopiedId(null), 2500);
+    } catch {
+      showToast('Gagal menyalin tautan.');
+    }
   };
 
   const filteredQA = qaList.filter((item) => {
@@ -181,9 +221,10 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
           </button>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-5">
           {filteredQA.map((item) => {
             const isExpanded = expandedId === item.id;
+            const isDirectTarget = initialQaId === item.id;
             const plainAnswer = stripHtmlTags(item.replyContent || '');
             const shortAnswerPreview = plainAnswer.length > 150 ? plainAnswer.slice(0, 150) + '...' : plainAnswer;
             const shortQuestionPreview = item.content.length > 120 ? item.content.slice(0, 120) + '...' : item.content;
@@ -191,7 +232,12 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
             return (
               <div
                 key={item.id}
-                className="bg-white dark:bg-[#071B16] border border-[#073B2E]/15 dark:border-[#C9A34E]/25 rounded-2xl p-5 sm:p-6 shadow-xs hover:shadow-md transition-all space-y-4"
+                id={`qa-${item.id}`}
+                className={`bg-white dark:bg-[#071B16] border rounded-2xl p-5 sm:p-6 shadow-xs hover:shadow-md transition-all space-y-4 ${
+                  isDirectTarget
+                    ? 'border-[#C9A34E] ring-2 ring-[#C9A34E]/40 shadow-lg'
+                    : 'border-[#073B2E]/15 dark:border-[#C9A34E]/25'
+                }`}
               >
                 {/* QA Header */}
                 <div className="flex items-start justify-between gap-3">
@@ -204,6 +250,11 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
                         <ShieldCheck className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                         <span>Jawaban Resmi Admin / Ustaz</span>
                       </span>
+                      {isDirectTarget && (
+                        <span className="px-2 py-0.5 rounded-full bg-[#F4B942] text-[#073B2E] font-bold text-[10px]">
+                          Tautan Langsung
+                        </span>
+                      )}
                     </div>
 
                     <h3 className="text-base sm:text-lg font-bold font-serif-brand text-[#073B2E] dark:text-[#F7F6EF] pt-1">
@@ -227,29 +278,36 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
                     </div>
                   </div>
 
-                  <button
-                    onClick={() => handleToggleExpand(item.id)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#073B2E]/5 dark:bg-[#0c2b23] hover:bg-[#073B2E]/10 dark:hover:bg-[#143e33] text-[#073B2E] dark:text-[#F7F6EF] text-xs font-bold transition cursor-pointer shrink-0"
-                    title={isExpanded ? 'Sembunyikan rincian' : 'Tampilkan rincian'}
-                  >
-                    {!user ? (
-                      <>
-                        <Lock className="w-3.5 h-3.5 text-[#C9A34E]" />
-                        <span className="hidden sm:inline">Baca Jawaban Lengkap</span>
-                        <span className="sm:hidden">Baca</span>
-                      </>
-                    ) : isExpanded ? (
-                      <>
-                        <span>Tutup</span>
-                        <ChevronRight className="w-3.5 h-3.5 rotate-90 transition-transform" />
-                      </>
-                    ) : (
-                      <>
-                        <span>Baca Jawaban Lengkap</span>
-                        <ChevronRight className="w-3.5 h-3.5 transition-transform" />
-                      </>
-                    )}
-                  </button>
+                  {/* Header Quick Actions */}
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {/* Quick Share Icon Button */}
+                    <button
+                      onClick={() => handleOpenShareModal(item, 'share')}
+                      className="p-2 rounded-xl bg-[#073B2E]/5 dark:bg-[#0c2b23] hover:bg-[#073B2E]/15 dark:hover:bg-[#143e33] text-[#073B2E] dark:text-[#F4B942] transition cursor-pointer"
+                      title="Bagikan Tautan & Gambar Dakwah"
+                    >
+                      <Share2 className="w-4 h-4" />
+                    </button>
+
+                    {/* Toggle Details Button */}
+                    <button
+                      onClick={() => handleToggleExpand(item.id)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#073B2E]/5 dark:bg-[#0c2b23] hover:bg-[#073B2E]/10 dark:hover:bg-[#143e33] text-[#073B2E] dark:text-[#F7F6EF] text-xs font-bold transition cursor-pointer"
+                      title={isExpanded ? 'Sembunyikan rincian' : 'Tampilkan rincian'}
+                    >
+                      {isExpanded ? (
+                        <>
+                          <span>Tutup</span>
+                          <ChevronRight className="w-3.5 h-3.5 rotate-90 transition-transform" />
+                        </>
+                      ) : (
+                        <>
+                          <span>Baca Jawaban Lengkap</span>
+                          <ChevronRight className="w-3.5 h-3.5 transition-transform" />
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
 
                 {/* Collapsed Preview State vs Expanded Full Content */}
@@ -267,23 +325,43 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
                       </p>
                     )}
 
-                    {!user && (
-                      <div className="pt-2 flex items-center justify-between text-[11px] text-[#6B7C7A] dark:text-[#8C9E9B]">
-                        <span className="flex items-center gap-1 text-[#C9A34E]">
-                          <Lock className="w-3 h-3" />
-                          <span>Login / daftar untuk membaca rincian dalil & penjelasan lengkap.</span>
-                        </span>
+                    <div className="pt-2 flex flex-wrap items-center justify-between gap-2 text-[11px]">
+                      <div className="flex items-center gap-2">
                         <button
-                          onClick={() => handleToggleExpand(item.id)}
-                          className="font-bold text-[#073B2E] dark:text-[#F4B942] hover:underline"
+                          onClick={() => handleOpenShareModal(item, 'share')}
+                          className="font-bold text-[#073B2E] dark:text-[#F4B942] hover:underline flex items-center gap-1 cursor-pointer"
                         >
-                          Masuk
+                          <Share2 className="w-3 h-3" />
+                          <span>Bagikan</span>
+                        </button>
+                        <span>•</span>
+                        <button
+                          onClick={() => handleOpenShareModal(item, 'card')}
+                          className="font-bold text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1 cursor-pointer"
+                        >
+                          <ImageIcon className="w-3 h-3" />
+                          <span>Buat Gambar Kartu</span>
+                        </button>
+                        <span>•</span>
+                        <button
+                          onClick={() => handleCopyDirectLink(item)}
+                          className="text-stone-500 hover:underline flex items-center gap-1 cursor-pointer"
+                        >
+                          {copiedId === item.id ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                          <span>{copiedId === item.id ? 'Tersalin' : 'Salin Tautan'}</span>
                         </button>
                       </div>
-                    )}
+
+                      <button
+                        onClick={() => handleToggleExpand(item.id)}
+                        className="font-bold text-[#073B2E] dark:text-[#F4B942] hover:underline"
+                      >
+                        Baca Selengkapnya →
+                      </button>
+                    </div>
                   </div>
                 ) : (
-                  /* Expanded Full Detail (Only when authenticated) */
+                  /* Expanded Full Detail */
                   <div className="space-y-4 animate-fade-in">
                     {/* Full Question Body */}
                     <div className="p-4 rounded-xl bg-[#F7F6EF]/80 dark:bg-[#0c2b23] border border-[#073B2E]/10 dark:border-[#143e33] space-y-1.5">
@@ -297,10 +375,17 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
 
                     {/* Full Formatted Rich-Text Answer */}
                     {item.replyContent && (
-                      <div className="p-5 sm:p-6 rounded-2xl bg-emerald-50/90 dark:bg-emerald-950/60 border-l-4 border-[#0EA5A4] dark:border-[#F4B942] space-y-3 shadow-xs">
-                        <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[#073B2E] dark:text-[#F4B942] pb-2 border-b border-emerald-200/60 dark:border-emerald-800/60">
-                          <ShieldCheck className="w-4 h-4 text-[#C9A34E]" />
-                          <span>Jawaban Resmi Ustaz / Pembimbing Dars with Osama:</span>
+                      <div className="p-5 sm:p-6 rounded-2xl bg-emerald-50/90 dark:bg-emerald-950/60 border-l-4 border-[#0EA5A4] dark:border-[#F4B942] space-y-4 shadow-xs">
+                        <div className="flex items-center justify-between pb-2 border-b border-emerald-200/60 dark:border-emerald-800/60">
+                          <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[#073B2E] dark:text-[#F4B942]">
+                            <ShieldCheck className="w-4 h-4 text-[#C9A34E]" />
+                            <span>Jawaban Resmi Ustaz / Pembimbing Dars with Osama:</span>
+                          </div>
+                          {item.repliedAt && (
+                            <span className="text-[11px] text-stone-500 dark:text-stone-400 font-normal">
+                              {new Date(item.repliedAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </span>
+                          )}
                         </div>
 
                         {/* Rich HTML Content Renderer with Auto Arabic RTL Wrapping */}
@@ -308,6 +393,55 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
                           className="prose dark:prose-invert max-w-none text-xs sm:text-sm text-[#073B2E] dark:text-[#F7F6EF] leading-relaxed space-y-3 font-sans blog-content"
                           dangerouslySetInnerHTML={{ __html: autoWrapArabicText(item.replyContent) }}
                         />
+
+                        {/* SHARING ACTION TOOLBAR (Bagikan Jawaban, Buat Gambar, Salin Tautan) */}
+                        <div className="pt-4 border-t border-emerald-200/60 dark:border-emerald-800/60 flex flex-col sm:flex-row items-center justify-between gap-3">
+                          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                            {/* Tombol Bagikan Jawaban */}
+                            <button
+                              onClick={() => handleOpenShareModal(item, 'share')}
+                              className="px-3.5 py-2 rounded-xl bg-[#073B2E] dark:bg-[#123B6D] hover:bg-[#0a4d3c] text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
+                              title="Bagikan jawaban ke WhatsApp, Telegram, Facebook, dll"
+                            >
+                              <Share2 className="w-3.5 h-3.5 text-[#F4B942]" />
+                              <span>Bagikan Jawaban</span>
+                            </button>
+
+                            {/* Tombol Buat Gambar Kartu Dakwah */}
+                            <button
+                              onClick={() => handleOpenShareModal(item, 'card')}
+                              className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-900 text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
+                              title="Buat gambar kartu dakwah siap sebar ke Instagram & WhatsApp"
+                            >
+                              <ImageIcon className="w-3.5 h-3.5" />
+                              <span>Buat Gambar Kartu Dakwah</span>
+                            </button>
+
+                            {/* Tombol Salin Tautan */}
+                            <button
+                              onClick={() => handleCopyDirectLink(item)}
+                              className="px-3 py-2 rounded-xl bg-white dark:bg-[#0c2b23] border border-[#073B2E]/20 dark:border-[#C9A34E]/30 text-[#073B2E] dark:text-[#F7F6EF] text-xs font-semibold hover:bg-stone-50 dark:hover:bg-[#143e33] transition flex items-center gap-1.5 cursor-pointer"
+                              title="Salin tautan unik jawaban ini"
+                            >
+                              {copiedId === item.id ? (
+                                <>
+                                  <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                  <span>Tersalin</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="w-3.5 h-3.5 text-[#C9A34E]" />
+                                  <span>Salin Tautan</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+
+                          <span className="text-[11px] text-stone-500 dark:text-stone-400 italic">
+                            Sarana dakwah & penyebaran ilmu
+                          </span>
+                        </div>
+
                       </div>
                     )}
                   </div>
@@ -336,6 +470,14 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
           Masuk ke Ruang Konsultasi
         </button>
       </div>
+
+      {/* SHARE & DAKWAH CARD MODAL */}
+      <ShareQAModal
+        isOpen={shareModalOpen}
+        onClose={() => setShareModalOpen(false)}
+        consultation={selectedQaForShare}
+        initialTab={shareInitialTab}
+      />
 
     </div>
   );

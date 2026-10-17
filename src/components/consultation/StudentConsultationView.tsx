@@ -16,9 +16,11 @@ import {
 } from 'lucide-react';
 import { Consultation } from '../../types';
 import { createConsultation, getStudentConsultations } from '../../firebase/services';
-import { useAuth } from '../../context/AuthContext';
 import { getWhatsAppConsultationUrl } from '../../config/whatsappConfig';
 import { autoWrapArabicText } from '../../utils/arabicFontHelper';
+import { ShareQAModal } from './ShareQAModal';
+import { Share2, Image as ImageIcon, Copy, Check } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 interface StudentConsultationViewProps {
   onNavigateToPublicQA?: () => void;
@@ -27,7 +29,7 @@ interface StudentConsultationViewProps {
 export const StudentConsultationView: React.FC<StudentConsultationViewProps> = ({
   onNavigateToPublicQA
 }) => {
-  const { user, userProfile, openAuthModal } = useAuth();
+  const { user, userProfile, openAuthModal, showToast } = useAuth();
 
   const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -39,6 +41,26 @@ export const StudentConsultationView: React.FC<StudentConsultationViewProps> = (
   const [title, setTitle] = useState<string>('');
   const [content, setContent] = useState<string>('');
   const [category, setCategory] = useState<'learning' | 'private'>('learning');
+
+  // Sharing Modal State
+  const [shareModalOpen, setShareModalOpen] = useState<boolean>(false);
+  const [shareItem, setShareItem] = useState<Consultation | null>(null);
+  const [shareTab, setShareTab] = useState<'share' | 'card'>('share');
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const handleCopyDirectLink = async (item: Consultation) => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://darswithosama.com';
+    const directUrl = `${origin}?view=public-qa&qaId=${item.id}`;
+
+    try {
+      await navigator.clipboard.writeText(directUrl);
+      setCopiedId(item.id);
+      showToast('Tautan langsung jawaban berhasil disalin!');
+      setTimeout(() => setCopiedId(null), 2500);
+    } catch {
+      showToast('Gagal menyalin tautan.');
+    }
+  };
 
   const loadMyConsultations = async () => {
     if (!user) {
@@ -386,6 +408,65 @@ export const StudentConsultationView: React.FC<StudentConsultationViewProps> = (
                         </div>
                       )}
 
+                      {/* Sharing actions if approved learning QA */}
+                      {item.category === 'learning' && item.isPublished && item.replyContent && (
+                        <div className="pt-2 border-t border-[#073B2E]/10 dark:border-[#143e33] flex flex-wrap items-center justify-between gap-2">
+                          <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                            <span>Dipublikasikan ke Tanya Jawab Publik</span>
+                          </span>
+
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShareItem(item);
+                                setShareTab('share');
+                                setShareModalOpen(true);
+                              }}
+                              className="px-2.5 py-1 bg-[#073B2E] text-white hover:bg-[#0a4d3c] rounded-lg text-[10px] font-bold transition flex items-center gap-1 cursor-pointer active:scale-95"
+                              title="Bagikan jawaban ke media sosial"
+                            >
+                              <Share2 className="w-3 h-3 text-[#F4B942]" />
+                              <span>Bagikan Jawaban</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShareItem(item);
+                                setShareTab('card');
+                                setShareModalOpen(true);
+                              }}
+                              className="px-2.5 py-1 bg-amber-500 text-stone-900 hover:bg-amber-400 rounded-lg text-[10px] font-bold transition flex items-center gap-1 cursor-pointer active:scale-95"
+                              title="Buat gambar kartu dakwah"
+                            >
+                              <ImageIcon className="w-3 h-3" />
+                              <span>Buat Gambar</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleCopyDirectLink(item)}
+                              className="px-2 py-1 bg-white dark:bg-[#0c2b23] border border-[#073B2E]/20 dark:border-[#C9A34E]/30 text-[#073B2E] dark:text-[#F7F6EF] rounded-lg text-[10px] font-semibold hover:bg-stone-50 dark:hover:bg-[#143e33] transition flex items-center gap-1 cursor-pointer active:scale-95"
+                              title="Salin tautan langsung jawaban ini"
+                            >
+                              {copiedId === item.id ? (
+                                <>
+                                  <Check className="w-3 h-3 text-emerald-600" />
+                                  <span>Tersalin</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="w-3 h-3 text-[#C9A34E]" />
+                                  <span>Salin Tautan</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
                       {/* WhatsApp Escalation Action */}
                       <div className="pt-2 border-t border-[#073B2E]/10 dark:border-[#143e33] flex items-center justify-between">
                         <span className="text-[10px] text-[#6B7C7A] dark:text-[#8C9E9B]">
@@ -417,6 +498,14 @@ export const StudentConsultationView: React.FC<StudentConsultationViewProps> = (
 
         </div>
       )}
+
+      {/* Share Q&A Modal */}
+      <ShareQAModal
+        isOpen={shareModalOpen}
+        onClose={() => setShareModalOpen(false)}
+        consultation={shareItem}
+        initialTab={shareTab}
+      />
 
     </div>
   );
