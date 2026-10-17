@@ -9,7 +9,8 @@ import {
   LogIn,
   GraduationCap,
   ShieldAlert,
-  ChevronRight
+  ChevronRight,
+  Film
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -21,6 +22,7 @@ interface AppHeaderProps {
   setMobileOpen: (open: boolean) => void;
   searchQuery?: string;
   setSearchQuery?: (q: string) => void;
+  onOpenWelcomeModal?: () => void;
 }
 
 export const AppHeader: React.FC<AppHeaderProps> = ({
@@ -29,7 +31,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   mobileOpen,
   setMobileOpen,
   searchQuery = '',
-  setSearchQuery
+  setSearchQuery,
+  onOpenWelcomeModal
 }) => {
   const { user, userProfile, isAdmin, openAuthModal, openProfileModal } = useAuth();
   const { effectiveTheme, setTheme } = useTheme();
@@ -64,23 +67,23 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-30 bg-white/90 dark:bg-stone-900/95 backdrop-blur-md border-b border-stone-200 dark:border-stone-800 text-stone-900 dark:text-stone-100 px-4 sm:px-6 py-3 flex items-center justify-between gap-4 transition-colors">
+    <header className="sticky top-0 z-30 bg-[#F7F6EF]/90 dark:bg-[#071B16]/95 backdrop-blur-md border-b border-[#073B2E]/10 dark:border-[#C9A34E]/20 text-[#073B2E] dark:text-[#F7F6EF] px-4 sm:px-6 py-3 flex items-center justify-between gap-4 transition-colors">
       {/* Left: Hamburger Toggle Button (Mobile) & Breadcrumb Page Title */}
       <div className="flex items-center gap-3">
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
-          className="lg:hidden p-2 rounded-xl text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition cursor-pointer"
+          className="lg:hidden p-2 rounded-xl text-[#073B2E] dark:text-[#F7F6EF] hover:bg-[#073B2E]/10 dark:hover:bg-[#C9A34E]/20 transition cursor-pointer"
           title="Buka Navigasi Menu"
         >
           <Menu className="w-5 h-5" />
         </button>
 
         <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-stone-400 dark:text-stone-500 hidden sm:inline">
+          <span className="text-xs font-serif-brand font-bold uppercase tracking-wider text-[#C9A34E] hidden sm:inline">
             Dars with Osama
           </span>
-          <ChevronRight className="w-3.5 h-3.5 text-stone-300 dark:text-stone-600 hidden sm:inline" />
-          <h1 className="text-sm sm:text-base font-bold text-stone-900 dark:text-stone-100 font-sans tracking-tight">
+          <ChevronRight className="w-3.5 h-3.5 text-[#073B2E]/30 dark:text-[#C9A34E]/40 hidden sm:inline" />
+          <h1 className="text-sm sm:text-base font-bold text-[#073B2E] dark:text-[#F7F6EF] font-sans tracking-tight">
             {getPageTitle()}
           </h1>
         </div>
@@ -89,40 +92,51 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
       {/* Center: Quick Search Input if on catalog view or handler passed */}
       {setSearchQuery && (currentView === 'courses' || currentView === 'home') && (
         <div className="hidden md:flex items-center flex-1 max-w-xs relative">
-          <Search className="w-3.5 h-3.5 absolute left-3 text-stone-400" />
+          <Search className="w-3.5 h-3.5 absolute left-3 text-[#6B7C7A]" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Cari matan / kursus..."
-            className="w-full pl-9 pr-3 py-1.5 bg-stone-50 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700/80 rounded-xl text-xs text-stone-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+            className="w-full pl-9 pr-3 py-1.5 bg-white dark:bg-[#0c2b23] border border-[#073B2E]/20 dark:border-[#143e33] rounded-xl text-xs text-[#073B2E] dark:text-[#F7F6EF] focus:outline-hidden focus:ring-2 focus:ring-[#C9A34E]/50"
           />
         </div>
       )}
 
-      {/* Right Controls: Theme Toggle, User Avatar / Login CTA */}
+      {/* Right Controls: Video Intro, Theme Toggle, User Avatar / Login CTA */}
       <div className="flex items-center gap-2">
+        {onOpenWelcomeModal && (
+          <button
+            onClick={onOpenWelcomeModal}
+            className="px-2.5 py-1.5 rounded-xl bg-[#073B2E]/5 hover:bg-[#073B2E]/10 dark:bg-[#0c2b23] dark:hover:bg-[#143e33] border border-[#073B2E]/10 dark:border-[#143e33] text-[#073B2E] dark:text-[#C9A34E] transition cursor-pointer active:scale-95 flex items-center gap-1.5 text-xs font-semibold"
+            title="Lihat Sambutan & Video Intro Logo"
+          >
+            <Film className="w-3.5 h-3.5 text-[#C9A34E]" />
+            <span className="hidden md:inline">Video Sambutan</span>
+          </button>
+        )}
+
         <button
           onClick={() => setTheme(effectiveTheme === 'dark' ? 'light' : 'dark')}
-          className="p-2 rounded-xl bg-stone-100 hover:bg-stone-200 dark:bg-stone-800/80 dark:hover:bg-stone-700/80 border border-stone-200 dark:border-stone-700/60 text-stone-700 dark:text-stone-300 transition cursor-pointer active:scale-95"
+          className="p-2 rounded-xl bg-[#073B2E]/5 hover:bg-[#073B2E]/10 dark:bg-[#0c2b23] dark:hover:bg-[#143e33] border border-[#073B2E]/10 dark:border-[#143e33] text-[#073B2E] dark:text-[#F7F6EF] transition cursor-pointer active:scale-95"
           title="Toggle Mode Terang/Gelap"
         >
           {effectiveTheme === 'dark' ? (
-            <Sun className="w-4 h-4 text-amber-400" />
+            <Sun className="w-4 h-4 text-[#C9A34E]" />
           ) : (
-            <Moon className="w-4 h-4 text-emerald-600" />
+            <Moon className="w-4 h-4 text-[#073B2E]" />
           )}
         </button>
 
         {user ? (
           <button
             onClick={openProfileModal}
-            className="flex items-center gap-2 p-1.5 pl-2.5 rounded-xl bg-stone-100 hover:bg-stone-200 dark:bg-stone-800/80 dark:hover:bg-stone-700/80 border border-stone-200 dark:border-stone-700/60 text-stone-800 dark:text-stone-200 transition text-xs font-semibold cursor-pointer active:scale-95"
+            className="flex items-center gap-2 p-1.5 pl-2.5 rounded-xl bg-[#073B2E]/5 hover:bg-[#073B2E]/10 dark:bg-[#0c2b23] dark:hover:bg-[#143e33] border border-[#073B2E]/10 dark:border-[#143e33] text-[#073B2E] dark:text-[#F7F6EF] transition text-xs font-semibold cursor-pointer active:scale-95"
           >
             <span className="hidden sm:inline font-semibold max-w-[100px] truncate">
               {userProfile?.displayName?.split(' ')[0] || 'Santri'}
             </span>
-            <div className="w-6.5 h-6.5 rounded-full bg-emerald-600 text-white font-bold text-[10px] flex items-center justify-center shrink-0 border border-emerald-500/30 overflow-hidden">
+            <div className="w-6.5 h-6.5 rounded-full bg-[#073B2E] text-[#F7F6EF] font-bold text-[10px] flex items-center justify-center shrink-0 border border-[#C9A34E]/40 overflow-hidden">
               {avatarURL && !imgError ? (
                 <img
                   src={avatarURL}
@@ -139,7 +153,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => openAuthModal('login')}
-              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow transition cursor-pointer active:scale-95"
+              className="px-3.5 py-1.5 bg-[#073B2E] hover:bg-[#0a4d3c] text-white rounded-xl text-xs font-semibold shadow transition cursor-pointer active:scale-95"
             >
               Masuk
             </button>

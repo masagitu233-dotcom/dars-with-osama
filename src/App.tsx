@@ -24,6 +24,7 @@ import { ProfileSettingsModal } from './components/common/ProfileSettingsModal';
 import { CertificateModal } from './components/common/CertificateModal';
 import { LogoutConfirmModal } from './components/common/LogoutConfirmModal';
 import { GuestAccessModal } from './components/common/GuestAccessModal';
+import { WelcomeModal } from './components/common/WelcomeModal';
 import { Toast } from './components/common/Toast';
 import { HomeView } from './components/home/HomeView';
 import { HeroSection } from './components/home/HeroSection';
@@ -80,6 +81,28 @@ function MainApp() {
   // Certificate Modal State
   const [certModalOpen, setCertModalOpen] = useState(false);
   const [certCourse, setCertCourse] = useState<Course | null>(null);
+
+  // Welcome & Video Intro Modal State (First visit in session)
+  const [welcomeModalOpen, setWelcomeModalOpen] = useState<boolean>(() => {
+    try {
+      return sessionStorage.getItem('dars_intro_shown') !== 'true';
+    } catch (e) {
+      return true;
+    }
+  });
+
+  const handleCloseWelcomeModal = () => {
+    try {
+      sessionStorage.setItem('dars_intro_shown', 'true');
+    } catch (e) {
+      // ignore
+    }
+    setWelcomeModalOpen(false);
+  };
+
+  const handleOpenWelcomeModal = () => {
+    setWelcomeModalOpen(true);
+  };
 
   // Search & Filter State
   const [filterCategoryId, setFilterCategoryId] = useState<string>('all');
@@ -251,6 +274,7 @@ function MainApp() {
               setCurrentView={setCurrentView}
               mobileOpen={mobileMenuOpen}
               setMobileOpen={setMobileMenuOpen}
+              onOpenWelcomeModal={handleOpenWelcomeModal}
             />
 
             {/* Right Main Content Column */}
@@ -263,6 +287,7 @@ function MainApp() {
                 setMobileOpen={setMobileMenuOpen}
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
+                onOpenWelcomeModal={handleOpenWelcomeModal}
               />
 
               {/* Main Body Router */}
@@ -392,10 +417,10 @@ function MainApp() {
 
               {/* Footer */}
               <Footer
-                onNavigateCourses={() => {
+                onNavigate={(view) => {
                   setFilterCategoryId('all');
                   setSearchQuery('');
-                  setCurrentView('courses');
+                  setCurrentView(view);
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
               />
@@ -404,6 +429,7 @@ function MainApp() {
         )}
 
         {/* Global Modals */}
+        <WelcomeModal isOpen={welcomeModalOpen} onClose={handleCloseWelcomeModal} />
         <AuthModal />
         <ProfileSettingsModal isOpen={profileModalOpen} onClose={closeProfileModal} />
 

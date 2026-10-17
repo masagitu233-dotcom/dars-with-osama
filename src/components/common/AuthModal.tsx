@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Mail, Lock, User, AlertCircle, ArrowRight, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { LogoSymbol } from './Logo';
 
 export const AuthModal: React.FC = () => {
   const {
@@ -130,8 +131,8 @@ export const AuthModal: React.FC = () => {
 
         {/* Brand & Pending Action Notice */}
         <div className="text-center mb-6 relative">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-600/20 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-500/30 mb-3 shadow-inner">
-            <ShieldCheck className="w-6 h-6 animate-pulse" />
+          <div className="inline-flex items-center justify-center mb-3">
+            <LogoSymbol className="w-12 h-12" />
           </div>
           <h2 className="text-xl md:text-2xl font-bold font-sans text-stone-900 dark:text-white">
             {authModalTab === 'login' && 'Masuk ke Dars with Osama'}

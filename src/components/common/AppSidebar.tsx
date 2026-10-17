@@ -15,24 +15,28 @@ import {
   Settings,
   FileText,
   PanelLeftClose,
-  PanelLeftOpen
+  PanelLeftOpen,
+  Film
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
+import { Logo } from './Logo';
 
 interface AppSidebarProps {
   currentView: string;
   setCurrentView: (view: string) => void;
   mobileOpen: boolean;
   setMobileOpen: (open: boolean) => void;
+  onOpenWelcomeModal?: () => void;
 }
 
 export const AppSidebar: React.FC<AppSidebarProps> = ({
   currentView,
   setCurrentView,
   mobileOpen,
-  setMobileOpen
+  setMobileOpen,
+  onOpenWelcomeModal
 }) => {
   const { user, userProfile, isAdmin, openAuthModal, openProfileModal, openLogoutConfirmModal } = useAuth();
   const { t } = useLanguage();
@@ -84,47 +88,31 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
       {mobileOpen && (
         <div
           onClick={() => setMobileOpen(false)}
-          className="fixed inset-0 z-40 bg-stone-900/60 backdrop-blur-xs lg:hidden transition-opacity duration-300 cursor-pointer"
+          className="fixed inset-0 z-40 bg-[#071B16]/70 backdrop-blur-xs lg:hidden transition-opacity duration-300 cursor-pointer"
           aria-hidden="true"
         />
       )}
 
       {/* Main Left Sidebar (Desktop Permanent / Collapsible & Mobile Drawer) */}
       <aside
-        className={`fixed lg:sticky top-0 left-0 z-50 h-screen bg-white dark:bg-stone-900 border-r border-stone-200 dark:border-stone-800 flex flex-col justify-between transition-all duration-300 ease-in-out shrink-0 ${
+        className={`fixed lg:sticky top-0 left-0 z-50 h-screen bg-[#F7F6EF] dark:bg-[#071B16] border-r border-[#073B2E]/10 dark:border-[#C9A34E]/20 flex flex-col justify-between transition-all duration-300 ease-in-out shrink-0 ${
           isCollapsed ? 'lg:w-20' : 'lg:w-64'
         } w-64 ${
           mobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0 shadow-none'
         }`}
       >
         {/* Top Header & Brand */}
-        <div className={`p-4 border-b border-stone-200 dark:border-stone-800 flex items-center shrink-0 ${isCollapsed ? 'lg:justify-center' : 'justify-between'}`}>
+        <div className={`p-4 border-b border-[#073B2E]/10 dark:border-[#C9A34E]/20 flex items-center shrink-0 ${isCollapsed ? 'lg:justify-center' : 'justify-between'}`}>
           <div
             onClick={() => navigate('home')}
-            className="flex items-center gap-3 cursor-pointer group select-none overflow-hidden"
+            className="flex items-center cursor-pointer group select-none overflow-hidden"
             title="Dars with Osama - Beranda Utama"
           >
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-800 to-emerald-600 border border-emerald-500/30 flex items-center justify-center text-amber-300 shadow-md group-hover:scale-105 transition shrink-0">
-              <BookOpen className="w-5 h-5" />
-            </div>
-            {!isCollapsed && (
-              <div className="hidden lg:block truncate">
-                <span className="font-bold text-base text-stone-900 dark:text-stone-100 tracking-tight font-sans block leading-tight truncate">
-                  Dars with Osama
-                </span>
-                <span className="text-[10px] text-stone-500 dark:text-stone-400 font-medium block truncate">
-                  Kajian & Pembelajaran
-                </span>
-              </div>
+            {isCollapsed ? (
+              <Logo variant="icon" size="sm" />
+            ) : (
+              <Logo variant="horizontal" size="sm" />
             )}
-            <div className="lg:hidden truncate">
-              <span className="font-bold text-base text-stone-900 dark:text-stone-100 tracking-tight font-sans block leading-tight truncate">
-                Dars with Osama
-              </span>
-              <span className="text-[10px] text-stone-500 dark:text-stone-400 font-medium block truncate">
-                Kajian & Pembelajaran
-              </span>
-            </div>
           </div>
 
           {/* Desktop Collapse Toggle Button */}
@@ -195,9 +183,23 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                     : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800/60 hover:text-stone-900 dark:hover:text-stone-100'
                 }`}
               >
-                <FileText className={`w-4 h-4 shrink-0 ${currentView === 'blog' || currentView === 'blog-detail' ? 'text-emerald-600 dark:text-emerald-400' : ''}`} />
+                <FileText className={`w-4 h-4 shrink-0 ${currentView === 'blog' || currentView === 'blog-detail' ? 'text-[#073B2E] dark:text-[#C9A34E]' : ''}`} />
                 {!isCollapsed && <span className="truncate">Blog & Artikel</span>}
               </button>
+
+              {onOpenWelcomeModal && (
+                <button
+                  onClick={() => {
+                    setMobileOpen(false);
+                    onOpenWelcomeModal();
+                  }}
+                  title="Lihat Sambutan & Video Intro Logo"
+                  className={`w-full flex items-center ${isCollapsed ? 'justify-center px-0 py-3' : 'gap-3.5 px-3.5 py-3'} rounded-2xl text-xs font-semibold text-[#073B2E] dark:text-[#C9A34E] hover:bg-[#073B2E]/10 dark:hover:bg-[#C9A34E]/10 transition-all duration-200 cursor-pointer active:scale-95`}
+                >
+                  <Film className="w-4 h-4 text-[#C9A34E] shrink-0" />
+                  {!isCollapsed && <span className="truncate">Video Sambutan</span>}
+                </button>
+              )}
 
               {/* Logged in student specific items */}
               {user && (

@@ -1,5 +1,5 @@
 import React from 'react';
 
-export const Footer: React.FC<{ onNavigateCourses?: () => void }> = () => {
+export const Footer: React.FC<{ onNavigate?: (view: string) => void }> = () => {
   return null;
 };

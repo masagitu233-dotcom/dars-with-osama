@@ -19,6 +19,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
 import { ProfileSettingsModal } from './ProfileSettingsModal';
+import { Logo } from './Logo';
 
 interface NavbarProps {
   currentView: string;
@@ -50,7 +51,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, setCurrentView }) =
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-white/90 dark:bg-stone-900/95 backdrop-blur-md border-b border-stone-200 dark:border-stone-800 text-stone-900 dark:text-stone-100 transition-colors">
+    <header className="sticky top-0 z-40 bg-[#F7F6EF]/95 dark:bg-[#071B16]/95 backdrop-blur-md border-b border-[#073B2E]/10 dark:border-[#C9A34E]/20 text-[#073B2E] dark:text-[#F7F6EF] transition-colors">
 
       {/* Main Navbar */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -58,20 +59,13 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, setCurrentView }) =
           {/* Logo & Brand */}
           <div
             onClick={() => navigate('home')}
-            className="flex items-center gap-3 cursor-pointer group select-none"
+            className="flex items-center cursor-pointer group select-none transition-transform hover:scale-[1.01]"
           >
-            <div className="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-gradient-to-tr from-emerald-800 to-emerald-600 border border-emerald-500/30 flex items-center justify-center text-amber-300 shadow-md group-hover:scale-105 transition">
-              <BookOpen className="w-5 h-5 md:w-6 md:h-6" />
+            <div className="hidden sm:block">
+              <Logo variant="horizontal" size="sm" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-lg md:text-xl text-stone-900 dark:text-stone-100 tracking-tight font-sans">
-                  Dars with Osama
-                </span>
-              </div>
-              <p className="text-[10px] md:text-xs text-stone-500 dark:text-stone-400 -mt-0.5 font-medium">
-                Kajian & Pembelajaran Online Terstruktur
-              </p>
+            <div className="sm:hidden">
+              <Logo variant="horizontal" size="sm" showTagline={false} />
             </div>
           </div>
 
@@ -81,13 +75,13 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, setCurrentView }) =
               onClick={() => navigate('home')}
               className={`relative px-3.5 py-2 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer ${
                 currentView === 'home'
-                  ? 'bg-emerald-100/70 text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-300 font-semibold shadow-xs ring-1 ring-emerald-500/30'
-                  : 'text-stone-700 hover:text-stone-900 hover:bg-stone-100 dark:text-stone-300 dark:hover:text-white dark:hover:bg-stone-800/60 active:scale-95'
+                  ? 'bg-[#073B2E]/10 dark:bg-[#C9A34E]/20 text-[#073B2E] dark:text-[#C9A34E] font-semibold shadow-xs ring-1 ring-[#073B2E]/20 dark:ring-[#C9A34E]/40'
+                  : 'text-[#073B2E]/80 hover:text-[#073B2E] hover:bg-[#073B2E]/5 dark:text-[#F7F6EF]/80 dark:hover:text-white dark:hover:bg-[#C9A34E]/10 active:scale-95'
               }`}
             >
               {t('home')}
               {currentView === 'home' && (
-                <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-4 h-0.5 bg-emerald-500 dark:bg-emerald-400 rounded-full" />
+                <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-4 h-0.5 bg-[#C9A34E] rounded-full" />
               )}
             </button>
 
@@ -95,13 +89,13 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, setCurrentView }) =
               onClick={() => navigate('courses')}
               className={`relative px-3.5 py-2 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer ${
                 currentView === 'courses' || currentView === 'course-detail' || currentView === 'session-view'
-                  ? 'bg-emerald-100/70 text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-300 font-semibold shadow-xs ring-1 ring-emerald-500/30'
-                  : 'text-stone-700 hover:text-stone-900 hover:bg-stone-100 dark:text-stone-300 dark:hover:text-white dark:hover:bg-stone-800/60 active:scale-95'
+                  ? 'bg-[#073B2E]/10 dark:bg-[#C9A34E]/20 text-[#073B2E] dark:text-[#C9A34E] font-semibold shadow-xs ring-1 ring-[#073B2E]/20 dark:ring-[#C9A34E]/40'
+                  : 'text-[#073B2E]/80 hover:text-[#073B2E] hover:bg-[#073B2E]/5 dark:text-[#F7F6EF]/80 dark:hover:text-white dark:hover:bg-[#C9A34E]/10 active:scale-95'
               }`}
             >
               {t('courses')}
               {(currentView === 'courses' || currentView === 'course-detail' || currentView === 'session-view') && (
-                <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-4 h-0.5 bg-emerald-500 dark:bg-emerald-400 rounded-full" />
+                <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-4 h-0.5 bg-[#C9A34E] rounded-full" />
               )}
             </button>
 

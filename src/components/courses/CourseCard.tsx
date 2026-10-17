@@ -69,30 +69,30 @@ export const CourseCard: React.FC<CourseCardProps> = ({
       <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
         <div className="space-y-2">
           {/* Titles */}
-          <h3 className="font-bold text-base md:text-lg text-stone-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors duration-200 line-clamp-2 leading-snug font-sans">
+          <h3 className="font-serif-brand font-bold text-base md:text-lg text-[#073B2E] dark:text-[#F7F6EF] group-hover:text-[#C9A34E] dark:group-hover:text-[#C9A34E] transition-colors duration-200 line-clamp-2 leading-snug">
             {course.title}
           </h3>
 
           {course.titleAr && (
-            <p className="font-amiri text-lg md:text-xl font-bold text-emerald-600 dark:text-emerald-400 line-clamp-1 leading-normal" dir="rtl">
+            <p className="font-amiri text-lg md:text-xl font-bold text-[#C9A34E] line-clamp-1 leading-normal" dir="rtl">
               {course.titleAr}
             </p>
           )}
 
           {/* Description */}
-          <p className="text-xs text-stone-600 dark:text-stone-400 line-clamp-2 leading-relaxed">
+          <p className="text-xs text-[#6B7C7A] dark:text-[#8C9E9B] line-clamp-2 leading-relaxed font-sans">
             {course.description}
           </p>
         </div>
 
         {/* Footer Meta & Progress */}
-        <div className="pt-3 border-t border-stone-200 dark:border-stone-800/80 space-y-3">
-          <div className="flex items-center justify-between text-xs text-stone-500 dark:text-stone-400">
+        <div className="pt-3 border-t border-[#073B2E]/10 dark:border-[#143e33] space-y-3">
+          <div className="flex items-center justify-between text-xs text-[#6B7C7A] dark:text-[#8C9E9B]">
             <span className="truncate max-w-[170px]" title={course.instructor}>
               {course.instructor}
             </span>
-            <span className="flex items-center gap-1 text-stone-500 dark:text-stone-400 shrink-0">
-              <Clock className="w-3.5 h-3.5 text-stone-400" />
+            <span className="flex items-center gap-1 shrink-0">
+              <Clock className="w-3.5 h-3.5 text-[#C9A34E]" />
               <span>{course.totalDuration || 'Sesi Mandiri'}</span>
             </span>
           </div>
@@ -101,29 +101,29 @@ export const CourseCard: React.FC<CourseCardProps> = ({
           {enrollment ? (
             <div className="space-y-1.5 pt-1">
               <div className="flex items-center justify-between text-[11px]">
-                <span className="text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+                <span className="text-[#073B2E] dark:text-[#C9A34E] font-medium flex items-center gap-1">
                   {enrollment.isCompleted ? (
                     <>
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                      <CheckCircle2 className="w-3.5 h-3.5 text-[#C9A34E]" />
                       <span>Tuntas 100%</span>
                     </>
                   ) : (
                     `Progres: ${enrollment.progressPercent}%`
                   )}
                 </span>
-                <span className="text-stone-500 dark:text-stone-400">{enrollment.completedSessionIds?.length || 0} Sesi Selesai</span>
+                <span className="text-[#6B7C7A] dark:text-[#8C9E9B]">{enrollment.completedSessionIds?.length || 0} Sesi Selesai</span>
               </div>
-              <div className="w-full h-1.5 bg-stone-200 dark:bg-stone-800 rounded-full overflow-hidden">
+              <div className="w-full h-1.5 bg-[#073B2E]/10 dark:bg-[#143e33] rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-emerald-500 rounded-full transition-all duration-700 ease-out"
+                  className="h-full bg-[#C9A34E] rounded-full transition-all duration-700 ease-out"
                   style={{ width: `${enrollment.progressPercent}%` }}
                 />
               </div>
             </div>
           ) : (
-            <div className="flex items-center justify-between text-xs font-semibold text-emerald-600 dark:text-emerald-400 group-hover:text-emerald-700 dark:group-hover:text-emerald-300 transition-colors">
+            <div className="flex items-center justify-between text-xs font-semibold text-[#073B2E] dark:text-[#C9A34E] group-hover:text-[#C9A34E] transition-colors">
               <span>Buka Kurikulum</span>
-              <ArrowRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform duration-200" />
+              <ArrowRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform duration-200 text-[#C9A34E]" />
             </div>
           )}
         </div>

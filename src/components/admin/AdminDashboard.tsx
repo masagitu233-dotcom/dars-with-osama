@@ -68,6 +68,7 @@ import { firebaseConfig } from '../../firebase/config';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { ConfirmModal } from '../common/ConfirmModal';
+import { Logo, LogoSymbol } from '../common/Logo';
 import { YouTubeEmbed } from '../common/YouTubeEmbed';
 import { AdminBlogManager } from './AdminBlogManager';
 
@@ -758,22 +759,25 @@ export const AdminDashboard: React.FC<{
       {/* ========================================================= */}
       {/* MOBILE TOP BAR (Hamburger & Brand Title on Small Screens) */}
       {/* ========================================================= */}
-      <div className="lg:hidden sticky top-0 z-30 bg-white/95 dark:bg-stone-900/95 backdrop-blur-md border-b border-stone-200 dark:border-stone-800 px-4 py-3 flex items-center justify-between gap-3 shadow-xs">
+      <div className="lg:hidden sticky top-0 z-30 bg-[#F7F6EF]/95 dark:bg-[#071B16]/95 backdrop-blur-md border-b border-[#073B2E]/10 dark:border-[#C9A34E]/20 px-4 py-3 flex items-center justify-between gap-3 shadow-xs">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="p-2 rounded-xl text-stone-700 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition cursor-pointer"
+            className="p-2 rounded-xl text-[#073B2E] dark:text-[#F7F6EF] hover:bg-[#073B2E]/10 dark:hover:bg-[#C9A34E]/10 transition cursor-pointer"
             aria-label="Buka Sidebar Admin"
           >
             <Menu className="w-5 h-5" />
           </button>
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-800 to-emerald-600 border border-emerald-500/30 flex items-center justify-center text-amber-300 shadow-xs">
-              <BookOpen className="w-4 h-4" />
+          <div className="flex items-center gap-2.5">
+            <LogoSymbol className="w-8 h-8 shrink-0" />
+            <div className="flex flex-col">
+              <span className="font-serif-brand font-bold text-sm tracking-tight text-[#073B2E] dark:text-[#F7F6EF]">
+                Dars with Osama
+              </span>
+              <span className="text-[10px] text-[#C9A34E] font-semibold tracking-wider uppercase">
+                Admin Panel
+              </span>
             </div>
-            <span className="font-bold text-sm text-stone-900 dark:text-stone-100 font-sans">
-              Dars with Osama Admin
-            </span>
           </div>
         </div>
 
@@ -789,37 +793,35 @@ export const AdminDashboard: React.FC<{
       {/* ========================================================= */}
       {/* CENTRALIZED LEFT SIDEBAR NAV (DESKTOP STICKY & MOBILE DRAWER) */}
       {/* ========================================================= */}
-      <aside className={`fixed lg:sticky top-0 left-0 z-50 h-screen bg-white dark:bg-stone-900 border-r border-stone-200 dark:border-stone-800 flex flex-col justify-between shrink-0 transition-all duration-300 ease-in-out ${
+      <aside className={`fixed lg:sticky top-0 left-0 z-50 h-screen bg-[#F7F6EF] dark:bg-[#071B16] border-r border-[#073B2E]/10 dark:border-[#C9A34E]/20 flex flex-col justify-between shrink-0 transition-all duration-300 ease-in-out ${
         sidebarCollapsed ? 'lg:w-20' : 'lg:w-72'
       } w-72 ${
         sidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0 shadow-none'
       }`}>
         <div className="flex flex-col h-full overflow-hidden">
           {/* BRAND HEADER */}
-          <div className={`p-4 border-b border-stone-200 dark:border-stone-800 flex items-center shrink-0 ${sidebarCollapsed ? 'lg:justify-center' : 'justify-between'} bg-stone-50/50 dark:bg-stone-900/50`}>
+          <div className={`p-4 border-b border-[#073B2E]/10 dark:border-[#C9A34E]/20 flex items-center shrink-0 ${sidebarCollapsed ? 'lg:justify-center' : 'justify-between'} bg-[#073B2E]/5 dark:bg-[#073B2E]/30`}>
             <div className="flex items-center gap-3 overflow-hidden">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-800 to-emerald-600 border border-emerald-500/30 flex items-center justify-center text-amber-300 shadow-md shrink-0">
-                <BookOpen className="w-5 h-5" />
-              </div>
+              <LogoSymbol className="w-10 h-10 shrink-0" />
               {!sidebarCollapsed && (
                 <div className="hidden lg:block truncate">
                   <div className="flex items-center gap-1.5">
-                    <span className="font-bold text-base text-stone-900 dark:text-stone-100 tracking-tight font-sans truncate">
+                    <span className="font-serif-brand font-bold text-base text-[#073B2E] dark:text-[#F7F6EF] tracking-tight truncate">
                       Dars with Osama
                     </span>
                   </div>
-                  <span className="inline-block text-[10px] px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800 font-semibold truncate">
+                  <span className="inline-block text-[10px] px-2 py-0.5 rounded-md bg-[#C9A34E]/15 text-[#073B2E] dark:text-[#C9A34E] border border-[#C9A34E]/30 font-semibold truncate">
                     Admin Dashboard
                   </span>
                 </div>
               )}
               <div className="lg:hidden truncate">
                 <div className="flex items-center gap-1.5">
-                  <span className="font-bold text-base text-stone-900 dark:text-stone-100 tracking-tight font-sans truncate">
+                  <span className="font-serif-brand font-bold text-base text-[#073B2E] dark:text-[#F7F6EF] tracking-tight truncate">
                     Dars with Osama
                   </span>
                 </div>
-                <span className="inline-block text-[10px] px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800 font-semibold truncate">
+                <span className="inline-block text-[10px] px-2 py-0.5 rounded-md bg-[#C9A34E]/15 text-[#073B2E] dark:text-[#C9A34E] border border-[#C9A34E]/30 font-semibold truncate">
                   Admin Dashboard
                 </span>
               </div>
