@@ -10,7 +10,7 @@ import {
   GraduationCap,
   ShieldAlert,
   ChevronRight,
-  Film
+  Sparkles
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -116,10 +116,10 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           <button
             onClick={onOpenWelcomeModal}
             className="px-2.5 py-1.5 rounded-xl bg-[#073B2E]/5 hover:bg-[#073B2E]/10 dark:bg-[#0c2b23] dark:hover:bg-[#143e33] border border-[#073B2E]/10 dark:border-[#143e33] text-[#073B2E] dark:text-[#F7F6EF] transition text-xs font-semibold flex items-center gap-1.5 cursor-pointer active:scale-95"
-            title="Saksikan Video Intro Logo & Kata Sambutan"
+            title="Sambutan & Perkenalan Dars with Osama"
           >
-            <Film className="w-3.5 h-3.5 text-[#C9A34E]" />
-            <span className="hidden xl:inline">Video Intro</span>
+            <Sparkles className="w-3.5 h-3.5 text-[#C9A34E]" />
+            <span className="hidden xl:inline">Info Perkenalan</span>
           </button>
         )}
 

@@ -16,7 +16,7 @@ import {
   FileText,
   PanelLeftClose,
   PanelLeftOpen,
-  Film,
+  Sparkles,
   MessageSquare,
   HelpCircle
 } from 'lucide-react';
@@ -217,18 +217,18 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                 {!isCollapsed && <span className="truncate">Tanya Jawab Publik</span>}
               </button>
 
-              {/* Video Intro & Sambutan Trigger Button */}
+              {/* Sambutan & Perkenalan Trigger Button */}
               {onOpenWelcomeModal && (
                 <button
                   onClick={() => {
                     onOpenWelcomeModal();
                     setMobileOpen(false);
                   }}
-                  title="Saksikan Video Intro Logo & Sambutan"
+                  title="Sambutan & Perkenalan Dars with Osama"
                   className={`w-full flex items-center ${isCollapsed ? 'justify-center px-0 py-3' : 'gap-3.5 px-3.5 py-3'} rounded-2xl text-xs font-semibold text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800/60 hover:text-stone-900 dark:hover:text-stone-100 transition-all duration-200 cursor-pointer active:scale-95`}
                 >
-                  <Film className="w-4 h-4 shrink-0 text-[#C9A34E]" />
-                  {!isCollapsed && <span className="truncate">Video Intro & Sambutan</span>}
+                  <Sparkles className="w-4 h-4 shrink-0 text-[#C9A34E]" />
+                  {!isCollapsed && <span className="truncate">Sambutan & Perkenalan</span>}
                 </button>
               )}
 
