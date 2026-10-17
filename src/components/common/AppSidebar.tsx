@@ -15,8 +15,7 @@ import {
   Settings,
   FileText,
   PanelLeftClose,
-  PanelLeftOpen,
-  Film
+  PanelLeftOpen
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
@@ -28,15 +27,13 @@ interface AppSidebarProps {
   setCurrentView: (view: string) => void;
   mobileOpen: boolean;
   setMobileOpen: (open: boolean) => void;
-  onOpenWelcomeModal?: () => void;
 }
 
 export const AppSidebar: React.FC<AppSidebarProps> = ({
   currentView,
   setCurrentView,
   mobileOpen,
-  setMobileOpen,
-  onOpenWelcomeModal
+  setMobileOpen
 }) => {
   const { user, userProfile, isAdmin, openAuthModal, openProfileModal, openLogoutConfirmModal } = useAuth();
   const { t } = useLanguage();
@@ -186,20 +183,6 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                 <FileText className={`w-4 h-4 shrink-0 ${currentView === 'blog' || currentView === 'blog-detail' ? 'text-[#073B2E] dark:text-[#C9A34E]' : ''}`} />
                 {!isCollapsed && <span className="truncate">Blog & Artikel</span>}
               </button>
-
-              {onOpenWelcomeModal && (
-                <button
-                  onClick={() => {
-                    setMobileOpen(false);
-                    onOpenWelcomeModal();
-                  }}
-                  title="Lihat Sambutan & Video Intro Logo"
-                  className={`w-full flex items-center ${isCollapsed ? 'justify-center px-0 py-3' : 'gap-3.5 px-3.5 py-3'} rounded-2xl text-xs font-semibold text-[#073B2E] dark:text-[#C9A34E] hover:bg-[#073B2E]/10 dark:hover:bg-[#C9A34E]/10 transition-all duration-200 cursor-pointer active:scale-95`}
-                >
-                  <Film className="w-4 h-4 text-[#C9A34E] shrink-0" />
-                  {!isCollapsed && <span className="truncate">Video Sambutan</span>}
-                </button>
-              )}
 
               {/* Logged in student specific items */}
               {user && (

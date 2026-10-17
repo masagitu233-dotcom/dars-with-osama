@@ -1043,11 +1043,18 @@ export async function getBlogPosts(includeDrafts = false): Promise<BlogPost[]> {
       }
       return posts;
     }
-    // Pure Firestore source - never resurrect ghost posts if deleted
-    return [];
+    // If empty in Firestore, seed initial articles so articles are immediately available
+    try {
+      for (const p of INITIAL_BLOG_POSTS) {
+        await setDoc(doc(db, 'blogPosts', p.id), p);
+      }
+    } catch (seedErr) {
+      console.warn('Auto-seed blogPosts notice:', seedErr);
+    }
+    return includeDrafts ? INITIAL_BLOG_POSTS : INITIAL_BLOG_POSTS.filter(p => p.status === 'published');
   } catch (err) {
     console.warn('getBlogPosts read error:', err);
-    return [];
+    return includeDrafts ? INITIAL_BLOG_POSTS : INITIAL_BLOG_POSTS.filter(p => p.status === 'published');
   }
 }
 

@@ -9,8 +9,7 @@ import {
   LogIn,
   GraduationCap,
   ShieldAlert,
-  ChevronRight,
-  Film
+  ChevronRight
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -22,7 +21,6 @@ interface AppHeaderProps {
   setMobileOpen: (open: boolean) => void;
   searchQuery?: string;
   setSearchQuery?: (q: string) => void;
-  onOpenWelcomeModal?: () => void;
 }
 
 export const AppHeader: React.FC<AppHeaderProps> = ({
@@ -31,8 +29,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   mobileOpen,
   setMobileOpen,
   searchQuery = '',
-  setSearchQuery,
-  onOpenWelcomeModal
+  setSearchQuery
 }) => {
   const { user, userProfile, isAdmin, openAuthModal, openProfileModal } = useAuth();
   const { effectiveTheme, setTheme } = useTheme();
@@ -103,19 +100,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         </div>
       )}
 
-      {/* Right Controls: Video Intro, Theme Toggle, User Avatar / Login CTA */}
+      {/* Right Controls: Theme Toggle, User Avatar / Login CTA */}
       <div className="flex items-center gap-2">
-        {onOpenWelcomeModal && (
-          <button
-            onClick={onOpenWelcomeModal}
-            className="px-2.5 py-1.5 rounded-xl bg-[#073B2E]/5 hover:bg-[#073B2E]/10 dark:bg-[#0c2b23] dark:hover:bg-[#143e33] border border-[#073B2E]/10 dark:border-[#143e33] text-[#073B2E] dark:text-[#C9A34E] transition cursor-pointer active:scale-95 flex items-center gap-1.5 text-xs font-semibold"
-            title="Lihat Sambutan & Video Intro Logo"
-          >
-            <Film className="w-3.5 h-3.5 text-[#C9A34E]" />
-            <span className="hidden md:inline">Video Sambutan</span>
-          </button>
-        )}
-
         <button
           onClick={() => setTheme(effectiveTheme === 'dark' ? 'light' : 'dark')}
           className="p-2 rounded-xl bg-[#073B2E]/5 hover:bg-[#073B2E]/10 dark:bg-[#0c2b23] dark:hover:bg-[#143e33] border border-[#073B2E]/10 dark:border-[#143e33] text-[#073B2E] dark:text-[#F7F6EF] transition cursor-pointer active:scale-95"

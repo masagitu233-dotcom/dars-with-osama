@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   ArrowRight,
   Sparkles,
@@ -6,17 +6,16 @@ import {
   Video,
   FileText,
   Award,
-  GraduationCap,
   BookMarked,
-  UserCheck,
-  Compass,
-  CheckCircle2,
-  LogIn,
-  HeartHandshake
+  Clock,
+  Calendar,
+  User,
+  HeartHandshake,
+  Image as ImageIcon
 } from 'lucide-react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { Category, Course, Enrollment } from '../../types';
+import { Category, Course, Enrollment, BlogPost } from '../../types';
 import { HeroSection } from './HeroSection';
 import { CourseCard } from '../courses/CourseCard';
 import { useSmoothScroll } from '../../context/SmoothScrollContext';
@@ -27,8 +26,10 @@ gsap.registerPlugin(ScrollTrigger);
 interface HomeViewProps {
   categories: Category[];
   courses: Course[];
+  blogPosts?: BlogPost[];
   enrollmentsMap: Record<string, Enrollment>;
   onSelectCourse: (course: Course) => void;
+  onSelectBlogPost?: (post: BlogPost) => void;
   onExplore: () => void;
   onSearch: (query: string) => void;
   onSelectCategory: (categoryId: string) => void;
@@ -36,27 +37,122 @@ interface HomeViewProps {
   onOpenAuthModal?: (tab: 'login' | 'register') => void;
 }
 
+// Subcomponent: Individual Article Card with Thumbnail & Fallback
+const HomeArticleCard: React.FC<{
+  post: BlogPost;
+  onSelect?: (post: BlogPost) => void;
+}> = ({ post, onSelect }) => {
+  const [imgError, setImgError] = useState(false);
+
+  // Default fallback thumbnail if coverImageUrl is missing or fails to load
+  const fallbackImg = 'https://images.unsplash.com/photo-1532012197267-da84d127e765?q=80&w=800&auto=format&fit=crop';
+  const displayImg = !imgError && post.coverImageUrl ? post.coverImageUrl : fallbackImg;
+
+  // Format date cleanly
+  const formattedDate = React.useMemo(() => {
+    try {
+      const d = new Date(post.publishedAt || post.createdAt);
+      if (isNaN(d.getTime())) return 'Faedah Keilmuan';
+      return d.toLocaleDateString('id-ID', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+      });
+    } catch {
+      return 'Faedah Keilmuan';
+    }
+  }, [post.publishedAt, post.createdAt]);
+
+  return (
+    <div
+      onClick={() => onSelect?.(post)}
+      className="bg-white dark:bg-[#0c2b23] hover:bg-white dark:hover:bg-[#143e33] border border-[#073B2E]/10 dark:border-[#143e33] hover:border-[#C9A34E]/50 rounded-2xl overflow-hidden shadow-xs hover:shadow-lg transition-all duration-300 flex flex-col justify-between group cursor-pointer"
+    >
+      <div>
+        {/* Thumbnail Image Container (16:9 Aspect Ratio) */}
+        <div className="relative aspect-video w-full overflow-hidden bg-[#073B2E]/10 dark:bg-[#071B16]">
+          <img
+            src={displayImg}
+            alt={post.title}
+            onError={() => setImgError(true)}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            loading="lazy"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60 group-hover:opacity-40 transition-opacity" />
+          
+          {/* Category Tag Badge */}
+          {post.category && (
+            <span className="absolute top-3 left-3 px-2.5 py-1 bg-[#073B2E]/90 dark:bg-[#071B16]/90 text-[#F4B942] font-semibold text-[10px] rounded-lg border border-[#C9A34E]/40 shadow-xs backdrop-blur-xs">
+              {post.category}
+            </span>
+          )}
+        </div>
+
+        {/* Card Content Body */}
+        <div className="p-4 space-y-2 text-left">
+          {/* Date & Reading Time Metadata */}
+          <div className="flex items-center gap-3 text-[11px] text-[#6B7C7A] dark:text-[#8C9E9B] font-medium">
+            <span className="flex items-center gap-1">
+              <Calendar className="w-3 h-3 text-[#C9A34E]" />
+              <span>{formattedDate}</span>
+            </span>
+            {post.readingTimeMinutes > 0 && (
+              <span className="flex items-center gap-1">
+                <Clock className="w-3 h-3 text-[#0EA5A4]" />
+                <span>{post.readingTimeMinutes} mnt baca</span>
+              </span>
+            )}
+          </div>
+
+          {/* Article Title */}
+          <h3 className="font-bold text-[#073B2E] dark:text-[#F7F6EF] group-hover:text-[#0EA5A4] dark:group-hover:text-[#F4B942] text-sm leading-snug line-clamp-2 transition-colors font-serif-brand">
+            {post.title}
+          </h3>
+
+          {/* Short Excerpt */}
+          <p className="text-xs text-[#6B7C7A] dark:text-[#8C9E9B] line-clamp-2 leading-relaxed font-sans">
+            {post.excerpt}
+          </p>
+        </div>
+      </div>
+
+      {/* Card Footer Action */}
+      <div className="p-4 pt-0 text-left">
+        <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#073B2E] dark:text-[#C9A34E] group-hover:text-[#0EA5A4] dark:group-hover:text-[#F4B942] transition-colors">
+          <span>Baca Selengkapnya</span>
+          <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
+        </span>
+      </div>
+    </div>
+  );
+};
+
 export const HomeView: React.FC<HomeViewProps> = ({
   categories,
   courses,
+  blogPosts = [],
   enrollmentsMap,
   onSelectCourse,
+  onSelectBlogPost,
   onExplore,
   onSearch,
   onSelectCategory,
   onNavigate,
   onOpenAuthModal
 }) => {
-  const { user } = useAuth();
   const { velocity } = useSmoothScroll();
   const rootRef = useRef<HTMLDivElement>(null);
 
   // Section & Element Refs
   const heroWrapperRef = useRef<HTMLDivElement>(null);
-  const introGuideRef = useRef<HTMLDivElement>(null);
   const coursesSectionRef = useRef<HTMLDivElement>(null);
-  const userGuidesRef = useRef<HTMLDivElement>(null);
+  const articlesSectionRef = useRef<HTMLDivElement>(null);
   const closingRef = useRef<HTMLDivElement>(null);
+
+  // Filter only published blog posts for public view
+  const publishedArticles = React.useMemo(() => {
+    return blogPosts.filter((p) => p.status === 'published');
+  }, [blogPosts]);
 
   // Helper for navigation
   const handleGo = (view: string) => {
@@ -66,55 +162,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
       onExplore();
     }
   };
-
-  useEffect(() => {
-    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reducedMotion || !rootRef.current) return;
-
-    const isMobile = window.innerWidth < 768;
-
-    const ctx = gsap.context(() => {
-      // Intro Guide Section
-      if (introGuideRef.current) {
-        gsap.fromTo(
-          introGuideRef.current,
-          { opacity: 0, y: isMobile ? 25 : 45 },
-          {
-            opacity: 1,
-            y: 0,
-            duration: 0.7,
-            ease: 'power2.out',
-            scrollTrigger: {
-              trigger: introGuideRef.current,
-              start: 'top 85%',
-              toggleActions: 'play none none reverse'
-            }
-          }
-        );
-      }
-
-      // User Guides Section
-      if (userGuidesRef.current) {
-        gsap.fromTo(
-          userGuidesRef.current,
-          { opacity: 0, y: isMobile ? 25 : 40 },
-          {
-            opacity: 1,
-            y: 0,
-            duration: 0.7,
-            ease: 'power2.out',
-            scrollTrigger: {
-              trigger: userGuidesRef.current,
-              start: 'top 85%',
-              toggleActions: 'play none none reverse'
-            }
-          }
-        );
-      }
-    }, rootRef);
-
-    return () => ctx.revert();
-  }, []);
 
   return (
     <div ref={rootRef} className="space-y-12 sm:space-y-16 pb-16 overflow-x-hidden">
@@ -131,7 +178,65 @@ export const HomeView: React.FC<HomeViewProps> = ({
         />
       </div>
 
-      {/* SECTION 2: DAFTAR KURSUS POPULER (INTERACTIVE CATALOG) */}
+      {/* SECTION 2: ARTIKEL TERBARU (BLOG POST THUMBNAILS CARD GRID) */}
+      <section ref={articlesSectionRef} className="max-w-6xl mx-auto px-4 sm:px-6">
+        <div className="bg-white/95 dark:bg-[#071B16]/95 backdrop-blur-md border border-[#073B2E]/10 dark:border-[#C9A34E]/20 rounded-2xl sm:rounded-3xl p-5 sm:p-7 shadow-lg space-y-5 transition-colors">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+            <div className="space-y-0.5">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[#0EA5A4] dark:text-[#C9A34E] flex items-center gap-1.5">
+                <BookMarked className="w-3.5 h-3.5 text-[#F4B942]" />
+                <span>Naskah & Faedah Keilmuan</span>
+              </span>
+              <h2 className="text-xl sm:text-2xl font-bold text-[#073B2E] dark:text-[#F7F6EF] font-serif-brand">
+                Artikel Terbaru
+              </h2>
+              <p className="text-xs text-[#6B7C7A] dark:text-[#8C9E9B]">
+                Baca tulisan, faedah kajian, dan catatan ilmiyyah terbaru untuk menambah wawasan dan pemahaman.
+              </p>
+            </div>
+
+            <button
+              onClick={() => handleGo('blog')}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#073B2E] dark:text-[#C9A34E] hover:text-[#0a4d3c] dark:hover:text-[#e5c778] transition cursor-pointer self-start sm:self-auto"
+            >
+              <span>Lihat Semua Artikel</span>
+              <ArrowRight className="w-3.5 h-3.5 text-[#F4B942]" />
+            </button>
+          </div>
+
+          {/* Published Articles Grid */}
+          {publishedArticles.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+              {publishedArticles.slice(0, 3).map((article) => (
+                <HomeArticleCard
+                  key={article.id}
+                  post={article}
+                  onSelect={(post) => {
+                    if (onSelectBlogPost) {
+                      onSelectBlogPost(post);
+                    } else {
+                      handleGo('blog');
+                    }
+                  }}
+                />
+              ))}
+            </div>
+          ) : (
+            /* Empty State for Articles */
+            <div className="p-8 text-center bg-[#F7F6EF]/60 dark:bg-[#0c2b23] border border-dashed border-[#073B2E]/20 dark:border-[#C9A34E]/30 rounded-2xl space-y-3">
+              <BookMarked className="w-8 h-8 text-[#C9A34E] mx-auto opacity-70" />
+              <h4 className="text-sm font-bold text-[#073B2E] dark:text-[#F7F6EF] font-serif-brand">
+                Belum Ada Artikel Dipublikasikan
+              </h4>
+              <p className="text-xs text-[#6B7C7A] dark:text-[#8C9E9B] max-w-sm mx-auto">
+                Artikel ilmiah dan catatan keilmuan terbaru sedang disiapkan. Anda dapat menjelajahi materi kitab interaktif di bawah.
+              </p>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* SECTION 3: DAFTAR KURSUS POPULER (INTERACTIVE CATALOG) */}
       <section
         ref={coursesSectionRef}
         className="max-w-6xl mx-auto px-4 sm:px-6"
@@ -153,7 +258,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
             <button
               onClick={() => handleGo('courses')}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#073B2E] dark:text-[#C9A34E] hover:text-[#0a4d3c] dark:hover:text-[#e5c778] transition cursor-pointer"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#073B2E] dark:text-[#C9A34E] hover:text-[#0a4d3c] dark:hover:text-[#e5c778] transition cursor-pointer self-start sm:self-auto"
             >
               <span>Lihat Seluruh Katalog</span>
               <ArrowRight className="w-3.5 h-3.5 text-[#F4B942]" />
@@ -175,7 +280,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </div>
       </section>
 
-      {/* SECTION 5: BAGIAN PENUTUP */}
+      {/* SECTION 4: BAGIAN PENUTUP */}
       <section ref={closingRef} className="max-w-4xl mx-auto px-4 sm:px-6 text-center">
         <div className="p-6 sm:p-8 bg-[#073B2E]/5 dark:bg-[#071B16] border border-[#073B2E]/15 dark:border-[#C9A34E]/25 rounded-2xl sm:rounded-3xl space-y-3 shadow-xs">
           <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-[#C9A34E]/20 text-[#F4B942] mb-1">
