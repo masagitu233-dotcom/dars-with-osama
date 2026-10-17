@@ -168,31 +168,6 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
           مَنْ سَلَكَ طَرِيقًا يَلْتَمِسُ فِيهِ عِلْمًا سَهَّلَ اللَّهُ لَهُ بِهِ طَرِيقًا إِلَى الْجَنَّةِ
         </p>
 
-        {/* Primary Navigation Buttons */}
-        <div ref={buttonsRef} className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-1">
-          <button
-            onClick={() => {
-              if (onNavigate) onNavigate('blog');
-              else onExplore();
-            }}
-            className="w-full sm:w-auto px-6 py-2.5 bg-[#073B2E] dark:bg-[#123B6D] hover:bg-[#0a4d3c] dark:hover:bg-[#0EA5A4] active:scale-[0.98] text-[#F7F6EF] font-bold text-xs sm:text-sm rounded-xl transition-all duration-200 shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer border border-[#C9A34E]/40"
-          >
-            <BookMarked className="w-4 h-4 text-[#F4B942]" />
-            <span>Jelajahi Artikel</span>
-          </button>
-
-          <button
-            onClick={() => {
-              if (onNavigate) onNavigate('courses');
-              else onExplore();
-            }}
-            className="w-full sm:w-auto px-6 py-2.5 bg-white dark:bg-[#0c2b23] hover:bg-stone-100 dark:hover:bg-[#143e33] active:scale-[0.98] text-[#073B2E] dark:text-[#F7F6EF] font-bold text-xs sm:text-sm rounded-xl transition-all duration-200 shadow border border-[#073B2E]/20 dark:border-[#C9A34E]/30 flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <Compass className="w-4 h-4 text-[#C9A34E]" />
-            <span>Mulai Belajar</span>
-          </button>
-        </div>
-
         {/* Search Bar for Quick Subject Lookup */}
         <div ref={searchRef} className="max-w-xl mx-auto pt-1">
           <form onSubmit={handleSearchSubmit} className="relative flex items-center shadow-sm dark:shadow-xl rounded-xl group">
