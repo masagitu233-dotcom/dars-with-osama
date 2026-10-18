@@ -201,6 +201,18 @@ export function parseContentToBlocks(rawHtml: string): RenderableBlock[] {
       continue;
     }
 
+    // Check for reference / source block
+    const isReference = /^(sumber|referensi|maraji['’]?|rujukan|kitab)\s*[:\-]/i.test(cleanText);
+    if (isReference) {
+      blocks.push({
+        id: `b-${blockIdCounter++}`,
+        type: 'reference',
+        text: cleanText,
+        isArabic: false
+      });
+      continue;
+    }
+
     // Regular paragraph or quote
     blocks.push({
       id: `b-${blockIdCounter++}`,
@@ -224,8 +236,8 @@ export function wrapTextLines(
 ): string[] {
   if (!text) return [];
 
-  // Default character measurement fallback for Node tests (~11px per char for 21px font)
-  const measure = measureFn || ((str: string) => str.length * 11.2);
+  // Default character measurement fallback for Node tests (~16px per char for 32px font)
+  const measure = measureFn || ((str: string) => str.length * 16.5);
 
   const paragraphs = text.split('\n');
   const resultLines: string[] = [];
@@ -282,6 +294,12 @@ export function wrapTextLines(
 
 /**
  * Calculates the exact height in pixels required by a block on canvas
+ * Target Font Sizes for 1080x1350 Canvas:
+ * - Heading in answer: 36px (target 34-38px)
+ * - Arabic quote: 44px (target 40-48px)
+ * - Answer body / list item: 32px (target 30-34px)
+ * - Quote: 30px
+ * - Reference: 26px (target 24-28px)
  */
 export function calculateBlockHeight(
   block: RenderableBlock,
@@ -289,42 +307,49 @@ export function calculateBlockHeight(
   measureFn?: (text: string, font: string) => number
 ): { height: number; lines: string[] } {
   if (block.type === 'heading') {
-    const font = '700 24px "Plus Jakarta Sans", sans-serif';
-    const lines = wrapTextLines(block.text, contentWidth, (s) => (measureFn ? measureFn(s, font) : s.length * 13));
-    const height = lines.length * 34 + 18; // 34px line-height + 18px margin
+    const font = '700 32px "Plus Jakarta Sans", sans-serif';
+    const lines = wrapTextLines(block.text, contentWidth, (s) => (measureFn ? measureFn(s, font) : s.length * 17));
+    const height = lines.length * 46 + 18;
     return { height, lines };
   }
 
   if (block.type === 'arabic') {
-    const font = 'bold 28px "Amiri", "Noto Sans Arabic", serif';
+    const font = 'bold 42px "Amiri", "Noto Sans Arabic", serif';
     // Arabic box has inner padding (24px left + 24px right = 48px)
     const boxInnerWidth = contentWidth - 48;
-    const lines = wrapTextLines(block.text, boxInnerWidth, (s) => (measureFn ? measureFn(s, font) : s.length * 15));
-    // 46px line-height for harakat clearance + 36px vertical padding + 20px margin
-    const height = lines.length * 46 + 40 + 20;
+    const lines = wrapTextLines(block.text, boxInnerWidth, (s) => (measureFn ? measureFn(s, font) : s.length * 21));
+    // 68px line-height for harakat clearance + 40px vertical padding + 20px margin
+    const height = lines.length * 68 + 40 + 20;
     return { height, lines };
   }
 
   if (block.type === 'list-item') {
-    const font = '500 21px "Plus Jakarta Sans", sans-serif';
-    const listInnerWidth = contentWidth - 32; // indent for bullet
-    const lines = wrapTextLines(block.text, listInnerWidth, (s) => (measureFn ? measureFn(s, font) : s.length * 11));
-    const height = lines.length * 32 + 12;
+    const font = '500 30px "Plus Jakarta Sans", sans-serif';
+    const listInnerWidth = contentWidth - 38; // indent for bullet
+    const lines = wrapTextLines(block.text, listInnerWidth, (s) => (measureFn ? measureFn(s, font) : s.length * 15.5));
+    const height = lines.length * 44 + 12;
     return { height, lines };
   }
 
   if (block.type === 'quote') {
-    const font = 'italic 500 21px "Plus Jakarta Sans", sans-serif';
-    const quoteInnerWidth = contentWidth - 36;
-    const lines = wrapTextLines(block.text, quoteInnerWidth, (s) => (measureFn ? measureFn(s, font) : s.length * 11));
-    const height = lines.length * 32 + 24;
+    const font = 'italic 500 28px "Plus Jakarta Sans", sans-serif';
+    const quoteInnerWidth = contentWidth - 40;
+    const lines = wrapTextLines(block.text, quoteInnerWidth, (s) => (measureFn ? measureFn(s, font) : s.length * 14.5));
+    const height = lines.length * 42 + 22;
     return { height, lines };
   }
 
-  // Regular paragraph
-  const font = '500 21px "Plus Jakarta Sans", sans-serif';
-  const lines = wrapTextLines(block.text, contentWidth, (s) => (measureFn ? measureFn(s, font) : s.length * 11));
-  const height = lines.length * 32 + 18;
+  if (block.type === 'reference') {
+    const font = '500 24px "Plus Jakarta Sans", sans-serif';
+    const lines = wrapTextLines(block.text, contentWidth - 32, (s) => (measureFn ? measureFn(s, font) : s.length * 12.5));
+    const height = lines.length * 36 + 14;
+    return { height, lines };
+  }
+
+  // Regular paragraph (500 30px)
+  const font = '500 30px "Plus Jakarta Sans", sans-serif';
+  const lines = wrapTextLines(block.text, contentWidth, (s) => (measureFn ? measureFn(s, font) : s.length * 15.5));
+  const height = lines.length * 44 + 18;
   return { height, lines };
 }
 
@@ -341,7 +366,7 @@ function splitBlockIntoSentenceChunks(block: RenderableBlock): RenderableBlock[]
   let currentText = '';
 
   for (const sentence of sentences) {
-    if (currentText.length + sentence.length > 280 && currentText.trim()) {
+    if (currentText.length + sentence.length > 220 && currentText.trim()) {
       chunks.push({
         ...block,
         id: `${block.id}-${chunks.length}`,
@@ -376,7 +401,7 @@ export function partitionContentIntoSlides(
   ratio: CardRatio = '4:5'
 ): SlideData[] {
   const canvasHeight = ratio === '4:5' ? 1350 : 1080;
-  const contentWidth = 936; // 1080 - 144px margins
+  const contentWidth = 952; // 1080 - 128px margins
 
   // Parse reply into semantic blocks
   const initialBlocks = parseContentToBlocks(rawReply);
@@ -395,7 +420,7 @@ export function partitionContentIntoSlides(
   const normalizedBlocks: RenderableBlock[] = [];
   for (const block of initialBlocks) {
     const { height } = calculateBlockHeight(block, contentWidth);
-    if (height > 450) {
+    if (height > 380) {
       normalizedBlocks.push(...splitBlockIntoSentenceChunks(block));
     } else {
       normalizedBlocks.push(block);
@@ -404,19 +429,19 @@ export function partitionContentIntoSlides(
 
   // Calculate Question Box Height for Slide 1
   const cleanQ = stripHtml(question);
-  const qTitleLines = wrapTextLines(title, contentWidth - 44);
-  const qBodyLines = cleanQ && cleanQ !== title ? wrapTextLines(cleanQ.slice(0, 160) + (cleanQ.length > 160 ? '...' : ''), contentWidth - 44) : [];
-  const qBoxHeight = 44 + qTitleLines.length * 32 + (qBodyLines.length > 0 ? qBodyLines.length * 26 + 12 : 0) + 20;
+  const qTitleLines = wrapTextLines(title, contentWidth - 48, (s) => s.length * 19);
+  const qBodyLines = cleanQ && cleanQ !== title ? wrapTextLines(cleanQ.slice(0, 160) + (cleanQ.length > 160 ? '...' : ''), contentWidth - 48, (s) => s.length * 15.5) : [];
+  const qBoxHeight = 32 + qTitleLines.length * 46 + (qBodyLines.length > 0 ? qBodyLines.length * 40 + 10 : 0) + 14;
 
-  // Header & Footer dimensions
-  const headerHeightSlide1 = 175;
-  const headerHeightContinuation = 120;
-  const footerHeight = 80;
-  const answerLabelHeight = 42;
+  // Header & Footer dimensions (compacted to grant maximum vertical space to answer content)
+  const headerHeightSlide1 = 76;
+  const headerHeightContinuation = 44;
+  const footerHeight = 58;
+  const answerLabelHeight = 28;
 
   // Available vertical budget for answers with comfortable editorial breathing room
-  const budgetSlide1 = Math.max(280, Math.min(canvasHeight - headerHeightSlide1 - qBoxHeight - answerLabelHeight - footerHeight - 30, ratio === '4:5' ? 560 : 420));
-  const budgetContinuation = Math.max(380, Math.min(canvasHeight - headerHeightContinuation - answerLabelHeight - footerHeight - 30, ratio === '4:5' ? 880 : 680));
+  const budgetSlide1 = Math.max(400, Math.min(canvasHeight - headerHeightSlide1 - qBoxHeight - answerLabelHeight - footerHeight - 30, ratio === '4:5' ? 1040 : 720));
+  const budgetContinuation = Math.max(500, Math.min(canvasHeight - headerHeightContinuation - answerLabelHeight - footerHeight - 30, ratio === '4:5' ? 1160 : 880));
 
   // Multi-page grouping
   const pages: RenderableBlock[][] = [];
@@ -445,13 +470,13 @@ export function partitionContentIntoSlides(
     pages.push(currentPageBlocks);
   }
 
-  // Social media carousel safety cap: maximum 5 slides
-  const MAX_SLIDES = 5;
+  // Social media carousel safety cap: up to 10 slides
+  const MAX_SLIDES = 10;
   let finalPages = pages;
   if (pages.length > MAX_SLIDES) {
     const cappedPages = pages.slice(0, MAX_SLIDES - 1);
     // Combine remaining summary on the final slide
-    const finalSlideBlocks = pages[MAX_SLIDES - 1].slice(0, 3);
+    const finalSlideBlocks = pages[MAX_SLIDES - 1].slice(0, 2);
     finalSlideBlocks.push({
       id: 'b-closing-callout',
       type: 'quote',
@@ -626,12 +651,16 @@ export async function ensureFontsLoaded(): Promise<void> {
   if (typeof document === 'undefined' || !document.fonts) return;
   try {
     await Promise.allSettled([
-      document.fonts.load('bold 28px "Amiri"'),
-      document.fonts.load('400 24px "Amiri"'),
+      document.fonts.load('bold 44px "Amiri"'),
+      document.fonts.load('400 36px "Amiri"'),
+      document.fonts.load('800 28px "Plus Jakarta Sans"'),
+      document.fonts.load('700 44px "Plus Jakarta Sans"'),
+      document.fonts.load('700 36px "Plus Jakarta Sans"'),
+      document.fonts.load('500 34px "Plus Jakarta Sans"'),
+      document.fonts.load('500 32px "Plus Jakarta Sans"'),
+      document.fonts.load('500 26px "Plus Jakarta Sans"'),
       document.fonts.load('800 24px "Plus Jakarta Sans"'),
-      document.fonts.load('700 24px "Plus Jakarta Sans"'),
-      document.fonts.load('500 21px "Plus Jakarta Sans"'),
-      document.fonts.load('700 26px "Playfair Display"')
+      document.fonts.load('600 22px "Plus Jakarta Sans"')
     ]);
     await document.fonts.ready;
   } catch (err) {
@@ -681,9 +710,9 @@ export async function renderDakwahCardToCanvas(options: DakwahCardOptions): Prom
     qBoxBar: isLight ? brandGold : brandGold,
     qBoxLabel: isLight ? brandTeal : brandGold,
     qBoxTitle: isLight ? brandNavy : '#FFFFFF',
-    qBoxText: isLight ? '#475569' : 'rgba(255, 255, 255, 0.8)',
+    qBoxText: isLight ? '#334155' : 'rgba(255, 255, 255, 0.88)',
     ansLabel: isLight ? brandTeal : brandGold,
-    ansBody: isLight ? '#1E293B' : 'rgba(255, 255, 255, 0.94)',
+    ansBody: isLight ? '#0F172A' : 'rgba(255, 255, 255, 0.96)',
     arabicBoxBg: isLight ? '#F7F5EE' : 'rgba(244, 185, 66, 0.08)',
     arabicBoxBorder: isLight ? 'rgba(201, 163, 78, 0.4)' : 'rgba(244, 185, 66, 0.35)',
     arabicText: isLight ? '#063B2F' : '#FDE68A',
@@ -701,166 +730,170 @@ export async function renderDakwahCardToCanvas(options: DakwahCardOptions): Prom
   ctx.fillRect(0, 0, width, height);
 
   // Subtle ambient glow
-  const ambientGlow = ctx.createRadialGradient(width / 2, 160, 20, width / 2, 160, 480);
+  const ambientGlow = ctx.createRadialGradient(width / 2, 140, 20, width / 2, 140, 480);
   ambientGlow.addColorStop(0, isLight ? 'rgba(14, 165, 164, 0.05)' : 'rgba(244, 185, 66, 0.12)');
   ambientGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
   ctx.fillStyle = ambientGlow;
   ctx.fillRect(0, 0, width, 550);
 
   // 2. Editorial Border Frame
+  // 2. Editorial Border Frame (Clean single border, no stacked frames or corner diamond clutter)
   const marginOuter = 36;
-  const marginInner = 46;
-
   ctx.strokeStyle = colors.borderOuter;
-  ctx.lineWidth = 2;
-  drawRoundedRect(ctx, marginOuter, marginOuter, width - marginOuter * 2, height - marginOuter * 2, 28);
+  ctx.lineWidth = 1.5;
+  drawRoundedRect(ctx, marginOuter, marginOuter, width - marginOuter * 2, height - marginOuter * 2, 22);
   ctx.stroke();
 
-  ctx.strokeStyle = colors.borderInner;
-  ctx.lineWidth = 1;
-  drawRoundedRect(ctx, marginInner, marginInner, width - marginInner * 2, height - marginInner * 2, 22);
-  ctx.stroke();
+  // Content Coordinates with generous padding
+  const contentX = 64;
+  const contentWidth = width - contentX * 2; // 952px
 
-  // Corner Diamond Accents
-  const drawDiamond = (cx: number, cy: number, color: string) => {
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.moveTo(cx, cy - 5);
-    ctx.lineTo(cx + 5, cy);
-    ctx.lineTo(cx, cy + 5);
-    ctx.lineTo(cx - 5, cy);
-    ctx.closePath();
+  let cursorY = 54;
+
+  // 3. HEADER SECTION (Balanced, Giving Primary Room to Answer Content)
+  if (!slide.isContinuation) {
+    // Slide 1: Refined Editorial Header with Brand Identity
+    drawOfficialLogoEmblem(
+      ctx,
+      width / 2,
+      cursorY + 14,
+      30,
+      isLight ? brandNavy : brandGold,
+      isLight ? brandGold : '#FFFFFF'
+    );
+    cursorY += 36;
+
+    // Brand Name (24px bold)
+    ctx.fillStyle = colors.headerTitle;
+    ctx.font = '800 24px "Plus Jakarta Sans", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.letterSpacing = '2px';
+    ctx.fillText('DARS WITH OSAMA', width / 2, cursorY);
+    ctx.letterSpacing = '0px';
+    cursorY += 20;
+
+    // Subtitle & Topic Pill (Unified, 12px)
+    const pillText = "ILMU • KAJIAN • KITAB   |   TANYA JAWAB & KONSULTASI SYAR'I";
+    ctx.font = '700 12px "Plus Jakarta Sans", sans-serif';
+    const pillMetrics = ctx.measureText(pillText);
+    const pillW = pillMetrics.width + 26;
+    const pillX = (width - pillW) / 2;
+
+    ctx.fillStyle = colors.badgeBg;
+    drawRoundedRect(ctx, pillX, cursorY - 12, pillW, 24, 12);
     ctx.fill();
-  };
-  drawDiamond(marginInner + 2, marginInner + 2, isLight ? goldAntique : brandGold);
-  drawDiamond(width - marginInner - 2, marginInner + 2, isLight ? goldAntique : brandGold);
-  drawDiamond(marginInner + 2, height - marginInner - 2, isLight ? goldAntique : brandGold);
-  drawDiamond(width - marginInner - 2, height - marginInner - 2, isLight ? goldAntique : brandGold);
 
-  // Content Coordinates
-  const contentX = 72;
-  const contentWidth = width - contentX * 2; // 936px
+    ctx.strokeStyle = colors.badgeBorder;
+    ctx.lineWidth = 1;
+    ctx.stroke();
 
-  let cursorY = 72;
+    ctx.fillStyle = colors.badgeText;
+    ctx.textAlign = 'center';
+    ctx.fillText(pillText, width / 2, cursorY + 4);
+    cursorY += 24;
+  } else {
+    // Continuation Slide: Minimal Space-Saving Header Bar (~38px)
+    drawOfficialLogoEmblem(
+      ctx,
+      contentX + 14,
+      cursorY + 10,
+      24,
+      isLight ? brandNavy : brandGold,
+      isLight ? brandGold : '#FFFFFF'
+    );
 
-  // 3. HEADER SECTION
-  // Official Logo Emblem
-  drawOfficialLogoEmblem(
-    ctx,
-    width / 2,
-    cursorY + 22,
-    46,
-    isLight ? brandNavy : brandGold,
-    isLight ? brandGold : '#FFFFFF'
-  );
-  cursorY += 60;
+    ctx.textAlign = 'left';
+    ctx.fillStyle = colors.headerTitle;
+    ctx.font = '800 18px "Plus Jakarta Sans", sans-serif';
+    ctx.fillText('DARS WITH OSAMA', contentX + 34, cursorY + 16);
 
-  // Brand Name
-  ctx.fillStyle = colors.headerTitle;
-  ctx.font = '800 24px "Plus Jakarta Sans", sans-serif';
-  ctx.textAlign = 'center';
-  ctx.letterSpacing = '2px';
-  ctx.fillText('DARS WITH OSAMA', width / 2, cursorY);
-  ctx.letterSpacing = '0px';
-  cursorY += 22;
+    const pillCont = 'LANJUTAN PEMBAHASAN';
+    ctx.font = '700 11px "Plus Jakarta Sans", sans-serif';
+    const pW = ctx.measureText(pillCont).width + 18;
+    const pX = contentX + contentWidth - pW;
 
-  // Brand Tagline
-  ctx.fillStyle = colors.headerTagline;
-  ctx.font = '700 12px "Plus Jakarta Sans", sans-serif';
-  ctx.letterSpacing = '2.5px';
-  ctx.fillText('ILMU • KAJIAN • KITAB', width / 2, cursorY);
-  ctx.letterSpacing = '0px';
-  cursorY += 26;
+    ctx.fillStyle = colors.badgeBg;
+    drawRoundedRect(ctx, pX, cursorY, pW, 22, 11);
+    ctx.fill();
 
-  // Category Topic Pill
-  const pillText = "📖  TANYA JAWAB & KONSULTASI SYAR'I";
-  ctx.font = '700 11px "Plus Jakarta Sans", sans-serif';
-  const pillMetrics = ctx.measureText(pillText);
-  const pillW = pillMetrics.width + 30;
-  const pillX = (width - pillW) / 2;
+    ctx.strokeStyle = colors.badgeBorder;
+    ctx.lineWidth = 1;
+    ctx.stroke();
 
-  ctx.fillStyle = colors.badgeBg;
-  drawRoundedRect(ctx, pillX, cursorY - 14, pillW, 26, 13);
-  ctx.fill();
+    ctx.fillStyle = colors.badgeText;
+    ctx.textAlign = 'center';
+    ctx.fillText(pillCont, pX + pW / 2, cursorY + 15);
 
-  ctx.strokeStyle = colors.badgeBorder;
-  ctx.lineWidth = 1;
-  ctx.stroke();
-
-  ctx.fillStyle = colors.badgeText;
-  ctx.textAlign = 'center';
-  ctx.fillText(pillText, width / 2, cursorY + 3);
-  cursorY += 32;
+    cursorY += 34;
+  }
 
   // 4. QUESTION SECTION
   if (!slide.isContinuation) {
-    // Slide 1: Full Question Box
+    // Slide 1: Balanced Question Box (Judul: 34px, Teks: 26px)
     const qBoxY = cursorY;
     ctx.textAlign = 'left';
 
-    // Measure Title lines
-    ctx.font = '700 23px "Plus Jakarta Sans", sans-serif';
+    ctx.font = '700 34px "Plus Jakarta Sans", sans-serif';
     const titleLines = wrapTextLines(slide.questionTitle, contentWidth - 48, (s) => ctx.measureText(s).width);
     
-    // Measure Excerpt lines (if distinct)
     const hasExcerpt = slide.questionExcerpt && slide.questionExcerpt !== slide.questionTitle;
-    ctx.font = '500 18px "Plus Jakarta Sans", sans-serif';
+    ctx.font = '500 26px "Plus Jakarta Sans", sans-serif';
     const excerptLines = hasExcerpt
-      ? wrapTextLines(slide.questionExcerpt, contentWidth - 48, (s) => ctx.measureText(s).width)
+      ? wrapTextLines(slide.questionExcerpt.slice(0, 160) + (slide.questionExcerpt.length > 160 ? '...' : ''), contentWidth - 48, (s) => ctx.measureText(s).width)
       : [];
 
-    const qBoxHeight = 36 + titleLines.length * 32 + (excerptLines.length > 0 ? excerptLines.length * 26 + 10 : 0) + 16;
+    const qBoxHeight = 28 + titleLines.length * 46 + (excerptLines.length > 0 ? excerptLines.length * 38 + 10 : 0) + 14;
 
     // Background card
     ctx.fillStyle = colors.qBoxBg;
-    drawRoundedRect(ctx, contentX, qBoxY, contentWidth, qBoxHeight, 16);
+    drawRoundedRect(ctx, contentX, qBoxY, contentWidth, qBoxHeight, 14);
     ctx.fill();
 
     ctx.strokeStyle = colors.qBoxBorder;
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    // Left Accent Bar (Gold)
+    // Left Accent Bar (Gold 5px)
     ctx.fillStyle = colors.qBoxBar;
-    drawRoundedRect(ctx, contentX, qBoxY, 6, qBoxHeight, 2);
+    drawRoundedRect(ctx, contentX, qBoxY, 5, qBoxHeight, 2);
     ctx.fill();
 
-    // Label
-    let textY = qBoxY + 24;
+    // Topik / Kategori Label
+    let textY = qBoxY + 22;
     ctx.fillStyle = colors.qBoxLabel;
     ctx.font = '800 12px "Plus Jakarta Sans", sans-serif';
-    ctx.letterSpacing = '1px';
-    ctx.fillText('PERTANYAAN:', contentX + 24, textY);
+    ctx.letterSpacing = '1.2px';
+    ctx.fillText('TOPIK / PERTANYAAN:', contentX + 22, textY);
     ctx.letterSpacing = '0px';
-    textY += 28;
+    textY += 30;
 
-    // Title
+    // Title (34px)
     ctx.fillStyle = colors.qBoxTitle;
-    ctx.font = '700 23px "Plus Jakarta Sans", sans-serif';
+    ctx.font = '700 34px "Plus Jakarta Sans", sans-serif';
     for (const tLine of titleLines) {
-      ctx.fillText(tLine, contentX + 24, textY);
-      textY += 32;
+      ctx.fillText(tLine, contentX + 22, textY);
+      textY += 46;
     }
 
-    // Excerpt
+    // Excerpt (26px)
     if (excerptLines.length > 0) {
       textY += 4;
       ctx.fillStyle = colors.qBoxText;
-      ctx.font = '500 18px "Plus Jakarta Sans", sans-serif';
+      ctx.font = '500 26px "Plus Jakarta Sans", sans-serif';
       for (const eLine of excerptLines) {
-        ctx.fillText(eLine, contentX + 24, textY);
-        textY += 26;
+        ctx.fillText(eLine, contentX + 22, textY);
+        textY += 38;
       }
     }
 
-    cursorY = qBoxY + qBoxHeight + 26;
+    cursorY = qBoxY + qBoxHeight + 18;
   } else {
-    // Continuation Slide: Compact header
+    // Continuation Slide: Sleek Topic Bar
     const contBoxY = cursorY;
-    const contBoxH = 46;
+    const contBoxH = 42;
 
     ctx.fillStyle = colors.qBoxBg;
-    drawRoundedRect(ctx, contentX, contBoxY, contentWidth, contBoxH, 12);
+    drawRoundedRect(ctx, contentX, contBoxY, contentWidth, contBoxH, 10);
     ctx.fill();
 
     ctx.strokeStyle = colors.qBoxBorder;
@@ -868,30 +901,30 @@ export async function renderDakwahCardToCanvas(options: DakwahCardOptions): Prom
     ctx.stroke();
 
     ctx.fillStyle = colors.qBoxBar;
-    drawRoundedRect(ctx, contentX, contBoxY, 5, contBoxH, 2);
+    drawRoundedRect(ctx, contentX, contBoxY, 4, contBoxH, 2);
     ctx.fill();
 
     ctx.textAlign = 'left';
     ctx.fillStyle = colors.qBoxLabel;
     ctx.font = '800 12px "Plus Jakarta Sans", sans-serif';
-    ctx.fillText('LANJUTAN PEMBAHASAN:', contentX + 18, contBoxY + 28);
+    ctx.fillText('TOPIK:', contentX + 16, contBoxY + 26);
 
     ctx.fillStyle = colors.qBoxTitle;
-    ctx.font = '700 16px "Plus Jakarta Sans", sans-serif';
-    const maxTWidth = contentWidth - 250;
+    ctx.font = '700 22px "Plus Jakarta Sans", sans-serif';
+    const maxTWidth = contentWidth - 140;
     let truncatedTitle = slide.questionTitle;
     while (ctx.measureText(truncatedTitle).width > maxTWidth && truncatedTitle.length > 10) {
       truncatedTitle = truncatedTitle.slice(0, -4) + '...';
     }
-    ctx.fillText(truncatedTitle, contentX + 200, contBoxY + 28);
+    ctx.fillText(truncatedTitle, contentX + 80, contBoxY + 27);
 
-    cursorY = contBoxY + contBoxH + 24;
+    cursorY = contBoxY + contBoxH + 18;
   }
 
   // 5. ANSWER SECTION LABEL
   ctx.textAlign = 'left';
   ctx.fillStyle = colors.ansLabel;
-  ctx.font = '800 12px "Plus Jakarta Sans", sans-serif';
+  ctx.font = '800 13px "Plus Jakarta Sans", sans-serif';
   ctx.letterSpacing = '1.2px';
   const answerSectionLabel = slide.isContinuation
     ? 'PENJELASAN LANJUTAN & DALIL SYAR\'I:'
@@ -905,99 +938,100 @@ export async function renderDakwahCardToCanvas(options: DakwahCardOptions): Prom
     ? slide.blocks
     : parseContentToBlocks(slide.answerText);
 
-  const maxY = height - 110; // strictly protect footer boundary
+  // Strictly protect footer boundary
+  const maxY = height - 74;
 
   for (const block of blocksToRender) {
     if (cursorY >= maxY) break;
 
-    // A. HEADING BLOCK
+    // A. HEADING BLOCK (32px)
     if (block.type === 'heading') {
       ctx.fillStyle = colors.qBoxTitle;
-      ctx.font = '700 24px "Plus Jakarta Sans", sans-serif';
+      ctx.font = '700 32px "Plus Jakarta Sans", sans-serif';
       const lines = wrapTextLines(block.text, contentWidth, (s) => ctx.measureText(s).width);
       for (const line of lines) {
-        if (cursorY + 34 > maxY) break;
-        ctx.fillText(line, contentX, cursorY + 24);
-        cursorY += 34;
+        if (cursorY + 46 > maxY) break;
+        ctx.fillText(line, contentX, cursorY + 32);
+        cursorY += 46;
       }
       cursorY += 12;
       continue;
     }
 
-    // B. ARABIC BLOCK (Mushaf Card, Amiri Font, RTL)
+    // B. ARABIC BLOCK (42px Amiri Font, RTL)
     if (block.type === 'arabic' || block.isArabic) {
       const boxW = contentWidth;
       const boxInnerW = boxW - 48;
 
-      ctx.font = 'bold 28px "Amiri", "Noto Sans Arabic", serif';
+      ctx.font = 'bold 42px "Amiri", "Noto Sans Arabic", serif';
       const arLines = wrapTextLines(block.text, boxInnerW, (s) => ctx.measureText(s).width);
-      const boxH = 40 + arLines.length * 46;
+      const boxH = 38 + arLines.length * 68;
 
       // Draw Dalil frame
       ctx.fillStyle = colors.arabicBoxBg;
-      drawRoundedRect(ctx, contentX, cursorY, boxW, boxH, 16);
+      drawRoundedRect(ctx, contentX, cursorY, boxW, boxH, 14);
       ctx.fill();
 
       ctx.strokeStyle = colors.arabicBoxBorder;
       ctx.lineWidth = 1.5;
       ctx.stroke();
 
-      // Right-side accent marker for Arabic
+      // Right-side accent marker for Arabic (Gold 5px)
       ctx.fillStyle = isLight ? goldAntique : brandGold;
-      drawRoundedRect(ctx, contentX + boxW - 6, cursorY, 6, boxH, 2);
+      drawRoundedRect(ctx, contentX + boxW - 5, cursorY, 5, boxH, 2);
       ctx.fill();
 
-      // Draw Arabic text lines (Right-to-Left)
+      // Draw Arabic text lines (Right-to-Left, 42px font, 68px line-height for harakat)
       ctx.save();
       ctx.direction = 'rtl';
       ctx.textAlign = 'right';
       ctx.fillStyle = colors.arabicText;
-      ctx.font = 'bold 28px "Amiri", "Noto Sans Arabic", serif';
+      ctx.font = 'bold 42px "Amiri", "Noto Sans Arabic", serif';
 
       const rightEdgeX = contentX + boxW - 24;
-      let lineY = cursorY + 44;
+      let lineY = cursorY + 54;
 
       for (const arLine of arLines) {
         if (lineY > maxY) break;
         ctx.fillText(arLine, rightEdgeX, lineY);
-        lineY += 46;
+        lineY += 68;
       }
       ctx.restore();
 
-      cursorY += boxH + 20;
+      cursorY += boxH + 18;
       continue;
     }
 
-    // C. LIST ITEM BLOCK
+    // C. LIST ITEM BLOCK (30px)
     if (block.type === 'list-item') {
       ctx.fillStyle = colors.ansBody;
-      ctx.font = '500 21px "Plus Jakarta Sans", sans-serif';
-      const listW = contentWidth - 32;
+      ctx.font = '500 30px "Plus Jakarta Sans", sans-serif';
+      const listW = contentWidth - 38;
       const lines = wrapTextLines(block.text, listW, (s) => ctx.measureText(s).width);
 
-      // Bullet dot
+      // Bullet dot (Radius 4.5px)
       ctx.fillStyle = isLight ? brandTeal : brandGold;
       ctx.beginPath();
-      ctx.arc(contentX + 8, cursorY + 12, 4, 0, Math.PI * 2);
+      ctx.arc(contentX + 10, cursorY + 16, 4.5, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = colors.ansBody;
-      let lY = cursorY + 18;
+      let lY = cursorY + 26;
       for (const line of lines) {
         if (lY > maxY) break;
-        ctx.fillText(line, contentX + 28, lY);
-        lY += 32;
+        ctx.fillText(line, contentX + 34, lY);
+        lY += 44;
       }
       cursorY = lY + 8;
       continue;
     }
 
-    // D. QUOTE BLOCK
+    // D. QUOTE BLOCK (28px)
     if (block.type === 'quote') {
       ctx.fillStyle = colors.qBoxBg;
       const quoteW = contentWidth;
       const lines = wrapTextLines(block.text, quoteW - 40, (s) => ctx.measureText(s).width);
-      const qH = lines.length * 32 + 24;
+      const qH = lines.length * 42 + 24;
 
       drawRoundedRect(ctx, contentX, cursorY, quoteW, qH, 12);
       ctx.fill();
@@ -1007,56 +1041,73 @@ export async function renderDakwahCardToCanvas(options: DakwahCardOptions): Prom
       ctx.fill();
 
       ctx.fillStyle = colors.ansBody;
-      ctx.font = 'italic 500 21px "Plus Jakarta Sans", sans-serif';
-      let qY = cursorY + 22;
+      ctx.font = 'italic 500 28px "Plus Jakarta Sans", sans-serif';
+      let qY = cursorY + 30;
       for (const line of lines) {
         if (qY > maxY) break;
-        ctx.fillText(line, contentX + 20, qY);
-        qY += 32;
+        ctx.fillText(line, contentX + 22, qY);
+        qY += 42;
       }
-      cursorY = qY + 14;
+      cursorY = qY + 12;
       continue;
     }
 
-    // E. REGULAR PARAGRAPH
+    // E. REFERENCE / SUMBER BLOCK (24px)
+    if (block.type === 'reference') {
+      ctx.fillStyle = isLight ? '#64748B' : 'rgba(255, 255, 255, 0.72)';
+      ctx.font = '500 24px "Plus Jakarta Sans", sans-serif';
+      const lines = wrapTextLines(block.text, contentWidth - 32, (s) => ctx.measureText(s).width);
+
+      let rY = cursorY + 22;
+      for (const line of lines) {
+        if (rY > maxY) break;
+        ctx.fillText(line, contentX + 8, rY);
+        rY += 36;
+      }
+      cursorY = rY + 10;
+      continue;
+    }
+
+    // F. REGULAR PARAGRAPH (30px)
     ctx.fillStyle = colors.ansBody;
-    ctx.font = '500 21px "Plus Jakarta Sans", sans-serif';
+    ctx.font = '500 30px "Plus Jakarta Sans", sans-serif';
     const lines = wrapTextLines(block.text, contentWidth, (s) => ctx.measureText(s).width);
 
-    let pY = cursorY + 18;
+    let pY = cursorY + 26;
     for (const line of lines) {
       if (pY > maxY) break;
       ctx.fillText(line, contentX, pY);
-      pY += 32;
+      pY += 44;
     }
     cursorY = pY + 14;
   }
 
   // 7. FOOTER SECTION
-  const footerY = height - 56;
+  const footerY = height - 44;
 
   // Footer Divider Line
   ctx.strokeStyle = colors.footerDivider;
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(contentX, footerY - 26);
-  ctx.lineTo(contentX + contentWidth, footerY - 26);
+  ctx.moveTo(contentX, footerY - 24);
+  ctx.lineTo(contentX + contentWidth, footerY - 24);
   ctx.stroke();
 
-  // Footer Left: Brand & Direct Website Callout
+  // Footer Left: Brand (20px)
   ctx.textAlign = 'left';
   ctx.fillStyle = colors.footerBrand;
-  ctx.font = '800 13px "Plus Jakarta Sans", sans-serif';
+  ctx.font = '700 20px "Plus Jakarta Sans", sans-serif';
   ctx.fillText('Dars with Osama', contentX, footerY);
 
+  // Footer Center: Website & Callout (18px)
   ctx.fillStyle = colors.footerLink;
-  ctx.font = '600 12px "Plus Jakarta Sans", sans-serif';
-  ctx.fillText(`•  ${siteUrl}  •  Baca pembahasan lengkap & dalil`, contentX + 130, footerY);
+  ctx.font = '500 18px "Plus Jakarta Sans", sans-serif';
+  ctx.fillText(`•  ${siteUrl}  •  Baca fatwa & kajian lengkap`, contentX + 200, footerY);
 
-  // Footer Right: Slide Page Counter (e.g. "Halaman 1 dari 3" or "1/3")
+  // Footer Right: Slide Page Counter (19px)
   ctx.textAlign = 'right';
   ctx.fillStyle = colors.footerBadge;
-  ctx.font = '800 13px "Plus Jakarta Sans", sans-serif';
+  ctx.font = '700 19px "Plus Jakarta Sans", sans-serif';
   const pageCounterText = slide.totalPages > 1
     ? `Halaman ${slide.pageNumber} / ${slide.totalPages}`
     : 'Arsip Tanya Jawab Syar\'i';

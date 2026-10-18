@@ -165,4 +165,99 @@ test('Case 6: Jawaban panjang dibagi multi-halaman dengan nomor halaman akurat',
   }
 });
 
+// Case 7: Sanitasi Nama File PDF Deskriptif & Aman
+test('Case 7: sanitizePdfFilename menghasilkan nama file aman, deskriptif, dan berekstensi .pdf', async () => {
+  const { sanitizePdfFilename } = await import('./pdfExportHelper.js');
+  
+  const fn1 = sanitizePdfFilename('tanya-jawab', 'Hukum Shalat Berjamaah Bagi Masbuq?');
+  assert.equal(fn1.startsWith('tanya-jawab-'), true);
+  assert.equal(fn1.endsWith('.pdf'), true);
+  assert.equal(fn1.includes('?'), false);
+  assert.ok(fn1.includes('hukum-shalat-berjamaah'));
+
+  const fn2 = sanitizePdfFilename('artikel', 'Keutamaan Menuntut Ilmu Syar\'i & Adab Santri');
+  assert.equal(fn2.startsWith('artikel-'), true);
+  assert.equal(fn2.endsWith('.pdf'), true);
+  assert.equal(fn2.includes('\''), false);
+  assert.ok(fn2.includes('keutamaan-menuntut-ilmu'));
+});
+
+// Case 8: Dokumen PDF Tanya Jawab memuat struktur ilmiah dan mencegah dokumen privat
+test('Case 8: buildQAPdfHtml menghasilkan markup A4 dan mencegah konsultasi privat', async () => {
+  const { buildQAPdfHtml } = await import('./pdfExportHelper.js');
+  
+  const publicQA = {
+    id: 'qa-12345678',
+    studentId: 'u1',
+    studentName: 'Ahmad Santri',
+    title: 'Hukum Jual Beli Salam',
+    content: 'Bagaimana syarat sah akad salam dalam fiqih madzhab Syafi\'i?',
+    replyContent: '<p>Syarat sah salam mencakup kejelasan sifat barang dan pembayaran tunai di majelis akad.</p>',
+    status: 'answered' as const,
+    isPublished: true,
+    category: 'learning' as const,
+    createdAt: '2026-10-10T00:00:00Z',
+    updatedAt: '2026-10-11T00:00:00Z',
+    repliedAt: '2026-10-11T00:00:00Z'
+  };
+
+  const html = buildQAPdfHtml(publicQA);
+  assert.ok(html.includes('<!DOCTYPE html>'));
+  assert.ok(html.includes('DARS WITH OSAMA'));
+  assert.ok(html.includes('DW-QA-QA-12345'));
+  assert.ok(html.includes('Hukum Jual Beli Salam'));
+  assert.ok(html.includes('Syarat sah salam'));
+  assert.ok(html.includes('font-family: \'Amiri\'')); // Amiri font support
+  assert.ok(html.includes('@page')); // A4 print style
+
+  // Private consultation rejection
+  const privateQA = {
+    ...publicQA,
+    isPublished: false
+  };
+  assert.throws(() => buildQAPdfHtml(privateQA), /Hanya arsip Tanya Jawab publik/);
+});
+
+// Case 9: Dokumen PDF Artikel memuat struktur lengkap H1, penulis, kategori, dan A4
+test('Case 9: buildArticlePdfHtml memuat struktur artikel ilmiah A4 lengkap', async () => {
+  const { buildArticlePdfHtml } = await import('./pdfExportHelper.js');
+
+  const article = {
+    id: 'art-99',
+    slug: 'panduan-thaharah',
+    title: 'Panduan Praktis Thaharah Sesuai Kitab Safinatun Naja',
+    titleAr: 'دليل الطهارة',
+    excerpt: 'Penjelasan ringkas mengenai rukun dan syarat bersuci.',
+    content: '<h2>Bab Wudhu</h2><p>Rukun wudhu ada enam perkara.</p>',
+    contentAr: 'أركان الوضوء ستة أشياء',
+    coverImageUrl: 'https://example.com/cover.jpg',
+    category: 'Fiqih Ibadah',
+    authorName: 'Ustaz Osama Nur Samsil',
+    authorRole: 'Pengasuh Dars with Osama',
+    status: 'published' as const,
+    readingTimeMinutes: 5,
+    tags: ['thaharah', 'wudhu', 'safinah'],
+    createdAt: '2026-10-01T00:00:00Z',
+    updatedAt: '2026-10-02T00:00:00Z',
+    publishedAt: '2026-10-02T00:00:00Z'
+  };
+
+  const html = buildArticlePdfHtml(article);
+  assert.ok(html.includes('DARS WITH OSAMA'));
+  assert.ok(html.includes('Panduan Praktis Thaharah'));
+  assert.ok(html.includes('دليل الطهارة'));
+  assert.ok(html.includes('Bab Wudhu'));
+  assert.ok(html.includes('أركان الوضوء ستة أشياء'));
+  assert.ok(html.includes('Ustaz Osama Nur Samsil'));
+  assert.ok(html.includes('#thaharah'));
+
+  // Draft article rejection
+  const draftArticle = {
+    ...article,
+    status: 'draft' as const
+  };
+  assert.throws(() => buildArticlePdfHtml(draftArticle), /Hanya artikel yang telah dipublikasikan/);
+});
+
+
 

@@ -177,7 +177,11 @@ export const SessionView: React.FC<SessionViewProps> = ({
             <YouTubeEmbed url={session.youtubeUrl} title={session.title} />
 
             {/* Session Headings & Info Panel with gentle fade on session switch */}
-            <div key={session.id} className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 p-6 rounded-2xl space-y-4 shadow-sm dark:shadow-lg animate-fade-in transition-colors duration-250">
+            <div
+              key={session.id}
+              data-aos="fade-up"
+              className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 p-6 rounded-2xl space-y-4 shadow-sm dark:shadow-lg transition-colors duration-250"
+            >
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <span className="px-3 py-1 bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-800/60 text-emerald-800 dark:text-emerald-400 text-xs font-semibold rounded-lg">
                   Sesi #{currentIndex + 1} dari {allSessions.length}
@@ -220,7 +224,10 @@ export const SessionView: React.FC<SessionViewProps> = ({
 
           {/* PDF Resource Card (if available) */}
           {session.pdfUrl && (
-            <div className="bg-white dark:bg-stone-900 border border-amber-300 dark:border-amber-600/30 hover:border-amber-500/50 p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm dark:shadow-lg transition-all duration-300 hover:shadow-md">
+            <div
+              data-aos="fade-up"
+              className="bg-white dark:bg-stone-900 border border-amber-300 dark:border-amber-600/30 hover:border-amber-500/50 p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm dark:shadow-lg transition-all duration-300 hover:shadow-md"
+            >
               <div className="flex items-start gap-3.5">
                 <div className="p-3 bg-amber-100 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 rounded-xl shrink-0 border border-amber-300/80 dark:border-amber-500/20">
                   <FileText className="w-6 h-6" />
@@ -259,7 +266,10 @@ export const SessionView: React.FC<SessionViewProps> = ({
 
           {/* Google Drive PDF Card (if available) */}
           {session.googleDriveUrl && (
-            <div className="bg-white dark:bg-stone-900 border border-blue-200 dark:border-blue-800/40 hover:border-blue-500/50 p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm dark:shadow-lg transition-all duration-300">
+            <div
+              data-aos="fade-up"
+              className="bg-white dark:bg-stone-900 border border-blue-200 dark:border-blue-800/40 hover:border-blue-500/50 p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm dark:shadow-lg transition-all duration-300"
+            >
               <div className="flex items-start gap-3.5">
                 <div className="p-3 bg-blue-100 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 rounded-xl shrink-0 border border-blue-200 dark:border-blue-800/40">
                   <ExternalLink className="w-6 h-6" />
@@ -288,7 +298,10 @@ export const SessionView: React.FC<SessionViewProps> = ({
 
           {/* Arabic Matan / Syarah Naskah Box (if present) */}
           {session.descriptionAr && (
-            <div className="bg-stone-50 dark:bg-stone-900/90 border border-emerald-200 dark:border-emerald-800/60 p-6 md:p-8 rounded-2xl space-y-3 shadow-xs transition-colors">
+            <div
+              data-aos="fade-up"
+              className="bg-stone-50 dark:bg-stone-900/90 border border-emerald-200 dark:border-emerald-800/60 p-6 md:p-8 rounded-2xl space-y-3 shadow-xs transition-colors"
+            >
               <div className="text-xs font-sans font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 border-b border-emerald-200 dark:border-emerald-800/60 pb-2 flex items-center justify-between">
                 <span>Matan & Naskah Bahasa Arab</span>
                 <span className="text-[10px] font-normal text-stone-400">Naskah Asli</span>
@@ -303,7 +316,10 @@ export const SessionView: React.FC<SessionViewProps> = ({
 
           {/* Lesson Notes & Faedah Ilmiah Section with Blog-Quality Typography */}
           {session.lessonNotes && (
-            <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 p-6 md:p-8 rounded-2xl space-y-5 shadow-sm dark:shadow-lg animate-fade-in transition-colors duration-250">
+            <div
+              data-aos="fade-up"
+              className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 p-6 md:p-8 rounded-2xl space-y-5 shadow-sm dark:shadow-lg transition-colors duration-250"
+            >
               <div className="flex items-center gap-2.5 border-b border-stone-200 dark:border-stone-800 pb-4">
                 <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800/60 shrink-0">
                   <BookOpen className="w-5 h-5" />
@@ -328,7 +344,10 @@ export const SessionView: React.FC<SessionViewProps> = ({
 
           {/* Quiz Evaluation Banner */}
           {quiz && (
-            <div className="bg-gradient-to-r from-emerald-50 via-white to-stone-50 dark:from-emerald-950/70 dark:via-stone-900 dark:to-stone-900 border border-emerald-300 dark:border-emerald-600/40 hover:border-emerald-500/60 p-6 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-5 shadow-sm dark:shadow-xl transition-all duration-300 hover:shadow-md group">
+            <div
+              data-aos="fade-up"
+              className="bg-gradient-to-r from-emerald-50 via-white to-stone-50 dark:from-emerald-950/70 dark:via-stone-900 dark:to-stone-900 border border-emerald-300 dark:border-emerald-600/40 hover:border-emerald-500/60 p-6 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-5 shadow-sm dark:shadow-xl transition-all duration-300 hover:shadow-md group"
+            >
               <div className="space-y-1">
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 text-[11px] font-semibold rounded-md border border-emerald-300 dark:border-emerald-700/50">
                   <HelpCircle className="w-3.5 h-3.5" />
@@ -354,7 +373,7 @@ export const SessionView: React.FC<SessionViewProps> = ({
         </div>
 
         {/* Right Sidebar: Sessions Playlist & Progress */}
-        <div className="lg:col-span-4 space-y-6">
+        <div className="lg:col-span-4 space-y-6" data-aos="fade-left">
           {/* Completed Notice */}
           {enrollment?.isCompleted && (
             <div className="bg-gradient-to-tr from-emerald-50 to-white dark:from-emerald-950/60 dark:to-stone-900 border border-emerald-300 dark:border-emerald-500/40 p-5 rounded-2xl text-center space-y-2 shadow-sm dark:shadow-lg animate-fade-in-up">

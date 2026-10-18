@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useRef, useState } from 'r
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Lenis from 'lenis';
+import AOS from 'aos';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -81,6 +82,7 @@ export const SmoothScrollProvider: React.FC<ProviderProps> = ({ children, curren
 
     const timer = setTimeout(() => {
       ScrollTrigger.refresh();
+      AOS.refresh();
     }, 100);
 
     return () => clearTimeout(timer);

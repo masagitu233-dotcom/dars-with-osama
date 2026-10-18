@@ -121,7 +121,10 @@ export const StudentConsultationView: React.FC<StudentConsultationViewProps> = (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-8 animate-fade-in font-sans">
       
       {/* HEADER BANNER */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#073B2E] via-[#071B16] to-[#123B6D] text-[#F7F6EF] p-6 sm:p-10 border border-[#073B2E]/30 shadow-xl">
+      <div
+        data-aos="fade-up"
+        className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#073B2E] via-[#071B16] to-[#123B6D] text-[#F7F6EF] p-6 sm:p-10 border border-[#073B2E]/30 shadow-xl"
+      >
         <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-[#C9A34E]/10 blur-3xl pointer-events-none" />
         
         <div className="relative z-10 max-w-2xl space-y-3">
@@ -187,7 +190,7 @@ export const StudentConsultationView: React.FC<StudentConsultationViewProps> = (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
           {/* LEFT: FORM KONSULTASI BARU (COL 5) */}
-          <div className="lg:col-span-5 space-y-6">
+          <div className="lg:col-span-5 space-y-6" data-aos="fade-right">
             <div className="bg-white dark:bg-[#071B16] border border-[#073B2E]/15 dark:border-[#C9A34E]/25 rounded-3xl p-6 shadow-md space-y-5">
               <div className="flex items-center gap-2 border-b border-[#073B2E]/10 dark:border-[#C9A34E]/20 pb-3">
                 <MessageSquare className="w-5 h-5 text-[#C9A34E]" />
@@ -299,7 +302,7 @@ export const StudentConsultationView: React.FC<StudentConsultationViewProps> = (
           </div>
 
           {/* RIGHT: RIWAYAT KONSULTASI SISWA (COL 7) */}
-          <div className="lg:col-span-7 space-y-6">
+          <div className="lg:col-span-7 space-y-6" data-aos="fade-left">
             <div className="bg-white dark:bg-[#071B16] border border-[#073B2E]/15 dark:border-[#C9A34E]/25 rounded-3xl p-6 shadow-md space-y-5">
               <div className="flex items-center justify-between border-b border-[#073B2E]/10 dark:border-[#C9A34E]/20 pb-3">
                 <div className="flex items-center gap-2">

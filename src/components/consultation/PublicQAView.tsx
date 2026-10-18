@@ -12,13 +12,16 @@ import {
   Image as ImageIcon,
   Copy,
   Check,
-  ArrowRight
+  ArrowRight,
+  FileText,
+  Download
 } from 'lucide-react';
 import { Consultation } from '../../types';
 import { getPublishedPublicQA } from '../../firebase/services';
 import { useAuth } from '../../context/AuthContext';
 import { autoWrapArabicText } from '../../utils/arabicFontHelper';
 import { ShareQAModal } from './ShareQAModal';
+import { PDFExportModal } from '../common/PDFExportModal';
 
 interface PublicQAViewProps {
   onNavigateToConsultation: () => void;
@@ -49,6 +52,10 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
   const [selectedQaForShare, setSelectedQaForShare] = useState<Consultation | null>(null);
   const [shareInitialTab, setShareInitialTab] = useState<'share' | 'card'>('share');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // PDF Export Modal State
+  const [pdfModalOpen, setPdfModalOpen] = useState<boolean>(false);
+  const [selectedQaForPdf, setSelectedQaForPdf] = useState<Consultation | null>(null);
 
   const loadPublicQA = async () => {
     setLoading(true);
@@ -113,6 +120,11 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
     setShareModalOpen(true);
   };
 
+  const handleOpenPdfModal = (item: Consultation) => {
+    setSelectedQaForPdf(item);
+    setPdfModalOpen(true);
+  };
+
   const handleCopyDirectLink = async (item: Consultation) => {
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://darswithosama.com';
     const directUrl = `${origin}?view=public-qa&qaId=${item.id}`;
@@ -142,7 +154,10 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-8 animate-fade-in font-sans">
       
       {/* HEADER HERO BANNER */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#073B2E] via-[#0c2b23] to-[#123B6D] text-[#F7F6EF] p-6 sm:p-10 border border-[#073B2E]/30 shadow-xl">
+      <div
+        data-aos="fade-up"
+        className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#073B2E] via-[#0c2b23] to-[#123B6D] text-[#F7F6EF] p-6 sm:p-10 border border-[#073B2E]/30 shadow-xl"
+      >
         <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-[#C9A34E]/10 blur-3xl pointer-events-none" />
         
         <div className="relative z-10 max-w-2xl space-y-3">
@@ -177,7 +192,10 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
       </div>
 
       {/* SEARCH & FILTER BAR */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white dark:bg-[#071B16] border border-[#073B2E]/15 dark:border-[#C9A34E]/25 rounded-2xl p-4 shadow-sm">
+      <div
+        data-aos="fade-up"
+        className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white dark:bg-[#071B16] border border-[#073B2E]/15 dark:border-[#C9A34E]/25 rounded-2xl p-4 shadow-sm"
+      >
         <div className="relative w-full sm:max-w-md">
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#6B7C7A]" />
           <input
@@ -222,7 +240,7 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
         </div>
       ) : (
         <div className="space-y-5">
-          {filteredQA.map((item) => {
+          {filteredQA.map((item, idx) => {
             const isExpanded = expandedId === item.id;
             const isDirectTarget = initialQaId === item.id;
             const plainAnswer = stripHtmlTags(item.replyContent || '');
@@ -233,6 +251,8 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
               <div
                 key={item.id}
                 id={`qa-${item.id}`}
+                data-aos="fade-up"
+                data-aos-delay={(idx % 4) * 100}
                 className={`bg-white dark:bg-[#071B16] border rounded-2xl p-5 sm:p-6 shadow-xs hover:shadow-md transition-all space-y-4 ${
                   isDirectTarget
                     ? 'border-[#C9A34E] ring-2 ring-[#C9A34E]/40 shadow-lg'
@@ -326,7 +346,7 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
                     )}
 
                     <div className="pt-2 flex flex-wrap items-center justify-between gap-2 text-[11px]">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <button
                           onClick={() => handleOpenShareModal(item, 'share')}
                           className="font-bold text-[#073B2E] dark:text-[#F4B942] hover:underline flex items-center gap-1 cursor-pointer"
@@ -340,7 +360,16 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
                           className="font-bold text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1 cursor-pointer"
                         >
                           <ImageIcon className="w-3 h-3" />
-                          <span>Buat Gambar Kartu</span>
+                          <span>Buat Gambar</span>
+                        </button>
+                        <span>•</span>
+                        <button
+                          onClick={() => handleOpenPdfModal(item)}
+                          className="font-bold text-sky-700 dark:text-sky-400 hover:underline flex items-center gap-1 cursor-pointer"
+                          title="Unduh naskah tanya jawab format PDF A4"
+                        >
+                          <FileText className="w-3 h-3" />
+                          <span>Unduh PDF</span>
                         </button>
                         <span>•</span>
                         <button
@@ -394,10 +423,10 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
                           dangerouslySetInnerHTML={{ __html: autoWrapArabicText(item.replyContent) }}
                         />
 
-                        {/* SHARING ACTION TOOLBAR (Bagikan Jawaban, Buat Gambar, Salin Tautan) */}
+                        {/* ACTION TOOLBAR: Bagikan Jawaban, Buat Gambar, Unduh PDF, Salin Tautan */}
                         <div className="pt-4 border-t border-emerald-200/60 dark:border-emerald-800/60 flex flex-col sm:flex-row items-center justify-between gap-3">
                           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                            {/* Tombol Bagikan Jawaban */}
+                            {/* 1. Bagikan Jawaban */}
                             <button
                               onClick={() => handleOpenShareModal(item, 'share')}
                               className="px-3.5 py-2 rounded-xl bg-[#073B2E] dark:bg-[#123B6D] hover:bg-[#0a4d3c] text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
@@ -407,17 +436,27 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
                               <span>Bagikan Jawaban</span>
                             </button>
 
-                            {/* Tombol Buat Gambar Kartu Dakwah */}
+                            {/* 2. Buat Gambar */}
                             <button
                               onClick={() => handleOpenShareModal(item, 'card')}
                               className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-900 text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
                               title="Buat gambar kartu dakwah siap sebar ke Instagram & WhatsApp"
                             >
                               <ImageIcon className="w-3.5 h-3.5" />
-                              <span>Buat Gambar Kartu Dakwah</span>
+                              <span>Buat Gambar</span>
                             </button>
 
-                            {/* Tombol Salin Tautan */}
+                            {/* 3. Unduh PDF */}
+                            <button
+                              onClick={() => handleOpenPdfModal(item)}
+                              className="px-3.5 py-2 rounded-xl bg-sky-700 hover:bg-sky-600 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
+                              title="Unduh dokumen lengkap naskah tanya jawab format A4"
+                            >
+                              <FileText className="w-3.5 h-3.5 text-[#F4B942]" />
+                              <span>Unduh PDF</span>
+                            </button>
+
+                            {/* 4. Salin Tautan */}
                             <button
                               onClick={() => handleCopyDirectLink(item)}
                               className="px-3 py-2 rounded-xl bg-white dark:bg-[#0c2b23] border border-[#073B2E]/20 dark:border-[#C9A34E]/30 text-[#073B2E] dark:text-[#F7F6EF] text-xs font-semibold hover:bg-stone-50 dark:hover:bg-[#143e33] transition flex items-center gap-1.5 cursor-pointer"
@@ -477,6 +516,14 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
         onClose={() => setShareModalOpen(false)}
         consultation={selectedQaForShare}
         initialTab={shareInitialTab}
+      />
+
+      {/* PDF EXPORT MODAL */}
+      <PDFExportModal
+        isOpen={pdfModalOpen}
+        onClose={() => setPdfModalOpen(false)}
+        type="qa"
+        qaData={selectedQaForPdf}
       />
 
     </div>

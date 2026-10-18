@@ -54,7 +54,10 @@ export const BlogListView: React.FC<BlogListViewProps> = ({
   return (
     <div className="space-y-8 sm:space-y-12 pb-16 animate-fade-in font-sans">
       {/* HERO BANNER SECTION */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-900 via-stone-900 to-emerald-950 text-white p-6 sm:p-10 border border-emerald-800/40 shadow-xl">
+      <div
+        data-aos="fade-up"
+        className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-900 via-stone-900 to-emerald-950 text-white p-6 sm:p-10 border border-emerald-800/40 shadow-xl"
+      >
         <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
         <div className="relative z-10 max-w-2xl space-y-3">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-semibold backdrop-blur-xs">
@@ -114,7 +117,7 @@ export const BlogListView: React.FC<BlogListViewProps> = ({
 
       {/* FEATURED ARTICLE (IF AVAILABLE) */}
       {featuredPost && selectedCategory === 'all' && !searchQuery && (
-        <div className="space-y-3">
+        <div className="space-y-3" data-aos="fade-up">
           <h2 className="text-sm font-bold text-stone-400 dark:text-stone-500 uppercase tracking-wider flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-amber-500" />
             <span>Artikel Unggulan Utama</span>
@@ -221,9 +224,11 @@ export const BlogListView: React.FC<BlogListViewProps> = ({
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {(selectedCategory === 'all' && !searchQuery ? regularPosts : filteredPosts).map(post => (
+            {(selectedCategory === 'all' && !searchQuery ? regularPosts : filteredPosts).map((post, idx) => (
               <div
                 key={post.id}
+                data-aos="fade-up"
+                data-aos-delay={(idx % 3) * 100}
                 onClick={() => onSelectArticle(post)}
                 className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl overflow-hidden shadow-xs hover:shadow-lg hover:border-emerald-500/40 transition duration-300 flex flex-col justify-between group cursor-pointer"
               >

@@ -12,11 +12,14 @@ import {
   User,
   ChevronRight,
   Bookmark,
-  Sparkles
+  Sparkles,
+  FileText,
+  Download
 } from 'lucide-react';
 import { BlogPost } from '../../types';
 import { incrementBlogPostViews } from '../../firebase/services';
 import { autoWrapArabicText } from '../../utils/arabicFontHelper';
+import { PDFExportModal } from '../common/PDFExportModal';
 
 interface BlogDetailViewProps {
   post: BlogPost;
@@ -32,6 +35,7 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
   onSelectArticle
 }) => {
   const [copied, setCopied] = useState(false);
+  const [pdfModalOpen, setPdfModalOpen] = useState(false);
 
   useEffect(() => {
     // Increment view count in Firestore when article opens
@@ -72,7 +76,7 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
   return (
     <div className="max-w-4xl mx-auto space-y-8 pb-16 animate-fade-in font-sans">
       {/* BREADCRUMB & BACK BUTTON */}
-      <div className="flex items-center justify-between gap-4 pt-2">
+      <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
         <button
           onClick={onBack}
           className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300 text-xs font-semibold hover:bg-stone-50 dark:hover:bg-stone-800 transition cursor-pointer active:scale-95 shadow-xs"
@@ -81,16 +85,27 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
           <span>Kembali ke Daftar Artikel</span>
         </button>
 
-        <div className="hidden sm:flex items-center gap-1.5 text-xs text-stone-500 font-medium">
-          <span>Blog</span>
-          <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
-          <span className="text-emerald-700 dark:text-emerald-400 font-semibold">{post.category}</span>
+        <div className="flex items-center gap-3">
+          <div className="hidden sm:flex items-center gap-1.5 text-xs text-stone-500 font-medium">
+            <span>Blog</span>
+            <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
+            <span className="text-emerald-700 dark:text-emerald-400 font-semibold">{post.category}</span>
+          </div>
+
+          <button
+            onClick={() => setPdfModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-sky-700 hover:bg-sky-600 text-white text-xs font-bold transition cursor-pointer active:scale-95 shadow-xs"
+            title="Unduh naskah artikel lengkap format PDF A4"
+          >
+            <FileText className="w-4 h-4 text-amber-300" />
+            <span>Unduh PDF</span>
+          </button>
         </div>
       </div>
 
       {/* ARTICLE HEADER BLOCK */}
       <article className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-6 sm:p-10 space-y-8 shadow-sm">
-        <div className="space-y-4">
+        <div data-aos="fade-up" className="space-y-4">
           <div className="flex flex-wrap items-center gap-3">
             <span className="px-3 py-1 bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 font-bold text-xs rounded-xl border border-emerald-300 dark:border-emerald-800">
               {post.category}
@@ -137,7 +152,7 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
 
         {/* COVER IMAGE */}
         {post.coverImageUrl && (
-          <figure className="space-y-2">
+          <figure data-aos="fade-up" className="space-y-2">
             <div className="aspect-video w-full rounded-2xl overflow-hidden bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-800 shadow-xs">
               <img
                 src={post.coverImageUrl}
@@ -155,13 +170,18 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
 
         {/* MAIN BODY HTML CONTENT */}
         <div
+          data-aos="fade-up"
           className="prose dark:prose-invert max-w-none text-stone-800 dark:text-stone-200 text-sm sm:text-base leading-relaxed space-y-4 font-sans blog-content"
           dangerouslySetInnerHTML={{ __html: autoWrapArabicText(post.content) }}
         />
 
         {/* ARABIC CONTENT SECTION (IF PRESENT) */}
         {post.contentAr && (
-          <div className="p-6 bg-stone-50 dark:bg-stone-900/80 border border-emerald-200 dark:border-emerald-800/60 rounded-2xl space-y-3 font-amiri text-right text-lg text-emerald-900 dark:text-emerald-300" dir="rtl">
+          <div
+            data-aos="fade-up"
+            className="p-6 bg-stone-50 dark:bg-stone-900/80 border border-emerald-200 dark:border-emerald-800/60 rounded-2xl space-y-3 font-amiri text-right text-lg text-emerald-900 dark:text-emerald-300"
+            dir="rtl"
+          >
             <div dangerouslySetInnerHTML={{ __html: post.contentAr }} />
           </div>
         )}
@@ -181,7 +201,10 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
         )}
 
         {/* AUTHOR BIO CARD */}
-        <div className="p-6 bg-stone-50 dark:bg-stone-800/50 rounded-2xl border border-stone-200 dark:border-stone-800 flex flex-col sm:flex-row items-center sm:items-start gap-4">
+        <div
+          data-aos="fade-up"
+          className="p-6 bg-stone-50 dark:bg-stone-800/50 rounded-2xl border border-stone-200 dark:border-stone-800 flex flex-col sm:flex-row items-center sm:items-start gap-4"
+        >
           <div className="w-14 h-14 rounded-2xl bg-emerald-600 text-white font-bold text-xl flex items-center justify-center shrink-0 border border-emerald-500/30 overflow-hidden shadow-sm">
             {post.authorPhoto ? (
               <img src={post.authorPhoto} alt={post.authorName} className="w-full h-full object-cover" />
@@ -205,20 +228,36 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
         </div>
 
         {/* SHARE BAR */}
-        <div className="pt-4 border-t border-stone-200 dark:border-stone-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div
+          data-aos="fade-up"
+          className="pt-4 border-t border-stone-200 dark:border-stone-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+        >
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-stone-600 dark:text-stone-300">Bagikan Artikel Ini:</span>
+            <span className="text-xs font-bold text-stone-600 dark:text-stone-300">Bagikan atau Simpan Artikel:</span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Bagikan Artikel */}
             <button
               onClick={handleShare}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow transition flex items-center gap-2 cursor-pointer active:scale-95"
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow-xs transition flex items-center gap-2 cursor-pointer active:scale-95"
+              title="Bagikan artikel via aplikasi atau media sosial"
             >
               <Share2 className="w-4 h-4" />
-              <span>Bagikan via HP / Aplikasi</span>
+              <span>Bagikan Artikel</span>
             </button>
 
+            {/* Unduh PDF */}
+            <button
+              onClick={() => setPdfModalOpen(true)}
+              className="px-4 py-2 bg-sky-700 hover:bg-sky-600 text-white rounded-xl text-xs font-semibold shadow-xs transition flex items-center gap-2 cursor-pointer active:scale-95"
+              title="Unduh naskah lengkap artikel ilmiah dalam format PDF A4"
+            >
+              <FileText className="w-4 h-4 text-amber-300" />
+              <span>Unduh PDF</span>
+            </button>
+
+            {/* Salin Tautan */}
             <button
               onClick={handleCopyLink}
               className="px-3.5 py-2 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 border border-stone-200 dark:border-stone-700 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer"
@@ -265,6 +304,15 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* PDF EXPORT MODAL */}
+      <PDFExportModal
+        isOpen={pdfModalOpen}
+        onClose={() => setPdfModalOpen(false)}
+        type="article"
+        articleData={post}
+      />
+
     </div>
   );
 };

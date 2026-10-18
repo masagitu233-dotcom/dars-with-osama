@@ -281,7 +281,11 @@ export const HomeView: React.FC<HomeViewProps> = ({
       </div>
 
       {/* SECTION 2: ARTIKEL TERBARU (BLOG POST THUMBNAILS CARD GRID) */}
-      <section ref={articlesSectionRef} className="max-w-6xl mx-auto px-4 sm:px-6">
+      <section
+        ref={articlesSectionRef}
+        data-aos="fade-left"
+        className="max-w-6xl mx-auto px-4 sm:px-6"
+      >
         <div className="bg-white/95 dark:bg-[#071B16]/95 backdrop-blur-md border border-[#073B2E]/10 dark:border-[#C9A34E]/20 rounded-2xl sm:rounded-3xl p-5 sm:p-7 shadow-lg space-y-5 transition-colors">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
             <div className="space-y-0.5">
@@ -309,18 +313,24 @@ export const HomeView: React.FC<HomeViewProps> = ({
           {/* Published Articles Grid */}
           {publishedArticles.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-              {publishedArticles.slice(0, 3).map((article) => (
-                <HomeArticleCard
+              {publishedArticles.slice(0, 3).map((article, idx) => (
+                <div
                   key={article.id}
-                  post={article}
-                  onSelect={(post) => {
-                    if (onSelectBlogPost) {
-                      onSelectBlogPost(post);
-                    } else {
-                      handleGo('blog');
-                    }
-                  }}
-                />
+                  data-aos="fade-up"
+                  data-aos-delay={idx * 100}
+                  className="h-full"
+                >
+                  <HomeArticleCard
+                    post={article}
+                    onSelect={(post) => {
+                      if (onSelectBlogPost) {
+                        onSelectBlogPost(post);
+                      } else {
+                        handleGo('blog');
+                      }
+                    }}
+                  />
+                </div>
               ))}
             </div>
           ) : (
@@ -338,7 +348,11 @@ export const HomeView: React.FC<HomeViewProps> = ({
       </section>
 
       {/* SECTION 3: TANYA JAWAB & KONSULTASI PREVIEW */}
-      <section ref={qaSectionRef} className="max-w-6xl mx-auto px-4 sm:px-6">
+      <section
+        ref={qaSectionRef}
+        data-aos="fade-right"
+        className="max-w-6xl mx-auto px-4 sm:px-6"
+      >
         <div className="bg-white/95 dark:bg-[#071B16]/95 backdrop-blur-md border border-[#073B2E]/10 dark:border-[#C9A34E]/20 rounded-2xl sm:rounded-3xl p-5 sm:p-7 shadow-lg space-y-5 transition-colors">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
             <div className="space-y-0.5">
@@ -376,12 +390,18 @@ export const HomeView: React.FC<HomeViewProps> = ({
           {/* Q&A Cards Grid */}
           {publishedQA.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-              {publishedQA.slice(0, 3).map((item) => (
-                <HomeQACard
+              {publishedQA.slice(0, 3).map((item, idx) => (
+                <div
                   key={item.id}
-                  item={item}
-                  onReadMore={() => handleReadQA(item.id)}
-                />
+                  data-aos="fade-up"
+                  data-aos-delay={idx * 100}
+                  className="h-full"
+                >
+                  <HomeQACard
+                    item={item}
+                    onReadMore={() => handleReadQA(item.id)}
+                  />
+                </div>
               ))}
             </div>
           ) : (
@@ -407,6 +427,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
       {/* SECTION 4: DAFTAR KURSUS POPULER (INTERACTIVE CATALOG) */}
       <section
         ref={coursesSectionRef}
+        data-aos="fade-left"
         className="max-w-6xl mx-auto px-4 sm:px-6"
       >
         <div className="bg-white/95 dark:bg-[#071B16]/95 backdrop-blur-md border border-[#073B2E]/10 dark:border-[#C9A34E]/20 rounded-2xl sm:rounded-3xl p-5 sm:p-7 shadow-lg space-y-5 transition-colors">
@@ -434,22 +455,32 @@ export const HomeView: React.FC<HomeViewProps> = ({
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
-            {courses.slice(0, 4).map((course) => (
-              <CourseCard
+            {courses.slice(0, 4).map((course, idx) => (
+              <div
                 key={course.id}
-                course={course}
-                category={categories.find((c) => c.id === course.categoryId)}
-                enrollment={enrollmentsMap[course.id] || null}
-                onSelect={onSelectCourse}
-                disableAnimation={true}
-              />
+                data-aos="fade-up"
+                data-aos-delay={idx * 100}
+                className="h-full"
+              >
+                <CourseCard
+                  course={course}
+                  category={categories.find((c) => c.id === course.categoryId)}
+                  enrollment={enrollmentsMap[course.id] || null}
+                  onSelect={onSelectCourse}
+                  disableAnimation={true}
+                />
+              </div>
             ))}
           </div>
         </div>
       </section>
 
       {/* SECTION 5: BAGIAN PENUTUP */}
-      <section ref={closingRef} className="max-w-4xl mx-auto px-4 sm:px-6 text-center">
+      <section
+        ref={closingRef}
+        data-aos="fade-up"
+        className="max-w-4xl mx-auto px-4 sm:px-6 text-center"
+      >
         <div className="p-6 sm:p-8 bg-[#073B2E]/5 dark:bg-[#071B16] border border-[#073B2E]/15 dark:border-[#C9A34E]/25 rounded-2xl sm:rounded-3xl space-y-3 shadow-xs">
           <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-[#C9A34E]/20 text-[#F4B942] mb-1">
             <HeartHandshake className="w-5 h-5" />

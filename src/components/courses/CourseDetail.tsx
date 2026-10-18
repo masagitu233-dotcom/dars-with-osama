@@ -101,7 +101,10 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
       </button>
 
       {/* Hero Header Card */}
-      <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl overflow-hidden shadow-sm dark:shadow-2xl relative transition-colors duration-250">
+      <div
+        data-aos="fade-up"
+        className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl overflow-hidden shadow-sm dark:shadow-2xl relative transition-colors duration-250"
+      >
         <div className="absolute top-0 right-1/3 w-80 h-80 bg-emerald-500/10 dark:bg-emerald-500/5 blur-[100px] rounded-full pointer-events-none animate-pulse-glow" />
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 relative">
           {/* Left Details */}
@@ -224,7 +227,7 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
       </div>
 
       {/* Syllabus / Sessions List */}
-      <div className="space-y-4">
+      <div className="space-y-4" data-aos="fade-up">
         <div className="flex items-center justify-between">
           <div className="space-y-1">
             <h2 className="text-xl sm:text-2xl font-bold text-stone-900 dark:text-white font-sans">
@@ -243,6 +246,8 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
               return (
                 <div
                   key={session.id}
+                  data-aos="fade-up"
+                  data-aos-delay={(idx % 4) * 100}
                   onClick={() => onSelectSession(session)}
                   className="group bg-white dark:bg-stone-900 hover:bg-stone-50 dark:hover:bg-stone-850 border border-stone-200 dark:border-stone-800 hover:border-emerald-500/40 dark:hover:border-emerald-600/40 p-4 sm:p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer transition shadow-xs hover:shadow-md dark:shadow-none"
                 >

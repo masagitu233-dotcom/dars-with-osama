@@ -40,6 +40,8 @@ import { BlogDetailView } from './components/blog/BlogDetailView';
 import { StudentConsultationView } from './components/consultation/StudentConsultationView';
 import { PublicQAView } from './components/consultation/PublicQAView';
 import { Course, Category, Session, Quiz, Enrollment, BlogPost } from './types';
+import AOS from 'aos';
+import 'aos/dist/aos.css';
 import {
   getCategories,
   getCourses,
@@ -100,6 +102,24 @@ function MainApp() {
 
   // Target direct link QA State
   const [targetQaId, setTargetQaId] = useState<string | null>(null);
+
+  // Initialize AOS once at root level as requested
+  useEffect(() => {
+    AOS.init({
+      duration: 700,
+      easing: 'ease-out-cubic',
+      once: true,
+      offset: 100,
+    });
+  }, []);
+
+  // Refresh AOS recalculations on view transitions
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      AOS.refresh();
+    }, 120);
+    return () => clearTimeout(timer);
+  }, [currentView, selectedCourse, selectedSession, selectedBlogPost]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {

@@ -10,6 +10,11 @@
 }
 
 @layer base {
+  html, body {
+    overflow-x: hidden;
+    max-width: 100%;
+  }
+
   body {
     background-color: #F7F6EF;
     color: #073B2E;
@@ -20,6 +25,15 @@
   html.dark body {
     background-color: #071B16;
     color: #F7F6EF;
+  }
+}
+
+/* AOS Accessibility & Overflow Safeguards */
+@media (prefers-reduced-motion: reduce) {
+  [data-aos] {
+    transition: none !important;
+    transform: none !important;
+    opacity: 1 !important;
   }
 }
 

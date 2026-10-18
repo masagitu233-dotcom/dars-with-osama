@@ -65,33 +65,16 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({
   }, [categories]);
 
   useEffect(() => {
-    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reducedMotion || !gridRef.current) return;
-
-    const ctx = gsap.context(() => {
-      if (gridRef.current?.children.length) {
-        gsap.fromTo(
-          gridRef.current.children,
-          { opacity: 0, y: 30, scale: 0.97 },
-          {
-            opacity: 1,
-            y: 0,
-            scale: 1,
-            duration: 0.55,
-            stagger: 0.07,
-            ease: 'power2.out',
-          }
-        );
-      }
-    }, gridRef);
-
-    return () => ctx.revert();
+    const timer = setTimeout(() => {
+      import('aos').then(AOS => AOS.default.refresh());
+    }, 50);
+    return () => clearTimeout(timer);
   }, [filteredCourses]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
       {/* Catalog Header */}
-      <div className="space-y-3">
+      <div className="space-y-3" data-aos="fade-up">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/80 border border-emerald-300 dark:border-emerald-800/60 text-emerald-800 dark:text-emerald-400 text-xs font-semibold">
           <BookOpen className="w-3.5 h-3.5" />
           <span>Katalog Materi & Kurikulum Resmi</span>
@@ -105,7 +88,10 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 p-4 md:p-5 rounded-2xl space-y-4 shadow-sm dark:shadow-lg transition-colors duration-250">
+      <div
+        data-aos="fade-up"
+        className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 p-4 md:p-5 rounded-2xl space-y-4 shadow-sm dark:shadow-lg transition-colors duration-250"
+      >
         <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
           {/* Search Input */}
           <div className="relative flex-1">
@@ -169,15 +155,22 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({
 
       {/* Course Grid */}
       {filteredCourses.length > 0 ? (
-        <div ref={gridRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredCourses.map((course) => (
-            <CourseCard
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {filteredCourses.map((course, idx) => (
+            <div
               key={course.id}
-              course={course}
-              category={categoryMap.get(course.categoryId)}
-              enrollment={enrollments[course.id] || null}
-              onSelect={onSelectCourse}
-            />
+              data-aos="fade-up"
+              data-aos-delay={(idx % 4) * 100}
+              className="h-full"
+            >
+              <CourseCard
+                course={course}
+                category={categoryMap.get(course.categoryId)}
+                enrollment={enrollments[course.id] || null}
+                onSelect={onSelectCourse}
+                disableAnimation={true}
+              />
+            </div>
           ))}
         </div>
       ) : (
