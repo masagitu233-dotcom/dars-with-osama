@@ -128,7 +128,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   return (
     <div
       ref={containerRef}
-      className="relative overflow-hidden bg-gradient-to-b from-[#073B2E]/10 via-[#F7F6EF] to-[#F7F6EF] dark:from-[#071B16] dark:via-[#071B16] dark:to-[#071B16] text-[#073B2E] dark:text-[#F7F6EF] pt-8 sm:pt-10 pb-10 sm:pb-14 border-b border-[#073B2E]/10 dark:border-[#C9A34E]/20 rounded-b-2xl sm:rounded-b-[2rem] shadow-sm transition-colors duration-250"
+      className="relative overflow-hidden bg-gradient-to-b from-[#073B2E]/10 via-[#F7F6EF] to-[#F7F6EF] dark:from-[#071B16] dark:via-[#071B16] dark:to-[#071B16] text-[#073B2E] dark:text-[#F7F6EF] pt-8 sm:pt-12 pb-12 sm:pb-16 border-b border-[#073B2E]/10 dark:border-[#C9A34E]/20 rounded-b-2xl sm:rounded-b-[2rem] shadow-sm transition-colors duration-250 min-h-[580px] sm:min-h-[640px] flex flex-col justify-center"
     >
       {/* Background Islamic Pattern Accent */}
       <div className="absolute inset-0 opacity-[0.04] dark:opacity-5 pointer-events-none bg-[radial-gradient(#C9A34E_1px,transparent_1px)] [background-size:24px_24px]" />

@@ -9,17 +9,15 @@ import {
   Check,
   Tag,
   BookOpen,
-  User,
   ChevronRight,
-  Bookmark,
-  Sparkles,
-  FileText,
-  Download
+  ShieldCheck,
+  Sparkles
 } from 'lucide-react';
 import { BlogPost } from '../../types';
 import { incrementBlogPostViews } from '../../firebase/services';
 import { autoWrapArabicText } from '../../utils/arabicFontHelper';
-import { PDFExportModal } from '../common/PDFExportModal';
+import { ArticleShareModal } from './ArticleShareModal';
+import { useArticleSEO } from '../../hooks/useArticleSEO';
 
 interface BlogDetailViewProps {
   post: BlogPost;
@@ -34,8 +32,11 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
   onBack,
   onSelectArticle
 }) => {
-  const [copied, setCopied] = useState(false);
-  const [pdfModalOpen, setPdfModalOpen] = useState(false);
+  const [copied, setCopied] = useState<boolean>(false);
+  const [shareModalOpen, setShareModalOpen] = useState<boolean>(false);
+
+  // Dynamically inject OpenGraph, Twitter cards, and Schema.org metadata for crawlers & social media
+  useArticleSEO(post);
 
   useEffect(() => {
     // Increment view count in Firestore when article opens
@@ -49,7 +50,33 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
     .filter(p => p.id !== post.id && (p.category === post.category || p.tags.some(t => post.tags.includes(t))))
     .slice(0, 3);
 
-  const articleUrl = typeof window !== 'undefined' ? window.location.href : '';
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://darswithosama.com';
+  
+  // Permanent canonical URL for this article
+  const articleUrl = post.slug 
+    ? `${origin}/article/${encodeURIComponent(post.slug)}`
+    : `${origin}/?view=blog-detail&id=${encodeURIComponent(post.id)}`;
+
+  const handleCopyLink = () => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(articleUrl);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = articleUrl;
+        textarea.style.position = 'fixed';
+        textarea.style.left = '-9999px';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+      setCopied(true);
+      setTimeout(() => setCopied(false), 3500);
+    } catch (err) {
+      console.error('Failed to copy link:', err);
+    }
+  };
 
   const handleShare = async () => {
     if (navigator.share) {
@@ -60,22 +87,16 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
           url: articleUrl
         });
       } catch (err) {
-        // User cancelled share
+        // User cancelled native share; fallback to custom modal if needed
       }
     } else {
-      handleCopyLink();
+      setShareModalOpen(true);
     }
-  };
-
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(articleUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 3000);
   };
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 pb-16 animate-fade-in font-sans">
-      {/* BREADCRUMB & BACK BUTTON */}
+      {/* BREADCRUMB & TOP ACTIONS */}
       <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
         <button
           onClick={onBack}
@@ -85,25 +106,45 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
           <span>Kembali ke Daftar Artikel</span>
         </button>
 
-        <div className="flex items-center gap-3">
-          <div className="hidden sm:flex items-center gap-1.5 text-xs text-stone-500 font-medium">
-            <span>Blog</span>
-            <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
-            <span className="text-emerald-700 dark:text-emerald-400 font-semibold">{post.category}</span>
-          </div>
-
+        <div className="flex items-center gap-2">
+          {/* Salin Link Button */}
           <button
-            onClick={() => setPdfModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-sky-700 hover:bg-sky-600 text-white text-xs font-bold transition cursor-pointer active:scale-95 shadow-xs"
-            title="Unduh naskah artikel lengkap format PDF A4"
+            onClick={handleCopyLink}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-stone-800 dark:text-stone-200 text-xs font-bold hover:bg-stone-50 dark:hover:bg-stone-800 transition cursor-pointer active:scale-95 shadow-xs"
+            title="Salin tautan permanen artikel ini"
           >
-            <FileText className="w-4 h-4 text-amber-300" />
-            <span>Unduh PDF</span>
+            {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4 text-[#C9A34E]" />}
+            <span>{copied ? 'Link Disalin!' : 'Salin Link'}</span>
+          </button>
+
+          {/* Bagikan Artikel Button */}
+          <button
+            onClick={handleShare}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold transition cursor-pointer active:scale-95 shadow-xs"
+            title="Bagikan artikel ke WhatsApp, Telegram, Facebook, X, atau Instagram"
+          >
+            <Share2 className="w-4 h-4 text-[#F4B942]" />
+            <span>Bagikan Artikel</span>
           </button>
         </div>
       </div>
 
-      {/* ARTICLE HEADER BLOCK */}
+      {/* COPIED TOAST NOTIFICATION BANNER */}
+      {copied && (
+        <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/90 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-100 text-xs flex items-center justify-between shadow-md animate-fade-in">
+          <div className="flex items-center gap-2.5">
+            <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+            <div>
+              <strong>Link artikel berhasil disalin!</strong> Tautan permanen siap dibagikan ke WhatsApp, Telegram, atau media sosial.
+            </div>
+          </div>
+          <span className="text-[10px] font-mono bg-emerald-200/60 dark:bg-emerald-900/60 px-2 py-0.5 rounded-md text-emerald-900 dark:text-emerald-200 hidden sm:inline-block">
+            {articleUrl}
+          </span>
+        </div>
+      )}
+
+      {/* ARTICLE CONTENT CARD */}
       <article className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-6 sm:p-10 space-y-8 shadow-sm">
         <div data-aos="fade-up" className="space-y-4">
           <div className="flex flex-wrap items-center gap-3">
@@ -227,7 +268,7 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
           </div>
         </div>
 
-        {/* SHARE BAR */}
+        {/* BOTTOM SHARE & COPY BAR */}
         <div
           data-aos="fade-up"
           className="pt-4 border-t border-stone-200 dark:border-stone-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
@@ -240,30 +281,21 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
             {/* Bagikan Artikel */}
             <button
               onClick={handleShare}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow-xs transition flex items-center gap-2 cursor-pointer active:scale-95"
-              title="Bagikan artikel via aplikasi atau media sosial"
+              className="px-4 py-2.5 bg-emerald-700 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-xs transition flex items-center gap-2 cursor-pointer active:scale-95"
+              title="Bagikan artikel via WhatsApp, Telegram, Facebook, X, atau Instagram"
             >
-              <Share2 className="w-4 h-4" />
+              <Share2 className="w-4 h-4 text-[#F4B942]" />
               <span>Bagikan Artikel</span>
             </button>
 
-            {/* Unduh PDF */}
-            <button
-              onClick={() => setPdfModalOpen(true)}
-              className="px-4 py-2 bg-sky-700 hover:bg-sky-600 text-white rounded-xl text-xs font-semibold shadow-xs transition flex items-center gap-2 cursor-pointer active:scale-95"
-              title="Unduh naskah lengkap artikel ilmiah dalam format PDF A4"
-            >
-              <FileText className="w-4 h-4 text-amber-300" />
-              <span>Unduh PDF</span>
-            </button>
-
-            {/* Salin Tautan */}
+            {/* Salin Link */}
             <button
               onClick={handleCopyLink}
-              className="px-3.5 py-2 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 border border-stone-200 dark:border-stone-700 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer"
+              className="px-4 py-2.5 bg-white dark:bg-stone-800 hover:bg-stone-100 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 border border-stone-200 dark:border-stone-700 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer active:scale-95 shadow-xs"
+              title="Salin tautan permanen artikel ke clipboard"
             >
-              {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
-              <span>{copied ? 'Tautan Disalin!' : 'Salin Tautan'}</span>
+              {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4 text-[#C9A34E]" />}
+              <span>{copied ? 'Tautan Disalin!' : 'Salin Link'}</span>
             </button>
           </div>
         </div>
@@ -305,12 +337,11 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
         </div>
       )}
 
-      {/* PDF EXPORT MODAL */}
-      <PDFExportModal
-        isOpen={pdfModalOpen}
-        onClose={() => setPdfModalOpen(false)}
-        type="article"
-        articleData={post}
+      {/* ARTICLE SHARE MODAL */}
+      <ArticleShareModal
+        isOpen={shareModalOpen}
+        onClose={() => setShareModalOpen(false)}
+        post={post}
       />
 
     </div>

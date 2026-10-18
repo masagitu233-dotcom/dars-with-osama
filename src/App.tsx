@@ -103,37 +103,15 @@ function MainApp() {
   // Target direct link QA State
   const [targetQaId, setTargetQaId] = useState<string | null>(null);
 
-  // Initialize AOS once at root level as requested
+  // Initialize AOS once at root level with proper trigger offsets and repeated scroll responsiveness
   useEffect(() => {
     AOS.init({
       duration: 700,
       easing: 'ease-out-cubic',
-      once: true,
-      offset: 100,
+      once: false,
+      mirror: false,
+      offset: 120,
     });
-  }, []);
-
-  // Refresh AOS recalculations on view transitions
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      AOS.refresh();
-    }, 120);
-    return () => clearTimeout(timer);
-  }, [currentView, selectedCourse, selectedSession, selectedBlogPost]);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const urlQaId = params.get('qaId');
-      const urlView = params.get('view');
-
-      if (urlQaId) {
-        setTargetQaId(urlQaId);
-        setCurrentView('public-qa');
-      } else if (urlView) {
-        setCurrentView(urlView);
-      }
-    }
   }, []);
 
   // Search & Filter State
@@ -147,6 +125,46 @@ function MainApp() {
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
   const [enrollmentsMap, setEnrollmentsMap] = useState<Record<string, Enrollment>>({});
   const [loading, setLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && blogPosts.length > 0) {
+      const params = new URLSearchParams(window.location.search);
+      const urlQaId = params.get('qaId');
+      const urlView = params.get('view');
+      const urlArticleId = params.get('id');
+      const urlArticle = params.get('article');
+      const pathname = window.location.pathname;
+
+      let targetPost: BlogPost | undefined;
+
+      if (urlArticle) {
+        targetPost = blogPosts.find(p => p.slug === urlArticle || p.id === urlArticle);
+      } else if (urlView === 'blog-detail') {
+        targetPost = blogPosts.find(p => p.id === urlArticleId || p.slug === urlArticleId) || blogPosts[0];
+      } else if (pathname.startsWith('/article/')) {
+        const articleParam = decodeURIComponent(pathname.replace('/article/', '')).replace(/\/$/, '');
+        targetPost = blogPosts.find(p => p.slug === articleParam || p.id === articleParam);
+      }
+
+      if (targetPost && targetPost.status === 'published') {
+        setSelectedBlogPost(targetPost);
+        setCurrentView('blog-detail');
+      } else if (urlQaId) {
+        setTargetQaId(urlQaId);
+        setCurrentView('public-qa');
+      } else if (urlView) {
+        setCurrentView(urlView);
+      }
+    }
+  }, [blogPosts]);
+
+  // Recalculate and re-scan newly mounted elements on view transitions and dynamic data loads
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      AOS.refreshHard();
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [currentView, selectedCourse, selectedSession, selectedBlogPost, courses.length, blogPosts.length, loading]);
 
   // Fetch initial categories, published courses, and blog posts from Cloud Firestore
   const loadData = async () => {
@@ -447,9 +465,9 @@ function MainApp() {
                   )}
 
                   {/* VIEW 8: BLOG DETAIL */}
-                  {currentView === 'blog-detail' && selectedBlogPost && (
+                  {currentView === 'blog-detail' && (selectedBlogPost || blogPosts[0]) && (
                     <BlogDetailView
-                      post={selectedBlogPost}
+                      post={selectedBlogPost || blogPosts[0]}
                       allPosts={blogPosts}
                       onBack={() => setCurrentView('blog')}
                       onSelectArticle={(article) => {

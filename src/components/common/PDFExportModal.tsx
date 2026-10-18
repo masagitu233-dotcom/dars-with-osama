@@ -16,6 +16,7 @@ import {
   buildQAPdfHtml,
   buildArticlePdfHtml,
   exportDocumentToPdf,
+  printDocumentViaDialog,
   sanitizePdfFilename,
   stripHtmlToText
 } from '../../utils/pdfExportHelper';
@@ -36,7 +37,9 @@ export const PDFExportModal: React.FC<PDFExportModalProps> = ({
   articleData
 }) => {
   const [exporting, setExporting] = useState<boolean>(false);
+  const [printing, setPrinting] = useState<boolean>(false);
   const [copied, setCopied] = useState<boolean>(false);
+  const [downloadSuccess, setDownloadSuccess] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   if (!isOpen) return null;
@@ -57,17 +60,36 @@ export const PDFExportModal: React.FC<PDFExportModalProps> = ({
 
   const handleExportPdf = async () => {
     setErrorMsg(null);
+    setDownloadSuccess(false);
     setExporting(true);
 
     try {
       const html = getHtmlContent();
       await exportDocumentToPdf(html, filename);
+      setDownloadSuccess(true);
+      setTimeout(() => setDownloadSuccess(false), 5000);
     } catch (err: unknown) {
       console.error('PDF Export Error:', err);
-      const msg = err instanceof Error ? err.message : 'Terjadi kendala saat menyiapkan dokumen PDF.';
+      const msg = err instanceof Error ? err.message : 'Terjadi kendala saat menyusun dan mengunduh file PDF.';
       setErrorMsg(msg);
     } finally {
       setExporting(false);
+    }
+  };
+
+  const handlePrint = async () => {
+    setErrorMsg(null);
+    setPrinting(true);
+
+    try {
+      const html = getHtmlContent();
+      await printDocumentViaDialog(html, filename);
+    } catch (err: unknown) {
+      console.error('Print Error:', err);
+      const msg = err instanceof Error ? err.message : 'Terjadi kendala saat membuka dialog cetak.';
+      setErrorMsg(msg);
+    } finally {
+      setPrinting(false);
     }
   };
 
@@ -171,6 +193,16 @@ export const PDFExportModal: React.FC<PDFExportModalProps> = ({
             </div>
           </div>
 
+          {/* Success Banner */}
+          {downloadSuccess && (
+            <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-100 text-xs flex items-center gap-2.5 animate-fade-in">
+              <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+              <div>
+                <strong>Berhasil Mengunduh!</strong> Dokumen PDF telah tersimpan di folder Unduhan (Downloads) perangkat Anda.
+              </div>
+            </div>
+          )}
+
           {/* Error Banner if any */}
           {errorMsg && (
             <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-900 text-rose-800 dark:text-rose-200 text-xs flex items-start gap-2.5">
@@ -182,10 +214,10 @@ export const PDFExportModal: React.FC<PDFExportModalProps> = ({
           {/* User Guide Box */}
           <div className="p-3.5 rounded-xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 text-[11px] text-amber-900 dark:text-amber-200 leading-relaxed space-y-1">
             <strong className="block font-bold text-amber-950 dark:text-amber-100">
-              💡 Petunjuk Penyimpanan PDF:
+              💡 Petunjuk Pengunduhan & Pencetakan:
             </strong>
             <p>
-              Ketika dialog cetak perangkat terbuka, pilih tujuan <span className="font-bold underline">"Save as PDF"</span> (Simpan sebagai PDF). Dokumen disusun secara otomatis dalam tata letak naskah ilmiah A4 standar dengan font Amiri berharakat dan teks yang dapat dipilih/disalin.
+              Klik <span className="font-bold text-[#073B2E] dark:text-[#F4B942]">"Unduh File PDF"</span> untuk langsung mengunduh file dokumen asli (.pdf) ke perangkat Anda. Jika Anda ingin mencetak langsung menggunakan mesin printer fisik, gunakan tombol <span className="font-bold">"Cetak"</span>.
             </p>
           </div>
 
@@ -198,10 +230,21 @@ export const PDFExportModal: React.FC<PDFExportModalProps> = ({
             <button
               type="button"
               onClick={handleCopyText}
-              className="flex-1 sm:flex-initial px-3.5 py-2.5 rounded-xl border border-[#073B2E]/20 dark:border-[#C9A34E]/30 text-[#073B2E] dark:text-[#F7F6EF] text-xs font-semibold hover:bg-white dark:hover:bg-stone-800 transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+              className="flex-1 sm:flex-initial px-3 py-2.5 rounded-xl border border-[#073B2E]/20 dark:border-[#C9A34E]/30 text-[#073B2E] dark:text-[#F7F6EF] text-xs font-semibold hover:bg-white dark:hover:bg-stone-800 transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
             >
               {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-[#C9A34E]" />}
               <span>{copied ? 'Tersalin!' : 'Salin Teks'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handlePrint}
+              disabled={printing || exporting}
+              className="px-3 py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 text-xs font-semibold hover:bg-stone-100 dark:hover:bg-stone-800 transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+              title="Buka dialog pencetakan printer perangkat"
+            >
+              <Printer className="w-3.5 h-3.5 text-stone-500" />
+              <span>{printing ? 'Membuka...' : 'Cetak'}</span>
             </button>
 
             <button
@@ -211,7 +254,7 @@ export const PDFExportModal: React.FC<PDFExportModalProps> = ({
               title="Pratinjau naskah dokumen pada tab baru"
             >
               <ExternalLink className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Pratinjau Tab Baru</span>
+              <span className="hidden sm:inline">Pratinjau</span>
             </button>
           </div>
 
@@ -221,7 +264,7 @@ export const PDFExportModal: React.FC<PDFExportModalProps> = ({
               onClick={onClose}
               className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 text-stone-700 dark:text-stone-300 text-xs font-semibold hover:bg-stone-100 dark:hover:bg-stone-800 transition cursor-pointer"
             >
-              Batal
+              Tutup
             </button>
 
             <button
@@ -233,12 +276,12 @@ export const PDFExportModal: React.FC<PDFExportModalProps> = ({
               {exporting ? (
                 <>
                   <div className="w-3.5 h-3.5 border-2 border-[#F4B942] border-t-transparent rounded-full animate-spin" />
-                  <span>Menyiapkan PDF...</span>
+                  <span>Mengunduh PDF...</span>
                 </>
               ) : (
                 <>
                   <Download className="w-3.5 h-3.5 text-[#F4B942]" />
-                  <span>Unduh / Cetak PDF (A4)</span>
+                  <span>Unduh File PDF (.pdf)</span>
                 </>
               )}
             </button>

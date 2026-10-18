@@ -82,7 +82,7 @@ export const SmoothScrollProvider: React.FC<ProviderProps> = ({ children, curren
 
     const timer = setTimeout(() => {
       ScrollTrigger.refresh();
-      AOS.refresh();
+      AOS.refreshHard();
     }, 100);
 
     return () => clearTimeout(timer);

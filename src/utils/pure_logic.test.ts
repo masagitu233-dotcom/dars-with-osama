@@ -259,5 +259,46 @@ test('Case 9: buildArticlePdfHtml memuat struktur artikel ilmiah A4 lengkap', as
   assert.throws(() => buildArticlePdfHtml(draftArticle), /Hanya artikel yang telah dipublikasikan/);
 });
 
+// Case 10: Official Vector Logo SVG & Brand Colors in Letterhead
+test('Case 10: getPdfOfficialLogoSvg menghasilkan SVG logo resmi dengan palet warna #073B2E dan #C9A34E', async () => {
+  const { getPdfOfficialLogoSvg } = await import('./pdfExportHelper.js');
+  const svg = getPdfOfficialLogoSvg(44, 44);
+  assert.ok(svg.includes('<svg'));
+  assert.ok(svg.includes('width="44"'));
+  assert.ok(svg.includes('height="44"'));
+  assert.ok(svg.includes('#073B2E')); // Emerald brand color
+  assert.ok(svg.includes('#C9A34E')); // Gold brand accent
+  assert.ok(svg.includes('viewBox="0 0 200 200"'));
+});
+
+// Case 11: Format Halaman X dari Y dan URL resmi di kolofon dokumen
+test('Case 11: Dokumen PDF artikel memuat URL resmi darswithosama.com dan gaya halaman A4 konsisten', async () => {
+  const { buildArticlePdfHtml, PDF_ACADEMIC_STYLES } = await import('./pdfExportHelper.js');
+  assert.ok(PDF_ACADEMIC_STYLES.includes('size: A4 portrait'));
+  assert.ok(PDF_ACADEMIC_STYLES.includes('.a4-page'));
+  assert.ok(PDF_ACADEMIC_STYLES.includes('.font-amiri'));
+
+  const sampleArticle: import('../types/index.js').BlogPost = {
+    id: 'test-art-1',
+    slug: 'keutamaan-ilmu',
+    title: 'Keutamaan Menuntut Ilmu Syar\'i',
+    excerpt: 'Penjelasan pentingnya menuntut ilmu.',
+    content: '<p>Menuntut ilmu adalah kewajiban bagi setiap muslim.</p>',
+    coverImageUrl: 'https://images.unsplash.com/photo-1532012197267-da84d127e765',
+    category: 'Tazkiyah',
+    authorName: 'Osama Nur Samsil',
+    status: 'published' as const,
+    readingTimeMinutes: 3,
+    tags: ['ilmu', 'adab'],
+    createdAt: '2026-10-15T00:00:00Z',
+    updatedAt: '2026-10-15T00:00:00Z'
+  };
+
+  const html = buildArticlePdfHtml(sampleArticle);
+  assert.ok(html.includes('https://darswithosama.com'));
+  assert.ok(html.includes('DARS WITH OSAMA'));
+  assert.ok(html.includes('ILMU • KAJIAN • KITAB'));
+});
+
 
 

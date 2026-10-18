@@ -1,5 +1,5 @@
 import { Consultation, BlogPost } from '../types';
-import { isPureArabicText } from './arabicFontHelper';
+import { isPureArabicText, autoWrapArabicText } from './arabicFontHelper';
 
 /**
  * Sanitizes a string to produce a clean, safe filename for PDF downloads.
@@ -84,7 +84,7 @@ export const PDF_ACADEMIC_STYLES = `
     font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     color: #1E293B;
     background-color: #FFFFFF;
-    font-size: 10.5pt;
+    font-size: 10pt;
     line-height: 1.65;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
@@ -100,21 +100,21 @@ export const PDF_ACADEMIC_STYLES = `
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding-bottom: 14px;
+    padding-bottom: 12px;
     border-bottom: 2px solid #073B2E;
-    margin-bottom: 18px;
+    margin-bottom: 16px;
     position: relative;
   }
 
   .pdf-header-brand {
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: 12px;
   }
 
   .pdf-header-titles h1 {
     font-family: 'Playfair Display', Georgia, serif;
-    font-size: 16pt;
+    font-size: 15pt;
     font-weight: 800;
     color: #073B2E;
     margin: 0;
@@ -123,7 +123,7 @@ export const PDF_ACADEMIC_STYLES = `
   }
 
   .pdf-header-titles p {
-    font-size: 8pt;
+    font-size: 7.5pt;
     font-weight: 700;
     color: #C9A34E;
     margin: 2px 0 0 0;
@@ -139,7 +139,7 @@ export const PDF_ACADEMIC_STYLES = `
   .pdf-header-meta strong {
     color: #073B2E;
     display: block;
-    font-size: 8.5pt;
+    font-size: 8pt;
   }
 
   /* Metadata Info Grid */
@@ -148,17 +148,17 @@ export const PDF_ACADEMIC_STYLES = `
     border: 1px solid #E2E8F0;
     border-left: 4px solid #C9A34E;
     border-radius: 6px;
-    padding: 10px 14px;
-    margin-bottom: 20px;
+    padding: 8px 14px;
+    margin-bottom: 16px;
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 8px 16px;
-    font-size: 8.5pt;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 8px 14px;
+    font-size: 8pt;
   }
 
   .pdf-meta-item label {
     display: block;
-    font-size: 7.5pt;
+    font-size: 7pt;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -178,21 +178,16 @@ export const PDF_ACADEMIC_STYLES = `
     border-left: 4px solid #0EA5A4;
     border-radius: 6px;
     padding: 12px 16px;
-    margin-bottom: 20px;
-    page-break-inside: avoid;
-    break-inside: avoid;
+    margin-bottom: 16px;
   }
 
   .pdf-section-title {
-    font-size: 8.5pt;
+    font-size: 8pt;
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 1px;
     color: #073B2E;
-    margin: 0 0 8px 0;
-    display: flex;
-    align-items: center;
-    gap: 6px;
+    margin: 0 0 6px 0;
   }
 
   .pdf-question-title {
@@ -222,70 +217,82 @@ export const PDF_ACADEMIC_STYLES = `
     border: 1px solid #A7F3D0;
     color: #065F46;
     display: inline-block;
-    padding: 4px 10px;
+    padding: 3px 10px;
     border-radius: 4px;
-    font-size: 8pt;
+    font-size: 7.5pt;
     font-weight: 700;
-    margin-bottom: 14px;
+    margin-bottom: 12px;
   }
 
-  /* Rich Text & Typography */
-  h1, h2, h3, h4, .pdf-orphan-prevent {
-    page-break-after: avoid;
-    break-after: avoid;
+  /* Headings & Typography */
+  h1, h2, h3, h4 {
     color: #073B2E;
+    font-family: 'Playfair Display', Georgia, serif;
+  }
+
+  h1 {
+    font-size: 16pt;
+    font-weight: 800;
+    line-height: 1.25;
+    margin: 0 0 10px 0;
   }
 
   h2 {
-    font-size: 13pt;
-    margin-top: 18px;
-    margin-bottom: 8px;
-    font-weight: 700;
-  }
-
-  h3 {
-    font-size: 11.5pt;
+    font-size: 12.5pt;
     margin-top: 14px;
     margin-bottom: 6px;
     font-weight: 700;
+    line-height: 1.3;
+  }
+
+  h3 {
+    font-size: 11pt;
+    margin-top: 12px;
+    margin-bottom: 5px;
+    font-weight: 700;
+    line-height: 1.35;
   }
 
   p {
-    margin: 0 0 12px 0;
+    margin: 0 0 10px 0;
     text-align: justify;
     text-justify: inter-word;
-    orphans: 3;
-    widows: 3;
+    font-size: 10pt;
+    line-height: 1.65;
+    color: #1E293B;
   }
 
   ul, ol {
-    margin: 0 0 12px 0;
-    padding-left: 22px;
+    margin: 0 0 10px 0;
+    padding-left: 20px;
+    font-size: 10pt;
   }
 
   li {
-    margin-bottom: 6px;
+    margin-bottom: 5px;
     line-height: 1.6;
   }
 
-  /* Arabic Dalil Mushaf Box */
+  /* Arabic Typography */
+  .font-amiri, [dir="rtl"], [lang="ar"], .pdf-arabic-text {
+    font-family: 'Amiri', 'Traditional Arabic', serif !important;
+  }
+
   .pdf-arabic-box {
     background-color: #FDFBF7;
     border: 1px solid #E9DDC2;
     border-right: 4px solid #C9A34E;
     border-radius: 6px;
-    padding: 14px 18px;
-    margin: 16px 0;
-    page-break-inside: avoid;
-    break-inside: avoid;
+    padding: 12px 16px;
+    margin: 12px 0;
     text-align: right;
     direction: rtl;
   }
 
   .pdf-arabic-text {
     font-family: 'Amiri', 'Traditional Arabic', serif;
-    font-size: 15.5pt;
-    line-height: 2.3;
+    font-size: 15pt;
+    line-height: 2.2;
     color: #073B2E;
     font-weight: 700;
     margin: 0;
@@ -293,60 +300,47 @@ export const PDF_ACADEMIC_STYLES = `
 
   .pdf-arabic-translation {
     font-family: 'Plus Jakarta Sans', sans-serif;
-    font-size: 9.5pt;
+    font-size: 9pt;
     font-style: italic;
     color: #475569;
     direction: ltr;
     text-align: left;
-    margin-top: 8px;
-    padding-top: 8px;
+    margin-top: 6px;
+    padding-top: 6px;
     border-top: 1px dashed #E2E8F0;
+  }
+
+  .inline-arabic {
+    font-family: 'Amiri', 'Traditional Arabic', serif;
+    font-size: 1.15em;
+    line-height: 1.8;
+    direction: rtl;
+    unicode-bidi: isolate;
   }
 
   /* Blockquote */
   blockquote {
-    border-left: 3px solid #C9A34E;
-    margin: 14px 0;
-    padding: 8px 16px;
+    border-left: 3.5px solid #C9A34E;
+    margin: 10px 0;
+    padding: 8px 14px;
     background-color: #FDFBF7;
     font-style: italic;
     color: #334155;
-    page-break-inside: avoid;
-    break-inside: avoid;
+    border-radius: 0 6px 6px 0;
   }
 
-  /* Reference Box */
-  .pdf-reference-box {
-    background-color: #F8FAFC;
-    border: 1px solid #E2E8F0;
-    border-radius: 6px;
-    padding: 10px 14px;
-    margin-top: 20px;
-    font-size: 8.5pt;
-    color: #475569;
-    page-break-inside: avoid;
-    break-inside: avoid;
-  }
-
-  .pdf-reference-box strong {
-    color: #073B2E;
-    display: block;
-    margin-bottom: 4px;
-  }
-
-  /* Table styling */
+  /* Tables */
   table {
     width: 100%;
     border-collapse: collapse;
-    margin: 14px 0;
-    font-size: 9pt;
-    page-break-inside: avoid;
-    break-inside: avoid;
+    margin: 12px 0;
+    font-size: 8.5pt;
+    line-height: 1.5;
   }
 
   table th, table td {
     border: 1px solid #CBD5E1;
-    padding: 8px 10px;
+    padding: 6px 8px;
     text-align: left;
   }
 
@@ -356,41 +350,40 @@ export const PDF_ACADEMIC_STYLES = `
     font-weight: 700;
   }
 
-  /* Article Cover Image */
+  /* Figures & Images */
   .pdf-cover-figure {
-    margin: 16px 0 20px 0;
+    margin: 10px 0 14px 0;
     text-align: center;
-    page-break-inside: avoid;
-    break-inside: avoid;
   }
 
   .pdf-cover-image {
     max-width: 100%;
-    max-height: 280px;
+    max-height: 220px;
     object-fit: cover;
     border-radius: 6px;
     border: 1px solid #E2E8F0;
+    display: block;
+    margin: 0 auto;
   }
 
   .pdf-cover-caption {
-    font-size: 8pt;
+    font-size: 7.5pt;
     color: #64748B;
     font-style: italic;
-    margin-top: 6px;
+    margin-top: 4px;
+    text-align: center;
   }
 
-  /* Kolofon / Footer Callout */
+  /* Kolofon */
   .pdf-kolofon {
-    margin-top: 26px;
-    padding-top: 14px;
+    margin-top: 18px;
+    padding-top: 10px;
     border-top: 1px solid #E2E8F0;
-    font-size: 8pt;
+    font-size: 7.5pt;
     color: #64748B;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    page-break-inside: avoid;
-    break-inside: avoid;
   }
 
   .pdf-kolofon-brand {
@@ -402,6 +395,40 @@ export const PDF_ACADEMIC_STYLES = `
     color: #0EA5A4;
     text-decoration: none;
     font-weight: 600;
+  }
+
+  /* Multi-page styling for A4 Paginated Export */
+  .a4-page {
+    width: 794px;
+    height: 1123px;
+    box-sizing: border-box;
+    padding: 24px 44px 20px 44px;
+    background: #FFFFFF;
+    color: #1E293B;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    overflow: hidden;
+    position: relative;
+    page-break-after: always;
+    break-after: page;
+  }
+
+  .a4-header {
+    flex-shrink: 0;
+    margin-bottom: 12px;
+  }
+
+  .a4-content {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .a4-footer {
+    flex-shrink: 0;
+    margin-top: 12px;
   }
 `;
 
@@ -423,12 +450,7 @@ export function buildQAPdfHtml(qa: Consultation): string {
   const cleanTitle = qa.title || 'Tanya Jawab Syar\'i';
 
   // Format reply content to detect Arabic verses and enhance styling
-  let replyContentHtml = qa.replyContent || '<p>Jawaban lengkap tersedia di platform Dars with Osama.</p>';
-  
-  // Format pure Arabic verses with Amiri class if detected
-  if (isPureArabicText(cleanQuestion)) {
-    // Already handled in layout
-  }
+  let replyContentHtml = autoWrapArabicText(qa.replyContent || '<p>Jawaban lengkap tersedia di platform Dars with Osama.</p>');
 
   return `<!DOCTYPE html>
 <html lang="id">
@@ -534,6 +556,9 @@ export function buildArticlePdfHtml(article: BlogPost): string {
   const category = article.category || 'Kajian Islam & Fiqih';
   const readingTime = article.readingTimeMinutes ? `${article.readingTimeMinutes} Menit Baca` : 'Kajian Lengkap';
 
+  // Apply autoWrapArabicText to preserve bidirectional Arabic shaping and prevent character order reversals
+  const processedContent = autoWrapArabicText(article.content || '');
+
   return `<!DOCTYPE html>
 <html lang="id">
 <head>
@@ -611,7 +636,7 @@ export function buildArticlePdfHtml(article: BlogPost): string {
 
       <!-- Main Body Content -->
       <div class="pdf-article-body">
-        ${article.content}
+        ${processedContent}
       </div>
 
       ${article.contentAr ? `
@@ -645,77 +670,478 @@ export function buildArticlePdfHtml(article: BlogPost): string {
 }
 
 /**
- * Triggers the browser's native vector PDF print/save engine via an isolated iframe.
+ * Builds Page 1 Header HTML markup (Official Letterhead)
+ */
+function buildPage1HeaderMarkup(category: string, publishedDate: string): string {
+  return `
+    <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 10px; border-bottom: 2px solid #073B2E;">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        ${getPdfOfficialLogoSvg(38, 38)}
+        <div>
+          <div style="font-family: 'Playfair Display', Georgia, serif; font-size: 14pt; font-weight: 800; color: #073B2E; line-height: 1.1; letter-spacing: 0.5px;">DARS WITH OSAMA</div>
+          <div style="font-size: 7.5pt; font-weight: 700; color: #C9A34E; letter-spacing: 2px; margin-top: 1px;">ILMU • KAJIAN • KITAB</div>
+        </div>
+      </div>
+      <div style="text-align: right;">
+        <div style="font-size: 7.5pt; font-weight: 800; color: #073B2E; text-transform: uppercase; letter-spacing: 0.5px;">NASKAH RESMI ARSIP</div>
+        <div style="font-size: 7pt; color: #64748B; margin-top: 1px;">${category} ${publishedDate ? '• ' + publishedDate : ''}</div>
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * Builds Running Header HTML markup for Page 2 and subsequent pages
+ */
+function buildRunningHeaderMarkup(title: string, category: string): string {
+  return `
+    <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 8px; border-bottom: 1.5px solid #073B2E;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        ${getPdfOfficialLogoSvg(22, 22)}
+        <span style="font-family: 'Playfair Display', Georgia, serif; font-size: 9pt; font-weight: 800; color: #073B2E; letter-spacing: 0.5px;">DARS WITH OSAMA</span>
+        <span style="color: #CBD5E1; font-size: 8pt;">•</span>
+        <span style="font-size: 8pt; color: #475569; font-weight: 600; max-width: 420px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${title}</span>
+      </div>
+      <div style="font-size: 7pt; font-weight: 700; color: #C9A34E; text-transform: uppercase; letter-spacing: 0.5px; background: #FDFBF7; padding: 2px 7px; border-radius: 4px; border: 1px solid #E9DDC2;">
+        ${category}
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * Builds Running Footer HTML markup on every page
+ */
+function buildFooterMarkup(pageNumPlaceholder: number | string = 'X', totalPagesPlaceholder: number | string = 'Y'): string {
+  return `
+    <div style="display: flex; align-items: center; justify-content: space-between; padding-top: 8px; border-top: 1.5px solid #E2E8F0; font-size: 7.5pt; color: #64748B;">
+      <div style="display: flex; align-items: center; gap: 6px;">
+        <strong style="color: #073B2E; font-weight: 700;">Dars with Osama</strong>
+        <span style="color: #CBD5E1;">—</span>
+        <span style="color: #0EA5A4; font-weight: 600;">https://darswithosama.com</span>
+        <span style="color: #CBD5E1;">•</span>
+        <span>Platform Kajian Islam & Matan Kitab Turats</span>
+      </div>
+      <div style="font-weight: 700; color: #073B2E; font-size: 8pt;">
+        Halaman <span class="page-num-placeholder">${pageNumPlaceholder}</span> dari <span class="total-pages-placeholder">${totalPagesPlaceholder}</span>
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * Generates an authentic, professionally paginated binary PDF file (.pdf) directly in the browser and triggers an automated download.
  * Ensures:
- * 1. 100% selectable and copyable vector text.
- * 2. True A4 paging with CSS page-break rules and orphan prevention.
- * 3. Correct Arabic RTL text shaping with embedded Amiri font.
- * 4. Sets document title so the browser defaults the filename to e.g. tanya-jawab-topik.pdf
+ * 1. Fixed A4 Portrait dimensions on every single page (210 x 297 mm).
+ * 2. Dedicated running header on every page with official logo, titles, and emerald divider.
+ * 3. Dedicated running footer on every page with "https://darswithosama.com" and "Halaman X dari Y".
+ * 4. Content is strictly bounded so text never touches or collides with headers or footers.
+ * 5. Automatic page flow with orphan heading prevention and clean paragraph distribution.
+ * 6. High-fidelity Arabic typography with Amiri font, harakat, and RTL bidirectional shaping.
+ * 7. Multi-page high-resolution vector-like sharpness via 2x DPI canvas rendering.
  */
 export async function exportDocumentToPdf(htmlContent: string, filename: string): Promise<void> {
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    throw new Error('Ekspor PDF hanya dapat dilakukan di lingkungan peramban (browser).');
+  }
+
+  const { jsPDF } = await import('jspdf');
+  const html2canvasModule = await import('html2canvas');
+  const html2canvas = html2canvasModule.default || html2canvasModule;
+
+  // Ensure clean .pdf file extension
+  const cleanFilename = filename.toLowerCase().endsWith('.pdf') ? filename : `${filename}.pdf`;
+
+  // Create isolated render iframe to isolate from parent document's Tailwind v4 oklch styles
+  const iframe = document.createElement('iframe');
+  iframe.className = 'dars-pdf-render-frame';
+  iframe.style.position = 'fixed';
+  iframe.style.left = '0';
+  iframe.style.top = '0';
+  iframe.style.width = '794px'; // Exact 210mm A4 width at 96 DPI
+  iframe.style.height = '1123px'; // A4 height at 96 DPI
+  iframe.style.border = 'none';
+  iframe.style.backgroundColor = '#FFFFFF';
+  iframe.style.opacity = '0.01';
+  iframe.style.pointerEvents = 'none';
+  iframe.style.zIndex = '-9999';
+
+  document.body.appendChild(iframe);
+
+  try {
+    const iframeWin = iframe.contentWindow;
+    const iframeDoc = iframeWin?.document;
+    if (!iframeDoc || !iframeWin) {
+      throw new Error('Gagal menyiapkan jendela isolasi dokumen PDF.');
+    }
+
+    iframeDoc.open();
+    iframeDoc.write(htmlContent);
+    iframeDoc.close();
+
+    // 1. Wait for web fonts (Amiri, Playfair, Plus Jakarta Sans) inside iframe
+    if (iframeDoc.fonts && iframeDoc.fonts.ready) {
+      try {
+        await Promise.race([
+          iframeDoc.fonts.ready,
+          new Promise(r => setTimeout(r, 1500))
+        ]);
+      } catch {
+        // Continue if font wait times out
+      }
+    }
+
+    // 2. Pre-process and wait for all images inside iframe
+    const rawImages = Array.from(iframeDoc.querySelectorAll('img'));
+    if (rawImages.length > 0) {
+      await Promise.all(
+        rawImages.map(img => {
+          if (img.complete && img.naturalHeight !== 0) return Promise.resolve();
+          return new Promise<void>((resolve) => {
+            img.crossOrigin = 'anonymous';
+            img.onload = () => resolve();
+            img.onerror = () => {
+              img.style.display = 'none';
+              resolve();
+            };
+            setTimeout(resolve, 2000);
+          });
+        })
+      );
+    }
+
+    // Small delay for DOM layout shaper to complete Arabic font glyph shaping
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    // 3. Extract metadata and content blocks
+    const docTitle = iframeDoc.querySelector('article h1, .pdf-question-title, h1')?.textContent?.trim() || 'Dokumen Ilmiah';
+    const docTitleArEl = iframeDoc.querySelector('article [style*="Amiri"], .pdf-arabic-box .pdf-arabic-text');
+    const docTitleAr = docTitleArEl?.textContent?.trim() || '';
+    const category = iframeDoc.querySelector('.pdf-meta-item:nth-child(1) span, .pdf-meta-box span')?.textContent?.trim() || 'Kajian Islam';
+    const authorName = iframeDoc.querySelector('.pdf-meta-item:nth-child(2) span')?.textContent?.trim() || 'Ustaz Osama Nur Samsil';
+    const authorRole = iframeDoc.querySelector('.pdf-meta-item:nth-child(3) span')?.textContent?.trim() || 'Pengasuh Dars with Osama';
+    const readingTime = iframeDoc.querySelector('.pdf-meta-item:nth-child(4) span')?.textContent?.trim() || '';
+    const publishedDate = iframeDoc.querySelector('.pdf-header-meta span')?.textContent?.replace(/Publikasi:\s*/i, '')?.trim() || '';
+    const excerptEl = iframeDoc.querySelector('article > div[style*="italic"]');
+    const coverFigureEl = iframeDoc.querySelector('.pdf-cover-figure');
+
+    // Collect blocks to layout
+    const blocksToFlow: HTMLElement[] = [];
+    const articleBody = iframeDoc.querySelector('.pdf-article-body');
+    const answerBody = iframeDoc.querySelector('.pdf-answer-body');
+
+    if (articleBody) {
+      Array.from(articleBody.children).forEach(ch => blocksToFlow.push(ch as HTMLElement));
+      const extraArabicBoxes = Array.from(iframeDoc.querySelectorAll('article > .pdf-arabic-box'));
+      extraArabicBoxes.forEach(box => blocksToFlow.push(box as HTMLElement));
+      const tagsEl = iframeDoc.querySelector('article > div[style*="Kata Kunci"]');
+      if (tagsEl) blocksToFlow.push(tagsEl as HTMLElement);
+      const kolofonEl = iframeDoc.querySelector('footer.pdf-kolofon');
+      if (kolofonEl) blocksToFlow.push(kolofonEl as HTMLElement);
+    } else if (answerBody) {
+      Array.from(answerBody.children).forEach(ch => blocksToFlow.push(ch as HTMLElement));
+      const kolofonEl = iframeDoc.querySelector('footer.pdf-kolofon');
+      if (kolofonEl) blocksToFlow.push(kolofonEl as HTMLElement);
+    } else {
+      // Generic fallback
+      const container = iframeDoc.querySelector('.pdf-container') || iframeDoc.body;
+      Array.from(container.children).forEach(ch => {
+        if (!ch.matches('.pdf-header, .pdf-kolofon')) {
+          blocksToFlow.push(ch as HTMLElement);
+        }
+      });
+    }
+
+    // 4. Build Paginated Multi-Page Structure
+    // Hide original container and create .pdf-pages-mount
+    const originalContainer = iframeDoc.querySelector('.pdf-container');
+    if (originalContainer) {
+      (originalContainer as HTMLElement).style.display = 'none';
+    }
+
+    const targetDoc = iframeDoc;
+    if (!targetDoc) {
+      throw new Error('Gagal mengakses dokumen iframe untuk pengolah PDF.');
+    }
+
+    const pagesMount = targetDoc.createElement('div');
+    pagesMount.className = 'pdf-pages-mount';
+    targetDoc.body.appendChild(pagesMount);
+
+    interface PageEntry {
+      page: HTMLElement;
+      content: HTMLElement;
+      footer: HTMLElement;
+      pageIndex: number;
+    }
+
+    const pages: PageEntry[] = [];
+
+    function createPage(index: number): PageEntry {
+      const page = targetDoc.createElement('div');
+      page.className = 'a4-page';
+
+      // Header
+      const header = targetDoc.createElement('div');
+      header.className = 'a4-header';
+      if (index === 0) {
+        header.innerHTML = buildPage1HeaderMarkup(category, publishedDate);
+      } else {
+        header.innerHTML = buildRunningHeaderMarkup(docTitle, category);
+      }
+      page.appendChild(header);
+
+      // Content Box
+      const content = targetDoc.createElement('div');
+      content.className = 'a4-content';
+      page.appendChild(content);
+
+      // Footer
+      const footer = targetDoc.createElement('div');
+      footer.className = 'a4-footer';
+      footer.innerHTML = buildFooterMarkup(index + 1);
+      page.appendChild(footer);
+
+      pagesMount.appendChild(page);
+      const entry: PageEntry = { page, content, footer, pageIndex: index };
+      pages.push(entry);
+      return entry;
+    }
+
+    // Initialize Page 1
+    let currentPage = createPage(0);
+
+    // If Article, construct Title & Metadata block on Page 1
+    if (articleBody) {
+      const titleBlock = iframeDoc.createElement('div');
+      titleBlock.className = 'pdf-title-block';
+      titleBlock.style.marginBottom = '14px';
+
+      let titleHtml = `<h1 style="font-family: 'Playfair Display', Georgia, serif; font-size: 16pt; font-weight: 800; color: #073B2E; line-height: 1.25; margin: 0 0 8px 0;">${docTitle}</h1>`;
+      if (docTitleAr) {
+        titleHtml += `<div style="font-family: 'Amiri', serif; font-size: 16pt; font-weight: 700; color: #C9A34E; direction: rtl; text-align: right; margin-bottom: 10px; line-height: 2;">${docTitleAr}</div>`;
+      }
+      titleHtml += `
+        <div class="pdf-meta-box">
+          <div class="pdf-meta-item"><label>Kategori</label><span>${category}</span></div>
+          <div class="pdf-meta-item"><label>Penulis</label><span>${authorName}</span></div>
+          <div class="pdf-meta-item"><label>Peran Penulis</label><span>${authorRole}</span></div>
+          <div class="pdf-meta-item"><label>Estimasi Baca</label><span>${readingTime || 'Lengkap'}</span></div>
+        </div>
+      `;
+      if (excerptEl) {
+        titleHtml += excerptEl.outerHTML;
+      }
+      if (coverFigureEl) {
+        titleHtml += coverFigureEl.outerHTML;
+      }
+
+      titleBlock.innerHTML = titleHtml;
+      currentPage.content.appendChild(titleBlock);
+    } else if (answerBody) {
+      // Q&A Title & Question Block
+      const questionCard = iframeDoc.querySelector('.pdf-question-card');
+      const answerBadge = iframeDoc.querySelector('.pdf-answer-badge');
+      const metaBox = iframeDoc.querySelector('.pdf-meta-box');
+
+      const qaTopBlock = iframeDoc.createElement('div');
+      qaTopBlock.style.marginBottom = '14px';
+
+      let qaHtml = '';
+      if (metaBox) qaHtml += metaBox.outerHTML;
+      if (questionCard) qaHtml += questionCard.outerHTML;
+      if (answerBadge) qaHtml += answerBadge.outerHTML;
+
+      qaTopBlock.innerHTML = qaHtml;
+      currentPage.content.appendChild(qaTopBlock);
+    }
+
+    // 5. Flow Content Elements across Pages
+    for (let i = 0; i < blocksToFlow.length; i++) {
+      const elem = blocksToFlow[i];
+      const clone = elem.cloneNode(true) as HTMLElement;
+
+      currentPage.content.appendChild(clone);
+
+      const maxHeight = currentPage.pageIndex === 0 ? 920 : 950;
+      const currentHeight = currentPage.content.scrollHeight;
+
+      if (currentHeight <= maxHeight) {
+        // Element fits comfortably. Check orphan heading rule:
+        const isHeading = ['H1', 'H2', 'H3', 'H4'].includes(elem.tagName);
+        if (isHeading && currentHeight > maxHeight - 65) {
+          // Heading is too close to bottom without room for content below it
+          currentPage.content.removeChild(clone);
+          currentPage = createPage(pages.length);
+          currentPage.content.appendChild(clone);
+        }
+        continue;
+      }
+
+      // Does not fit on this page!
+      currentPage.content.removeChild(clone);
+
+      // Paragraph splitting for long texts to avoid gaping blank areas
+      if (elem.tagName === 'P' && elem.textContent && elem.textContent.length > 200) {
+        const rawHtml = elem.innerHTML;
+        const sentences = rawHtml.split(/(?<=[.?!؟۔])\s+/);
+        if (sentences.length >= 2) {
+          const p1 = iframeDoc.createElement('p');
+          p1.className = elem.className;
+          currentPage.content.appendChild(p1);
+
+          let splitIndex = 0;
+          for (let s = 0; s < sentences.length; s++) {
+            p1.innerHTML = sentences.slice(0, s + 1).join(' ');
+            if (currentPage.content.scrollHeight > maxHeight) {
+              if (s > 0) {
+                p1.innerHTML = sentences.slice(0, s).join(' ');
+                splitIndex = s;
+              } else {
+                currentPage.content.removeChild(p1);
+                splitIndex = 0;
+              }
+              break;
+            }
+          }
+
+          if (splitIndex > 0) {
+            currentPage = createPage(pages.length);
+            const p2 = iframeDoc.createElement('p');
+            p2.className = elem.className;
+            p2.innerHTML = sentences.slice(splitIndex).join(' ');
+            currentPage.content.appendChild(p2);
+            continue;
+          }
+        }
+      }
+
+      // Atomic elements (headings, tables, blockquotes, arabic boxes, images, or unbroken paragraphs)
+      currentPage = createPage(pages.length);
+      currentPage.content.appendChild(clone);
+    }
+
+    // 6. Update Total Page Numbers across all Footers
+    const totalPages = Math.max(pages.length, 1);
+    for (let p = 0; p < totalPages; p++) {
+      const pageEl = pages[p].page;
+      const pageNumEl = pageEl.querySelector('.page-num-placeholder');
+      const totalPagesEl = pageEl.querySelector('.total-pages-placeholder');
+      if (pageNumEl) pageNumEl.textContent = String(p + 1);
+      if (totalPagesEl) totalPagesEl.textContent = String(totalPages);
+    }
+
+    // 7. Initialize jsPDF in A4 portrait format (210 x 297 mm)
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4',
+      compress: true
+    });
+
+    // 8. Render each page element to high-res canvas (2x DPI for crisp print quality)
+    for (let p = 0; p < pages.length; p++) {
+      const pageEl = pages[p].page;
+      const canvas = await html2canvas(pageEl, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#FFFFFF',
+        windowWidth: 794,
+        windowHeight: 1123,
+        scrollX: 0,
+        scrollY: 0,
+        logging: false,
+        window: iframeWin
+      } as any);
+
+      if (p > 0) {
+        pdf.addPage('a4', 'portrait');
+      }
+
+      pdf.addImage(
+        canvas.toDataURL('image/jpeg', 0.96),
+        'JPEG',
+        0,
+        0,
+        210,
+        297,
+        undefined,
+        'FAST'
+      );
+    }
+
+    // 9. Trigger native browser file download of the PDF
+    pdf.save(cleanFilename);
+
+  } catch (err) {
+    console.error('exportDocumentToPdf error:', err);
+    throw err instanceof Error ? err : new Error('Terjadi kegagalan saat menyusun naskah dokumen PDF.');
+  } finally {
+    if (document.body.contains(iframe)) {
+      document.body.removeChild(iframe);
+    }
+  }
+}
+
+/**
+ * Triggers the browser's native print engine for physical printing or system print preview.
+ */
+export async function printDocumentViaDialog(htmlContent: string, filename: string): Promise<void> {
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    throw new Error('Pencetakan hanya dapat dilakukan di lingkungan peramban.');
+  }
+
   return new Promise((resolve, reject) => {
     try {
-      // Create hidden iframe
       const iframe = document.createElement('iframe');
       iframe.style.position = 'fixed';
       iframe.style.right = '0';
       iframe.style.bottom = '0';
-      iframe.style.width = '0';
-      iframe.style.height = '0';
+      iframe.style.width = '1px';
+      iframe.style.height = '1px';
       iframe.style.border = 'none';
-      iframe.style.visibility = 'hidden';
+      iframe.style.opacity = '0.01';
 
       document.body.appendChild(iframe);
 
       const iframeDoc = iframe.contentWindow?.document;
       if (!iframeDoc) {
         document.body.removeChild(iframe);
-        throw new Error('Tidak dapat menginisialisasi lingkungan pencetakan dokumen PDF.');
+        throw new Error('Tidak dapat menginisialisasi dialog cetak.');
       }
 
       iframeDoc.open();
       iframeDoc.write(htmlContent);
       iframeDoc.close();
 
-      // Wait for fonts & images to load in the iframe
       const win = iframe.contentWindow;
       if (!win) {
         document.body.removeChild(iframe);
-        throw new Error('Window pencetakan tidak tersedia.');
+        throw new Error('Jendela pencetakan tidak tersedia.');
       }
 
-      // Set document title so the print dialog uses it as the default PDF filename
       iframeDoc.title = filename.replace(/\.pdf$/i, '');
 
       const triggerPrint = () => {
         try {
           win.focus();
           win.print();
-          // Cleanup after print dialog closes
           setTimeout(() => {
             if (document.body.contains(iframe)) {
               document.body.removeChild(iframe);
             }
             resolve();
           }, 1500);
-        } catch (printErr) {
+        } catch (err) {
           if (document.body.contains(iframe)) {
             document.body.removeChild(iframe);
           }
-          reject(printErr);
+          reject(err);
         }
       };
 
-      // Check if document.fonts API is available in iframe
-      if (iframeDoc.fonts && typeof iframeDoc.fonts.ready !== 'undefined') {
-        iframeDoc.fonts.ready.then(() => {
-          setTimeout(triggerPrint, 500);
-        }).catch(() => {
-          setTimeout(triggerPrint, 600);
-        });
-      } else {
-        setTimeout(triggerPrint, 700);
-      }
+      setTimeout(triggerPrint, 600);
     } catch (err) {
       reject(err);
     }

@@ -66,7 +66,7 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      import('aos').then(AOS => AOS.default.refresh());
+      import('aos').then(AOS => AOS.default.refreshHard());
     }, 50);
     return () => clearTimeout(timer);
   }, [filteredCourses]);

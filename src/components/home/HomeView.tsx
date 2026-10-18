@@ -26,6 +26,7 @@ import { CourseCard } from '../courses/CourseCard';
 import { useSmoothScroll } from '../../context/SmoothScrollContext';
 import { useAuth } from '../../context/AuthContext';
 import { getPublishedPublicQA } from '../../firebase/services';
+import AOS from 'aos';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -221,7 +222,12 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
   useEffect(() => {
     getPublishedPublicQA()
-      .then((list) => setPublishedQA(list))
+      .then((list) => {
+        setPublishedQA(list);
+        setTimeout(() => {
+          AOS.refreshHard();
+        }, 120);
+      })
       .catch((err) => console.warn('Home Q&A load notice:', err));
   }, []);
 
@@ -284,7 +290,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
       <section
         ref={articlesSectionRef}
         data-aos="fade-left"
-        className="max-w-6xl mx-auto px-4 sm:px-6"
+        data-aos-duration="700"
+        className="max-w-6xl mx-auto px-4 sm:px-6 pt-4 sm:pt-6"
       >
         <div className="bg-white/95 dark:bg-[#071B16]/95 backdrop-blur-md border border-[#073B2E]/10 dark:border-[#C9A34E]/20 rounded-2xl sm:rounded-3xl p-5 sm:p-7 shadow-lg space-y-5 transition-colors">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
@@ -317,6 +324,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 <div
                   key={article.id}
                   data-aos="fade-up"
+                  data-aos-duration="700"
                   data-aos-delay={idx * 100}
                   className="h-full"
                 >
@@ -351,6 +359,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
       <section
         ref={qaSectionRef}
         data-aos="fade-right"
+        data-aos-duration="700"
         className="max-w-6xl mx-auto px-4 sm:px-6"
       >
         <div className="bg-white/95 dark:bg-[#071B16]/95 backdrop-blur-md border border-[#073B2E]/10 dark:border-[#C9A34E]/20 rounded-2xl sm:rounded-3xl p-5 sm:p-7 shadow-lg space-y-5 transition-colors">
@@ -394,6 +403,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 <div
                   key={item.id}
                   data-aos="fade-up"
+                  data-aos-duration="700"
                   data-aos-delay={idx * 100}
                   className="h-full"
                 >
@@ -428,6 +438,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
       <section
         ref={coursesSectionRef}
         data-aos="fade-left"
+        data-aos-duration="700"
         className="max-w-6xl mx-auto px-4 sm:px-6"
       >
         <div className="bg-white/95 dark:bg-[#071B16]/95 backdrop-blur-md border border-[#073B2E]/10 dark:border-[#C9A34E]/20 rounded-2xl sm:rounded-3xl p-5 sm:p-7 shadow-lg space-y-5 transition-colors">
@@ -459,6 +470,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               <div
                 key={course.id}
                 data-aos="fade-up"
+                data-aos-duration="700"
                 data-aos-delay={idx * 100}
                 className="h-full"
               >
@@ -479,6 +491,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
       <section
         ref={closingRef}
         data-aos="fade-up"
+        data-aos-duration="1000"
         className="max-w-4xl mx-auto px-4 sm:px-6 text-center"
       >
         <div className="p-6 sm:p-8 bg-[#073B2E]/5 dark:bg-[#071B16] border border-[#073B2E]/15 dark:border-[#C9A34E]/25 rounded-2xl sm:rounded-3xl space-y-3 shadow-xs">
