@@ -36,18 +36,33 @@ const INITIAL_BLOG_POSTS = [
   }
 ];
 
-function generateArticleSeoHtml() {
+// Initial published Q&As for static SEO generation (QUESTION ONLY in description so readers must click to see answer)
+const INITIAL_PUBLIC_QAS = [
+  {
+    id: 'qa-1',
+    title: 'Bagaimana Hukum Shalat Berjamaah Bagi Masbuq?',
+    content: 'Apabila seseorang terlambat masuk shalat berjamaah dan mendapati imam pada rakaat kedua atau ketiga, bagaimana tata cara menyempurnakan rakaat shalat yang tertinggal?'
+  },
+  {
+    id: 'qa-2',
+    title: 'Syarat Sah Wudhu Menurut Madzhab Syafi\'i',
+    content: 'Mohon penjelasan rinci mengenai syarat-syarat sah wudhu serta hal-hal yang membatalkannya sesuai rujukan kitab matan Safinatun Naja.'
+  }
+];
+
+function generateArticleAndQaSeoHtml() {
   const distPath = path.resolve(__dirname, '../dist');
   const templatePath = path.join(distPath, 'index.html');
 
   if (!fs.existsSync(templatePath)) {
-    console.warn('generate-article-seo notice: dist/index.html not found, skipping static SEO build.');
+    console.warn('generate-seo notice: dist/index.html not found, skipping static SEO build.');
     return;
   }
 
   const baseHtml = fs.readFileSync(templatePath, 'utf-8');
   let generatedCount = 0;
 
+  // 1. Generate Article Static OpenGraph Pages
   for (const post of INITIAL_BLOG_POSTS) {
     if (post.status !== 'published') continue;
 
@@ -56,7 +71,6 @@ function generateArticleSeoHtml() {
     const imageUrl = post.coverImageUrl || 'https://images.unsplash.com/photo-1532012197267-da84d127e765?q=80&w=1200&auto=format&fit=crop';
     const canonicalUrl = `https://darswithosama.com/article/${encodeURIComponent(post.slug || post.id)}`;
 
-    // Build OpenGraph and Twitter meta tags string
     const seoMetaTags = `
       <title>${title}</title>
       <meta name="description" content="${description}" />
@@ -73,7 +87,6 @@ function generateArticleSeoHtml() {
       <link rel="canonical" href="${canonicalUrl}" />
     `;
 
-    // Ensure all asset href/src paths start with absolute / rather than relative ./
     let articleHtml = baseHtml.replace(/(href|src)="\.\//g, '$1="/');
     articleHtml = articleHtml.replace(/<title>.*?<\/title>/gi, '');
     articleHtml = articleHtml.replace(/<meta name="description".*?>/gi, '');
@@ -81,7 +94,6 @@ function generateArticleSeoHtml() {
     articleHtml = articleHtml.replace(/<meta name="twitter:.*?".*?>/gi, '');
     articleHtml = articleHtml.replace('</head>', `${seoMetaTags}\n</head>`);
 
-    // Write to /dist/article/[slug]/index.html
     if (post.slug) {
       const slugDir = path.join(distPath, 'article', post.slug);
       fs.mkdirSync(slugDir, { recursive: true });
@@ -89,14 +101,50 @@ function generateArticleSeoHtml() {
       generatedCount++;
     }
 
-    // Write to /dist/article/[id]/index.html
     const idDir = path.join(distPath, 'article', post.id);
     fs.mkdirSync(idDir, { recursive: true });
     fs.writeFileSync(path.join(idDir, 'index.html'), articleHtml, 'utf-8');
     generatedCount++;
   }
 
-  console.log(`Successfully generated static OpenGraph SEO HTML for ${generatedCount} article routes.`);
+  // 2. Generate Q&A Static OpenGraph Pages (Question ONLY in description)
+  let qaCount = 0;
+  for (const qa of INITIAL_PUBLIC_QAS) {
+    const title = `${qa.title} | Tanya Jawab Dars with Osama`;
+    const description = `Pertanyaan: "${qa.content}" • Klik tautan ini untuk membaca jawaban resmi dari Ustaz Osama Nur Samsil di Dars with Osama.`;
+    const imageUrl = 'https://images.unsplash.com/photo-1532012197267-da84d127e765?q=80&w=1200&auto=format&fit=crop';
+    const canonicalUrl = `https://darswithosama.com/qa/${encodeURIComponent(qa.id)}`;
+
+    const qaMetaTags = `
+      <title>${title}</title>
+      <meta name="description" content="${description}" />
+      <meta property="og:type" content="article" />
+      <meta property="og:site_name" content="Dars with Osama" />
+      <meta property="og:title" content="${qa.title}" />
+      <meta property="og:description" content="${description}" />
+      <meta property="og:image" content="${imageUrl}" />
+      <meta property="og:url" content="${canonicalUrl}" />
+      <meta name="twitter:card" content="summary_large_image" />
+      <meta name="twitter:title" content="${qa.title}" />
+      <meta name="twitter:description" content="${description}" />
+      <meta name="twitter:image" content="${imageUrl}" />
+      <link rel="canonical" href="${canonicalUrl}" />
+    `;
+
+    let qaHtml = baseHtml.replace(/(href|src)="\.\//g, '$1="/');
+    qaHtml = qaHtml.replace(/<title>.*?<\/title>/gi, '');
+    qaHtml = qaHtml.replace(/<meta name="description".*?>/gi, '');
+    qaHtml = qaHtml.replace(/<meta property="og:.*?".*?>/gi, '');
+    qaHtml = qaHtml.replace(/<meta name="twitter:.*?".*?>/gi, '');
+    qaHtml = qaHtml.replace('</head>', `${qaMetaTags}\n</head>`);
+
+    const qaDir = path.join(distPath, 'qa', qa.id);
+    fs.mkdirSync(qaDir, { recursive: true });
+    fs.writeFileSync(path.join(qaDir, 'index.html'), qaHtml, 'utf-8');
+    qaCount++;
+  }
+
+  console.log(`Successfully generated static OpenGraph SEO HTML for ${generatedCount} article routes and ${qaCount} Q&A routes.`);
 }
 
-generateArticleSeoHtml();
+generateArticleAndQaSeoHtml();

@@ -149,6 +149,10 @@ function MainApp() {
       if (targetPost && targetPost.status === 'published') {
         setSelectedBlogPost(targetPost);
         setCurrentView('blog-detail');
+      } else if (pathname.startsWith('/qa/')) {
+        const qaParam = decodeURIComponent(pathname.replace('/qa/', '')).replace(/\/$/, '');
+        setTargetQaId(qaParam);
+        setCurrentView('public-qa');
       } else if (urlQaId) {
         setTargetQaId(urlQaId);
         setCurrentView('public-qa');
