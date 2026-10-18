@@ -73,8 +73,9 @@ function generateArticleSeoHtml() {
       <link rel="canonical" href="${canonicalUrl}" />
     `;
 
-    // Replace default head title/meta tags in template
-    let articleHtml = baseHtml.replace(/<title>.*?<\/title>/gi, '');
+    // Ensure all asset href/src paths start with absolute / rather than relative ./
+    let articleHtml = baseHtml.replace(/(href|src)="\.\//g, '$1="/');
+    articleHtml = articleHtml.replace(/<title>.*?<\/title>/gi, '');
     articleHtml = articleHtml.replace(/<meta name="description".*?>/gi, '');
     articleHtml = articleHtml.replace(/<meta property="og:.*?".*?>/gi, '');
     articleHtml = articleHtml.replace(/<meta name="twitter:.*?".*?>/gi, '');
