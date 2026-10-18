@@ -21,6 +21,7 @@ import { getPublishedPublicQA } from '../../firebase/services';
 import { useAuth } from '../../context/AuthContext';
 import { autoWrapArabicText } from '../../utils/arabicFontHelper';
 import { ShareQAModal } from './ShareQAModal';
+import { PDFExportModal } from '../common/PDFExportModal';
 import { useQASEO } from '../../hooks/useQASEO';
 
 interface PublicQAViewProps {
@@ -50,7 +51,12 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
   // Sharing Modal State
   const [shareModalOpen, setShareModalOpen] = useState<boolean>(false);
   const [selectedQaForShare, setSelectedQaForShare] = useState<Consultation | null>(null);
+  const [shareInitialTab, setShareInitialTab] = useState<'share' | 'card'>('share');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // PDF Export Modal State
+  const [pdfModalOpen, setPdfModalOpen] = useState<boolean>(false);
+  const [selectedQaForPdf, setSelectedQaForPdf] = useState<Consultation | null>(null);
 
   // Dynamic OpenGraph / Twitter metadata for active expanded Q&A item
   const activeQAForSEO = qaList.find(q => q.id === expandedId) || null;
@@ -113,9 +119,15 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
     onNavigateToConsultation();
   };
 
-  const handleOpenShareModal = (item: Consultation) => {
+  const handleOpenShareModal = (item: Consultation, tab: 'share' | 'card') => {
     setSelectedQaForShare(item);
+    setShareInitialTab(tab);
     setShareModalOpen(true);
+  };
+
+  const handleOpenPdfModal = (item: Consultation) => {
+    setSelectedQaForPdf(item);
+    setPdfModalOpen(true);
   };
 
   const handleCopyDirectLink = async (item: Consultation) => {
@@ -295,9 +307,9 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
                   <div className="flex items-center gap-1.5 shrink-0">
                     {/* Quick Share Icon Button */}
                     <button
-                      onClick={() => handleOpenShareModal(item)}
+                      onClick={() => handleOpenShareModal(item, 'share')}
                       className="p-2 rounded-xl bg-[#073B2E]/5 dark:bg-[#0c2b23] hover:bg-[#073B2E]/15 dark:hover:bg-[#143e33] text-[#073B2E] dark:text-[#F4B942] transition cursor-pointer"
-                      title="Bagikan Pertanyaan"
+                      title="Bagikan Tautan & Gambar Dakwah"
                     >
                       <Share2 className="w-4 h-4" />
                     </button>
@@ -341,7 +353,7 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
                     <div className="pt-2 flex flex-wrap items-center justify-between gap-2 text-[11px]">
                       <div className="flex flex-wrap items-center gap-2">
                         <button
-                          onClick={() => handleOpenShareModal(item)}
+                          onClick={() => handleOpenShareModal(item, 'share')}
                           className="font-bold text-[#073B2E] dark:text-[#F4B942] hover:underline flex items-center gap-1 cursor-pointer"
                         >
                           <Share2 className="w-3 h-3" />
@@ -349,11 +361,28 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
                         </button>
                         <span>•</span>
                         <button
-                          onClick={() => handleCopyDirectLink(item)}
-                          className="font-bold text-stone-600 dark:text-stone-300 hover:underline flex items-center gap-1 cursor-pointer"
+                          onClick={() => handleOpenShareModal(item, 'card')}
+                          className="font-bold text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1 cursor-pointer"
                         >
-                          {copiedId === item.id ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3 text-[#C9A34E]" />}
-                          <span>{copiedId === item.id ? 'Tersalin' : 'Salin Link'}</span>
+                          <ImageIcon className="w-3 h-3" />
+                          <span>Buat Gambar</span>
+                        </button>
+                        <span>•</span>
+                        <button
+                          onClick={() => handleOpenPdfModal(item)}
+                          className="font-bold text-sky-700 dark:text-sky-400 hover:underline flex items-center gap-1 cursor-pointer"
+                          title="Unduh naskah tanya jawab format PDF A4"
+                        >
+                          <FileText className="w-3 h-3" />
+                          <span>Unduh PDF</span>
+                        </button>
+                        <span>•</span>
+                        <button
+                          onClick={() => handleCopyDirectLink(item)}
+                          className="text-stone-500 hover:underline flex items-center gap-1 cursor-pointer"
+                        >
+                          {copiedId === item.id ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                          <span>{copiedId === item.id ? 'Tersalin' : 'Salin Tautan'}</span>
                         </button>
                       </div>
 
@@ -399,24 +428,44 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
                           dangerouslySetInnerHTML={{ __html: autoWrapArabicText(item.replyContent) }}
                         />
 
-                        {/* ACTION TOOLBAR: Bagikan Pertanyaan & Salin Link */}
+                        {/* ACTION TOOLBAR: Bagikan Jawaban, Buat Gambar, Unduh PDF, Salin Tautan */}
                         <div className="pt-4 border-t border-emerald-200/60 dark:border-emerald-800/60 flex flex-col sm:flex-row items-center justify-between gap-3">
                           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                            {/* 1. Bagikan Pertanyaan */}
+                            {/* 1. Bagikan Jawaban */}
                             <button
-                              onClick={() => handleOpenShareModal(item)}
+                              onClick={() => handleOpenShareModal(item, 'share')}
                               className="px-3.5 py-2 rounded-xl bg-[#073B2E] dark:bg-[#123B6D] hover:bg-[#0a4d3c] text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
-                              title="Bagikan pertanyaan ke WhatsApp, Telegram, Facebook, dll"
+                              title="Bagikan jawaban ke WhatsApp, Telegram, Facebook, dll"
                             >
                               <Share2 className="w-3.5 h-3.5 text-[#F4B942]" />
-                              <span>Bagikan Pertanyaan</span>
+                              <span>Bagikan Jawaban</span>
                             </button>
 
-                            {/* 2. Salin Link */}
+                            {/* 2. Buat Gambar */}
+                            <button
+                              onClick={() => handleOpenShareModal(item, 'card')}
+                              className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-900 text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
+                              title="Buat gambar kartu dakwah siap sebar ke Instagram & WhatsApp"
+                            >
+                              <ImageIcon className="w-3.5 h-3.5" />
+                              <span>Buat Gambar</span>
+                            </button>
+
+                            {/* 3. Unduh PDF */}
+                            <button
+                              onClick={() => handleOpenPdfModal(item)}
+                              className="px-3.5 py-2 rounded-xl bg-sky-700 hover:bg-sky-600 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
+                              title="Unduh dokumen lengkap naskah tanya jawab format A4"
+                            >
+                              <FileText className="w-3.5 h-3.5 text-[#F4B942]" />
+                              <span>Unduh PDF</span>
+                            </button>
+
+                            {/* 4. Salin Tautan */}
                             <button
                               onClick={() => handleCopyDirectLink(item)}
                               className="px-3 py-2 rounded-xl bg-white dark:bg-[#0c2b23] border border-[#073B2E]/20 dark:border-[#C9A34E]/30 text-[#073B2E] dark:text-[#F7F6EF] text-xs font-semibold hover:bg-stone-50 dark:hover:bg-[#143e33] transition flex items-center gap-1.5 cursor-pointer"
-                              title="Salin tautan permanen pertanyaan ini"
+                              title="Salin tautan unik jawaban ini"
                             >
                               {copiedId === item.id ? (
                                 <>
@@ -426,7 +475,7 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
                               ) : (
                                 <>
                                   <Copy className="w-3.5 h-3.5 text-[#C9A34E]" />
-                                  <span>Salin Link</span>
+                                  <span>Salin Tautan</span>
                                 </>
                               )}
                             </button>
@@ -466,11 +515,20 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
         </button>
       </div>
 
-      {/* SHARE MODAL */}
+      {/* SHARE & DAKWAH CARD MODAL */}
       <ShareQAModal
         isOpen={shareModalOpen}
         onClose={() => setShareModalOpen(false)}
         consultation={selectedQaForShare}
+        initialTab={shareInitialTab}
+      />
+
+      {/* PDF EXPORT MODAL */}
+      <PDFExportModal
+        isOpen={pdfModalOpen}
+        onClose={() => setPdfModalOpen(false)}
+        type="qa"
+        qaData={selectedQaForPdf}
       />
 
     </div>
