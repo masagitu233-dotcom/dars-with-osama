@@ -189,9 +189,9 @@ export const StudentConsultationView: React.FC<StudentConsultationViewProps> = (
         /* LOGGED IN STUDENT CONSULTATION INTERFACE */
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
-          {/* LEFT: FORM KONSULTASI BARU (COL 5) */}
-          <div className="lg:col-span-5 space-y-6" data-aos="fade-right">
-            <div className="bg-white dark:bg-[#071B16] border border-[#073B2E]/15 dark:border-[#C9A34E]/25 rounded-3xl p-6 shadow-md space-y-5">
+          {/* LEFT: FORM KONSULTASI BARU (COL 5, STICKY ON DESKTOP) */}
+          <div className="lg:col-span-5 space-y-6 relative">
+            <div className="bg-white dark:bg-[#071B16] border border-[#073B2E]/15 dark:border-[#C9A34E]/25 rounded-3xl p-6 shadow-md space-y-5 lg:sticky lg:top-20">
               <div className="flex items-center gap-2 border-b border-[#073B2E]/10 dark:border-[#C9A34E]/20 pb-3">
                 <MessageSquare className="w-5 h-5 text-[#C9A34E]" />
                 <h3 className="font-bold text-base font-serif-brand text-[#073B2E] dark:text-[#F7F6EF]">

@@ -31,6 +31,8 @@ interface AppSidebarProps {
   mobileOpen: boolean;
   setMobileOpen: (open: boolean) => void;
   onOpenWelcomeModal?: () => void;
+  isCollapsed?: boolean;
+  setIsCollapsed?: (collapsed: boolean) => void;
 }
 
 export const AppSidebar: React.FC<AppSidebarProps> = ({
@@ -38,14 +40,18 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   setCurrentView,
   mobileOpen,
   setMobileOpen,
-  onOpenWelcomeModal
+  onOpenWelcomeModal,
+  isCollapsed: externalIsCollapsed,
+  setIsCollapsed: externalSetIsCollapsed
 }) => {
   const { user, userProfile, isAdmin, openAuthModal, openProfileModal, openLogoutConfirmModal } = useAuth();
   const { t } = useLanguage();
   const { effectiveTheme, setTheme } = useTheme();
 
-  // Desktop collapse state
-  const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
+  // Desktop collapse state (internal or controlled via props)
+  const [internalIsCollapsed, setInternalIsCollapsed] = useState<boolean>(false);
+  const isCollapsed = externalIsCollapsed !== undefined ? externalIsCollapsed : internalIsCollapsed;
+  const setIsCollapsed = externalSetIsCollapsed || setInternalIsCollapsed;
 
   const avatarURL = userProfile?.photoURL || user?.photoURL || '';
   const [imgError, setImgError] = useState(false);
@@ -95,12 +101,12 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
         />
       )}
 
-      {/* Main Left Sidebar (Desktop Permanent / Collapsible & Mobile Drawer) */}
+      {/* Main Left Sidebar (Fixed to Viewport on Desktop & Mobile Drawer) */}
       <aside
-        className={`fixed lg:sticky top-0 left-0 z-50 h-screen bg-[#F7F6EF] dark:bg-[#071B16] border-r border-[#073B2E]/10 dark:border-[#C9A34E]/20 flex flex-col justify-between transition-all duration-300 ease-in-out shrink-0 ${
-          isCollapsed ? 'lg:w-20' : 'lg:w-64'
-        } w-64 ${
-          mobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0 shadow-none'
+        className={`fixed top-0 left-0 z-40 h-screen h-[100dvh] bg-[#F7F6EF] dark:bg-[#071B16] border-r border-[#073B2E]/10 dark:border-[#C9A34E]/20 flex flex-col justify-between transition-all duration-300 ease-in-out shrink-0 ${
+          isCollapsed ? 'w-20' : 'w-64'
+        } ${
+          mobileOpen ? 'translate-x-0 shadow-2xl z-50' : '-translate-x-full lg:translate-x-0 shadow-none'
         }`}
       >
         {/* Top Header & Brand */}

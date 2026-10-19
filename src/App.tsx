@@ -70,8 +70,9 @@ function MainApp() {
   } = useAuth();
   const { t, language } = useLanguage();
 
-  // Mobile drawer state
+  // Mobile drawer & sidebar collapse state
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
 
   // Navigation View State
   const [currentView, setCurrentView] = useState<string>('home');
@@ -127,12 +128,14 @@ function MainApp() {
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && blogPosts.length > 0) {
+    if (typeof window !== 'undefined' && (blogPosts.length > 0 || courses.length > 0)) {
       const params = new URLSearchParams(window.location.search);
       const urlQaId = params.get('qaId');
       const urlView = params.get('view');
       const urlArticleId = params.get('id');
       const urlArticle = params.get('article');
+      const urlCourseId = params.get('courseId');
+      const urlSessionId = params.get('sessionId');
       const pathname = window.location.pathname;
 
       let targetPost: BlogPost | undefined;
@@ -156,11 +159,24 @@ function MainApp() {
       } else if (urlQaId) {
         setTargetQaId(urlQaId);
         setCurrentView('public-qa');
+      } else if (urlView === 'session-view' || urlSessionId) {
+        setCurrentView('session-view');
+        const foundCourse = (urlCourseId ? courses.find(c => c.id === urlCourseId) : null) || courses[0];
+        if (foundCourse) {
+          setSelectedCourse(foundCourse);
+          getSessionsByCourse(foundCourse.id, false).then(sessList => {
+            setCourseSessions(sessList);
+            const foundSess = (urlSessionId ? sessList.find(s => s.id === urlSessionId) : null) || sessList[0];
+            if (foundSess) {
+              setSelectedSession(foundSess);
+            }
+          });
+        }
       } else if (urlView) {
         setCurrentView(urlView);
       }
     }
-  }, [blogPosts]);
+  }, [blogPosts, courses]);
 
   // Recalculate and re-scan newly mounted elements on view transitions and dynamic data loads
   useEffect(() => {
@@ -181,6 +197,9 @@ function MainApp() {
       setCategories(cats);
       setCourses(crss);
       setBlogPosts(posts);
+      if (crss.length > 0 && !selectedCourse) {
+        setSelectedCourse(crss[0]);
+      }
     } catch (err) {
       console.warn('Initial data load notice:', err);
     } finally {
@@ -220,47 +239,20 @@ function MainApp() {
     }
     getSessionsByCourse(selectedCourse.id, false).then(sessions => {
       setCourseSessions(sessions);
+      if (sessions.length > 0 && !selectedSession) {
+        setSelectedSession(sessions[0]);
+      }
     });
   }, [selectedCourse]);
 
   // Handlers for navigation
   const handleSelectCourse = (course: Course) => {
-    if (!user) {
-      openGuestModal(course, {
-        type: 'enroll',
-        courseId: course.id,
-        onSuccess: () => {
-          setSelectedCourse(course);
-          setCurrentView('course-detail');
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-      });
-      return;
-    }
     setSelectedCourse(course);
     setCurrentView('course-detail');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleSelectSession = (session: Session) => {
-    if (!user) {
-      openGuestModal(selectedCourse, {
-        type: 'session',
-        courseId: selectedCourse?.id,
-        sessionId: session.id,
-        onSuccess: () => {
-          setSelectedSession(session);
-          if (session.quizId) {
-            getQuizById(session.quizId).then(q => setSelectedQuiz(q));
-          } else {
-            setSelectedQuiz(null);
-          }
-          setCurrentView('session-view');
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-      });
-      return;
-    }
     setSelectedSession(session);
     if (session.quizId) {
       getQuizById(session.quizId).then(q => setSelectedQuiz(q));
@@ -321,7 +313,7 @@ function MainApp() {
             }}
           />
         ) : (
-          <div className="flex min-h-screen w-full relative">
+          <div className="flex min-h-screen w-full relative overflow-x-clip">
             {/* Left Sidebar Navigation (Desktop Permanent / Mobile Drawer) */}
             <AppSidebar
               currentView={currentView}
@@ -329,10 +321,14 @@ function MainApp() {
               mobileOpen={mobileMenuOpen}
               setMobileOpen={setMobileMenuOpen}
               onOpenWelcomeModal={handleOpenWelcomeModal}
+              isCollapsed={isSidebarCollapsed}
+              setIsCollapsed={setIsSidebarCollapsed}
             />
 
-            {/* Right Main Content Column */}
-            <div className="flex-1 flex flex-col min-w-0 min-h-screen">
+            {/* Right Main Content Column - Properly offset on desktop to prevent overlap */}
+            <div className={`flex-1 flex flex-col min-w-0 min-h-screen transition-all duration-300 ${
+              isSidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64'
+            }`}>
               {/* Top Page Header */}
               <AppHeader
                 currentView={currentView}

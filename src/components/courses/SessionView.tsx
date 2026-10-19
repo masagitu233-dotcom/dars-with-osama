@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ArrowLeft,
   ChevronLeft,
@@ -116,6 +116,17 @@ export const SessionView: React.FC<SessionViewProps> = ({
     }
   };
 
+  // Ensure active session is kept in view inside playlist when session changes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const activeEl = document.querySelector('[data-active-session="true"]');
+      if (activeEl) {
+        activeEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      }
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [session.id]);
+
   const handleStartQuizClick = () => {
     if (!quiz) return;
     if (!user) {
@@ -134,9 +145,9 @@ export const SessionView: React.FC<SessionViewProps> = ({
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 animate-in fade-in duration-200">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
       {/* Top Breadcrumb & Navigation */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-stone-200 dark:border-stone-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-stone-200 dark:border-stone-800 lg:mr-[340px] xl:mr-[400px]">
         <button
           onClick={onBackToCourse}
           className="inline-flex items-center gap-2 text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-white transition text-sm font-medium cursor-pointer"
@@ -168,10 +179,10 @@ export const SessionView: React.FC<SessionViewProps> = ({
         </div>
       </div>
 
-      {/* Main Two-Column Classroom Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Left Primary Learning Content (8 cols) */}
-        <div className="lg:col-span-8 space-y-6">
+      {/* Main Classroom Layout Container */}
+      <div className="relative">
+        {/* Left Primary Learning Content */}
+        <div className="space-y-6 lg:mr-[340px] xl:mr-[400px]">
           {/* YouTube Video Player (Kept completely stable, non-animated for distraction-free learning) */}
           <div className="space-y-4">
             <YouTubeEmbed url={session.youtubeUrl} title={session.title} />
@@ -372,24 +383,24 @@ export const SessionView: React.FC<SessionViewProps> = ({
           )}
         </div>
 
-        {/* Right Sidebar: Sessions Playlist & Progress */}
-        <div className="lg:col-span-4 space-y-6" data-aos="fade-left">
+        {/* Right Sidebar: Sessions Playlist & Progress (Fixed to Viewport on Desktop & Responsive on Mobile) */}
+        <aside className="lg:fixed lg:top-[72px] lg:right-4 xl:right-8 lg:w-[320px] xl:w-[380px] lg:h-[calc(100dvh-5.5rem)] lg:z-20 flex flex-col space-y-4 mt-8 lg:mt-0">
           {/* Completed Notice */}
           {enrollment?.isCompleted && (
-            <div className="bg-gradient-to-tr from-emerald-50 to-white dark:from-emerald-950/60 dark:to-stone-900 border border-emerald-300 dark:border-emerald-500/40 p-5 rounded-2xl text-center space-y-2 shadow-sm dark:shadow-lg animate-fade-in-up">
-              <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 flex items-center justify-center mx-auto border border-emerald-300 dark:border-emerald-500/30">
-                <CheckCircle2 className="w-5 h-5" />
+            <div className="bg-gradient-to-tr from-emerald-50 to-white dark:from-emerald-950/60 dark:to-stone-900 border border-emerald-300 dark:border-emerald-500/40 p-4 rounded-2xl text-center space-y-1.5 shadow-sm dark:shadow-lg shrink-0">
+              <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 flex items-center justify-center mx-auto border border-emerald-300 dark:border-emerald-500/30">
+                <CheckCircle2 className="w-4 h-4" />
               </div>
-              <h4 className="font-bold text-stone-900 dark:text-white text-sm">Alhamdulillah! Seluruh Sesi Selesai</h4>
-              <p className="text-xs text-stone-600 dark:text-stone-300">
+              <h4 className="font-bold text-stone-900 dark:text-white text-xs">Alhamdulillah! Seluruh Sesi Selesai</h4>
+              <p className="text-[11px] text-stone-600 dark:text-stone-300">
                 Anda telah menyelesaikan seluruh materi pembahasan pada kurikulum ini.
               </p>
             </div>
           )}
 
-          {/* Playlist Card */}
-          <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl overflow-hidden shadow-sm dark:shadow-lg sticky top-24 transition-colors duration-250">
-            <div className="p-4 bg-stone-50 dark:bg-stone-950 border-b border-stone-200 dark:border-stone-800 flex items-center justify-between">
+          {/* Playlist Card - Fixed Container with Internal Scroll */}
+          <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl overflow-hidden shadow-sm dark:shadow-lg flex flex-col flex-1 min-h-0 transition-colors duration-250">
+            <div className="p-4 bg-stone-50 dark:bg-stone-950 border-b border-stone-200 dark:border-stone-800 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
                 <ListOrdered className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 <h3 className="font-semibold text-stone-900 dark:text-white text-sm">Daftar Sesi Kursus</h3>
@@ -401,7 +412,7 @@ export const SessionView: React.FC<SessionViewProps> = ({
 
             {/* Progress Bar */}
             {enrollment && (
-              <div className="w-full bg-stone-200 dark:bg-stone-800 h-1">
+              <div className="w-full bg-stone-200 dark:bg-stone-800 h-1 shrink-0">
                 <div
                   className="bg-emerald-500 h-1 transition-all duration-700 ease-out"
                   style={{ width: `${enrollment.progressPercent}%` }}
@@ -409,7 +420,7 @@ export const SessionView: React.FC<SessionViewProps> = ({
               </div>
             )}
 
-            <div className="p-2 space-y-1.5 max-h-[500px] overflow-y-auto">
+            <div className="p-2 space-y-1.5 flex-1 min-h-0 overflow-y-auto">
               {allSessions.map((s, idx) => {
                 const isActive = s.id === session.id;
                 const isItemDone = enrollment?.completedSessionIds?.includes(s.id);
@@ -417,6 +428,7 @@ export const SessionView: React.FC<SessionViewProps> = ({
                 return (
                   <button
                     key={s.id}
+                    data-active-session={isActive ? 'true' : 'false'}
                     onClick={() => onSelectSession(s)}
                     className={`w-full text-left p-3 rounded-xl text-xs transition-all duration-200 flex items-start gap-3 cursor-pointer ${
                       isActive
@@ -453,7 +465,7 @@ export const SessionView: React.FC<SessionViewProps> = ({
               })}
             </div>
           </div>
-        </div>
+        </aside>
       </div>
 
       {/* PDF Viewer Modal */}

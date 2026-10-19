@@ -794,12 +794,12 @@ export const AdminDashboard: React.FC<{
       </div>
 
       {/* ========================================================= */}
-      {/* CENTRALIZED LEFT SIDEBAR NAV (DESKTOP STICKY & MOBILE DRAWER) */}
+      {/* CENTRALIZED LEFT SIDEBAR NAV (FIXED VIEWPORT & MOBILE DRAWER) */}
       {/* ========================================================= */}
-      <aside className={`fixed lg:sticky top-0 left-0 z-50 h-screen bg-[#F7F6EF] dark:bg-[#071B16] border-r border-[#073B2E]/10 dark:border-[#C9A34E]/20 flex flex-col justify-between shrink-0 transition-all duration-300 ease-in-out ${
-        sidebarCollapsed ? 'lg:w-20' : 'lg:w-72'
-      } w-72 ${
-        sidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0 shadow-none'
+      <aside className={`fixed top-0 left-0 z-40 h-screen h-[100dvh] bg-[#F7F6EF] dark:bg-[#071B16] border-r border-[#073B2E]/10 dark:border-[#C9A34E]/20 flex flex-col justify-between shrink-0 transition-all duration-300 ease-in-out ${
+        sidebarCollapsed ? 'w-20' : 'w-72'
+      } ${
+        sidebarOpen ? 'translate-x-0 shadow-2xl z-50' : '-translate-x-full lg:translate-x-0 shadow-none'
       }`}>
         <div className="flex flex-col h-full overflow-hidden">
           {/* BRAND HEADER */}
@@ -1188,8 +1188,11 @@ export const AdminDashboard: React.FC<{
         />
       )}
 
-        {/* RIGHT CONTENT AREA */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6">
+        {/* RIGHT CONTENT AREA - Offset by fixed sidebar width on desktop */}
+        <div className={`flex-1 flex flex-col min-w-0 min-h-screen transition-all duration-300 ${
+          sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-72'
+        }`}>
+          <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6">
           {/* Status Alert Notification */}
           {statusMessage && (
             <div className={`p-4 rounded-2xl border text-xs sm:text-sm flex items-center gap-3 animate-fade-in-up shadow-lg ${
@@ -2141,6 +2144,7 @@ export const AdminDashboard: React.FC<{
             </div>
           )}
         </main>
+        </div>
 
       {/* ========================================================= */}
       {/* 3. MULTI-STEP MODAL: FORM "TAMBAH / EDIT SESI PEMBELAJARAN BARU" */}
