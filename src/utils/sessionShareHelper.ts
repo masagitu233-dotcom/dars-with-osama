@@ -1,4 +1,4 @@
-import { Course, Session } from '../types';
+import type { Course, Session } from '../types/index.ts';
 
 export const DEFAULT_SESSION_COVER_IMAGE =
   'https://images.unsplash.com/photo-1542816417-0983c9c9ad53?auto=format&fit=crop&w=1200&q=80';

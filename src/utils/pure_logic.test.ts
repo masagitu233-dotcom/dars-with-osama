@@ -413,3 +413,51 @@ test('Case 15: canAccessSessionPublicly menolak sesi draft atau kursus yang belu
   assert.equal(canAccessSessionPublicly({ isPublished: true }, { isPublished: false }), false);
   assert.equal(canAccessSessionPublicly(null, { isPublished: true }), false);
 });
+
+// Case 16: Validasi Bundling Deno / Netlify Edge Function (Ekstensi Eksplisit .ts & Resolusi file://)
+test('Case 16: netlify/edge-functions/session-seo.ts dan seluruh impor transitifnya menggunakan ekstensi .ts eksplisit yang valid untuk Deno', async () => {
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  const { pathToFileURL, fileURLToPath } = await import('node:url');
+
+  const rootDir = process.cwd();
+  const entryPath = path.resolve(rootDir, 'netlify/edge-functions/session-seo.ts');
+  assert.ok(fs.existsSync(entryPath), 'Entry point Edge Function harus ada');
+
+  const visited = new Set<string>();
+  const importRegex = /(?:import|export)\s+(?:type\s+)?(?:[\s\S]*?\s+from\s+)?['"]([^'"]+)['"]/g;
+
+  function verifyDenoModuleGraph(filePath: string) {
+    if (visited.has(filePath)) return;
+    visited.add(filePath);
+
+    const stat = fs.statSync(filePath);
+    assert.ok(stat.isFile(), `Target impor harus berupa file, bukan direktori: ${filePath}`);
+
+    const code = fs.readFileSync(filePath, 'utf-8');
+    let match: RegExpExecArray | null;
+    while ((match = importRegex.exec(code)) !== null) {
+      const specifier = match[1];
+      assert.ok(
+        specifier.startsWith('./') || specifier.startsWith('../'),
+        `Edge Function hanya boleh mengimpor modul relatif murni: ditemukan "${specifier}" di ${filePath}`
+      );
+      assert.ok(
+        specifier.endsWith('.ts'),
+        `Bundler Deno mewajibkan ekstensi .ts eksplisit: ditemukan "${specifier}" di ${filePath}`
+      );
+
+      const resolvedUrl = new URL(specifier, pathToFileURL(filePath));
+      const resolvedPath = fileURLToPath(resolvedUrl);
+      assert.ok(
+        fs.existsSync(resolvedPath) && fs.statSync(resolvedPath).isFile(),
+        `File tidak ditemukan oleh resolusi URL Deno: ${resolvedUrl.href}`
+      );
+      verifyDenoModuleGraph(resolvedPath);
+    }
+  }
+
+  verifyDenoModuleGraph(entryPath);
+  assert.equal(visited.size, 3, 'Harus memvalidasi session-seo.ts, sessionShareHelper.ts, dan types/index.ts');
+});
+

@@ -3,8 +3,8 @@ import {
   canAccessSessionPublicly,
   injectSeoMetaIntoHtml,
   matchesSessionIdentifier
-} from '../../src/utils/sessionShareHelper';
-import { Course, Session } from '../../src/types';
+} from '../../src/utils/sessionShareHelper.ts';
+import type { Course, Session } from '../../src/types/index.ts';
 
 async function resolvePublishedSessionOnEdge(
   identifier: string,
