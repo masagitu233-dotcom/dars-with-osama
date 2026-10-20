@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   ArrowLeft,
   ChevronLeft,
@@ -112,12 +112,16 @@ export const SessionView: React.FC<SessionViewProps> = ({
     setShareModalOpen(true);
   };
 
-  // Ensure active session is kept in view inside playlist when session changes
+  // Ensure active session is kept in view inside playlist container when session changes (without hijacking window scroll on mobile)
+  const playlistScrollRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     const timer = setTimeout(() => {
-      const activeEl = document.querySelector('[data-active-session="true"]');
-      if (activeEl) {
-        activeEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      const container = playlistScrollRef.current;
+      if (!container) return;
+      const activeEl = container.querySelector('[data-active-session="true"]') as HTMLElement | null;
+      if (activeEl && container.scrollHeight > container.clientHeight) {
+        const targetTop = activeEl.offsetTop - container.offsetTop - container.clientHeight / 2 + activeEl.clientHeight / 2;
+        container.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
       }
     }, 150);
     return () => clearTimeout(timer);
@@ -261,91 +265,96 @@ export const SessionView: React.FC<SessionViewProps> = ({
 
       {/* Main Classroom Layout Container */}
       <div className="relative">
-        {/* Left Primary Learning Content */}
-        <div className="space-y-6 lg:mr-[340px] xl:mr-[400px]">
-          {copiedLink && (
-            <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/90 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-100 text-xs flex items-center justify-between shadow-sm animate-fade-in">
-              <div className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                <span>
-                  <strong>Link sesi berhasil disalin!</strong> ({shareData.url}) — Siap dibagikan ke WhatsApp, Telegram, atau media sosial.
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShareModalOpen(true)}
-                className="text-emerald-700 dark:text-emerald-300 font-bold underline ml-2 shrink-0 cursor-pointer"
-              >
-                Opsi Bagikan
-              </button>
+        {copiedLink && (
+          <div className="mb-4 lg:mr-[340px] xl:mr-[400px] p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/90 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-100 text-xs flex items-center justify-between shadow-sm animate-fade-in">
+            <div className="flex items-center gap-2">
+              <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <span>
+                <strong>Link sesi berhasil disalin!</strong> ({shareData.url}) — Siap dibagikan ke WhatsApp, Telegram, atau media sosial.
+              </span>
             </div>
-          )}
-
-          {/* YouTube Video Player (Kept completely stable, non-animated for distraction-free learning) */}
-          <div className="space-y-4">
-            <YouTubeEmbed url={session.youtubeUrl} title={session.title} />
-
-            {/* Session Headings & Info Panel with gentle fade on session switch */}
-            <div
-              key={session.id}
-              data-aos="fade-up"
-              className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 p-6 rounded-2xl space-y-4 shadow-sm dark:shadow-lg transition-colors duration-250"
+            <button
+              type="button"
+              onClick={() => setShareModalOpen(true)}
+              className="text-emerald-700 dark:text-emerald-300 font-bold underline ml-2 shrink-0 cursor-pointer"
             >
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <span className="px-3 py-1 bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-800/60 text-emerald-800 dark:text-emerald-400 text-xs font-semibold rounded-lg">
-                  Sesi #{currentIndex >= 0 ? currentIndex + 1 : session.order || 1} dari {allSessions.length || 1}
-                </span>
+              Opsi Bagikan
+            </button>
+          </div>
+        )}
 
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setShareModalOpen(true)}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 border border-stone-200 dark:border-stone-700 transition cursor-pointer active:scale-95"
-                  >
-                    <Share2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                    <span>Bagikan Sesi</span>
-                  </button>
+        {/* Sticky Mobile Video Wrapper: sticks directly below AppHeader (--app-header-height) on mobile (< lg), static on desktop (lg:) */}
+        <div
+          data-testid="session-video-sticky-wrapper"
+          className="sticky top-[var(--app-header-height,57px)] z-20 lg:static lg:z-auto -mx-4 px-4 py-2 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0 lg:py-0 bg-[#F7F6EF]/95 dark:bg-[#071B16]/95 lg:bg-transparent dark:lg:bg-transparent backdrop-blur-md lg:backdrop-blur-none border-b border-stone-200/80 dark:border-stone-800/80 lg:border-none shadow-sm lg:shadow-none transition-colors lg:mr-[340px] xl:mr-[400px] mb-4 lg:mb-6"
+        >
+          <YouTubeEmbed
+            url={session.youtubeUrl}
+            title={session.title}
+            className="max-lg:max-h-[min(36dvh,calc(100dvh-var(--app-header-height,57px)-11rem))] max-lg:mx-auto"
+          />
+        </div>
 
-                  <button
-                    onClick={handleToggleComplete}
-                    disabled={markingDone}
-                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all duration-200 shadow-xs active:scale-95 cursor-pointer disabled:opacity-50 ${
-                      isCompleted
-                        ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-500/30 hover:bg-emerald-200 dark:hover:bg-emerald-500/30'
-                        : 'bg-stone-100 dark:bg-stone-800 hover:bg-emerald-600 text-stone-700 dark:text-stone-200 hover:text-white border border-stone-200 dark:border-stone-700'
-                    }`}
-                  >
-                    {markingDone ? (
-                      <div className="w-4 h-4 border-2 border-emerald-600 dark:border-emerald-400 border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <CheckCircle2 className="w-4 h-4" />
-                    )}
-                    <span>{isCompleted ? 'Telah Diselesaikan' : 'Tandai Selesai Sesi Ini'}</span>
-                  </button>
-                </div>
+        {/* Left Primary Learning Content (Scrolls smoothly beneath sticky video on mobile) */}
+        <div className="space-y-6 lg:mr-[340px] xl:mr-[400px]">
+          {/* Session Headings & Info Panel */}
+          <div
+            key={session.id}
+            className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 p-5 sm:p-6 rounded-2xl space-y-4 shadow-sm dark:shadow-lg transition-colors duration-250"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <span className="px-3 py-1 bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-800/60 text-emerald-800 dark:text-emerald-400 text-xs font-semibold rounded-lg">
+                Sesi #{currentIndex >= 0 ? currentIndex + 1 : session.order || 1} dari {allSessions.length || 1}
+              </span>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShareModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 border border-stone-200 dark:border-stone-700 transition cursor-pointer active:scale-95"
+                >
+                  <Share2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <span>Bagikan Sesi</span>
+                </button>
+
+                <button
+                  onClick={handleToggleComplete}
+                  disabled={markingDone}
+                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all duration-200 shadow-xs active:scale-95 cursor-pointer disabled:opacity-50 ${
+                    isCompleted
+                      ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-500/30 hover:bg-emerald-200 dark:hover:bg-emerald-500/30'
+                      : 'bg-stone-100 dark:bg-stone-800 hover:bg-emerald-600 text-stone-700 dark:text-stone-200 hover:text-white border border-stone-200 dark:border-stone-700'
+                  }`}
+                >
+                  {markingDone ? (
+                    <div className="w-4 h-4 border-2 border-emerald-600 dark:border-emerald-400 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="w-4 h-4" />
+                  )}
+                  <span>{isCompleted ? 'Telah Diselesaikan' : 'Tandai Selesai Sesi Ini'}</span>
+                </button>
               </div>
-
-              <div>
-                <h1 className="text-xl sm:text-2xl font-bold text-stone-900 dark:text-white font-sans leading-snug">
-                  {session.title}
-                </h1>
-                {session.titleAr && (
-                  <p className="font-amiri text-2xl font-bold text-emerald-700 dark:text-emerald-400 mt-2 leading-relaxed" dir="rtl">
-                    {session.titleAr}
-                  </p>
-                )}
-              </div>
-
-              <p className="text-stone-600 dark:text-stone-300 text-sm leading-relaxed">
-                {session.description}
-              </p>
             </div>
+
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold text-stone-900 dark:text-white font-sans leading-snug">
+                {session.title}
+              </h1>
+              {session.titleAr && (
+                <p className="font-amiri text-2xl font-bold text-emerald-700 dark:text-emerald-400 mt-2 leading-relaxed" dir="rtl">
+                  {session.titleAr}
+                </p>
+              )}
+            </div>
+
+            <p className="text-stone-600 dark:text-stone-300 text-sm leading-relaxed">
+              {session.description}
+            </p>
           </div>
 
           {/* PDF Resource Card (if available) */}
           {session.pdfUrl && (
             <div
-              data-aos="fade-up"
               className="bg-white dark:bg-stone-900 border border-amber-300 dark:border-amber-600/30 hover:border-amber-500/50 p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm dark:shadow-lg transition-all duration-300 hover:shadow-md"
             >
               <div className="flex items-start gap-3.5">
@@ -387,7 +396,6 @@ export const SessionView: React.FC<SessionViewProps> = ({
           {/* Google Drive PDF Card (if available) */}
           {session.googleDriveUrl && (
             <div
-              data-aos="fade-up"
               className="bg-white dark:bg-stone-900 border border-blue-200 dark:border-blue-800/40 hover:border-blue-500/50 p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm dark:shadow-lg transition-all duration-300"
             >
               <div className="flex items-start gap-3.5">
@@ -419,7 +427,6 @@ export const SessionView: React.FC<SessionViewProps> = ({
           {/* Arabic Matan / Syarah Naskah Box (if present) */}
           {session.descriptionAr && (
             <div
-              data-aos="fade-up"
               className="bg-stone-50 dark:bg-stone-900/90 border border-emerald-200 dark:border-emerald-800/60 p-6 md:p-8 rounded-2xl space-y-3 shadow-xs transition-colors"
             >
               <div className="text-xs font-sans font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 border-b border-emerald-200 dark:border-emerald-800/60 pb-2 flex items-center justify-between">
@@ -437,7 +444,6 @@ export const SessionView: React.FC<SessionViewProps> = ({
           {/* Lesson Notes & Faedah Ilmiah Section with Blog-Quality Typography */}
           {session.lessonNotes && (
             <div
-              data-aos="fade-up"
               className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 p-6 md:p-8 rounded-2xl space-y-5 shadow-sm dark:shadow-lg transition-colors duration-250"
             >
               <div className="flex items-center gap-2.5 border-b border-stone-200 dark:border-stone-800 pb-4">
@@ -465,7 +471,6 @@ export const SessionView: React.FC<SessionViewProps> = ({
           {/* Quiz Evaluation Banner */}
           {quiz && (
             <div
-              data-aos="fade-up"
               className="bg-gradient-to-r from-emerald-50 via-white to-stone-50 dark:from-emerald-950/70 dark:via-stone-900 dark:to-stone-900 border border-emerald-300 dark:border-emerald-600/40 hover:border-emerald-500/60 p-6 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-5 shadow-sm dark:shadow-xl transition-all duration-300 hover:shadow-md group"
             >
               <div className="space-y-1">
@@ -529,7 +534,7 @@ export const SessionView: React.FC<SessionViewProps> = ({
               </div>
             )}
 
-            <div className="p-2 space-y-1.5 flex-1 min-h-0 overflow-y-auto">
+            <div ref={playlistScrollRef} className="p-2 space-y-1.5 flex-1 min-h-0 overflow-y-auto">
               {allSessions.map((s, idx) => {
                 const isActive = s.id === session.id;
                 const isItemDone = enrollment?.completedSessionIds?.includes(s.id);

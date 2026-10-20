@@ -95,9 +95,9 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 pb-16 animate-fade-in font-sans">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6 sm:space-y-8 pb-16 animate-fade-in font-sans">
       {/* BREADCRUMB & TOP ACTIONS */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+      <div className="flex flex-wrap items-center justify-between gap-3 pt-3">
         <button
           onClick={onBack}
           className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300 text-xs font-semibold hover:bg-stone-50 dark:hover:bg-stone-800 transition cursor-pointer active:scale-95 shadow-xs"
@@ -145,8 +145,8 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
       )}
 
       {/* ARTICLE CONTENT CARD */}
-      <article className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-6 sm:p-10 space-y-8 shadow-sm">
-        <div data-aos="fade-up" className="space-y-4">
+      <article className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-5 sm:p-10 space-y-6 sm:space-y-8 shadow-sm">
+        <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-3">
             <span className="px-3 py-1 bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 font-bold text-xs rounded-xl border border-emerald-300 dark:border-emerald-800">
               {post.category}
@@ -193,7 +193,7 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
 
         {/* COVER IMAGE */}
         {post.coverImageUrl && (
-          <figure data-aos="fade-up" className="space-y-2">
+          <figure className="space-y-2">
             <div className="aspect-video w-full rounded-2xl overflow-hidden bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-800 shadow-xs">
               <img
                 src={post.coverImageUrl}
@@ -211,7 +211,6 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
 
         {/* MAIN BODY HTML CONTENT */}
         <div
-          data-aos="fade-up"
           className="prose dark:prose-invert max-w-none text-stone-800 dark:text-stone-200 text-sm sm:text-base leading-relaxed space-y-4 font-sans blog-content"
           dangerouslySetInnerHTML={{ __html: autoWrapArabicText(post.content) }}
         />
@@ -219,7 +218,6 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
         {/* ARABIC CONTENT SECTION (IF PRESENT) */}
         {post.contentAr && (
           <div
-            data-aos="fade-up"
             className="p-6 bg-stone-50 dark:bg-stone-900/80 border border-emerald-200 dark:border-emerald-800/60 rounded-2xl space-y-3 font-amiri text-right text-lg text-emerald-900 dark:text-emerald-300"
             dir="rtl"
           >
@@ -243,7 +241,6 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
 
         {/* AUTHOR BIO CARD */}
         <div
-          data-aos="fade-up"
           className="p-6 bg-stone-50 dark:bg-stone-800/50 rounded-2xl border border-stone-200 dark:border-stone-800 flex flex-col sm:flex-row items-center sm:items-start gap-4"
         >
           <div className="w-14 h-14 rounded-2xl bg-emerald-600 text-white font-bold text-xl flex items-center justify-center shrink-0 border border-emerald-500/30 overflow-hidden shadow-sm">

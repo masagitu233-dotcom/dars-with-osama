@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Menu,
   BookOpen,
@@ -36,6 +36,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
 }) => {
   const { user, userProfile, isAdmin, openAuthModal, openProfileModal } = useAuth();
   const { effectiveTheme, setTheme } = useTheme();
+  const headerRef = useRef<HTMLElement | null>(null);
 
   const avatarURL = userProfile?.photoURL || user?.photoURL || '';
   const [imgError, setImgError] = useState(false);
@@ -43,6 +44,33 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   useEffect(() => {
     setImgError(false);
   }, [avatarURL]);
+
+  // Dynamically measure actual header height and expose as --app-header-height for sticky elements below
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el || typeof document === 'undefined') return;
+
+    const updateHeight = () => {
+      const h = Math.round(el.getBoundingClientRect().height || el.offsetHeight || 57);
+      if (h > 0) {
+        document.documentElement.style.setProperty('--app-header-height', `${h}px`);
+      }
+    };
+
+    updateHeight();
+
+    let observer: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(updateHeight);
+      observer.observe(el);
+    }
+    window.addEventListener('resize', updateHeight);
+
+    return () => {
+      if (observer) observer.disconnect();
+      window.removeEventListener('resize', updateHeight);
+    };
+  }, []);
 
   // Compute readable page title / breadcrumb based on currentView
   const getPageTitle = () => {
@@ -74,23 +102,27 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-30 bg-[#F7F6EF]/90 dark:bg-[#071B16]/95 backdrop-blur-md border-b border-[#073B2E]/10 dark:border-[#C9A34E]/20 text-[#073B2E] dark:text-[#F7F6EF] px-4 sm:px-6 py-3 flex items-center justify-between gap-4 transition-colors">
+    <header
+      ref={headerRef}
+      data-testid="app-header"
+      className="sticky top-0 z-30 w-full bg-[#F7F6EF]/95 dark:bg-[#071B16]/95 backdrop-blur-md border-b border-[#073B2E]/10 dark:border-[#C9A34E]/20 text-[#073B2E] dark:text-[#F7F6EF] px-4 sm:px-6 py-3 flex items-center justify-between gap-4 transition-colors"
+    >
       {/* Left: Hamburger Toggle Button (Mobile) & Breadcrumb Page Title */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
-          className="lg:hidden p-2 rounded-xl text-[#073B2E] dark:text-[#F7F6EF] hover:bg-[#073B2E]/10 dark:hover:bg-[#C9A34E]/20 transition cursor-pointer"
+          className="lg:hidden p-2 rounded-xl text-[#073B2E] dark:text-[#F7F6EF] hover:bg-[#073B2E]/10 dark:hover:bg-[#C9A34E]/20 transition cursor-pointer shrink-0"
           title="Buka Navigasi Menu"
         >
           <Menu className="w-5 h-5" />
         </button>
 
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-serif-brand font-bold uppercase tracking-wider text-[#C9A34E] hidden sm:inline">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-xs font-serif-brand font-bold uppercase tracking-wider text-[#C9A34E] hidden sm:inline shrink-0">
             Dars with Osama
           </span>
-          <ChevronRight className="w-3.5 h-3.5 text-[#073B2E]/30 dark:text-[#C9A34E]/40 hidden sm:inline" />
-          <h1 className="text-sm sm:text-base font-bold text-[#073B2E] dark:text-[#F7F6EF] font-sans tracking-tight">
+          <ChevronRight className="w-3.5 h-3.5 text-[#073B2E]/30 dark:text-[#C9A34E]/40 hidden sm:inline shrink-0" />
+          <h1 className="text-sm sm:text-base font-bold text-[#073B2E] dark:text-[#F7F6EF] font-sans tracking-tight truncate">
             {getPageTitle()}
           </h1>
         </div>
@@ -111,7 +143,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
       )}
 
       {/* Right Controls: Video Intro, Theme Toggle, User Avatar / Login CTA */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 shrink-0">
         {onOpenWelcomeModal && (
           <button
             onClick={onOpenWelcomeModal}

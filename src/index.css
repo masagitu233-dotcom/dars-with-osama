@@ -7,15 +7,19 @@
   --color-ivory: #F7F6EF;
   --color-deep-forest: #071B16;
   --color-slate: #6B7C7A;
+  --app-header-height: 57px;
 }
 
 @layer base {
-  html, body {
-    overflow-x: hidden;
+  html {
+    overflow-x: clip;
     max-width: 100%;
+    scroll-padding-top: var(--app-header-height, 57px);
   }
 
   body {
+    overflow-x: clip;
+    max-width: 100%;
     background-color: #F7F6EF;
     color: #073B2E;
     font-family: 'Plus Jakarta Sans', 'Amiri', 'Noto Sans Arabic', system-ui, -apple-system, sans-serif;
