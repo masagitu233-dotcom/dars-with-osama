@@ -461,3 +461,121 @@ test('Case 16: netlify/edge-functions/session-seo.ts dan seluruh impor transitif
   assert.equal(visited.size, 3, 'Harus memvalidasi session-seo.ts, sessionShareHelper.ts, dan types/index.ts');
 });
 
+// Case 17: Parsing URL Deep Link & Canonical URL Builder untuk Artikel, Sesi, Q&A, dan Katalog
+test('Case 17: parseUrlToRouteState dan buildUrlFromRouteState memetakan URL internal dan deep link dengan akurat', async () => {
+  const { parseUrlToRouteState, buildUrlFromRouteState } = await import('./navigationHistory.js');
+
+  const artRoute = parseUrlToRouteState('/article/al-kalam-pengertian-syarat-dan-pembagiannya-dalam-kitab-mutammimah-al-ajurumiyah', '');
+  assert.equal(artRoute.view, 'blog-detail');
+  assert.equal(artRoute.blogPostSlug, 'al-kalam-pengertian-syarat-dan-pembagiannya-dalam-kitab-mutammimah-al-ajurumiyah');
+  assert.equal(
+    buildUrlFromRouteState(artRoute),
+    '/article/al-kalam-pengertian-syarat-dan-pembagiannya-dalam-kitab-mutammimah-al-ajurumiyah'
+  );
+
+  const sesRoute = parseUrlToRouteState('/session/session-1792225972950', '');
+  assert.equal(sesRoute.view, 'session-view');
+  assert.equal(sesRoute.sessionId, 'session-1792225972950');
+  assert.equal(buildUrlFromRouteState(sesRoute), '/session/session-1792225972950');
+
+  const qaRoute = parseUrlToRouteState('/qa/qa-12345', '');
+  assert.equal(qaRoute.view, 'public-qa');
+  assert.equal(qaRoute.qaId, 'qa-12345');
+  assert.equal(buildUrlFromRouteState(qaRoute), '/qa/qa-12345');
+
+  const qaListRoute = parseUrlToRouteState('/', '?view=public-qa');
+  assert.equal(qaListRoute.view, 'public-qa');
+  assert.equal(qaListRoute.qaId, null);
+  assert.equal(buildUrlFromRouteState(qaListRoute), '/?view=public-qa');
+
+  const homeRoute = parseUrlToRouteState('/', '');
+  assert.equal(homeRoute.view, 'home');
+  assert.equal(buildUrlFromRouteState(homeRoute), '/');
+});
+
+// Case 18: Fallback Homepage Otomatis Saat Masuk dari Tautan Eksternal (WhatsApp/Telegram/Sosmed)
+test('Case 18: computeInitialHistorySetup menyisipkan Homepage sebagai fallback di index 0 untuk kunjungan langsung ke halaman internal', async () => {
+  const { computeInitialHistorySetup } = await import('./navigationHistory.js');
+
+  // 1. Kunjungan langsung ke artikel dari tautan eksternal (history.state masih null)
+  const articleSetup = computeInitialHistorySetup(
+    '/article/al-kalam-pengertian-syarat-dan-pembagiannya-dalam-kitab-mutammimah-al-ajurumiyah',
+    '',
+    null
+  );
+  assert.equal(articleSetup.mode, 'direct-internal-with-fallback');
+  if (articleSetup.mode === 'direct-internal-with-fallback') {
+    assert.equal(articleSetup.fallbackHomeState.view, 'home');
+    assert.equal(articleSetup.fallbackHomeState.index, 0);
+    assert.equal(articleSetup.fallbackHomeState.isFallbackHome, true);
+    assert.equal(articleSetup.fallbackUrl, '/');
+    assert.equal(articleSetup.activeState.view, 'blog-detail');
+    assert.equal(articleSetup.activeState.index, 1);
+    assert.equal(articleSetup.activeState.prevView, 'home');
+    assert.equal(articleSetup.activeState.prevIsFallbackHome, true);
+  }
+
+  // 2. Kunjungan langsung ke sesi belajar dari Telegram
+  const sessionSetup = computeInitialHistorySetup('/session/session-1792225972950', '', null);
+  assert.equal(sessionSetup.mode, 'direct-internal-with-fallback');
+  if (sessionSetup.mode === 'direct-internal-with-fallback') {
+    assert.equal(sessionSetup.fallbackHomeState.view, 'home');
+    assert.equal(sessionSetup.activeState.view, 'session-view');
+    assert.equal(sessionSetup.activeState.sessionId, 'session-1792225972950');
+    assert.equal(sessionSetup.activeState.index, 1);
+  }
+
+  // 3. Kunjungan langsung ke halaman Q&A dari media sosial
+  const qaSetup = computeInitialHistorySetup('/', '?view=public-qa', null);
+  assert.equal(qaSetup.mode, 'direct-internal-with-fallback');
+  if (qaSetup.mode === 'direct-internal-with-fallback') {
+    assert.equal(qaSetup.fallbackHomeState.view, 'home');
+    assert.equal(qaSetup.activeState.view, 'public-qa');
+    assert.equal(qaSetup.activeState.index, 1);
+  }
+
+  // 4. Kunjungan langsung ke Homepage tidak menumpuk entri fallback
+  const homeSetup = computeInitialHistorySetup('/', '', null);
+  assert.equal(homeSetup.mode, 'direct-home');
+  assert.equal(homeSetup.activeState.view, 'home');
+  assert.equal(homeSetup.activeState.index, 0);
+});
+
+// Case 19: Refresh Halaman Detail Mempertahankan Riwayat Navigasi Tanpa Menumpuk Entri Palsu
+test('Case 19: computeInitialHistorySetup mempertahankan state dan index saat halaman di-refresh (preserve-existing)', async () => {
+  const { computeInitialHistorySetup, isSameRouteState } = await import('./navigationHistory.js');
+
+  const existingState = {
+    __darsNav: true as const,
+    view: 'blog-detail',
+    blogPostSlug: 'panduan-thaharah',
+    index: 2,
+    scrollY: 340,
+    prevView: 'blog',
+    prevIsFallbackHome: false
+  };
+
+  const refreshed = computeInitialHistorySetup('/article/panduan-thaharah', '', existingState);
+  assert.equal(refreshed.mode, 'preserve-existing');
+  assert.equal(refreshed.activeState.index, 2);
+  assert.equal(refreshed.activeState.scrollY, 340);
+  assert.equal(refreshed.activeState.prevView, 'blog');
+  assert.equal(refreshed.activeState.prevIsFallbackHome, false);
+
+  assert.equal(
+    isSameRouteState(
+      { view: 'blog-detail', blogPostSlug: 'panduan-thaharah' },
+      { view: 'blog-detail', blogPostSlug: 'panduan-thaharah' }
+    ),
+    true
+  );
+  assert.equal(
+    isSameRouteState(
+      { view: 'blog-detail', blogPostSlug: 'panduan-thaharah' },
+      { view: 'blog-detail', blogPostSlug: 'artikel-lain' }
+    ),
+    false
+  );
+});
+
+

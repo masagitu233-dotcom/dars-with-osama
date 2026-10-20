@@ -23,12 +23,26 @@ export function useSessionSEO(session: Session | null, course?: Course | null) {
     // 1. Update Document Title
     document.title = shareData.pageTitle;
 
-    // 2. Sync browser address bar cleanly so copying from the URL bar also works
+    // 2. Sync browser address bar cleanly while preserving internal navigation history state
     if (typeof window !== 'undefined' && window.history && window.history.replaceState) {
       const targetPath = `/session/${encodeURIComponent(session.id)}`;
-      if (window.location.pathname !== targetPath) {
+      const existingState =
+        window.history.state && typeof window.history.state === 'object'
+          ? window.history.state
+          : null;
+      if (
+        existingState &&
+        existingState.__darsNav === true &&
+        (window.location.pathname !== targetPath || existingState.sessionId !== session.id)
+      ) {
         window.history.replaceState(
-          { view: 'session-view', courseId: course?.id, sessionId: session.id },
+          {
+            ...existingState,
+            __darsNav: true,
+            view: 'session-view',
+            courseId: course?.id ?? existingState.courseId ?? null,
+            sessionId: session.id
+          },
           shareData.pageTitle,
           targetPath
         );

@@ -72,20 +72,37 @@ export const SmoothScrollProvider: React.FC<ProviderProps> = ({ children, curren
     };
   }, []);
 
-  // When view route changes, reset scroll to top and refresh ScrollTrigger
+  // When view route changes, scroll to saved history scrollY (or 0 on new forward views) and refresh ScrollTrigger
   useEffect(() => {
-    if (lenisRef.current) {
-      lenisRef.current.scrollTo(0, { immediate: true });
-    } else {
-      window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
-    }
+    const savedScrollY =
+      typeof window !== 'undefined' &&
+      window.history.state &&
+      typeof window.history.state.scrollY === 'number'
+        ? window.history.state.scrollY
+        : 0;
+
+    const applyScroll = () => {
+      if (lenisRef.current) {
+        lenisRef.current.scrollTo(savedScrollY, { immediate: true });
+      }
+      window.scrollTo({ top: savedScrollY, behavior: 'instant' as ScrollBehavior });
+    };
+
+    applyScroll();
+    const rafId = window.requestAnimationFrame(applyScroll);
 
     const timer = setTimeout(() => {
+      if (savedScrollY > 0) {
+        applyScroll();
+      }
       ScrollTrigger.refresh();
       AOS.refreshHard();
     }, 100);
 
-    return () => clearTimeout(timer);
+    return () => {
+      window.cancelAnimationFrame(rafId);
+      clearTimeout(timer);
+    };
   }, [currentView]);
 
   const scrollTo = (target: string | HTMLElement | number, options?: any) => {

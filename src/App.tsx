@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   BookOpen,
   Award,
@@ -51,6 +51,15 @@ import {
   getUserEnrollments,
   getBlogPosts
 } from './firebase/services';
+import {
+  DarsRouteState,
+  DarsHistoryState,
+  isDarsHistoryState,
+  parseUrlToRouteState,
+  buildUrlFromRouteState,
+  isSameRouteState,
+  computeInitialHistorySetup
+} from './utils/navigationHistory';
 
 function MainApp() {
   const {
@@ -75,31 +84,13 @@ function MainApp() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
 
-  // Navigation View State (Initialized from deep-link URL if present so initial render never overwrites URL)
+  // Navigation View State (Initialized from deep-link URL or preserved history state)
   const [currentView, setCurrentView] = useState<string>(() => {
     if (typeof window !== 'undefined') {
-      const p = window.location.pathname;
-      const s = new URLSearchParams(window.location.search);
-      if (
-        p.startsWith('/session/') ||
-        s.has('session') ||
-        s.has('sessionId') ||
-        s.get('view') === 'session-view'
-      ) {
-        return 'session-view';
+      if (isDarsHistoryState(window.history.state)) {
+        return window.history.state.view;
       }
-      if (
-        p.startsWith('/article/') ||
-        s.has('article') ||
-        s.get('view') === 'blog-detail'
-      ) {
-        return 'blog-detail';
-      }
-      if (p.startsWith('/qa/') || s.has('qaId')) {
-        return 'public-qa';
-      }
-      const v = s.get('view');
-      if (v) return v;
+      return parseUrlToRouteState(window.location.pathname, window.location.search).view;
     }
     return 'home';
   });
@@ -170,76 +161,312 @@ function MainApp() {
   const [enrollmentsMap, setEnrollmentsMap] = useState<Record<string, Enrollment>>({});
   const [loading, setLoading] = useState<boolean>(true);
 
+  // Refs to keep latest state accessible inside popstate listener without stale closures
+  const currentViewRef = useRef<string>(currentView);
+  currentViewRef.current = currentView;
+  const blogPostsRef = useRef<BlogPost[]>(blogPosts);
+  blogPostsRef.current = blogPosts;
+  const coursesRef = useRef<Course[]>(courses);
+  coursesRef.current = courses;
+  const isAdminRef = useRef<boolean>(isAdmin);
+  isAdminRef.current = isAdmin;
+  const filterCategoryIdRef = useRef<string>(filterCategoryId);
+  filterCategoryIdRef.current = filterCategoryId;
+  const searchQueryRef = useRef<string>(searchQuery);
+  searchQueryRef.current = searchQuery;
+  const selectedCourseRef = useRef<Course | null>(selectedCourse);
+  selectedCourseRef.current = selectedCourse;
+  const selectedSessionRef = useRef<Session | null>(selectedSession);
+  selectedSessionRef.current = selectedSession;
+  const selectedBlogPostRef = useRef<BlogPost | null>(selectedBlogPost);
+  selectedBlogPostRef.current = selectedBlogPost;
+  const selectedQuizRef = useRef<Quiz | null>(selectedQuiz);
+  selectedQuizRef.current = selectedQuiz;
+  const targetQaIdRef = useRef<string | null>(targetQaId);
+  targetQaIdRef.current = targetQaId;
+
+  // Map of internal history index -> DarsHistoryState to inspect previous entry on in-app Back buttons
+  const historyEntriesRef = useRef<Record<number, DarsHistoryState>>({});
+  const lastNavTransitionTimeRef = useRef<number>(0);
+
+  // Synchronize React entities (selectedBlogPost, selectedCourse, selectedSession, etc.) with a DarsRouteState
+  const applyRouteToState = useCallback(
+    (
+      route: DarsRouteState,
+      postsList: BlogPost[],
+      coursesList: Course[],
+      adminFlag: boolean
+    ) => {
+      if (route.filterCategoryId !== undefined) {
+        setFilterCategoryId(route.filterCategoryId);
+      }
+      if (route.searchQuery !== undefined) {
+        setSearchQuery(route.searchQuery);
+      }
+
+      if (route.view === 'blog-detail') {
+        const slugOrId = route.blogPostSlug || route.blogPostId;
+        if (postsList.length > 0) {
+          const targetPost = slugOrId
+            ? postsList.find(p => p.slug === slugOrId || p.id === slugOrId)
+            : selectedBlogPostRef.current || postsList[0];
+          if (targetPost && (targetPost.status === 'published' || adminFlag)) {
+            setSelectedBlogPost(targetPost);
+          }
+        }
+        setCurrentView('blog-detail');
+        return;
+      }
+
+      if (route.view === 'public-qa') {
+        setTargetQaId(route.qaId || null);
+        setCurrentView('public-qa');
+        return;
+      }
+
+      if (route.view === 'course-detail') {
+        if (coursesList.length > 0 && route.courseId) {
+          const foundCourse = coursesList.find(c => c.id === route.courseId);
+          if (foundCourse) {
+            setSelectedCourse(foundCourse);
+          }
+        }
+        setCurrentView('course-detail');
+        return;
+      }
+
+      if (route.view === 'session-view') {
+        setCurrentView('session-view');
+        if (coursesList.length > 0 && (route.sessionId || selectedSessionRef.current)) {
+          const sessionIdentifier = route.sessionId || selectedSessionRef.current?.id || null;
+          const preferredCourseId = route.courseId || selectedCourseRef.current?.id || null;
+          resolveSessionFromRoute(sessionIdentifier, coursesList, preferredCourseId, adminFlag).then(
+            resolved => {
+              if (resolved) {
+                setSelectedCourse(resolved.course);
+                setCourseSessions(resolved.allCourseSessions);
+                setSelectedSession(resolved.session);
+                if (resolved.session.quizId && !resolved.isRestricted) {
+                  getQuizById(resolved.session.quizId).then(q => setSelectedQuiz(q));
+                } else {
+                  setSelectedQuiz(null);
+                }
+              }
+            }
+          );
+        }
+        return;
+      }
+
+      if (route.view === 'quiz-view') {
+        if (coursesList.length > 0 && route.courseId) {
+          const foundCourse = coursesList.find(c => c.id === route.courseId);
+          if (foundCourse) setSelectedCourse(foundCourse);
+        }
+        if (route.quizId && (!selectedQuizRef.current || selectedQuizRef.current.id !== route.quizId)) {
+          getQuizById(route.quizId).then(q => {
+            if (q) setSelectedQuiz(q);
+          });
+        }
+        setCurrentView('quiz-view');
+        return;
+      }
+
+      setCurrentView(route.view || 'home');
+    },
+    []
+  );
+
+  // Central navigation helper that records internal page transitions in Browser History API
+  const navigateTo = useCallback(
+    (nextRoute: DarsRouteState, options?: { replace?: boolean }) => {
+      if (typeof window === 'undefined') {
+        setCurrentView(nextRoute.view);
+        return;
+      }
+
+      lastNavTransitionTimeRef.current = Date.now();
+      const rawCurrentState = window.history.state;
+      const currentScrollY = Math.max(0, Math.round(window.scrollY || 0));
+
+      const currentState: DarsHistoryState = isDarsHistoryState(rawCurrentState)
+        ? {
+            ...rawCurrentState,
+            scrollY: currentScrollY,
+            isFallbackHome: false
+          }
+        : {
+            __darsNav: true,
+            view: currentViewRef.current,
+            courseId: selectedCourseRef.current?.id || null,
+            sessionId: selectedSessionRef.current?.id || null,
+            quizId: selectedQuizRef.current?.id || null,
+            blogPostId: selectedBlogPostRef.current?.id || null,
+            blogPostSlug: selectedBlogPostRef.current?.slug || null,
+            qaId: targetQaIdRef.current || null,
+            filterCategoryId: filterCategoryIdRef.current,
+            searchQuery: searchQueryRef.current,
+            index: 0,
+            scrollY: currentScrollY,
+            isFallbackHome: false,
+            prevView: null,
+            prevIsFallbackHome: false
+          };
+
+      // Save current scroll position into the current history entry before leaving
+      window.history.replaceState(
+        currentState,
+        '',
+        `${window.location.pathname}${window.location.search}`
+      );
+      historyEntriesRef.current[currentState.index] = currentState;
+
+      // Avoid pushing duplicate consecutive entries for the exact same route
+      if (!options?.replace && isSameRouteState(currentState, nextRoute)) {
+        applyRouteToState(nextRoute, blogPostsRef.current, coursesRef.current, isAdminRef.current);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+
+      const nextIndex = options?.replace ? currentState.index : currentState.index + 1;
+      const nextState: DarsHistoryState = {
+        __darsNav: true,
+        view: nextRoute.view,
+        courseId: nextRoute.courseId ?? null,
+        sessionId: nextRoute.sessionId ?? null,
+        quizId: nextRoute.quizId ?? null,
+        blogPostId: nextRoute.blogPostId ?? null,
+        blogPostSlug: nextRoute.blogPostSlug ?? null,
+        qaId: nextRoute.qaId ?? null,
+        filterCategoryId: nextRoute.filterCategoryId ?? filterCategoryIdRef.current,
+        searchQuery: nextRoute.searchQuery ?? searchQueryRef.current,
+        index: nextIndex,
+        scrollY: 0,
+        isFallbackHome: false,
+        prevView: options?.replace ? currentState.prevView ?? null : currentState.view,
+        prevIsFallbackHome: options?.replace ? Boolean(currentState.prevIsFallbackHome) : false
+      };
+
+      const nextUrl = buildUrlFromRouteState(nextState);
+      if (options?.replace) {
+        window.history.replaceState(nextState, '', nextUrl);
+      } else {
+        window.history.pushState(nextState, '', nextUrl);
+      }
+      historyEntriesRef.current[nextIndex] = nextState;
+
+      applyRouteToState(nextState, blogPostsRef.current, coursesRef.current, isAdminRef.current);
+    },
+    [applyRouteToState]
+  );
+
+  // Simple view-name navigation adapter for AppSidebar, AppHeader, and Footer
+  const handleNavigateView = useCallback(
+    (view: string) => {
+      navigateTo({
+        view,
+        filterCategoryId: view === 'courses' ? filterCategoryIdRef.current : 'all',
+        searchQuery: view === 'courses' ? searchQueryRef.current : ''
+      });
+    },
+    [navigateTo]
+  );
+
+  // Initialize Browser History API stack on mount & listen to hardware/browser Back/Forward (popstate)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    if ('scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual';
+    }
+
+    const setup = computeInitialHistorySetup(
+      window.location.pathname,
+      window.location.search,
+      window.history.state
+    );
+
+    if (setup.mode === 'direct-internal-with-fallback') {
+      // Insert Homepage at index 0 as fallback, then push the direct deep-link page at index 1
+      window.history.replaceState(setup.fallbackHomeState, '', setup.fallbackUrl);
+      historyEntriesRef.current[0] = setup.fallbackHomeState;
+      window.history.pushState(setup.activeState, '', setup.activeUrl);
+      historyEntriesRef.current[1] = setup.activeState;
+    } else {
+      window.history.replaceState(setup.activeState, '', setup.activeUrl);
+      historyEntriesRef.current[setup.activeState.index] = setup.activeState;
+    }
+
+    const handlePopState = (event: PopStateEvent) => {
+      lastNavTransitionTimeRef.current = Date.now();
+      setMobileMenuOpen(false);
+
+      const poppedState: DarsRouteState = isDarsHistoryState(event.state)
+        ? event.state
+        : parseUrlToRouteState(window.location.pathname, window.location.search);
+
+      if (isDarsHistoryState(event.state)) {
+        historyEntriesRef.current[event.state.index] = event.state;
+      }
+
+      applyRouteToState(
+        poppedState,
+        blogPostsRef.current,
+        coursesRef.current,
+        isAdminRef.current
+      );
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [applyRouteToState]);
+
+  // Keep current history entry's scrollY updated passively when scrolling
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    let timeoutId: number | null = null;
+
+    const handleScrollSave = () => {
+      // Ignore transient scroll events while SmoothScrollProvider is restoring scroll on route/popstate transitions
+      if (Date.now() - lastNavTransitionTimeRef.current < 350) return;
+      if (timeoutId !== null) return;
+      timeoutId = window.setTimeout(() => {
+        timeoutId = null;
+        if (Date.now() - lastNavTransitionTimeRef.current < 350) return;
+        if (isDarsHistoryState(window.history.state)) {
+          const updated: DarsHistoryState = {
+            ...window.history.state,
+            scrollY: Math.max(0, Math.round(window.scrollY || 0))
+          };
+          window.history.replaceState(
+            updated,
+            '',
+            `${window.location.pathname}${window.location.search}`
+          );
+          historyEntriesRef.current[updated.index] = updated;
+        }
+      }, 150);
+    };
+
+    window.addEventListener('scroll', handleScrollSave, { passive: true });
+    return () => {
+      if (timeoutId !== null) window.clearTimeout(timeoutId);
+      window.removeEventListener('scroll', handleScrollSave);
+    };
+  }, []);
+
+  // Resolve route entities when initial Firestore data (blogPosts, courses) finishes loading
   useEffect(() => {
     if (typeof window !== 'undefined' && (blogPosts.length > 0 || courses.length > 0)) {
-      const params = new URLSearchParams(window.location.search);
-      const urlQaId = params.get('qaId');
-      const urlView = params.get('view');
-      const urlArticleId = params.get('id');
-      const urlArticle = params.get('article');
-      const urlCourseId = params.get('courseId');
-      const urlSessionParam = params.get('session') || params.get('sessionId');
-      const pathname = window.location.pathname;
+      const activeRoute: DarsRouteState = isDarsHistoryState(window.history.state)
+        ? window.history.state
+        : parseUrlToRouteState(window.location.pathname, window.location.search);
 
-      let targetPost: BlogPost | undefined;
-
-      if (urlArticle) {
-        targetPost = blogPosts.find(p => p.slug === urlArticle || p.id === urlArticle);
-      } else if (urlView === 'blog-detail') {
-        targetPost = blogPosts.find(p => p.id === urlArticleId || p.slug === urlArticleId) || blogPosts[0];
-      } else if (pathname.startsWith('/article/')) {
-        const articleParam = decodeURIComponent(pathname.replace('/article/', '')).replace(/\/$/, '');
-        targetPost = blogPosts.find(p => p.slug === articleParam || p.id === articleParam);
-      }
-
-      const pathSessionParam = pathname.startsWith('/session/')
-        ? decodeURIComponent(pathname.replace('/session/', '')).replace(/\/$/, '')
-        : null;
-      const effectiveSessionParam = pathSessionParam || urlSessionParam;
-
-      if (targetPost && targetPost.status === 'published') {
-        setSelectedBlogPost(targetPost);
-        setCurrentView('blog-detail');
-      } else if (pathname.startsWith('/qa/')) {
-        const qaParam = decodeURIComponent(pathname.replace('/qa/', '')).replace(/\/$/, '');
-        setTargetQaId(qaParam);
-        setCurrentView('public-qa');
-      } else if (urlQaId) {
-        setTargetQaId(urlQaId);
-        setCurrentView('public-qa');
-      } else if (effectiveSessionParam || urlView === 'session-view') {
-        resolveSessionFromRoute(effectiveSessionParam, courses, urlCourseId, isAdmin).then(resolved => {
-          if (resolved) {
-            setSelectedCourse(resolved.course);
-            setCourseSessions(resolved.allCourseSessions);
-            setSelectedSession(resolved.session);
-            if (resolved.session.quizId && !resolved.isRestricted) {
-              getQuizById(resolved.session.quizId).then(q => setSelectedQuiz(q));
-            } else {
-              setSelectedQuiz(null);
-            }
-            setCurrentView('session-view');
-          }
-        });
-      } else if (urlView) {
-        setCurrentView(urlView);
-      }
+      applyRouteToState(activeRoute, blogPosts, courses, isAdmin);
     }
-  }, [blogPosts, courses, isAdmin]);
-
-  // Reset URL bar cleanly when user navigates away from deep-linked views
-  useEffect(() => {
-    if (
-      typeof window !== 'undefined' &&
-      !loading &&
-      currentView !== 'session-view' &&
-      currentView !== 'blog-detail' &&
-      currentView !== 'public-qa' &&
-      window.location.pathname.startsWith('/session/')
-    ) {
-      window.history.replaceState({}, 'Dars with Osama', '/');
-    }
-  }, [currentView, loading]);
+  }, [blogPosts, courses, isAdmin, applyRouteToState]);
 
   // Recalculate and re-scan newly mounted elements on view transitions and dynamic data loads
   useEffect(() => {
@@ -319,8 +546,10 @@ function MainApp() {
   // Handlers for navigation
   const handleSelectCourse = (course: Course) => {
     setSelectedCourse(course);
-    setCurrentView('course-detail');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    navigateTo({
+      view: 'course-detail',
+      courseId: course.id
+    });
   };
 
   const handleSelectSession = (session: Session) => {
@@ -330,8 +559,11 @@ function MainApp() {
     } else {
       setSelectedQuiz(null);
     }
-    setCurrentView('session-view');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    navigateTo({
+      view: 'session-view',
+      courseId: session.courseId || selectedCourse?.id || null,
+      sessionId: session.id
+    });
   };
 
   const handleStartQuiz = (quiz: Quiz) => {
@@ -342,15 +574,50 @@ function MainApp() {
         quizId: quiz.id,
         onSuccess: () => {
           setSelectedQuiz(quiz);
-          setCurrentView('quiz-view');
-          window.scrollTo({ top: 0, behavior: 'smooth' });
+          navigateTo({
+            view: 'quiz-view',
+            courseId: selectedCourse?.id || quiz.courseId || null,
+            sessionId: selectedSession?.id || null,
+            quizId: quiz.id
+          });
         }
       });
       return;
     }
     setSelectedQuiz(quiz);
-    setCurrentView('quiz-view');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    navigateTo({
+      view: 'quiz-view',
+      courseId: selectedCourse?.id || quiz.courseId || null,
+      sessionId: selectedSession?.id || null,
+      quizId: quiz.id
+    });
+  };
+
+  const handleSelectBlogPost = (post: BlogPost) => {
+    setSelectedBlogPost(post);
+    navigateTo({
+      view: 'blog-detail',
+      blogPostId: post.id,
+      blogPostSlug: post.slug
+    });
+  };
+
+  // Smart in-app Back handlers: pop browser history if previous entry matches target section, else navigate cleanly
+  const handleBackOrNavigate = (expectedPrevViews: string[], fallbackRoute: DarsRouteState) => {
+    if (typeof window !== 'undefined' && isDarsHistoryState(window.history.state)) {
+      const currentState = window.history.state;
+      const prevIdx = currentState.index - 1;
+      const prevEntry = historyEntriesRef.current[prevIdx];
+      const prevView = prevEntry ? prevEntry.view : currentState.prevView;
+      const prevIsFallback = prevEntry
+        ? Boolean(prevEntry.isFallbackHome)
+        : Boolean(currentState.prevIsFallbackHome);
+      if (prevView && !prevIsFallback && expectedPrevViews.includes(prevView)) {
+        window.history.back();
+        return;
+      }
+    }
+    navigateTo(fallbackRoute);
   };
 
   const handleOpenCertificate = (course: Course) => {
@@ -360,23 +627,30 @@ function MainApp() {
 
   const handleConfirmLogout = async () => {
     await logout();
-    setCurrentView('home');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    navigateTo({ view: 'home' });
   };
 
+  const routeScrollKey =
+    currentView === 'blog-detail'
+      ? `blog-detail:${selectedBlogPost?.id || ''}`
+      : currentView === 'course-detail'
+      ? `course-detail:${selectedCourse?.id || ''}`
+      : currentView === 'session-view'
+      ? `session-view:${selectedSession?.id || ''}`
+      : currentView === 'quiz-view'
+      ? `quiz-view:${selectedQuiz?.id || ''}`
+      : currentView;
+
   return (
-    <SmoothScrollProvider currentView={currentView}>
+    <SmoothScrollProvider currentView={routeScrollKey}>
       <div className="min-h-screen bg-stone-100 dark:bg-stone-950 text-stone-900 dark:text-stone-100 font-sans selection:bg-emerald-500/20 selection:text-emerald-300 transition-colors duration-250">
         {currentView === 'admin-dashboard' && isAdmin ? (
           <AdminDashboard
             onNavigateToSiswa={() => {
-              setCurrentView('home');
-              window.scrollTo({ top: 0, behavior: 'smooth' });
+              navigateTo({ view: 'home' });
             }}
             onPreviewBlogPost={(post) => {
-              setSelectedBlogPost(post);
-              setCurrentView('blog-detail');
-              window.scrollTo({ top: 0, behavior: 'smooth' });
+              handleSelectBlogPost(post);
             }}
             onRefreshData={() => {
               loadData();
@@ -388,7 +662,7 @@ function MainApp() {
             {/* Left Sidebar Navigation (Desktop Permanent / Mobile Drawer) */}
             <AppSidebar
               currentView={currentView}
-              setCurrentView={setCurrentView}
+              setCurrentView={handleNavigateView}
               mobileOpen={mobileMenuOpen}
               setMobileOpen={setMobileMenuOpen}
               onOpenWelcomeModal={handleOpenWelcomeModal}
@@ -403,7 +677,7 @@ function MainApp() {
               {/* Top Page Header */}
               <AppHeader
                 currentView={currentView}
-                setCurrentView={setCurrentView}
+                setCurrentView={handleNavigateView}
                 mobileOpen={mobileMenuOpen}
                 setMobileOpen={setMobileMenuOpen}
                 searchQuery={searchQuery}
@@ -423,13 +697,10 @@ function MainApp() {
                       enrollmentsMap={enrollmentsMap}
                       onSelectCourse={handleSelectCourse}
                       onSelectBlogPost={(post) => {
-                        setSelectedBlogPost(post);
-                        setCurrentView('blog-detail');
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                        handleSelectBlogPost(post);
                       }}
                       onExplore={() => {
-                        setCurrentView('courses');
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                        navigateTo({ view: 'courses' });
                       }}
                       onSearch={(query) => {
                         setSearchQuery(query);
@@ -437,13 +708,11 @@ function MainApp() {
                       }}
                       onSelectCategory={(catId) => {
                         setFilterCategoryId(catId);
-                        setCurrentView('courses');
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                        navigateTo({ view: 'courses', filterCategoryId: catId });
                       }}
                       onNavigate={(view, qaId) => {
                         if (qaId) setTargetQaId(qaId);
-                        setCurrentView(view);
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                        navigateTo({ view, qaId: qaId || null });
                       }}
                       onOpenAuthModal={(tab) => {
                         openAuthModal(tab);
@@ -474,7 +743,11 @@ function MainApp() {
                       category={categories.find(c => c.id === selectedCourse.categoryId)}
                       sessions={courseSessions}
                       enrollment={enrollmentsMap[selectedCourse.id] || null}
-                      onBack={() => setCurrentView('courses')}
+                      onBack={() =>
+                        handleBackOrNavigate(['courses', 'student-dashboard', 'home'], {
+                          view: 'courses'
+                        })
+                      }
                       onSelectSession={handleSelectSession}
                       onOpenCertificate={handleOpenCertificate}
                       onRefreshEnrollment={loadUserEnrollments}
@@ -490,7 +763,12 @@ function MainApp() {
                         allSessions={courseSessions}
                         quiz={selectedQuiz}
                         enrollment={enrollmentsMap[selectedCourse.id] || null}
-                        onBackToCourse={() => setCurrentView('course-detail')}
+                        onBackToCourse={() =>
+                          handleBackOrNavigate(['course-detail', 'courses'], {
+                            view: 'course-detail',
+                            courseId: selectedCourse.id
+                          })
+                        }
                         onSelectSession={handleSelectSession}
                         onStartQuiz={handleStartQuiz}
                         onOpenCertificate={handleOpenCertificate}
@@ -512,7 +790,13 @@ function MainApp() {
                       quiz={selectedQuiz}
                       course={selectedCourse}
                       session={selectedSession || undefined}
-                      onBackToSession={() => setCurrentView('session-view')}
+                      onBackToSession={() =>
+                        handleBackOrNavigate(['session-view'], {
+                          view: 'session-view',
+                          courseId: selectedCourse.id,
+                          sessionId: selectedSession?.id || null
+                        })
+                      }
                       onOpenCertificate={handleOpenCertificate}
                       onRefreshEnrollment={loadUserEnrollments}
                     />
@@ -527,7 +811,7 @@ function MainApp() {
                       onExploreCourses={() => {
                         setFilterCategoryId('all');
                         setSearchQuery('');
-                        setCurrentView('courses');
+                        navigateTo({ view: 'courses', filterCategoryId: 'all', searchQuery: '' });
                       }}
                     />
                   )}
@@ -537,9 +821,7 @@ function MainApp() {
                     <BlogListView
                       posts={blogPosts}
                       onSelectArticle={(article) => {
-                        setSelectedBlogPost(article);
-                        setCurrentView('blog-detail');
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                        handleSelectBlogPost(article);
                       }}
                     />
                   )}
@@ -549,10 +831,13 @@ function MainApp() {
                     <BlogDetailView
                       post={selectedBlogPost || blogPosts[0]}
                       allPosts={blogPosts}
-                      onBack={() => setCurrentView('blog')}
+                      onBack={() =>
+                        handleBackOrNavigate(['blog', 'home'], {
+                          view: 'blog'
+                        })
+                      }
                       onSelectArticle={(article) => {
-                        setSelectedBlogPost(article);
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                        handleSelectBlogPost(article);
                       }}
                     />
                   )}
@@ -561,8 +846,7 @@ function MainApp() {
                   {currentView === 'consultation' && (
                     <StudentConsultationView
                       onNavigateToPublicQA={() => {
-                        setCurrentView('public-qa');
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                        navigateTo({ view: 'public-qa' });
                       }}
                     />
                   )}
@@ -572,8 +856,7 @@ function MainApp() {
                     <PublicQAView
                       initialQaId={targetQaId}
                       onNavigateToConsultation={() => {
-                        setCurrentView('consultation');
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                        navigateTo({ view: 'consultation' });
                       }}
                     />
                   )}
@@ -585,8 +868,7 @@ function MainApp() {
                 onNavigate={(view) => {
                   setFilterCategoryId('all');
                   setSearchQuery('');
-                  setCurrentView(view);
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                  navigateTo({ view, filterCategoryId: 'all', searchQuery: '' });
                 }}
               />
             </div>
