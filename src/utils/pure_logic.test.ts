@@ -578,4 +578,92 @@ test('Case 19: computeInitialHistorySetup mempertahankan state dan index saat ha
   );
 });
 
+// Case 20: Validasi Pendaftaran Siswa Baru (Kata Sandi Khusus Dars min 6 karakter, Konfirmasi Cocok, Validasi Nama & Email)
+test('Case 20: Validasi pendaftaran siswa baru memeriksa nama, email, batas minimal 6 karakter, dan kesesuaian konfirmasi sandi', () => {
+  function validateRegistration(displayName: string, email: string, pass: string, confirmPass: string) {
+    if (!displayName || !displayName.trim()) {
+      return { valid: false, error: 'Nama lengkap / Kunyah wajib diisi.' };
+    }
+    if (!email || !email.trim() || !email.includes('@')) {
+      return { valid: false, error: 'Format alamat email tidak valid.' };
+    }
+    if (!pass || pass.length < 6) {
+      return { valid: false, error: 'Kata sandi pendaftaran minimal 6 karakter.' };
+    }
+    if (pass !== confirmPass) {
+      return { valid: false, error: 'Konfirmasi kata sandi tidak cocok. Harap pastikan kedua kolom kata sandi terisi sama.' };
+    }
+    return { valid: true, error: null };
+  }
+
+  // Sukses
+  const valid = validateRegistration('Ahmad bin Zaid', 'ahmad@example.com', 'dars1234', 'dars1234');
+  assert.equal(valid.valid, true);
+  assert.equal(valid.error, null);
+
+  // Gagal: password kurang dari 6 karakter
+  const tooShort = validateRegistration('Ahmad bin Zaid', 'ahmad@example.com', '12345', '12345');
+  assert.equal(tooShort.valid, false);
+  assert.equal(tooShort.error, 'Kata sandi pendaftaran minimal 6 karakter.');
+
+  // Gagal: konfirmasi password tidak cocok
+  const mismatch = validateRegistration('Ahmad bin Zaid', 'ahmad@example.com', 'dars1234', 'dars9999');
+  assert.equal(mismatch.valid, false);
+  assert.equal(mismatch.error, 'Konfirmasi kata sandi tidak cocok. Harap pastikan kedua kolom kata sandi terisi sama.');
+
+  // Gagal: nama kosong
+  const emptyName = validateRegistration('  ', 'ahmad@example.com', 'dars1234', 'dars1234');
+  assert.equal(emptyName.valid, false);
+  assert.equal(emptyName.error, 'Nama lengkap / Kunyah wajib diisi.');
+});
+
+// Case 21: Matriks Hak Akses Belajar (Publik vs Siswa Terdaftar)
+test('Case 21: Matriks hak akses membedakan fitur publik dan fitur khusus siswa terdaftar secara konsisten', () => {
+  interface AccessPolicy {
+    canViewPublicArticles: boolean;
+    canViewCourseCatalog: boolean;
+    canViewCourseSyllabus: boolean;
+    canReadPublicQA: boolean;
+    canShareSessionLink: boolean;
+    canPlayLearningVideo: boolean;
+    canAccessStudyPDF: boolean;
+    canTakeQuiz: boolean;
+    canMarkSessionDone: boolean;
+    canTrackProgress: boolean;
+  }
+
+  function getAccessPolicy(isLoggedIn: boolean): AccessPolicy {
+    return {
+      canViewPublicArticles: true,
+      canViewCourseCatalog: true,
+      canViewCourseSyllabus: true,
+      canReadPublicQA: true,
+      canShareSessionLink: true,
+      canPlayLearningVideo: isLoggedIn,
+      canAccessStudyPDF: isLoggedIn,
+      canTakeQuiz: isLoggedIn,
+      canMarkSessionDone: isLoggedIn,
+      canTrackProgress: isLoggedIn
+    };
+  }
+
+  const guest = getAccessPolicy(false);
+  assert.equal(guest.canViewPublicArticles, true, 'Pengunjung boleh membaca artikel');
+  assert.equal(guest.canViewCourseCatalog, true, 'Pengunjung boleh melihat katalog');
+  assert.equal(guest.canViewCourseSyllabus, true, 'Pengunjung boleh melihat daftar kurikulum');
+  assert.equal(guest.canReadPublicQA, true, 'Pengunjung boleh membaca Q&A publik');
+  assert.equal(guest.canShareSessionLink, true, 'Pengunjung boleh menyalin dan membagikan tautan sesi');
+  assert.equal(guest.canPlayLearningVideo, false, 'Pengunjung TIDAK boleh memutar video syarah');
+  assert.equal(guest.canAccessStudyPDF, false, 'Pengunjung TIDAK boleh mengunduh naskah materi');
+  assert.equal(guest.canTakeQuiz, false, 'Pengunjung TIDAK boleh mengerjakan kuis evaluasi');
+  assert.equal(guest.canMarkSessionDone, false, 'Pengunjung TIDAK boleh mencentang progres sesi');
+
+  const student = getAccessPolicy(true);
+  assert.equal(student.canPlayLearningVideo, true, 'Siswa terdaftar boleh memutar video');
+  assert.equal(student.canAccessStudyPDF, true, 'Siswa terdaftar boleh membuka naskah PDF');
+  assert.equal(student.canTakeQuiz, true, 'Siswa terdaftar boleh mengerjakan kuis evaluasi');
+  assert.equal(student.canMarkSessionDone, true, 'Siswa terdaftar boleh menyimpan progres belajar');
+});
+
+
 

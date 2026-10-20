@@ -35,7 +35,16 @@ export const QuizView: React.FC<QuizViewProps> = ({
   onOpenCertificate,
   onRefreshEnrollment
 }) => {
-  const { user, userProfile, openGuestModal } = useAuth();
+  const { user, userProfile, loading: authLoading, openGuestModal } = useAuth();
+
+  if (authLoading) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-20 text-center space-y-4">
+        <div className="w-10 h-10 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto" />
+        <p className="text-sm text-stone-600 dark:text-stone-400 font-medium">Memeriksa status akun siswa...</p>
+      </div>
+    );
+  }
 
   if (!user) {
     return (

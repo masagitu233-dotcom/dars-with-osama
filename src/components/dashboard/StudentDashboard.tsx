@@ -33,7 +33,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   onOpenCertificate,
   onExploreCourses
 }) => {
-  const { user, userProfile, openProfileModal, openGuestModal } = useAuth();
+  const { user, userProfile, loading: authLoading, openProfileModal, openGuestModal } = useAuth();
   const { t } = useLanguage();
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [attempts, setPastAttempts] = useState<QuizAttempt[]>([]);
@@ -54,6 +54,15 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
       setLoading(false);
     });
   }, [user]);
+
+  if (authLoading) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-20 text-center space-y-4">
+        <div className="w-10 h-10 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto" />
+        <p className="text-sm text-stone-600 dark:text-stone-400 font-medium">Memeriksa status akun siswa...</p>
+      </div>
+    );
+  }
 
   if (!user) {
     return (

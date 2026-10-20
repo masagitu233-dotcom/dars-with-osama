@@ -54,7 +54,7 @@ export const SessionView: React.FC<SessionViewProps> = ({
   onOpenCertificate,
   onRefreshEnrollment
 }) => {
-  const { user, isAdmin, openGuestModal } = useAuth();
+  const { user, isAdmin, loading: authLoading, openGuestModal, openAuthModal } = useAuth();
   const { t } = useLanguage();
   const [pdfModalOpen, setPdfModalOpen] = useState(false);
   const [markingDone, setMarkingDone] = useState(false);
@@ -288,11 +288,49 @@ export const SessionView: React.FC<SessionViewProps> = ({
           data-testid="session-video-sticky-wrapper"
           className="sticky top-[var(--app-header-height,57px)] z-20 lg:static lg:z-auto -mx-4 px-4 py-2 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0 lg:py-0 bg-[#F7F6EF]/95 dark:bg-[#071B16]/95 lg:bg-transparent dark:lg:bg-transparent backdrop-blur-md lg:backdrop-blur-none border-b border-stone-200/80 dark:border-stone-800/80 lg:border-none shadow-sm lg:shadow-none transition-colors lg:mr-[340px] xl:mr-[400px] mb-4 lg:mb-6"
         >
-          <YouTubeEmbed
-            url={session.youtubeUrl}
-            title={session.title}
-            className="max-lg:max-h-[min(36dvh,calc(100dvh-var(--app-header-height,57px)-11rem))] max-lg:mx-auto"
-          />
+          {authLoading ? (
+            <div className="w-full aspect-video rounded-2xl bg-stone-100 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 flex flex-col items-center justify-center p-6 text-center space-y-3 max-lg:max-h-[min(36dvh,calc(100dvh-var(--app-header-height,57px)-11rem))] max-lg:mx-auto">
+              <div className="w-8 h-8 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+              <p className="text-xs text-stone-500 dark:text-stone-400 font-medium">Memeriksa status akun siswa...</p>
+            </div>
+          ) : !user ? (
+            <div className="w-full aspect-video rounded-2xl bg-gradient-to-br from-stone-900 via-stone-900 to-[#07241c] border border-emerald-500/30 text-white flex flex-col items-center justify-center p-4 sm:p-6 text-center space-y-2.5 sm:space-y-3 relative overflow-hidden shadow-xl max-lg:max-h-[min(36dvh,calc(100dvh-var(--app-header-height,57px)-11rem))] max-lg:mx-auto">
+              <div className="absolute -top-12 -right-12 w-36 h-36 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
+              <div className="inline-flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-emerald-950/90 border border-emerald-500/40 text-emerald-400 shadow-inner">
+                <Lock className="w-5 h-5 sm:w-6 sm:h-6" />
+              </div>
+              <div className="space-y-1 max-w-md px-2">
+                <h3 className="text-xs sm:text-base font-bold text-white font-sans">
+                  Video Pembelajaran Khusus Siswa Terdaftar
+                </h3>
+                <p className="text-[11px] sm:text-xs text-stone-300 leading-relaxed line-clamp-2 sm:line-clamp-none">
+                  Silakan masuk atau buat akun baru Dars with Osama untuk memutar video syarah lengkap, menyimak naskah materi, dan mengikuti evaluasi pemahaman.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 pt-0.5">
+                <button
+                  type="button"
+                  onClick={() => openAuthModal('login', { type: 'session', courseId: course.id, sessionId: session.id })}
+                  className="px-3.5 sm:px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl shadow-md transition cursor-pointer active:scale-95 min-h-[36px]"
+                >
+                  Masuk Sekarang
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openAuthModal('register', { type: 'session', courseId: course.id, sessionId: session.id })}
+                  className="px-3.5 sm:px-4 py-2 bg-stone-800 hover:bg-stone-700 text-stone-100 border border-stone-700 text-xs font-semibold rounded-xl transition cursor-pointer active:scale-95 min-h-[36px]"
+                >
+                  Daftar Akun Baru
+                </button>
+              </div>
+            </div>
+          ) : (
+            <YouTubeEmbed
+              url={session.youtubeUrl}
+              title={session.title}
+              className="max-lg:max-h-[min(36dvh,calc(100dvh-var(--app-header-height,57px)-11rem))] max-lg:mx-auto"
+            />
+          )}
         </div>
 
         {/* Left Primary Learning Content (Scrolls smoothly beneath sticky video on mobile) */}
@@ -373,22 +411,44 @@ export const SessionView: React.FC<SessionViewProps> = ({
 
               <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
                 <button
-                  onClick={() => setPdfModalOpen(true)}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 active:scale-95 text-stone-700 dark:text-stone-200 border border-stone-200 dark:border-stone-700 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer shadow-xs"
+                  type="button"
+                  onClick={() => {
+                    if (!user) {
+                      openGuestModal(course, {
+                        type: 'session',
+                        courseId: course.id,
+                        sessionId: session.id,
+                        onSuccess: () => setPdfModalOpen(true)
+                      });
+                      return;
+                    }
+                    setPdfModalOpen(true);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 active:scale-95 text-stone-700 dark:text-stone-200 border border-stone-200 dark:border-stone-700 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer shadow-xs min-h-[40px]"
                 >
                   <Eye className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                   <span>Baca di Web</span>
                 </button>
-                <a
-                  href={session.pdfUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  download
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-amber-600 hover:bg-amber-500 active:scale-95 text-white rounded-xl text-xs font-semibold transition-all duration-200 shadow cursor-pointer"
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!user) {
+                      openGuestModal(course, {
+                        type: 'session',
+                        courseId: course.id,
+                        sessionId: session.id
+                      });
+                      return;
+                    }
+                    if (session.pdfUrl) {
+                      window.open(session.pdfUrl, '_blank', 'noopener,noreferrer');
+                    }
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-amber-600 hover:bg-amber-500 active:scale-95 text-white rounded-xl text-xs font-semibold transition-all duration-200 shadow cursor-pointer min-h-[40px]"
                 >
                   <Download className="w-4 h-4" />
                   <span>Unduh PDF</span>
-                </a>
+                </button>
               </div>
             </div>
           )}
@@ -412,15 +472,26 @@ export const SessionView: React.FC<SessionViewProps> = ({
                 </div>
               </div>
 
-              <a
-                href={session.googleDriveUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 active:scale-95 text-white rounded-xl text-xs font-semibold transition-all duration-200 shadow cursor-pointer self-end sm:self-center shrink-0"
+              <button
+                type="button"
+                onClick={() => {
+                  if (!user) {
+                    openGuestModal(course, {
+                      type: 'session',
+                      courseId: course.id,
+                      sessionId: session.id
+                    });
+                    return;
+                  }
+                  if (session.googleDriveUrl) {
+                    window.open(session.googleDriveUrl, '_blank', 'noopener,noreferrer');
+                  }
+                }}
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 active:scale-95 text-white rounded-xl text-xs font-semibold transition-all duration-200 shadow cursor-pointer self-end sm:self-center shrink-0 min-h-[40px]"
               >
                 <ExternalLink className="w-4 h-4" />
                 <span>Buka di Google Drive</span>
-              </a>
+              </button>
             </div>
           )}
 

@@ -43,7 +43,7 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
   onOpenCertificate,
   onRefreshEnrollment
 }) => {
-  const { user, openGuestModal } = useAuth();
+  const { user, loading: authLoading, openGuestModal } = useAuth();
   const { t } = useLanguage();
   const [enrolling, setEnrolling] = useState(false);
   const [copiedSessionId, setCopiedSessionId] = useState<string | null>(null);
@@ -82,6 +82,7 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
   };
 
   const handleEnrollClick = async () => {
+    if (authLoading) return;
     if (!user) {
       openGuestModal(course, {
         type: 'enroll',
@@ -105,10 +106,16 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
   };
 
   const handleStartOrContinue = () => {
+    if (authLoading) return;
     if (!user) {
       openGuestModal(course, {
         type: 'enroll',
-        courseId: course.id
+        courseId: course.id,
+        onSuccess: () => {
+          if (sessions.length > 0) {
+            onSelectSession(sessions[0]);
+          }
+        }
       });
       return;
     }

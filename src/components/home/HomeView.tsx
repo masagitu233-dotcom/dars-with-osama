@@ -246,15 +246,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
   };
 
   const handleReadQA = (itemId: string) => {
-    if (!user) {
-      openAuthModal('login', {
-        type: 'enroll',
-        onSuccess: () => {
-          handleGo('public-qa', itemId);
-        }
-      });
-      return;
-    }
     handleGo('public-qa', itemId);
   };
 
