@@ -300,5 +300,116 @@ test('Case 11: Dokumen PDF artikel memuat URL resmi darswithosama.com dan gaya h
   assert.ok(html.includes('ILMU • KAJIAN • KITAB'));
 });
 
+// Case 12: Ekstraksi YouTube Video ID dan Resolusi Thumbnail Sesi Pembelajaran
+test('Case 12: extractYouTubeVideoId dan getSessionThumbnailUrl memprioritaskan thumbnail YouTube dan fallback gambar sampul publik', async () => {
+  const {
+    extractYouTubeVideoId,
+    getSessionThumbnailUrl,
+    DEFAULT_SESSION_COVER_IMAGE
+  } = await import('./sessionShareHelper.js');
 
+  assert.equal(
+    extractYouTubeVideoId('https://youtu.be/9rLpyGThzrE?si=SMKnldMXHvr4OLdO'),
+    '9rLpyGThzrE'
+  );
+  assert.equal(
+    extractYouTubeVideoId('https://www.youtube.com/watch?v=o4GbtnDKm5U'),
+    'o4GbtnDKm5U'
+  );
+  assert.equal(extractYouTubeVideoId('fYPzdWAz1t8'), 'fYPzdWAz1t8');
+  assert.equal(extractYouTubeVideoId(''), null);
 
+  // 1. Sesi dengan YouTube URL menghasilkan thumbnail i.ytimg.com
+  const thumb1 = getSessionThumbnailUrl(
+    { youtubeUrl: 'https://youtu.be/9rLpyGThzrE?si=SMKnldMXHvr4OLdO' },
+    { id: 'c1', coverImageUrl: 'https://example.com/course.jpg' }
+  );
+  assert.equal(thumb1, 'https://i.ytimg.com/vi/9rLpyGThzrE/hqdefault.jpg');
+
+  // 2. Sesi tanpa YouTube URL menggunakan coverImageUrl HTTP publik
+  const thumb2 = getSessionThumbnailUrl(
+    { youtubeUrl: '' },
+    { id: 'c1', coverImageUrl: 'https://example.com/course.jpg' }
+  );
+  assert.equal(thumb2, 'https://example.com/course.jpg');
+
+  // 3. Sesi tanpa YouTube URL dengan coverImageUrl base64 menggunakan static exported cover URL
+  const thumb3 = getSessionThumbnailUrl(
+    { youtubeUrl: '' },
+    { id: 'course-1792229735274', coverImageUrl: 'data:image/jpeg;base64,/9j/4AAQ' },
+    'https://darswithosama.com'
+  );
+  assert.equal(thumb3, 'https://darswithosama.com/covers/course-1792229735274.jpg');
+
+  // 4. Fallback ke DEFAULT_SESSION_COVER_IMAGE
+  const thumb4 = getSessionThumbnailUrl({ youtubeUrl: '' }, null);
+  assert.equal(thumb4, DEFAULT_SESSION_COVER_IMAGE);
+});
+
+// Case 13: Slug dan Pencocokan URL Permanen Sesi (ID dan Slug)
+test('Case 13: generateSessionSlug dan matchesSessionIdentifier mengenali ID maupun slug sesi secara akurat', async () => {
+  const { generateSessionSlug, matchesSessionIdentifier } = await import('./sessionShareHelper.js');
+
+  const sessionKalam = { id: 'session-1792225972950', title: 'sesi 01: kalam' };
+  const sessionIrab = { id: 'session-1792327996754', title: "sesi 02: I'rab dan Bina'" };
+
+  assert.equal(generateSessionSlug(sessionKalam.title, sessionKalam.id), 'sesi-01-kalam');
+  assert.equal(generateSessionSlug(sessionIrab.title, sessionIrab.id), 'sesi-02-irab-dan-bina');
+
+  assert.equal(matchesSessionIdentifier(sessionKalam, 'session-1792225972950'), true);
+  assert.equal(matchesSessionIdentifier(sessionKalam, 'sesi-01-kalam'), true);
+  assert.equal(matchesSessionIdentifier(sessionIrab, 'sesi-02-irab-dan-bina'), true);
+  assert.equal(matchesSessionIdentifier(sessionKalam, 'sesi-lain'), false);
+});
+
+// Case 14: Format Pesan Bagikan & Metadata OpenGraph / Twitter Card Sesi Pembelajaran
+test('Case 14: buildSessionShareData dan buildSessionMetaTagsHtml menghasilkan pesan ajakan dan tag OG/Twitter lengkap', async () => {
+  const {
+    buildSessionShareData,
+    buildSessionMetaTagsHtml,
+    injectSeoMetaIntoHtml
+  } = await import('./sessionShareHelper.js');
+
+  const session = {
+    id: 'session-1792225972950',
+    title: 'sesi 01: kalam',
+    description: 'Pembahasan definisi kalam menurut ulama nahwu.',
+    youtubeUrl: 'https://youtu.be/9rLpyGThzrE?si=SMKnldMXHvr4OLdO'
+  };
+  const course = {
+    id: 'course-1792197763057',
+    title: 'mutammimah al-ajurumiyah',
+    coverImageUrl: 'https://example.com/cover.jpg'
+  };
+
+  const shareData = buildSessionShareData(session, course, 'https://darswithosama.com');
+  assert.equal(shareData.url, 'https://darswithosama.com/session/session-1792225972950');
+  assert.equal(
+    shareData.shareMessage,
+    'Yuk, pelajari sesi sesi 01: kalam bersama Dars with Osama. Tonton videonya di sini: https://darswithosama.com/session/session-1792225972950'
+  );
+  assert.equal(shareData.thumbnailUrl, 'https://i.ytimg.com/vi/9rLpyGThzrE/hqdefault.jpg');
+
+  const metaTags = buildSessionMetaTagsHtml(session, course, 'https://darswithosama.com');
+  const finalHtml = injectSeoMetaIntoHtml(
+    '<!doctype html><html><head><title>Default</title></head><body><div id="root"></div></body></html>',
+    metaTags
+  );
+
+  assert.ok(finalHtml.includes('<meta property="og:type" content="video.other" />'));
+  assert.ok(finalHtml.includes('<meta property="og:site_name" content="Dars with Osama" />'));
+  assert.ok(finalHtml.includes('<meta property="og:title" content="sesi 01: kalam (mutammimah al-ajurumiyah) | Dars with Osama" />'));
+  assert.ok(finalHtml.includes('<meta property="og:image" content="https://i.ytimg.com/vi/9rLpyGThzrE/hqdefault.jpg" />'));
+  assert.ok(finalHtml.includes('<meta property="og:url" content="https://darswithosama.com/session/session-1792225972950" />'));
+  assert.ok(finalHtml.includes('<meta name="twitter:card" content="summary_large_image" />'));
+});
+
+// Case 15: Proteksi Sesi Privat / Draft dari Akses Publik & Crawler
+test('Case 15: canAccessSessionPublicly menolak sesi draft atau kursus yang belum dipublikasikan', async () => {
+  const { canAccessSessionPublicly } = await import('./sessionShareHelper.js');
+
+  assert.equal(canAccessSessionPublicly({ isPublished: true }, { isPublished: true }), true);
+  assert.equal(canAccessSessionPublicly({ isPublished: false }, { isPublished: true }), false);
+  assert.equal(canAccessSessionPublicly({ isPublished: true }, { isPublished: false }), false);
+  assert.equal(canAccessSessionPublicly(null, { isPublished: true }), false);
+});

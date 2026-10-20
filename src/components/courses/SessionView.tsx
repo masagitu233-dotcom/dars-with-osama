@@ -13,15 +13,21 @@ import {
   Video,
   ListOrdered,
   Lock,
-  ExternalLink
+  ExternalLink,
+  Copy,
+  Check,
+  Share2
 } from 'lucide-react';
 import { Course, Session, Quiz, Enrollment } from '../../types';
 import { YouTubeEmbed } from '../common/YouTubeEmbed';
 import { PDFViewerModal } from '../common/PDFViewerModal';
+import { SessionShareModal } from './SessionShareModal';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { markSessionCompleted } from '../../firebase/services';
 import { autoWrapArabicText, renderFormattedContentHtml } from '../../utils/arabicFontHelper';
+import { useSessionSEO } from '../../hooks/useSessionSEO';
+import { buildSessionShareData, canAccessSessionPublicly } from '../../utils/sessionShareHelper';
 
 interface SessionViewProps {
   course: Course;
@@ -48,35 +54,94 @@ export const SessionView: React.FC<SessionViewProps> = ({
   onOpenCertificate,
   onRefreshEnrollment
 }) => {
-  const { user, openGuestModal } = useAuth();
+  const { user, isAdmin, openGuestModal } = useAuth();
   const { t } = useLanguage();
   const [pdfModalOpen, setPdfModalOpen] = useState(false);
   const [markingDone, setMarkingDone] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
 
-  if (!user) {
+  // Dynamically inject OpenGraph, Twitter Card, and Canonical URL metadata for this session
+  useSessionSEO(session, course);
+
+  const origin =
+    typeof window !== 'undefined' ? window.location.origin : 'https://darswithosama.com';
+  const shareData = buildSessionShareData(session, course, origin);
+
+  const handleCopySessionLink = () => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(shareData.url);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = shareData.url;
+        textarea.style.position = 'fixed';
+        textarea.style.left = '-9999px';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 3500);
+    } catch (err) {
+      console.error('Failed to copy session link:', err);
+    }
+  };
+
+  const handleShareSession = async () => {
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({
+          title: shareData.ogTitle,
+          text: `Yuk, pelajari sesi ${session.title} bersama Dars with Osama. Tonton videonya di sini:`,
+          url: shareData.url
+        });
+        return;
+      } catch {
+        // Fallback to copying share invitation + opening share modal if user cancels or browser blocks native share
+      }
+    }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(shareData.shareMessage);
+      }
+    } catch {
+      // Ignore clipboard permission errors on fallback
+    }
+    setShareModalOpen(true);
+  };
+
+  // Ensure active session is kept in view inside playlist when session changes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const activeEl = document.querySelector('[data-active-session="true"]');
+      if (activeEl) {
+        activeEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      }
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [session.id]);
+
+  // Block public access to unpublished / draft sessions unless user is admin
+  if (!canAccessSessionPublicly(session, course) && !isAdmin) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-16 text-center space-y-6 animate-fade-in-up">
-        <div className="w-16 h-16 mx-auto rounded-3xl bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-700/60 flex items-center justify-center text-emerald-800 dark:text-emerald-400 shadow-xl">
+        <div className="w-16 h-16 mx-auto rounded-3xl bg-amber-100 dark:bg-amber-950 border border-amber-300 dark:border-amber-700/60 flex items-center justify-center text-amber-800 dark:text-amber-400 shadow-xl">
           <Lock className="w-8 h-8" />
         </div>
         <div className="space-y-2">
           <h2 className="text-2xl sm:text-3xl font-bold text-stone-900 dark:text-white font-sans">
-            Akses Sesi Pembelajaran Terbatas
+            Sesi Pembelajaran Belum Dipublikasikan
           </h2>
           <p className="text-stone-600 dark:text-stone-300 text-sm max-w-lg mx-auto leading-relaxed">
-            Silakan masuk atau buat akun terlebih dahulu untuk mengakses video pembahasan, naskah PDF, dan kuis evaluasi pada sesi <strong className="text-emerald-700 dark:text-emerald-300">{session.title}</strong>.
+            Mohon maaf, sesi pembelajaran ini masih berstatus draf atau tidak tersedia untuk akses publik saat ini.
           </p>
         </div>
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-          <button
-            onClick={() => openGuestModal(course, { type: 'session', courseId: course.id, sessionId: session.id })}
-            className="w-full sm:w-auto px-6 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-semibold text-sm transition-all duration-200 shadow-lg shadow-emerald-950/50 cursor-pointer active:scale-95"
-          >
-            Masuk / Daftar Akun
-          </button>
+        <div className="flex items-center justify-center pt-2">
           <button
             onClick={onBackToCourse}
-            className="w-full sm:w-auto px-5 py-3.5 bg-white dark:bg-stone-800 hover:bg-stone-100 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 border border-stone-200 dark:border-stone-700 rounded-xl font-medium text-sm transition duration-200 cursor-pointer active:scale-95 shadow-xs"
+            className="px-5 py-3 bg-emerald-700 hover:bg-emerald-600 text-white rounded-xl font-medium text-sm transition duration-200 cursor-pointer active:scale-95 shadow-xs"
           >
             Kembali ke Kurikulum
           </button>
@@ -116,17 +181,6 @@ export const SessionView: React.FC<SessionViewProps> = ({
     }
   };
 
-  // Ensure active session is kept in view inside playlist when session changes
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      const activeEl = document.querySelector('[data-active-session="true"]');
-      if (activeEl) {
-        activeEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-      }
-    }, 150);
-    return () => clearTimeout(timer);
-  }, [session.id]);
-
   const handleStartQuizClick = () => {
     if (!quiz) return;
     if (!user) {
@@ -156,7 +210,33 @@ export const SessionView: React.FC<SessionViewProps> = ({
           <span>Kembali ke Kurikulum: <strong className="text-stone-900 dark:text-stone-200">{course.title}</strong></span>
         </button>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Salin Link Button */}
+          <button
+            type="button"
+            onClick={handleCopySessionLink}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-stone-900 hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-800 dark:text-stone-200 border border-stone-200 dark:border-stone-700 rounded-lg text-xs font-bold transition cursor-pointer active:scale-95 shadow-xs"
+            title="Salin tautan permanen sesi pembelajaran ini"
+          >
+            {copiedLink ? (
+              <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+            ) : (
+              <Copy className="w-3.5 h-3.5 text-[#C9A34E]" />
+            )}
+            <span>{copiedLink ? 'Link Disalin!' : 'Salin Link'}</span>
+          </button>
+
+          {/* Bagikan Sesi Button */}
+          <button
+            type="button"
+            onClick={handleShareSession}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#073B2E] hover:bg-[#0a4d3c] text-white border border-[#C9A34E]/30 rounded-lg text-xs font-bold transition cursor-pointer active:scale-95 shadow-xs"
+            title="Bagikan sesi pembelajaran ini"
+          >
+            <Share2 className="w-3.5 h-3.5 text-[#F4B942]" />
+            <span>Bagikan</span>
+          </button>
+
           {prevSession && (
             <button
               onClick={() => onSelectSession(prevSession)}
@@ -183,6 +263,24 @@ export const SessionView: React.FC<SessionViewProps> = ({
       <div className="relative">
         {/* Left Primary Learning Content */}
         <div className="space-y-6 lg:mr-[340px] xl:mr-[400px]">
+          {copiedLink && (
+            <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/90 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-100 text-xs flex items-center justify-between shadow-sm animate-fade-in">
+              <div className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span>
+                  <strong>Link sesi berhasil disalin!</strong> ({shareData.url}) — Siap dibagikan ke WhatsApp, Telegram, atau media sosial.
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShareModalOpen(true)}
+                className="text-emerald-700 dark:text-emerald-300 font-bold underline ml-2 shrink-0 cursor-pointer"
+              >
+                Opsi Bagikan
+              </button>
+            </div>
+          )}
+
           {/* YouTube Video Player (Kept completely stable, non-animated for distraction-free learning) */}
           <div className="space-y-4">
             <YouTubeEmbed url={session.youtubeUrl} title={session.title} />
@@ -195,25 +293,36 @@ export const SessionView: React.FC<SessionViewProps> = ({
             >
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <span className="px-3 py-1 bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-800/60 text-emerald-800 dark:text-emerald-400 text-xs font-semibold rounded-lg">
-                  Sesi #{currentIndex + 1} dari {allSessions.length}
+                  Sesi #{currentIndex >= 0 ? currentIndex + 1 : session.order || 1} dari {allSessions.length || 1}
                 </span>
 
-                <button
-                  onClick={handleToggleComplete}
-                  disabled={markingDone}
-                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all duration-200 shadow-xs active:scale-95 cursor-pointer disabled:opacity-50 ${
-                    isCompleted
-                      ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-500/30 hover:bg-emerald-200 dark:hover:bg-emerald-500/30'
-                      : 'bg-stone-100 dark:bg-stone-800 hover:bg-emerald-600 text-stone-700 dark:text-stone-200 hover:text-white border border-stone-200 dark:border-stone-700'
-                  }`}
-                >
-                  {markingDone ? (
-                    <div className="w-4 h-4 border-2 border-emerald-600 dark:border-emerald-400 border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <CheckCircle2 className="w-4 h-4" />
-                  )}
-                  <span>{isCompleted ? 'Telah Diselesaikan' : 'Tandai Selesai Sesi Ini'}</span>
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShareModalOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 border border-stone-200 dark:border-stone-700 transition cursor-pointer active:scale-95"
+                  >
+                    <Share2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <span>Bagikan Sesi</span>
+                  </button>
+
+                  <button
+                    onClick={handleToggleComplete}
+                    disabled={markingDone}
+                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all duration-200 shadow-xs active:scale-95 cursor-pointer disabled:opacity-50 ${
+                      isCompleted
+                        ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-500/30 hover:bg-emerald-200 dark:hover:bg-emerald-500/30'
+                        : 'bg-stone-100 dark:bg-stone-800 hover:bg-emerald-600 text-stone-700 dark:text-stone-200 hover:text-white border border-stone-200 dark:border-stone-700'
+                    }`}
+                  >
+                    {markingDone ? (
+                      <div className="w-4 h-4 border-2 border-emerald-600 dark:border-emerald-400 border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="w-4 h-4" />
+                    )}
+                    <span>{isCompleted ? 'Telah Diselesaikan' : 'Tandai Selesai Sesi Ini'}</span>
+                  </button>
+                </div>
               </div>
 
               <div>
@@ -474,6 +583,14 @@ export const SessionView: React.FC<SessionViewProps> = ({
         onClose={() => setPdfModalOpen(false)}
         pdfUrl={session.pdfUrl}
         pdfTitle={session.pdfTitle || session.title}
+      />
+
+      {/* Session Share Modal */}
+      <SessionShareModal
+        isOpen={shareModalOpen}
+        onClose={() => setShareModalOpen(false)}
+        session={session}
+        course={course}
       />
     </div>
   );

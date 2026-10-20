@@ -2,6 +2,10 @@
   publish = "dist"
   command = "npm run build"
 
+[[edge_functions]]
+  path = "/session/*"
+  function = "session-seo"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

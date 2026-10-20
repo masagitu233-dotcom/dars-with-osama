@@ -11,12 +11,16 @@ import {
   HelpCircle,
   Share2,
   Lock,
-  Sparkles
+  Sparkles,
+  Copy,
+  Check
 } from 'lucide-react';
 import { Course, Session, Category, Enrollment } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { enrollUser } from '../../firebase/services';
+import { SessionShareModal } from './SessionShareModal';
+import { buildSessionShareUrl } from '../../utils/sessionShareHelper';
 
 interface CourseDetailProps {
   course: Course;
@@ -42,6 +46,40 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
   const { user, openGuestModal } = useAuth();
   const { t } = useLanguage();
   const [enrolling, setEnrolling] = useState(false);
+  const [copiedSessionId, setCopiedSessionId] = useState<string | null>(null);
+  const [sharingSession, setSharingSession] = useState<Session | null>(null);
+
+  const handleCopySessionUrl = (e: React.MouseEvent, session: Session) => {
+    e.stopPropagation();
+    const origin =
+      typeof window !== 'undefined' ? window.location.origin : 'https://darswithosama.com';
+    const url = buildSessionShareUrl(session, origin);
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = url;
+        textarea.style.position = 'fixed';
+        textarea.style.left = '-9999px';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+      setCopiedSessionId(session.id);
+      setTimeout(() => {
+        setCopiedSessionId(prev => (prev === session.id ? null : prev));
+      }, 3000);
+    } catch (err) {
+      console.error('Failed to copy session link:', err);
+    }
+  };
+
+  const handleOpenShareModal = (e: React.MouseEvent, session: Session) => {
+    e.stopPropagation();
+    setSharingSession(session);
+  };
 
   const handleEnrollClick = async () => {
     if (!user) {
@@ -285,8 +323,8 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
                     </div>
                   </div>
 
-                  {/* Badges on Right */}
-                  <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
+                  {/* Badges & Share Actions on Right */}
+                  <div className="flex flex-wrap items-center gap-2 shrink-0 self-end sm:self-center">
                     {session.youtubeUrl && (
                       <span className="flex items-center gap-1 text-[11px] text-stone-600 dark:text-stone-400 bg-stone-100 dark:bg-stone-800 px-2.5 py-1 rounded-lg border border-stone-200 dark:border-stone-700">
                         <Video className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
@@ -305,7 +343,39 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
                         <span>Kuis</span>
                       </span>
                     )}
-                    <span className="p-2 text-stone-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 group-hover:translate-x-1 transition-all">
+
+                    {/* Quick Copy Link */}
+                    <button
+                      type="button"
+                      onClick={(e) => handleCopySessionUrl(e, session)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 border border-stone-200 dark:border-stone-700 text-[11px] font-semibold transition cursor-pointer active:scale-95"
+                      title={`Salin link ${session.title}`}
+                    >
+                      {copiedSessionId === session.id ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                          <span className="text-emerald-700 dark:text-emerald-300">Disalin</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5 text-[#C9A34E]" />
+                          <span>Salin Link</span>
+                        </>
+                      )}
+                    </button>
+
+                    {/* Quick Share Session */}
+                    <button
+                      type="button"
+                      onClick={(e) => handleOpenShareModal(e, session)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#073B2E] hover:bg-[#0a4d3c] text-white border border-[#C9A34E]/30 text-[11px] font-semibold transition cursor-pointer active:scale-95"
+                      title={`Bagikan ${session.title}`}
+                    >
+                      <Share2 className="w-3.5 h-3.5 text-[#F4B942]" />
+                      <span>Bagikan</span>
+                    </button>
+
+                    <span className="p-1.5 text-stone-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 group-hover:translate-x-1 transition-all">
                       <PlayCircle className="w-6 h-6" />
                     </span>
                   </div>
@@ -319,6 +389,16 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
           </div>
         )}
       </div>
+
+      {/* Session Share Modal */}
+      {sharingSession && (
+        <SessionShareModal
+          isOpen={Boolean(sharingSession)}
+          onClose={() => setSharingSession(null)}
+          session={sharingSession}
+          course={course}
+        />
+      )}
     </div>
   );
 };

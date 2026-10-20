@@ -1,6 +1,15 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { getCourses, getSessionsByCourse, getBlogPosts } from '../src/firebase/services';
+import { SEED_COURSES, SEED_SESSIONS } from '../src/data/seedData';
+import {
+  buildSessionMetaTagsHtml,
+  canAccessSessionPublicly,
+  generateSessionSlug,
+  injectSeoMetaIntoHtml
+} from '../src/utils/sessionShareHelper';
+import { Course, Session } from '../src/types';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -50,8 +59,9 @@ const INITIAL_PUBLIC_QAS = [
   }
 ];
 
-function generateArticleAndQaSeoHtml() {
+async function generateAllSeoHtml() {
   const distPath = path.resolve(__dirname, '../dist');
+  const publicPath = path.resolve(__dirname, '../public');
   const templatePath = path.join(distPath, 'index.html');
 
   if (!fs.existsSync(templatePath)) {
@@ -60,15 +70,34 @@ function generateArticleAndQaSeoHtml() {
   }
 
   const baseHtml = fs.readFileSync(templatePath, 'utf-8');
-  let generatedCount = 0;
+  let generatedArticleCount = 0;
+
+  // Merge initial blog posts with live Firestore published blog posts
+  const allPostsMap = new Map<string, any>();
+  for (const p of INITIAL_BLOG_POSTS) {
+    allPostsMap.set(p.id, p);
+  }
+  try {
+    const livePosts = await getBlogPosts(false);
+    for (const lp of livePosts) {
+      if (lp.status === 'published') {
+        allPostsMap.set(lp.id, lp);
+      }
+    }
+  } catch {
+    // Ignore offline error during build
+  }
 
   // 1. Generate Article Static OpenGraph Pages
-  for (const post of INITIAL_BLOG_POSTS) {
+  for (const post of allPostsMap.values()) {
     if (post.status !== 'published') continue;
 
     const title = `${post.title} | Dars with Osama`;
     const description = post.excerpt || 'Kajian Islam & Catatan Keilmuan Islam oleh Ustaz Osama Nur Samsil.';
-    const imageUrl = post.coverImageUrl || 'https://images.unsplash.com/photo-1532012197267-da84d127e765?q=80&w=1200&auto=format&fit=crop';
+    const imageUrl =
+      post.coverImageUrl && /^https?:\/\//i.test(post.coverImageUrl)
+        ? post.coverImageUrl
+        : 'https://images.unsplash.com/photo-1532012197267-da84d127e765?q=80&w=1200&auto=format&fit=crop';
     const canonicalUrl = `https://darswithosama.com/article/${encodeURIComponent(post.slug || post.id)}`;
 
     const seoMetaTags = `
@@ -87,24 +116,19 @@ function generateArticleAndQaSeoHtml() {
       <link rel="canonical" href="${canonicalUrl}" />
     `;
 
-    let articleHtml = baseHtml.replace(/(href|src)="\.\//g, '$1="/');
-    articleHtml = articleHtml.replace(/<title>.*?<\/title>/gi, '');
-    articleHtml = articleHtml.replace(/<meta name="description".*?>/gi, '');
-    articleHtml = articleHtml.replace(/<meta property="og:.*?".*?>/gi, '');
-    articleHtml = articleHtml.replace(/<meta name="twitter:.*?".*?>/gi, '');
-    articleHtml = articleHtml.replace('</head>', `${seoMetaTags}\n</head>`);
+    const articleHtml = injectSeoMetaIntoHtml(baseHtml, seoMetaTags);
 
     if (post.slug) {
       const slugDir = path.join(distPath, 'article', post.slug);
       fs.mkdirSync(slugDir, { recursive: true });
       fs.writeFileSync(path.join(slugDir, 'index.html'), articleHtml, 'utf-8');
-      generatedCount++;
+      generatedArticleCount++;
     }
 
     const idDir = path.join(distPath, 'article', post.id);
     fs.mkdirSync(idDir, { recursive: true });
     fs.writeFileSync(path.join(idDir, 'index.html'), articleHtml, 'utf-8');
-    generatedCount++;
+    generatedArticleCount++;
   }
 
   // 2. Generate Q&A Static OpenGraph Pages (Question ONLY in description)
@@ -131,12 +155,7 @@ function generateArticleAndQaSeoHtml() {
       <link rel="canonical" href="${canonicalUrl}" />
     `;
 
-    let qaHtml = baseHtml.replace(/(href|src)="\.\//g, '$1="/');
-    qaHtml = qaHtml.replace(/<title>.*?<\/title>/gi, '');
-    qaHtml = qaHtml.replace(/<meta name="description".*?>/gi, '');
-    qaHtml = qaHtml.replace(/<meta property="og:.*?".*?>/gi, '');
-    qaHtml = qaHtml.replace(/<meta name="twitter:.*?".*?>/gi, '');
-    qaHtml = qaHtml.replace('</head>', `${qaMetaTags}\n</head>`);
+    const qaHtml = injectSeoMetaIntoHtml(baseHtml, qaMetaTags);
 
     const qaDir = path.join(distPath, 'qa', qa.id);
     fs.mkdirSync(qaDir, { recursive: true });
@@ -144,7 +163,124 @@ function generateArticleAndQaSeoHtml() {
     qaCount++;
   }
 
-  console.log(`Successfully generated static OpenGraph SEO HTML for ${generatedCount} article routes and ${qaCount} Q&A routes.`);
+  // 3. Generate Learning Session Static OpenGraph Pages (for both ID and Slug routes)
+  const coursesMap = new Map<string, Course>();
+  const sessionsByCourseMap = new Map<string, Session[]>();
+
+  // Include seed courses and sessions as baseline
+  for (const c of SEED_COURSES) {
+    if (c.isPublished) {
+      coursesMap.set(c.id, c);
+      sessionsByCourseMap.set(
+        c.id,
+        SEED_SESSIONS.filter((s) => s.courseId === c.id && s.isPublished)
+      );
+    }
+  }
+
+  // Fetch live published courses and sessions from Cloud Firestore
+  try {
+    const liveCourses = await getCourses(false);
+    for (const c of liveCourses) {
+      if (!c.isPublished) continue;
+      coursesMap.set(c.id, c);
+
+      // Export base64 course cover image to public/covers and dist/covers so social crawlers get a public HTTP image URL
+      if (c.coverImageUrl && c.coverImageUrl.startsWith('data:image/')) {
+        const match = c.coverImageUrl.match(/^data:image\/([a-zA-Z0-9+]+);base64,(.+)$/);
+        if (match) {
+          const buf = Buffer.from(match[2], 'base64');
+          fs.mkdirSync(path.join(publicPath, 'covers'), { recursive: true });
+          fs.mkdirSync(path.join(distPath, 'covers'), { recursive: true });
+          fs.writeFileSync(path.join(publicPath, 'covers', `${c.id}.jpg`), buf);
+          fs.writeFileSync(path.join(distPath, 'covers', `${c.id}.jpg`), buf);
+        }
+      }
+
+      const liveSessions = await getSessionsByCourse(c.id, false);
+      sessionsByCourseMap.set(c.id, liveSessions.filter((s) => s.isPublished));
+    }
+  } catch (err) {
+    console.warn('generate-seo notice: live Firestore session fetch fallback to seed data:', err);
+  }
+
+  let sessionRouteCount = 0;
+  const manifestEntries: Array<{ course: Course; session: Session }> = [];
+
+  for (const [courseId, course] of coursesMap.entries()) {
+    const sessions = sessionsByCourseMap.get(courseId) || [];
+    for (const session of sessions) {
+      // Never generate public HTML metadata for private or draft sessions
+      if (!canAccessSessionPublicly(session, course)) continue;
+
+      manifestEntries.push({
+        course: {
+          id: course.id,
+          title: course.title,
+          titleAr: course.titleAr || '',
+          instructor: course.instructor,
+          categoryId: course.categoryId,
+          level: course.level,
+          description: course.description,
+          coverImageUrl: course.coverImageUrl?.startsWith('data:image/')
+            ? `https://darswithosama.com/covers/${course.id}.jpg`
+            : course.coverImageUrl,
+          isPublished: true,
+          hasCertificate: course.hasCertificate,
+          passingGrade: course.passingGrade,
+          order: course.order
+        },
+        session: {
+          id: session.id,
+          courseId: course.id,
+          title: session.title,
+          titleAr: session.titleAr || '',
+          description: session.description || '',
+          order: session.order || 1,
+          youtubeUrl: session.youtubeUrl || '',
+          durationMinutes: session.durationMinutes || 45,
+          isPublished: true
+        }
+      });
+
+      const sessionMetaTags = buildSessionMetaTagsHtml(
+        session,
+        course,
+        'https://darswithosama.com'
+      );
+      const sessionHtml = injectSeoMetaIntoHtml(baseHtml, sessionMetaTags);
+
+      // Write by session ID: /session/{id}/index.html
+      const idDir = path.join(distPath, 'session', session.id);
+      fs.mkdirSync(idDir, { recursive: true });
+      fs.writeFileSync(path.join(idDir, 'index.html'), sessionHtml, 'utf-8');
+      sessionRouteCount++;
+
+      // Write by session slug: /session/{slug}/index.html
+      const slug = generateSessionSlug(session.title, session.id);
+      if (slug && slug !== session.id) {
+        const slugDir = path.join(distPath, 'session', slug);
+        fs.mkdirSync(slugDir, { recursive: true });
+        fs.writeFileSync(path.join(slugDir, 'index.html'), sessionHtml, 'utf-8');
+        sessionRouteCount++;
+      }
+    }
+  }
+
+  // Write session-seo-manifest.json to both public/ and dist/ for instant SSR & Edge Function lookup
+  const manifestJson = JSON.stringify({ updatedAt: new Date().toISOString(), entries: manifestEntries }, null, 2);
+  fs.mkdirSync(publicPath, { recursive: true });
+  fs.writeFileSync(path.join(publicPath, 'session-seo-manifest.json'), manifestJson, 'utf-8');
+  fs.writeFileSync(path.join(distPath, 'session-seo-manifest.json'), manifestJson, 'utf-8');
+
+  console.log(
+    `Successfully generated static OpenGraph SEO HTML for ${generatedArticleCount} article routes, ${qaCount} Q&A routes, and ${sessionRouteCount} learning session routes.`
+  );
 }
 
-generateArticleAndQaSeoHtml();
+generateAllSeoHtml()
+  .then(() => process.exit(0))
+  .catch((err) => {
+    console.error('generate-seo error:', err);
+    process.exit(0);
+  });

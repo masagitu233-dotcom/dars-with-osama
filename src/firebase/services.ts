@@ -15,6 +15,7 @@ import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { db, storage, handleFirestoreError, OperationType, auth } from './config';
 import { Category, Course, Session, Quiz, Enrollment, QuizAttempt, UserProfile, BlogPost, Consultation } from '../types';
 import { SEED_CATEGORIES, SEED_COURSES, SEED_SESSIONS, SEED_QUIZZES } from '../data/seedData';
+import { matchesSessionIdentifier, canAccessSessionPublicly } from '../utils/sessionShareHelper';
 
 // Fixed initial admin emails (User email from runtime and bootstrap admin)
 export const INITIAL_ADMIN_EMAILS = [
@@ -280,6 +281,96 @@ export async function getSessionById(courseId: string, sessionId: string): Promi
     return null;
   } catch (err) {
     handleFirestoreError(err, OperationType.GET, `courses/${courseId}/sessions/${sessionId}`);
+  }
+}
+
+export async function resolveSessionFromRoute(
+  sessionIdentifier?: string | null,
+  coursesList?: Course[],
+  preferredCourseId?: string | null,
+  includeUnpublished = false
+): Promise<{
+  course: Course;
+  session: Session;
+  allCourseSessions: Session[];
+  isRestricted?: boolean;
+} | null> {
+  try {
+    const allCourses =
+      coursesList && coursesList.length > 0 ? coursesList : await getCourses(true);
+    if (allCourses.length === 0) return null;
+
+    // Sort courses so preferredCourseId is checked first if provided
+    const orderedCourses = [...allCourses].sort((a, b) => {
+      if (preferredCourseId) {
+        if (a.id === preferredCourseId) return -1;
+        if (b.id === preferredCourseId) return 1;
+      }
+      return (a.order || 0) - (b.order || 0);
+    });
+
+    const courseWithSessions = await Promise.all(
+      orderedCourses.map(async (course) => {
+        const sessions = await getSessionsByCourse(course.id, true);
+        return { course, sessions };
+      })
+    );
+
+    if (sessionIdentifier && sessionIdentifier.trim()) {
+      for (const { course, sessions } of courseWithSessions) {
+        const match = sessions.find((s) => matchesSessionIdentifier(s, sessionIdentifier));
+        if (match) {
+          const isPublic = canAccessSessionPublicly(match, course);
+          if (!isPublic && !includeUnpublished) {
+            return {
+              course,
+              session: {
+                id: match.id,
+                courseId: course.id,
+                title: 'Sesi Pembelajaran Belum Dipublikasikan',
+                titleAr: '',
+                description: '',
+                order: match.order || 1,
+                youtubeUrl: '',
+                durationMinutes: 0,
+                isPublished: false
+              },
+              allCourseSessions: [],
+              isRestricted: true
+            };
+          }
+
+          const visibleSessions = sessions.filter(
+            (s) => includeUnpublished || s.isPublished
+          );
+          return {
+            course,
+            session: match,
+            allCourseSessions: visibleSessions,
+            isRestricted: false
+          };
+        }
+      }
+    }
+
+    // Fallback when no specific sessionIdentifier was given (e.g. ?view=session-view)
+    for (const { course, sessions } of courseWithSessions) {
+      if (!includeUnpublished && !course.isPublished) continue;
+      const visibleSessions = sessions.filter((s) => includeUnpublished || s.isPublished);
+      if (visibleSessions.length > 0) {
+        return {
+          course,
+          session: visibleSessions[0],
+          allCourseSessions: visibleSessions,
+          isRestricted: false
+        };
+      }
+    }
+
+    return null;
+  } catch (err) {
+    console.warn('resolveSessionFromRoute error:', err);
+    return null;
   }
 }
 

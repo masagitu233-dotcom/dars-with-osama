@@ -46,6 +46,7 @@ import {
   getCategories,
   getCourses,
   getSessionsByCourse,
+  resolveSessionFromRoute,
   getQuizById,
   getUserEnrollments,
   getBlogPosts
@@ -74,8 +75,34 @@ function MainApp() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
 
-  // Navigation View State
-  const [currentView, setCurrentView] = useState<string>('home');
+  // Navigation View State (Initialized from deep-link URL if present so initial render never overwrites URL)
+  const [currentView, setCurrentView] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const p = window.location.pathname;
+      const s = new URLSearchParams(window.location.search);
+      if (
+        p.startsWith('/session/') ||
+        s.has('session') ||
+        s.has('sessionId') ||
+        s.get('view') === 'session-view'
+      ) {
+        return 'session-view';
+      }
+      if (
+        p.startsWith('/article/') ||
+        s.has('article') ||
+        s.get('view') === 'blog-detail'
+      ) {
+        return 'blog-detail';
+      }
+      if (p.startsWith('/qa/') || s.has('qaId')) {
+        return 'public-qa';
+      }
+      const v = s.get('view');
+      if (v) return v;
+    }
+    return 'home';
+  });
 
   // Selected Entities State
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
@@ -87,8 +114,24 @@ function MainApp() {
   const [certModalOpen, setCertModalOpen] = useState(false);
   const [certCourse, setCertCourse] = useState<Course | null>(null);
 
-  // Welcome & Video Intro Modal State (First visit in session)
+  // Welcome & Video Intro Modal State (First visit in session, skipped on direct deep links)
   const [welcomeModalOpen, setWelcomeModalOpen] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const p = window.location.pathname;
+      const s = new URLSearchParams(window.location.search);
+      if (
+        p.startsWith('/session/') ||
+        p.startsWith('/article/') ||
+        p.startsWith('/qa/') ||
+        s.has('session') ||
+        s.has('sessionId') ||
+        s.has('view') ||
+        s.has('article') ||
+        s.has('qaId')
+      ) {
+        return false;
+      }
+    }
     return !sessionStorage.getItem('dars_intro_shown');
   });
 
@@ -135,7 +178,7 @@ function MainApp() {
       const urlArticleId = params.get('id');
       const urlArticle = params.get('article');
       const urlCourseId = params.get('courseId');
-      const urlSessionId = params.get('sessionId');
+      const urlSessionParam = params.get('session') || params.get('sessionId');
       const pathname = window.location.pathname;
 
       let targetPost: BlogPost | undefined;
@@ -149,6 +192,11 @@ function MainApp() {
         targetPost = blogPosts.find(p => p.slug === articleParam || p.id === articleParam);
       }
 
+      const pathSessionParam = pathname.startsWith('/session/')
+        ? decodeURIComponent(pathname.replace('/session/', '')).replace(/\/$/, '')
+        : null;
+      const effectiveSessionParam = pathSessionParam || urlSessionParam;
+
       if (targetPost && targetPost.status === 'published') {
         setSelectedBlogPost(targetPost);
         setCurrentView('blog-detail');
@@ -159,24 +207,39 @@ function MainApp() {
       } else if (urlQaId) {
         setTargetQaId(urlQaId);
         setCurrentView('public-qa');
-      } else if (urlView === 'session-view' || urlSessionId) {
-        setCurrentView('session-view');
-        const foundCourse = (urlCourseId ? courses.find(c => c.id === urlCourseId) : null) || courses[0];
-        if (foundCourse) {
-          setSelectedCourse(foundCourse);
-          getSessionsByCourse(foundCourse.id, false).then(sessList => {
-            setCourseSessions(sessList);
-            const foundSess = (urlSessionId ? sessList.find(s => s.id === urlSessionId) : null) || sessList[0];
-            if (foundSess) {
-              setSelectedSession(foundSess);
+      } else if (effectiveSessionParam || urlView === 'session-view') {
+        resolveSessionFromRoute(effectiveSessionParam, courses, urlCourseId, isAdmin).then(resolved => {
+          if (resolved) {
+            setSelectedCourse(resolved.course);
+            setCourseSessions(resolved.allCourseSessions);
+            setSelectedSession(resolved.session);
+            if (resolved.session.quizId && !resolved.isRestricted) {
+              getQuizById(resolved.session.quizId).then(q => setSelectedQuiz(q));
+            } else {
+              setSelectedQuiz(null);
             }
-          });
-        }
+            setCurrentView('session-view');
+          }
+        });
       } else if (urlView) {
         setCurrentView(urlView);
       }
     }
-  }, [blogPosts, courses]);
+  }, [blogPosts, courses, isAdmin]);
+
+  // Reset URL bar cleanly when user navigates away from deep-linked views
+  useEffect(() => {
+    if (
+      typeof window !== 'undefined' &&
+      !loading &&
+      currentView !== 'session-view' &&
+      currentView !== 'blog-detail' &&
+      currentView !== 'public-qa' &&
+      window.location.pathname.startsWith('/session/')
+    ) {
+      window.history.replaceState({}, 'Dars with Osama', '/');
+    }
+  }, [currentView, loading]);
 
   // Recalculate and re-scan newly mounted elements on view transitions and dynamic data loads
   useEffect(() => {
@@ -197,7 +260,12 @@ function MainApp() {
       setCategories(cats);
       setCourses(crss);
       setBlogPosts(posts);
-      if (crss.length > 0 && !selectedCourse) {
+      const isDirectSessionRoute =
+        typeof window !== 'undefined' &&
+        (window.location.pathname.startsWith('/session/') ||
+          new URLSearchParams(window.location.search).has('session') ||
+          new URLSearchParams(window.location.search).has('sessionId'));
+      if (crss.length > 0 && !selectedCourse && !isDirectSessionRoute) {
         setSelectedCourse(crss[0]);
       }
     } catch (err) {
@@ -231,7 +299,7 @@ function MainApp() {
     loadUserEnrollments();
   }, [user]);
 
-  // When selectedCourse changes, fetch its sessions
+  // When selectedCourse changes, fetch its sessions while preserving an already-selected session of the same course
   useEffect(() => {
     if (!selectedCourse) {
       setCourseSessions([]);
@@ -239,9 +307,12 @@ function MainApp() {
     }
     getSessionsByCourse(selectedCourse.id, false).then(sessions => {
       setCourseSessions(sessions);
-      if (sessions.length > 0 && !selectedSession) {
-        setSelectedSession(sessions[0]);
-      }
+      setSelectedSession(prev => {
+        if (prev && prev.courseId === selectedCourse.id) {
+          return prev;
+        }
+        return sessions.length > 0 ? sessions[0] : null;
+      });
     });
   }, [selectedCourse]);
 
@@ -411,19 +482,28 @@ function MainApp() {
                   )}
 
                   {/* VIEW 4: SESSION CLASSROOM */}
-                  {currentView === 'session-view' && selectedCourse && selectedSession && (
-                    <SessionView
-                      course={selectedCourse}
-                      session={selectedSession}
-                      allSessions={courseSessions}
-                      quiz={selectedQuiz}
-                      enrollment={enrollmentsMap[selectedCourse.id] || null}
-                      onBackToCourse={() => setCurrentView('course-detail')}
-                      onSelectSession={handleSelectSession}
-                      onStartQuiz={handleStartQuiz}
-                      onOpenCertificate={handleOpenCertificate}
-                      onRefreshEnrollment={loadUserEnrollments}
-                    />
+                  {currentView === 'session-view' && (
+                    selectedCourse && selectedSession ? (
+                      <SessionView
+                        course={selectedCourse}
+                        session={selectedSession}
+                        allSessions={courseSessions}
+                        quiz={selectedQuiz}
+                        enrollment={enrollmentsMap[selectedCourse.id] || null}
+                        onBackToCourse={() => setCurrentView('course-detail')}
+                        onSelectSession={handleSelectSession}
+                        onStartQuiz={handleStartQuiz}
+                        onOpenCertificate={handleOpenCertificate}
+                        onRefreshEnrollment={loadUserEnrollments}
+                      />
+                    ) : (
+                      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center space-y-4">
+                        <div className="w-10 h-10 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto" />
+                        <p className="text-sm text-stone-600 dark:text-stone-400 font-medium">
+                          Memuat sesi pembelajaran...
+                        </p>
+                      </div>
+                    )
                   )}
 
                   {/* VIEW 5: QUIZ VIEW */}
