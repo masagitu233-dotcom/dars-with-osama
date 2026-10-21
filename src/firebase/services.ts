@@ -101,15 +101,85 @@ export async function seedDefaultCategoriesIfEmpty(): Promise<Category[]> {
 // ==========================================
 // COURSES (Cloud Firestore Only)
 // ==========================================
+export async function getSessionCountsByCourse(includeUnpublished = false): Promise<Record<string, number>> {
+  try {
+    const countsMap: Record<string, Set<string>> = {};
+
+    // 1. Scan courses and check subcollection sessions
+    try {
+      const coursesSnapshot = await getDocs(collection(db, 'courses'));
+      for (const cDoc of coursesSnapshot.docs) {
+        const courseId = cDoc.id;
+        countsMap[courseId] = new Set();
+        try {
+          const subSnapshot = await getDocs(collection(db, 'courses', courseId, 'sessions'));
+          subSnapshot.forEach(d => {
+            const data = d.data();
+            if (includeUnpublished || data.isPublished !== false) {
+              countsMap[courseId].add(d.id);
+            }
+          });
+        } catch (e) {
+          // ignore subcollection read error
+        }
+      }
+    } catch (e) {
+      console.warn('getSessionCountsByCourse subcollection scan notice:', e);
+    }
+
+    // 2. Scan top-level sessions collection
+    try {
+      const topSnapshot = await getDocs(collection(db, 'sessions'));
+      topSnapshot.forEach(d => {
+        const data = d.data();
+        if (data.courseId) {
+          if (!countsMap[data.courseId]) {
+            countsMap[data.courseId] = new Set();
+          }
+          if (includeUnpublished || data.isPublished !== false) {
+            countsMap[data.courseId].add(d.id);
+          }
+        }
+      });
+    } catch (e) {
+      console.warn('getSessionCountsByCourse top sessions scan notice:', e);
+    }
+
+    const result: Record<string, number> = {};
+    for (const courseId in countsMap) {
+      result[courseId] = countsMap[courseId].size;
+    }
+    return result;
+  } catch (err) {
+    console.warn('getSessionCountsByCourse error:', err);
+    return {};
+  }
+}
+
 export async function getCourses(includeUnpublished = false): Promise<Course[]> {
   try {
     const snapshot = await getDocs(collection(db, 'courses'));
     if (!snapshot.empty) {
-      const courses = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Course));
+      let courses = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Course));
       courses.sort((a, b) => (a.order || 0) - (b.order || 0));
       if (!includeUnpublished) {
-        return courses.filter(c => c.isPublished);
+        courses = courses.filter(c => c.isPublished);
       }
+
+      try {
+        const counts = await getSessionCountsByCourse(includeUnpublished);
+        courses = courses.map(c => {
+          const actualCount = counts[c.id] ?? 0;
+          return {
+            ...c,
+            sessionsCount: actualCount,
+            totalDuration: `${actualCount} Sesi`
+          };
+        });
+      } catch (e) {
+        console.warn('Failed to attach dynamic session counts:', e);
+      }
+
       return courses;
     }
     // Pure Firestore source - never fallback to in-memory dummy arrays!

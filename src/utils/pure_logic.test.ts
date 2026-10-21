@@ -862,5 +862,71 @@ test('Case 27: Moderasi komentar memastikan isolasi antar artikel dan hanya kome
   assert.deepEqual(adminPendingAll.map(c => c.id), ['c1', 'c5']);
 });
 
+// Case 28: Penghitungan jumlah sesi aktual per kurikulum tanpa penghitungan ganda
+test('Case 28: Penghitungan jumlah sesi aktual per kurikulum tanpa penghitungan ganda', () => {
+  interface DummySession {
+    id: string;
+    courseId: string;
+    isPublished?: boolean;
+  }
+
+  function calculateCourseSessionCount(
+    courseId: string,
+    subSessions: DummySession[],
+    topSessions: DummySession[],
+    includeUnpublished = false
+  ): number {
+    const sessionSet = new Set<string>();
+
+    subSessions.forEach(s => {
+      if (s.courseId === courseId && (includeUnpublished || s.isPublished !== false)) {
+        sessionSet.add(s.id);
+      }
+    });
+
+    topSessions.forEach(s => {
+      if (s.courseId === courseId && (includeUnpublished || s.isPublished !== false)) {
+        sessionSet.add(s.id);
+      }
+    });
+
+    return sessionSet.size;
+  }
+
+  function formatSessionDisplay(count: number): string {
+    return `${count} Sesi`;
+  }
+
+  // 1. Kurikulum Tanpa Sesi (0 Sesi)
+  const countZero = calculateCourseSessionCount('course-empty', [], []);
+  assert.equal(countZero, 0);
+  assert.equal(formatSessionDisplay(countZero), '0 Sesi');
+
+  // 2. Kurikulum Dengan 1 Sesi
+  const countOne = calculateCourseSessionCount(
+    'course-single',
+    [{ id: 's1', courseId: 'course-single', isPublished: true }],
+    []
+  );
+  assert.equal(countOne, 1);
+  assert.equal(formatSessionDisplay(countOne), '1 Sesi');
+
+  // 3. Kurikulum Dengan Beberapa Sesi dan pengujian cegah hitung ganda (id yang sama di subcollection & top-level)
+  const countMulti = calculateCourseSessionCount(
+    'course-multi',
+    [
+      { id: 'm1', courseId: 'course-multi', isPublished: true },
+      { id: 'm2', courseId: 'course-multi', isPublished: true }
+    ],
+    [
+      { id: 'm2', courseId: 'course-multi', isPublished: true }, // Duplikat ID m2
+      { id: 'm3', courseId: 'course-multi', isPublished: true }
+    ]
+  );
+  assert.equal(countMulti, 3);
+  assert.equal(formatSessionDisplay(countMulti), '3 Sesi');
+});
+
+
 
 

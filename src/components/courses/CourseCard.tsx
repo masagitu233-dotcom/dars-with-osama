@@ -7,6 +7,7 @@ interface CourseCardProps {
   course: Course;
   category?: Category;
   enrollment?: Enrollment | null;
+  sessionCount?: number;
   onSelect: (course: Course) => void;
   className?: string;
   disableAnimation?: boolean;
@@ -16,6 +17,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
   course,
   category,
   enrollment,
+  sessionCount,
   onSelect,
   className = '',
   disableAnimation = false
@@ -32,6 +34,14 @@ export const CourseCard: React.FC<CourseCardProps> = ({
   };
 
   const levelInfo = getLevelLabel(course.level);
+
+  const activeSessionCount = sessionCount !== undefined
+    ? sessionCount
+    : (course.sessionsCount !== undefined ? course.sessionsCount : null);
+
+  const sessionDisplay = activeSessionCount !== null
+    ? `${activeSessionCount} Sesi`
+    : (course.totalDuration || '0 Sesi');
 
   return (
     <div
@@ -93,7 +103,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
             </span>
             <span className="flex items-center gap-1 shrink-0">
               <Clock className="w-3.5 h-3.5 text-[#C9A34E]" />
-              <span>{course.totalDuration || 'Sesi Mandiri'}</span>
+              <span>{sessionDisplay}</span>
             </span>
           </div>
 
