@@ -129,6 +129,15 @@ export interface UserProfile {
   updatedAt?: string;
 }
 
+export interface BlogPostAudioConfig {
+  enabled?: boolean;
+  mode: 'speech' | 'custom';
+  customAudioUrl?: string;
+  customAudioDuration?: number;
+  speechVoiceName?: string;
+  speechRate?: number;
+}
+
 export interface BlogPost {
   id: string;
   title: string;
@@ -148,6 +157,7 @@ export interface BlogPost {
   authorRole?: string;
   readingTimeMinutes: number;
   viewsCount?: number;
+  audioConfig?: BlogPostAudioConfig;
   publishedAt?: string;
   createdAt: string;
   updatedAt: string;
@@ -177,4 +187,18 @@ export interface Consultation {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface ArticleComment {
+  id: string;
+  articleId: string;
+  authorName: string;
+  content: string;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: string;
+  updatedAt?: string;
+  userId?: string;
+  moderatedAt?: string;
+  moderatedBy?: string;
+}
+
 

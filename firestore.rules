@@ -50,15 +50,24 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read, write: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow create: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow update: if (isSignedIn() && request.auth.uid == userId && (request.resource.data.role == resource.data.role || isAdmin())) || isAdmin();
+      allow delete: if isAdmin();
     }
 
     match /enrollments/{enrollmentId} {
-      allow read, write: if isSignedIn() && (resource == null || resource.data.userId == request.auth.uid || isAdmin());
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if (isSignedIn() && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid) || isAdmin();
+      allow delete: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
     }
 
     match /quizAttempts/{attemptId} {
-      allow read, write: if isSignedIn() && (resource == null || resource.data.userId == request.auth.uid || isAdmin());
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if (isSignedIn() && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid) || isAdmin();
+      allow delete: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
     }
 
     match /admins/{adminId} {
@@ -96,6 +105,29 @@ service cloud.firestore {
 
       // 4. Delete: Admin only
       allow delete: if isAdmin();
+    }
+
+    // ARTICLE COMMENTS (KOMENTAR PEMBACA ARTIKEL)
+    match /articleComments/{commentId} {
+      // 1. Read: Admin can read all comments; Public can only read approved comments
+      allow read: if isAdmin() || resource.data.status == 'approved';
+
+      // 2. Create: Anyone can submit a comment, but:
+      //    - status MUST be 'pending' (cannot self-approve)
+      //    - authorName, content, articleId must be non-empty and bounded
+      allow create: if request.resource.data.status == 'pending' &&
+        request.resource.data.authorName is string &&
+        request.resource.data.authorName.size() >= 2 &&
+        request.resource.data.authorName.size() <= 100 &&
+        request.resource.data.content is string &&
+        request.resource.data.content.size() >= 5 &&
+        request.resource.data.content.size() <= 1000 &&
+        request.resource.data.articleId is string &&
+        request.resource.data.articleId.size() > 0 &&
+        request.resource.data.articleId.size() <= 128;
+
+      // 3. Update & Delete: Admin only (for moderating status or deleting comments)
+      allow update, delete: if isAdmin();
     }
 
     match /{document=**} {

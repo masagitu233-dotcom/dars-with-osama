@@ -155,6 +155,15 @@
         "authorName": { "type": "string", "maxLength": 200 },
         "readingTimeMinutes": { "type": "number" },
         "viewsCount": { "type": "number" },
+        "audioConfig": {
+          "type": "object",
+          "properties": {
+            "mode": { "type": "string", "enum": ["speech", "custom"] },
+            "customAudioUrl": { "type": "string", "maxLength": 2000 },
+            "speechVoiceName": { "type": "string", "maxLength": 200 },
+            "speechRate": { "type": "number" }
+          }
+        },
         "publishedAt": { "type": "string", "maxLength": 100 }
       },
       "required": ["title", "slug", "content", "status"]
@@ -181,6 +190,24 @@
         "updatedAt": { "type": "string", "maxLength": 100 }
       },
       "required": ["studentId", "title", "content", "category", "status", "isPublished"]
+    },
+    "ArticleComment": {
+      "title": "ArticleComment",
+      "description": "Public comments on articles with moderation status",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "articleId": { "type": "string", "maxLength": 128 },
+        "authorName": { "type": "string", "maxLength": 100, "minLength": 2 },
+        "content": { "type": "string", "maxLength": 1000, "minLength": 5 },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "createdAt": { "type": "string", "maxLength": 100 },
+        "updatedAt": { "type": "string", "maxLength": 100 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "moderatedAt": { "type": "string", "maxLength": 100 },
+        "moderatedBy": { "type": "string", "maxLength": 100 }
+      },
+      "required": ["articleId", "authorName", "content", "status", "createdAt"]
     },
     "SystemInfo": {
       "title": "SystemInfo",
@@ -241,6 +268,10 @@
     "/admins/{adminId}": {
       "schema": { "$ref": "#/entities/AdminRole" },
       "description": "Authoritative list of platform administrators"
+    },
+    "/articleComments/{commentId}": {
+      "schema": { "$ref": "#/entities/ArticleComment" },
+      "description": "Public comments on articles with moderation status"
     }
   }
 }

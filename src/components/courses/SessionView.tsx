@@ -304,7 +304,7 @@ export const SessionView: React.FC<SessionViewProps> = ({
                   Video Pembelajaran Khusus Siswa Terdaftar
                 </h3>
                 <p className="text-[11px] sm:text-xs text-stone-300 leading-relaxed line-clamp-2 sm:line-clamp-none">
-                  Silakan masuk atau buat akun baru Dars with Osama untuk memutar video syarah lengkap, menyimak naskah materi, dan mengikuti evaluasi pemahaman.
+                  Silakan masuk ke akun Dars with Osama untuk mulai belajar, memutar video syarah lengkap, menyimak naskah materi, dan mengikuti evaluasi pemahaman.
                 </p>
               </div>
               <div className="flex items-center gap-2 pt-0.5">

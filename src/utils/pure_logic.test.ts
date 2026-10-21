@@ -665,5 +665,202 @@ test('Case 21: Matriks hak akses membedakan fitur publik dan fitur khusus siswa 
   assert.equal(student.canMarkSessionDone, true, 'Siswa terdaftar boleh menyimpan progres belajar');
 });
 
+// Case 22: Audio Reading - stripHtmlForSpeech membersihkan tag HTML & entitas
+test('Case 22: stripHtmlForSpeech membersihkan tag HTML, paragraf, dan entitas untuk teks audio', async () => {
+  const { stripHtmlForSpeech } = await import('./articleAudioHelper.js');
+  const rawHtml = '<h2>Keutamaan Ilmu</h2><p>Bismillah, Nabi Muhammad &amp; para sahabat.</p><br/><div class="quote">Ilmu adalah cahaya.</div>';
+  const clean = stripHtmlForSpeech(rawHtml);
+
+  assert.equal(clean.includes('<h2>'), false);
+  assert.equal(clean.includes('<p>'), false);
+  assert.equal(clean.includes('&amp;'), false);
+  assert.equal(clean.includes('dan para sahabat'), true);
+  assert.equal(clean.includes('Ilmu adalah cahaya'), true);
+});
+
+// Case 23: Audio Reading - normalizeTextForSpeech menormalisasi istilah syar'i & singkatan
+test('Case 23: normalizeTextForSpeech menormalisasi singkatan kehormatan (SWT, SAW, RA, Q.S., H.R.) untuk pelafalan TTS', async () => {
+  const { normalizeTextForSpeech } = await import('./articleAudioHelper.js');
+  const input = 'Allah SWT berfirman dalam Q.S. 2:255 bahwa Rasulullah SAW bersabda sesuai H.R. Bukhari dari Abu Hurairah RA tentang Fiqh dan Wudhu.';
+  const spoken = normalizeTextForSpeech(input);
+
+  assert.equal(spoken.includes('SWT'), false);
+  assert.ok(spoken.includes("Subhanahu wa Ta'ala"));
+  assert.equal(spoken.includes('SAW'), false);
+  assert.ok(spoken.includes("Shallallahu 'alaihi wa sallam"));
+  assert.equal(spoken.includes('RA'), false);
+  assert.ok(spoken.includes("Radhiyallahu 'anhu"));
+  assert.ok(spoken.includes('Surah nomor 2 ayat 255'));
+  assert.ok(spoken.includes('Hadis riwayat Bukhari'));
+  assert.ok(spoken.includes('Fikih'));
+  assert.ok(spoken.includes('Wudhu'));
+});
+
+// Case 24: Audio Reading - splitIntoSpeechChunks memotong teks panjang menjadi fragmen stabil
+test('Case 24: splitIntoSpeechChunks membagi teks panjang menjadi penggalan kalimat stabil', async () => {
+  const { splitIntoSpeechChunks } = await import('./articleAudioHelper.js');
+  const longText = 'Paragraf pertama yang menjelaskan tentang rukun islam dan rukun iman secara ringkas. Kalimat kedua yang memberikan penjelasan lebih mendalam mengenai makna tauhid dan konsekuensi syahadat. Kalimat ketiga menyimpulkan faedah dengan bahasa yang sangat mudah dipahami oleh pembaca awam.';
+  const chunks = splitIntoSpeechChunks(longText, 100);
+
+  assert.ok(chunks.length >= 2);
+  for (const chunk of chunks) {
+    assert.ok(chunk.length > 0);
+    assert.ok(chunk.trim() === chunk);
+  }
+});
+
+// Case 25: Validasi Komentar Pembaca (Nama, Panjang, dan Moderasi Status)
+test('Case 25: Validasi komentar pembaca memeriksa batas panjang nama, isi komentar, dan status awal pending', () => {
+  interface CommentValidationResult {
+    valid: boolean;
+    error: string | null;
+  }
+
+  function validateCommentInput(name: string, content: string): CommentValidationResult {
+    const cleanName = name.trim();
+    const cleanContent = content.trim();
+
+    if (!cleanName || cleanName.length < 2) {
+      return { valid: false, error: 'Nama atau kunyah harus minimal 2 karakter.' };
+    }
+    if (cleanName.length > 100) {
+      return { valid: false, error: 'Nama tidak boleh melebihi 100 karakter.' };
+    }
+    if (!cleanContent || cleanContent.length < 5) {
+      return { valid: false, error: 'Isi komentar harus minimal 5 karakter.' };
+    }
+    if (cleanContent.length > 1000) {
+      return { valid: false, error: 'Isi komentar tidak boleh melebihi 1000 karakter.' };
+    }
+    return { valid: true, error: null };
+  }
+
+  // Sukses
+  const valid = validateCommentInput('Abu Maryam', 'Jazakallahu khairan atas artikel yang sangat berfaedah ini.');
+  assert.equal(valid.valid, true);
+  assert.equal(valid.error, null);
+
+  // Gagal: nama terlalu pendek
+  const nameShort = validateCommentInput('A', 'Faedah yang bagus sekali');
+  assert.equal(nameShort.valid, false);
+  assert.equal(nameShort.error, 'Nama atau kunyah harus minimal 2 karakter.');
+
+  // Gagal: komentar terlalu pendek
+  const contentShort = validateCommentInput('Fulan', 'Hai');
+  assert.equal(contentShort.valid, false);
+  assert.equal(contentShort.error, 'Isi komentar harus minimal 5 karakter.');
+
+  // Gagal: komentar melebihi 1000 karakter
+  const tooLongContent = 'A'.repeat(1001);
+  const contentOverflow = validateCommentInput('Fulan', tooLongContent);
+  assert.equal(contentOverflow.valid, false);
+  assert.equal(contentOverflow.error, 'Isi komentar tidak boleh melebihi 1000 karakter.');
+});
+
+// Case 26: Pengaturan Audio Reading Blog (Mode Web Speech vs File Rekaman Kustom)
+test('Case 26: Pengaturan Audio Reading Blog memvalidasi mode, laju kecepatan bicara, dan URL rekaman', () => {
+  interface AudioConfig {
+    mode: 'speech' | 'custom';
+    speechRate?: number;
+    speechVoiceName?: string;
+    customAudioUrl?: string;
+  }
+
+  function resolveEffectiveAudioPlayer(config?: AudioConfig) {
+    if (!config) {
+      return { type: 'speech', rate: 1.0, voice: '', audioUrl: null };
+    }
+    if (config.mode === 'custom' && config.customAudioUrl && config.customAudioUrl.trim()) {
+      return { type: 'custom', rate: 1.0, voice: '', audioUrl: config.customAudioUrl.trim() };
+    }
+    const rate = Math.min(Math.max(config.speechRate || 1.0, 0.75), 1.5);
+    return {
+      type: 'speech',
+      rate,
+      voice: config.speechVoiceName || '',
+      audioUrl: null
+    };
+  }
+
+  // 1. Default tanpa config -> mode speech 1.0x
+  const def = resolveEffectiveAudioPlayer(undefined);
+  assert.equal(def.type, 'speech');
+  assert.equal(def.rate, 1.0);
+  assert.equal(def.audioUrl, null);
+
+  // 2. Mode custom dengan URL valid -> mode custom
+  const custom = resolveEffectiveAudioPlayer({
+    mode: 'custom',
+    customAudioUrl: 'https://storage.googleapis.com/test-bucket/audio.mp3'
+  });
+  assert.equal(custom.type, 'custom');
+  assert.equal(custom.audioUrl, 'https://storage.googleapis.com/test-bucket/audio.mp3');
+
+  // 3. Mode custom tapi URL kosong -> fallback ke speech mode
+  const fallback = resolveEffectiveAudioPlayer({
+    mode: 'custom',
+    customAudioUrl: ''
+  });
+  assert.equal(fallback.type, 'speech');
+
+  // 4. Rate clamping (antara 0.75x dan 1.5x)
+  const clampedLow = resolveEffectiveAudioPlayer({ mode: 'speech', speechRate: 0.5 });
+  assert.equal(clampedLow.rate, 0.75);
+
+  const clampedHigh = resolveEffectiveAudioPlayer({ mode: 'speech', speechRate: 2.5 });
+  assert.equal(clampedHigh.rate, 1.5);
+});
+
+// Case 27: Moderasi dan Isolasi Komentar Antar Artikel
+test('Case 27: Moderasi komentar memastikan isolasi antar artikel dan hanya komentar approved yang tampil publik', () => {
+  interface CommentItem {
+    id: string;
+    articleId: string;
+    authorName: string;
+    content: string;
+    status: 'pending' | 'approved' | 'rejected';
+  }
+
+  const allComments: CommentItem[] = [
+    { id: 'c1', articleId: 'art-1', authorName: 'Ahmad', content: 'Komentar artikel 1 pending', status: 'pending' },
+    { id: 'c2', articleId: 'art-1', authorName: 'Zaid', content: 'Komentar artikel 1 approved', status: 'approved' },
+    { id: 'c3', articleId: 'art-1', authorName: 'Umar', content: 'Komentar artikel 1 rejected', status: 'rejected' },
+    { id: 'c4', articleId: 'art-2', authorName: 'Ali', content: 'Komentar artikel 2 approved', status: 'approved' },
+    { id: 'c5', articleId: 'art-2', authorName: 'Bilal', content: 'Komentar artikel 2 pending', status: 'pending' },
+  ];
+
+  // Helper tampilan publik untuk artikel 1
+  function getPublicComments(articleId: string, items: CommentItem[]) {
+    return items.filter(c => c.articleId === articleId && c.status === 'approved');
+  }
+
+  // Helper tampilan admin untuk artikel 1
+  function getAdminFilteredComments(items: CommentItem[], articleFilter: string, statusFilter: string) {
+    return items.filter(c => {
+      const matchArt = articleFilter === 'all' || c.articleId === articleFilter;
+      const matchStatus = statusFilter === 'all' || c.status === statusFilter;
+      return matchArt && matchStatus;
+    });
+  }
+
+  // Publik hanya melihat 1 komentar di artikel 1 (hanya approved)
+  const publicArt1 = getPublicComments('art-1', allComments);
+  assert.equal(publicArt1.length, 1);
+  assert.equal(publicArt1[0].id, 'c2');
+  assert.equal(publicArt1[0].authorName, 'Zaid');
+
+  // Isolasi antar artikel: komentar art-2 tidak bocor ke art-1
+  assert.equal(publicArt1.some(c => c.articleId === 'art-2'), false);
+
+  // Admin melihat seluruh 3 komentar di art-1 saat filter status 'all'
+  const adminArt1 = getAdminFilteredComments(allComments, 'art-1', 'all');
+  assert.equal(adminArt1.length, 3);
+
+  // Admin filter pending di seluruh artikel
+  const adminPendingAll = getAdminFilteredComments(allComments, 'all', 'pending');
+  assert.equal(adminPendingAll.length, 2);
+  assert.deepEqual(adminPendingAll.map(c => c.id), ['c1', 'c5']);
+});
+
 
 

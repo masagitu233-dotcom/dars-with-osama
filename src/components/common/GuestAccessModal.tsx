@@ -59,10 +59,10 @@ export const GuestAccessModal: React.FC<GuestAccessModalProps> = ({
 
           <div className="space-y-1.5">
             <h3 className="text-xl sm:text-2xl font-bold font-sans text-stone-900 dark:text-white">
-              Masuk untuk Mulai Belajar
+              Silakan Masuk ke Akun Dars with Osama
             </h3>
             <p className="text-xs sm:text-sm text-stone-600 dark:text-stone-300 leading-relaxed max-w-md mx-auto">
-              Silakan masuk atau buat akun terlebih dahulu untuk mengakses materi pembelajaran, video syarah, naskah PDF, dan kuis evaluasi.
+              Silakan masuk ke akun Dars with Osama untuk mulai belajar, memutar video syarah lengkap, menyimak naskah kajian, dan mengikuti kuis evaluasi.
             </p>
           </div>
         </div>

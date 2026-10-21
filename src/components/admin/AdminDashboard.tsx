@@ -72,12 +72,14 @@ import { Logo, LogoSymbol } from '../common/Logo';
 import { YouTubeEmbed } from '../common/YouTubeEmbed';
 import { AdminBlogManager } from './AdminBlogManager';
 import { AdminConsultationManager } from './AdminConsultationManager';
+import { AdminCommentsManager } from './AdminCommentsManager';
 import { RichTextEditor } from './RichTextEditor';
 import { MessageSquare } from 'lucide-react';
+import { getAllArticleCommentsForAdmin } from '../../firebase/services';
 
 export const AdminDashboard: React.FC<{
   initialCourseId?: string;
-  initialTab?: 'dashboard' | 'courses' | 'categories' | 'sessions' | 'quizzes' | 'users' | 'attempts' | 'firebase' | 'blog' | 'consultation';
+  initialTab?: 'dashboard' | 'courses' | 'categories' | 'sessions' | 'quizzes' | 'users' | 'attempts' | 'firebase' | 'blog' | 'consultation' | 'comments';
   autoOpenAddSession?: boolean;
   onClearAutoOpen?: () => void;
   onNavigateToSiswa?: () => void;
@@ -96,10 +98,15 @@ export const AdminDashboard: React.FC<{
   const { theme, effectiveTheme, setTheme } = useTheme();
 
   // Active Menu / Tab in Sidebar
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'courses' | 'categories' | 'sessions' | 'quizzes' | 'users' | 'attempts' | 'firebase' | 'blog' | 'consultation'>(initialTab || 'dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'courses' | 'categories' | 'sessions' | 'quizzes' | 'users' | 'attempts' | 'firebase' | 'blog' | 'consultation' | 'comments'>(initialTab || 'dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [quickSearch, setQuickSearch] = useState('');
+
+  // Comments state for badge & filtering
+  const [commentsCount, setCommentsCount] = useState<number>(0);
+  const [pendingCommentsCount, setPendingCommentsCount] = useState<number>(0);
+  const [selectedArticleIdForComments, setSelectedArticleIdForComments] = useState<string>('all');
 
   // Keyboard Escape listener to close drawer on mobile/tablet
   useEffect(() => {
@@ -247,6 +254,15 @@ export const AdminDashboard: React.FC<{
 
       if (crss.length > 0) {
         setSelectedCourseId(prev => (prev && crss.some(c => c.id === prev) ? prev : crss[0].id));
+      }
+
+      // Load comments stats for sidebar badge
+      try {
+        const comms = await getAllArticleCommentsForAdmin();
+        setCommentsCount(comms.length);
+        setPendingCommentsCount(comms.filter(c => c.status === 'pending').length);
+      } catch (err) {
+        // Non-blocking for offline or restricted mode
       }
     } catch (err: any) {
       console.error('Failed to load admin data:', err);
@@ -1001,6 +1017,30 @@ export const AdminDashboard: React.FC<{
                     {blogPosts.length}
                   </span>
                 )}
+              </button>
+
+              <button
+                onClick={() => { setActiveTab('comments'); setSidebarOpen(false); }}
+                title={`Komentar Pembaca Artikel (${commentsCount})`}
+                className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3.5 py-2.5'} rounded-xl text-xs font-semibold transition cursor-pointer ${
+                  activeTab === 'comments'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60 shadow-xs'
+                    : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800/60'
+                }`}
+              >
+                <div className="flex items-center gap-3 truncate">
+                  <MessageSquare className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  {!sidebarCollapsed && <span className="truncate">Komentar Artikel</span>}
+                </div>
+                {!sidebarCollapsed && pendingCommentsCount > 0 ? (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-bold shrink-0 animate-pulse">
+                    {pendingCommentsCount} baru
+                  </span>
+                ) : !sidebarCollapsed && commentsCount > 0 ? (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-500 font-bold shrink-0">
+                    {commentsCount}
+                  </span>
+                ) : null}
               </button>
 
               <button
@@ -1970,7 +2010,28 @@ export const AdminDashboard: React.FC<{
                   onPreviewBlogPost(post);
                 }
               }}
+              onNavigateToComments={(articleId) => {
+                if (articleId) setSelectedArticleIdForComments(articleId);
+                setActiveTab('comments');
+              }}
             />
+          )}
+
+          {/* ========================================================= */}
+          {/* VIEW: MODERASI KOMENTAR PEMBACA ARTIKEL */}
+          {/* ========================================================= */}
+          {activeTab === 'comments' && (
+            <div className="animate-fade-in">
+              <AdminCommentsManager
+                posts={blogPosts}
+                initialArticleFilter={selectedArticleIdForComments}
+                onNavigateToPost={(post) => {
+                  if (onPreviewBlogPost) {
+                    onPreviewBlogPost(post);
+                  }
+                }}
+              />
+            </div>
           )}
 
           {/* ========================================================= */}

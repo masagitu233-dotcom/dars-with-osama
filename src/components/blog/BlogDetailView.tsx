@@ -18,6 +18,8 @@ import { incrementBlogPostViews } from '../../firebase/services';
 import { autoWrapArabicText } from '../../utils/arabicFontHelper';
 import { ArticleShareModal } from './ArticleShareModal';
 import { useArticleSEO } from '../../hooks/useArticleSEO';
+import { ArticleAudioPlayer } from './ArticleAudioPlayer';
+import { ArticleCommentsSection } from './ArticleCommentsSection';
 
 interface BlogDetailViewProps {
   post: BlogPost;
@@ -191,6 +193,11 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
           />
         </div>
 
+        {/* AUDIO READING PLAYER (Hanya tampil jika diaktifkan admin) */}
+        {post.audioConfig?.enabled && (
+          <ArticleAudioPlayer post={post} />
+        )}
+
         {/* COVER IMAGE */}
         {post.coverImageUrl && (
           <figure className="space-y-2">
@@ -297,6 +304,9 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
           </div>
         </div>
       </article>
+
+      {/* ARTICLE READER COMMENTS & MODERATION SECTION */}
+      <ArticleCommentsSection articleId={post.id} articleTitle={post.title} />
 
       {/* RELATED ARTICLES SECTION */}
       {relatedArticles.length > 0 && (

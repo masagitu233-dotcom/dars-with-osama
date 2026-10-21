@@ -13,7 +13,7 @@ import {
 } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { db, storage, handleFirestoreError, OperationType, auth } from './config';
-import { Category, Course, Session, Quiz, Enrollment, QuizAttempt, UserProfile, BlogPost, Consultation } from '../types';
+import { Category, Course, Session, Quiz, Enrollment, QuizAttempt, UserProfile, BlogPost, Consultation, ArticleComment } from '../types';
 import { SEED_CATEGORIES, SEED_COURSES, SEED_SESSIONS, SEED_QUIZZES } from '../data/seedData';
 import { matchesSessionIdentifier, canAccessSessionPublicly } from '../utils/sessionShareHelper';
 
@@ -865,7 +865,7 @@ function readAsDataURLFallback(file: File, onProgress?: (percent: number) => voi
 
 export async function uploadFileToStorage(
   file: File,
-  folder: 'covers' | 'pdfs' | 'documents' | 'avatars' | 'blog_covers' | 'blog_images',
+  folder: 'covers' | 'pdfs' | 'documents' | 'avatars' | 'blog_covers' | 'blog_images' | 'article_audio',
   onProgress?: (percent: number) => void
 ): Promise<string> {
   const targetFile = file.type.startsWith('image/')
@@ -1245,6 +1245,7 @@ export async function saveBlogPost(post: Partial<BlogPost> & { title: string }):
     readingTimeMinutes,
     viewsCount: post.viewsCount || 0,
     publishedAt,
+    ...(post.audioConfig ? { audioConfig: post.audioConfig } : {}),
     createdAt: post.createdAt || now,
     updatedAt: now
   };
@@ -1456,4 +1457,120 @@ export async function updateConsultationStatus(
     throw error;
   }
 }
+
+// ==========================================
+// ARTICLE COMMENTS SERVICES (Komentar Pembaca)
+// ==========================================
+
+export async function createArticleComment(data: {
+  articleId: string;
+  authorName: string;
+  content: string;
+  userId?: string;
+}): Promise<string> {
+  const cleanName = data.authorName.trim();
+  const cleanContent = data.content.trim();
+
+  if (!cleanName || cleanName.length < 2 || cleanName.length > 100) {
+    throw new Error('Nama pembaca harus antara 2 hingga 100 karakter.');
+  }
+
+  if (!cleanContent || cleanContent.length < 5 || cleanContent.length > 1000) {
+    throw new Error('Isi komentar harus antara 5 hingga 1000 karakter.');
+  }
+
+  const newRef = doc(collection(db, 'articleComments'));
+  const now = new Date().toISOString();
+
+  const payload: ArticleComment = {
+    id: newRef.id,
+    articleId: data.articleId,
+    authorName: cleanName,
+    content: cleanContent,
+    status: 'pending',
+    createdAt: now,
+    updatedAt: now,
+    ...(data.userId ? { userId: data.userId } : {})
+  };
+
+  const path = `articleComments/${newRef.id}`;
+  try {
+    await setDoc(newRef, payload);
+    return newRef.id;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+    throw error;
+  }
+}
+
+export async function getApprovedArticleComments(articleId: string): Promise<ArticleComment[]> {
+  const path = `articleComments`;
+  try {
+    const q = query(
+      collection(db, 'articleComments'),
+      where('articleId', '==', articleId),
+      where('status', '==', 'approved')
+    );
+    const snapshot = await getDocs(q);
+    const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ArticleComment));
+    list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return list;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, path);
+    return [];
+  }
+}
+
+export async function getAllArticleCommentsForAdmin(articleId?: string): Promise<ArticleComment[]> {
+  const path = `articleComments`;
+  try {
+    let q;
+    if (articleId) {
+      q = query(collection(db, 'articleComments'), where('articleId', '==', articleId));
+    } else {
+      q = query(collection(db, 'articleComments'));
+    }
+    const snapshot = await getDocs(q);
+    const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ArticleComment));
+    list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return list;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, path);
+    return [];
+  }
+}
+
+export async function moderateArticleComment(
+  commentId: string,
+  newStatus: 'approved' | 'rejected',
+  moderatedBy = 'Admin'
+): Promise<void> {
+  const path = `articleComments/${commentId}`;
+  const now = new Date().toISOString();
+
+  try {
+    const docRef = doc(db, 'articleComments', commentId);
+    await updateDoc(docRef, {
+      status: newStatus,
+      moderatedAt: now,
+      moderatedBy,
+      updatedAt: now
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+    throw error;
+  }
+}
+
+export async function deleteArticleComment(commentId: string): Promise<void> {
+  const path = `articleComments/${commentId}`;
+  try {
+    const docRef = doc(db, 'articleComments', commentId);
+    await deleteDoc(docRef);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
+    throw error;
+  }
+}
+
 

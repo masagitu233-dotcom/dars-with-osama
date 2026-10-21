@@ -102,7 +102,7 @@ export const AuthModal: React.FC = () => {
         }
         await resetPassword(email.trim());
         setSuccessMsg(
-          'Tautan pemulihan kata sandi telah dikirim ke email Anda. Silakan periksa kotak masuk (Inbox) atau folder Spam/Promosi dalam 1-2 menit.'
+          'Tautan pemulihan password telah dikirim ke email kamu. Silakan periksa kotak masuk (Inbox) atau folder Spam/Promosi, lalu ikuti petunjuk untuk membuat password baru khusus akun Dars with Osama.'
         );
         setLoading(false);
         return;
@@ -113,11 +113,11 @@ export const AuthModal: React.FC = () => {
       const code = err?.code || '';
 
       if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') {
-        message = 'Email atau kata sandi tidak cocok. Harap periksa kembali atau gunakan fitur Lupa Sandi.';
+        message = 'Email atau password akun tidak cocok. Harap periksa kembali atau gunakan tombol "Lupa password akun Dars with Osama?".';
       } else if (code === 'auth/email-already-in-use') {
-        message = 'Email ini sudah terdaftar. Silakan beralih ke tab "Masuk" atau gunakan tautan "Lupa sandi?" jika Anda lupa kata sandi.';
+        message = 'Email ini sudah terdaftar. Silakan beralih ke tab "Masuk" atau gunakan tautan "Lupa password akun Dars with Osama?" jika Anda lupa kata sandi.';
       } else if (code === 'auth/weak-password') {
-        message = 'Kata sandi terlalu pendek. Gunakan minimal 6 karakter yang mudah Anda ingat.';
+        message = 'Password terlalu pendek. Gunakan minimal 6 karakter yang mudah Anda ingat.';
       } else if (code === 'auth/invalid-email') {
         message = 'Format alamat email tidak valid (contoh yang benar: nama@email.com).';
       } else if (code === 'auth/too-many-requests') {
@@ -196,21 +196,21 @@ export const AuthModal: React.FC = () => {
           </div>
           <h2 className="text-xl sm:text-2xl font-bold font-sans text-stone-900 dark:text-white">
             {authModalTab === 'login' && 'Masuk ke Dars with Osama'}
-            {authModalTab === 'register' && 'Buat Akun Penuntut Ilmu'}
-            {authModalTab === 'forgot' && 'Pemulihan Kata Sandi'}
+            {authModalTab === 'register' && 'Buat Akun Dars with Osama'}
+            {authModalTab === 'forgot' && 'Pemulihan Password Akun Dars with Osama'}
           </h2>
           <p className="text-xs sm:text-sm text-stone-600 dark:text-stone-300 mt-1 leading-relaxed">
             {pendingAction ? (
               <span className="text-amber-700 dark:text-amber-300 font-medium">
-                {pendingAction.type === 'quiz' && 'Masuk untuk memulai evaluasi kuis dan menyimpan nilai Anda.'}
-                {pendingAction.type === 'enroll' && 'Masuk untuk mendaftar materi dan melacak kemajuan belajar.'}
-                {pendingAction.type === 'session' && 'Masuk untuk memutar video pembelajaran dan menyimpan riwayat belajar.'}
+                {pendingAction.type === 'quiz' && 'Silakan masuk ke akun Dars with Osama untuk memulai evaluasi kuis dan menyimpan nilai Anda.'}
+                {pendingAction.type === 'enroll' && 'Silakan masuk ke akun Dars with Osama untuk mulai belajar dan melacak kemajuan belajar.'}
+                {pendingAction.type === 'session' && 'Silakan masuk ke akun Dars with Osama untuk mulai belajar dan memutar video syarah lengkap.'}
               </span>
             ) : (
               authModalTab === 'register'
                 ? 'Daftar gratis untuk mengakses video syarah, naskah kajian, dan kuis.'
                 : authModalTab === 'forgot'
-                ? 'Atur ulang kata sandi akun Dars with Osama Anda.'
+                ? 'Atur ulang password khusus akun Dars with Osama Anda.'
                 : 'Akses penuh kelas syarah, evaluasi kuis, dan pencatatan progres.'
             )}
           </p>
@@ -304,13 +304,16 @@ export const AuthModal: React.FC = () => {
         {authModalTab === 'register' && (
           <div className="mb-4 p-3.5 bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-300 dark:border-emerald-700/60 rounded-2xl text-emerald-950 dark:text-emerald-200 text-xs flex items-start gap-2.5 animate-fade-in-up">
             <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
-            <div className="space-y-1 leading-relaxed">
-              <strong className="block font-semibold text-emerald-900 dark:text-emerald-300">
-                Penting: Buat Kata Sandi Baru untuk Akun Dars
+            <div className="space-y-1.5 leading-relaxed">
+              <strong className="block font-semibold text-emerald-900 dark:text-emerald-300 text-xs sm:text-sm">
+                Gunakan email milikmu dan buat password baru
               </strong>
               <p className="text-[11px] sm:text-xs text-emerald-900/90 dark:text-emerald-200/90">
-                Kata sandi yang Anda masukkan di bawah adalah kata sandi baru khusus untuk portal ini. <strong className="underline decoration-emerald-500">Bukan kata sandi email Gmail Anda</strong>. Jangan gunakan sandi rahasia email pribadi Anda demi keamanan.
+                Gunakan alamat email yang kamu miliki dan buat password baru khusus untuk akun Dars with Osama. Password ini tidak harus sama dengan password Gmail atau email kamu. <strong className="underline decoration-emerald-500">Kami tidak meminta password email pribadimu</strong>.
               </p>
+              <div className="p-2 bg-emerald-100/70 dark:bg-emerald-900/40 rounded-xl text-[11px] text-emerald-900 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50">
+                💡 <em>Jika kamu masih bisa mengakses email tersebut, kamu tetap bisa mendaftar meskipun lupa password email lama. Buat password baru khusus untuk akun Dars with Osama.</em>
+              </div>
             </div>
           </div>
         )}
@@ -341,7 +344,11 @@ export const AuthModal: React.FC = () => {
 
           <div>
             <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1.5">
-              Alamat Email
+              {authModalTab === 'login'
+                ? 'Email yang kamu gunakan saat mendaftar'
+                : authModalTab === 'forgot'
+                ? 'Alamat email terdaftar'
+                : 'Alamat email'}
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-stone-400 dark:text-stone-500">
@@ -357,6 +364,15 @@ export const AuthModal: React.FC = () => {
                 className="w-full pl-10 pr-4 py-2.5 sm:py-3 bg-stone-50 dark:bg-stone-800/80 border border-stone-300 dark:border-stone-700 rounded-xl text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-sm focus:outline-none focus:border-emerald-500 transition min-h-[44px]"
               />
             </div>
+            {authModalTab === 'register' ? (
+              <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-1">
+                Gunakan email yang kamu miliki dan bisa kamu akses.
+              </p>
+            ) : authModalTab === 'forgot' ? (
+              <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-1">
+                Pastikan kamu masih bisa mengakses kotak masuk (inbox) atau folder spam email ini.
+              </p>
+            ) : null}
           </div>
 
           {authModalTab !== 'forgot' && (
@@ -365,7 +381,7 @@ export const AuthModal: React.FC = () => {
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300">
-                    {authModalTab === 'register' ? 'Buat Kata Sandi Akun' : 'Kata Sandi'}
+                    Password akun Dars with Osama
                   </label>
                   {authModalTab === 'login' && (
                     <button
@@ -373,7 +389,7 @@ export const AuthModal: React.FC = () => {
                       onClick={() => handleTabSwitch('forgot')}
                       className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer py-1"
                     >
-                      Lupa sandi?
+                      Lupa password akun Dars with Osama?
                     </button>
                   )}
                 </div>
@@ -387,31 +403,38 @@ export const AuthModal: React.FC = () => {
                     autoComplete={authModalTab === 'register' ? 'new-password' : 'current-password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder={authModalTab === 'register' ? 'Buat kata sandi baru (min. 6 karakter)' : '••••••••'}
+                    placeholder={
+                      authModalTab === 'register'
+                        ? 'Buat password baru untuk akunmu'
+                        : 'Masukkan password akun Dars with Osama'
+                    }
                     minLength={6}
                     className="w-full pl-10 pr-11 py-2.5 sm:py-3 bg-stone-50 dark:bg-stone-800/80 border border-stone-300 dark:border-stone-700 rounded-xl text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-sm focus:outline-none focus:border-emerald-500 transition min-h-[44px]"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    aria-label={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
+                    aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
                     className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition cursor-pointer"
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
-                {authModalTab === 'register' && (
-                  <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-1">
-                    Minimal 6 karakter. Kata sandi ini khusus untuk masuk ke Dars with Osama.
-                  </p>
-                )}
+                <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-1 flex items-center gap-1">
+                  <Info className="w-3.5 h-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                  <span>
+                    {authModalTab === 'register'
+                      ? 'Bukan password Gmail atau password email kamu. Minimal 6 karakter.'
+                      : 'Bukan password Gmail atau password email pribadimu.'}
+                  </span>
+                </p>
               </div>
 
               {/* Confirm Password Field (Register Only) */}
               {authModalTab === 'register' && (
                 <div>
                   <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1.5">
-                    Ulangi Kata Sandi Akun
+                    Ulangi password akun Dars with Osama
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-stone-400 dark:text-stone-500">
@@ -423,14 +446,14 @@ export const AuthModal: React.FC = () => {
                       autoComplete="new-password"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="Ketik ulang kata sandi baru Anda"
+                      placeholder="Ketik ulang password baru untuk akunmu"
                       minLength={6}
                       className="w-full pl-10 pr-11 py-2.5 sm:py-3 bg-stone-50 dark:bg-stone-800/80 border border-stone-300 dark:border-stone-700 rounded-xl text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-sm focus:outline-none focus:border-emerald-500 transition min-h-[44px]"
                     />
                     <button
                       type="button"
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      aria-label={showConfirmPassword ? 'Sembunyikan konfirmasi kata sandi' : 'Tampilkan konfirmasi kata sandi'}
+                      aria-label={showConfirmPassword ? 'Sembunyikan konfirmasi password' : 'Tampilkan konfirmasi password'}
                       className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition cursor-pointer"
                     >
                       {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -452,8 +475,8 @@ export const AuthModal: React.FC = () => {
               <>
                 <span>
                   {authModalTab === 'login' && 'Masuk Sekarang'}
-                  {authModalTab === 'register' && 'Daftar Akun Penuntut Ilmu'}
-                  {authModalTab === 'forgot' && 'Kirim Link Pemulihan'}
+                  {authModalTab === 'register' && 'Daftar Akun Dars with Osama'}
+                  {authModalTab === 'forgot' && 'Kirim Link Pemulihan Password'}
                 </span>
                 <ArrowRight className="w-4 h-4" />
               </>
@@ -503,4 +526,3 @@ export const AuthModal: React.FC = () => {
     </div>
   );
 };
-

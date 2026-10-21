@@ -57,7 +57,7 @@ export const QuizView: React.FC<QuizViewProps> = ({
             Akses Kuis Evaluasi Terbatas
           </h2>
           <p className="text-stone-600 dark:text-stone-300 text-sm max-w-lg mx-auto leading-relaxed">
-            Silakan masuk atau buat akun terlebih dahulu untuk mengerjakan kuis evaluasi <strong className="text-emerald-700 dark:text-emerald-300">{quiz.title}</strong> dan menyimpan skor kelulusan Anda.
+            Silakan masuk ke akun Dars with Osama untuk mulai belajar, mengerjakan kuis evaluasi <strong className="text-emerald-700 dark:text-emerald-300">{quiz.title}</strong>, dan menyimpan nilai kelulusan Anda.
           </p>
         </div>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">

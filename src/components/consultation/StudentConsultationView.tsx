@@ -29,7 +29,7 @@ interface StudentConsultationViewProps {
 export const StudentConsultationView: React.FC<StudentConsultationViewProps> = ({
   onNavigateToPublicQA
 }) => {
-  const { user, userProfile, openAuthModal, showToast } = useAuth();
+  const { user, userProfile, loading: authLoading, openAuthModal, showToast } = useAuth();
 
   const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -156,7 +156,12 @@ export const StudentConsultationView: React.FC<StudentConsultationViewProps> = (
         </div>
       </div>
 
-      {!user ? (
+      {authLoading ? (
+        <div className="max-w-3xl mx-auto px-4 py-16 text-center space-y-4">
+          <div className="w-10 h-10 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-sm text-stone-600 dark:text-stone-400 font-medium">Memeriksa status akun siswa...</p>
+        </div>
+      ) : !user ? (
         /* NON-LOGGED IN STATE NOTICE */
         <div className="p-8 text-center bg-white dark:bg-[#071B16] border border-[#073B2E]/15 dark:border-[#C9A34E]/25 rounded-3xl shadow-md space-y-4">
           <div className="w-14 h-14 rounded-2xl bg-[#073B2E]/10 dark:bg-[#C9A34E]/20 text-[#073B2E] dark:text-[#F4B942] flex items-center justify-center mx-auto">
@@ -164,22 +169,22 @@ export const StudentConsultationView: React.FC<StudentConsultationViewProps> = (
           </div>
           <div className="space-y-1 max-w-md mx-auto">
             <h3 className="text-lg font-bold font-serif-brand text-[#073B2E] dark:text-[#F7F6EF]">
-              Login Diberlakukan untuk Konsultasi
+              Silakan Masuk ke Akun Dars with Osama
             </h3>
             <p className="text-xs text-[#6B7C7A] dark:text-[#8C9E9B] leading-relaxed">
-              Hanya pengguna dan siswa terdaftar yang dapat mengajukan pertanyaan dan menerima balasan resmi dari admin/ustaz.
+              Silakan masuk ke akun Dars with Osama untuk mengajukan pertanyaan konsultasi baru dan menerima balasan resmi dari admin/ustaz.
             </p>
           </div>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
             <button
               onClick={() => openAuthModal('login')}
-              className="px-6 py-2.5 bg-[#073B2E] dark:bg-[#123B6D] hover:bg-[#0a4d3c] dark:hover:bg-[#0EA5A4] text-white font-bold text-xs sm:text-sm rounded-xl transition shadow cursor-pointer"
+              className="px-6 py-2.5 bg-[#073B2E] dark:bg-[#123B6D] hover:bg-[#0a4d3c] dark:hover:bg-[#0EA5A4] text-white font-bold text-xs sm:text-sm rounded-xl transition shadow cursor-pointer active:scale-95"
             >
-              Masuk / Login Akun
+              Masuk
             </button>
             <button
               onClick={() => openAuthModal('register')}
-              className="px-6 py-2.5 bg-white dark:bg-[#0c2b23] hover:bg-stone-100 dark:hover:bg-[#143e33] text-[#073B2E] dark:text-[#F7F6EF] font-bold text-xs sm:text-sm rounded-xl border border-[#073B2E]/20 dark:border-[#C9A34E]/30 transition cursor-pointer"
+              className="px-6 py-2.5 bg-white dark:bg-[#0c2b23] hover:bg-stone-100 dark:hover:bg-[#143e33] text-[#073B2E] dark:text-[#F7F6EF] font-bold text-xs sm:text-sm rounded-xl border border-[#073B2E]/20 dark:border-[#C9A34E]/30 transition cursor-pointer active:scale-95"
             >
               Daftar Akun Baru
             </button>

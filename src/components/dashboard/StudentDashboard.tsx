@@ -75,7 +75,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
             Dashboard Pembelajaran Dars with Osama
           </h2>
           <p className="text-stone-600 dark:text-stone-300 text-sm max-w-lg mx-auto leading-relaxed">
-            Silakan masuk atau buat akun terlebih dahulu untuk melihat riwayat kemajuan materi, catatan evaluasi kuis, dan sertifikat kelulusan Anda.
+            Silakan masuk ke akun Dars with Osama untuk mulai belajar, melihat riwayat kemajuan materi, catatan evaluasi kuis, dan sertifikat kelulusan Anda.
           </p>
         </div>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
