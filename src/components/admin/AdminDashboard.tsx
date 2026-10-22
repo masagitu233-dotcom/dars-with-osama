@@ -64,7 +64,7 @@ import {
   getBlogPosts,
   seedDefaultBlogPostsIfEmpty
 } from '../../firebase/services';
-import { firebaseConfig } from '../../firebase/config';
+import { firebaseConfig, getLatestFirestoreDiagnostic } from '../../firebase/config';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { ConfirmModal } from '../common/ConfirmModal';
@@ -2201,6 +2201,32 @@ export const AdminDashboard: React.FC<{
                       <Download className="w-3.5 h-3.5" />
                       <span>Unduh Cadangan Data (Backup JSON)</span>
                     </button>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-stone-50 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 text-xs space-y-1.5">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <span className="font-semibold text-stone-800 dark:text-stone-200">
+                        Target Named Database ID: <code className="px-1.5 py-0.5 bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 rounded-md font-mono text-[11px]">{firebaseConfig.firestoreDatabaseId}</code>
+                      </span>
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                        Named Database Terverifikasi
+                      </span>
+                    </div>
+                    {(() => {
+                      const diag = getLatestFirestoreDiagnostic();
+                      if (!diag) {
+                        return (
+                          <p className="text-[11px] text-stone-500">
+                            Status kueri: Normal • Seluruh pembacaan database ditujukan langsung ke named database produksi.
+                          </p>
+                        );
+                      }
+                      return (
+                        <div className="text-[11px] text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 p-2 rounded-lg border border-amber-200 dark:border-amber-800/60 mt-1">
+                          <strong>Diagnostik Terakhir ({diag.category}):</strong> {diag.summary} (Kode: {diag.code})
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   <p className="text-xs text-stone-500 leading-relaxed">

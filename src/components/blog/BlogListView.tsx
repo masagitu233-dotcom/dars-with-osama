@@ -14,17 +14,26 @@ import {
 } from 'lucide-react';
 import { BlogPost } from '../../types';
 import { autoWrapArabicText } from '../../utils/arabicFontHelper';
+import { ServiceDisruptionBanner } from '../common/ServiceDisruptionBanner';
 
 interface BlogListViewProps {
   posts: BlogPost[];
   loading?: boolean;
   onSelectArticle: (post: BlogPost) => void;
+  loadError?: { category: string; summary: string; code: string } | null;
+  onRetry?: () => void;
+  isRetrying?: boolean;
+  lastAttemptTimestamp?: number;
 }
 
 export const BlogListView: React.FC<BlogListViewProps> = ({
   posts,
   loading = false,
-  onSelectArticle
+  onSelectArticle,
+  loadError = null,
+  onRetry,
+  isRetrying = false,
+  lastAttemptTimestamp = 0
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -194,6 +203,19 @@ export const BlogListView: React.FC<BlogListViewProps> = ({
         </div>
       )}
 
+      {/* SERVICE DISRUPTION BANNER WHEN DATA IS RETAINED IN MEMORY */}
+      {loadError && posts.length > 0 && (
+        <ServiceDisruptionBanner
+          category={loadError.category}
+          code={loadError.code}
+          onRetry={onRetry}
+          isRetrying={isRetrying}
+          lastAttemptTimestamp={lastAttemptTimestamp}
+          mode="banner"
+          hasExistingData={true}
+        />
+      )}
+
       {/* REGULAR ARTICLES GRID */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
@@ -213,15 +235,27 @@ export const BlogListView: React.FC<BlogListViewProps> = ({
             ))}
           </div>
         ) : filteredPosts.length === 0 ? (
-          <div className="p-12 text-center bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl space-y-3">
-            <BookOpen className="w-12 h-12 text-stone-300 mx-auto" />
-            <p className="text-sm font-semibold text-stone-700 dark:text-stone-300">
-              Tidak ada artikel yang ditemukan.
-            </p>
-            <p className="text-xs text-stone-500">
-              Coba gunakan kata kunci pencarian lain atau pilih kategori artikel yang tersedia.
-            </p>
-          </div>
+          loadError && posts.length === 0 ? (
+            <ServiceDisruptionBanner
+              category={loadError.category}
+              code={loadError.code}
+              onRetry={onRetry}
+              isRetrying={isRetrying}
+              lastAttemptTimestamp={lastAttemptTimestamp}
+              mode="full"
+              hasExistingData={false}
+            />
+          ) : (
+            <div className="p-12 text-center bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl space-y-3">
+              <BookOpen className="w-12 h-12 text-stone-300 mx-auto" />
+              <p className="text-sm font-semibold text-stone-700 dark:text-stone-300">
+                Tidak ada artikel yang ditemukan.
+              </p>
+              <p className="text-xs text-stone-500">
+                Coba gunakan kata kunci pencarian lain atau pilih kategori artikel yang tersedia.
+              </p>
+            </div>
+          )
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {(selectedCategory === 'all' && !searchQuery ? regularPosts : filteredPosts).map((post, idx) => (

@@ -26,6 +26,8 @@ import { CourseCard } from '../courses/CourseCard';
 import { useSmoothScroll } from '../../context/SmoothScrollContext';
 import { useAuth } from '../../context/AuthContext';
 import { getPublishedPublicQA } from '../../firebase/services';
+import { classifyFirestoreError } from '../../firebase/config';
+import { canAttemptRetry, DEFAULT_RETRY_COOLDOWN_SECONDS } from '../../utils/serviceDisruptionHelper';
 import AOS from 'aos';
 
 gsap.registerPlugin(ScrollTrigger);
@@ -217,18 +219,39 @@ export const HomeView: React.FC<HomeViewProps> = ({
   const qaSectionRef = useRef<HTMLDivElement>(null);
   const closingRef = useRef<HTMLDivElement>(null);
 
-  // Home Q&A state
+  // Home Q&A state with disruption handling
   const [publishedQA, setPublishedQA] = useState<Consultation[]>([]);
+  const [qaError, setQaError] = useState<{ category: string; summary: string; code: string } | null>(null);
+  const [lastQaFetchTime, setLastQaFetchTime] = useState<number>(0);
+  const [isRetryingQa, setIsRetryingQa] = useState<boolean>(false);
 
-  useEffect(() => {
+  const loadHomeQA = (isManual = false) => {
+    if (isManual) {
+      if (!canAttemptRetry(lastQaFetchTime, DEFAULT_RETRY_COOLDOWN_SECONDS)) return;
+      setIsRetryingQa(true);
+    }
+    setLastQaFetchTime(Date.now());
     getPublishedPublicQA()
       .then((list) => {
         setPublishedQA(list);
+        setQaError(null);
         setTimeout(() => {
           AOS.refreshHard();
         }, 120);
       })
-      .catch((err) => console.warn('Home Q&A load notice:', err));
+      .catch((err) => {
+        console.warn('Home Q&A load notice:', err);
+        const diag = classifyFirestoreError(err);
+        setQaError(diag);
+        // Do not wipe publishedQA on error!
+      })
+      .finally(() => {
+        setIsRetryingQa(false);
+      });
+  };
+
+  useEffect(() => {
+    loadHomeQA();
   }, []);
 
   // Filter only published blog posts for public view
@@ -406,21 +429,40 @@ export const HomeView: React.FC<HomeViewProps> = ({
               ))}
             </div>
           ) : (
-            <div className="p-8 text-center bg-[#F7F6EF]/60 dark:bg-[#0c2b23] border border-dashed border-[#073B2E]/20 dark:border-[#C9A34E]/30 rounded-2xl space-y-3">
-              <HelpCircle className="w-8 h-8 text-[#C9A34E] mx-auto opacity-70" />
-              <h4 className="text-sm font-bold text-[#073B2E] dark:text-[#F7F6EF] font-serif-brand">
-                Belum Ada Tanya Jawab Dipublikasikan
-              </h4>
-              <p className="text-xs text-[#6B7C7A] dark:text-[#8C9E9B] max-w-sm mx-auto leading-relaxed">
-                Pertanyaan materi pembelajaran yang telah disetujui akan ditampilkan di sini. Anda dapat mengajukan pertanyaan baru melalui Ruang Konsultasi.
-              </p>
-              <button
-                onClick={handleAskQuestion}
-                className="mt-1 px-4 py-2 bg-[#073B2E] text-white text-xs font-bold rounded-xl hover:bg-[#0a4d3c] transition cursor-pointer"
-              >
-                Kirim Pertanyaan Pertama
-              </button>
-            </div>
+            qaError ? (
+              <div className="p-8 text-center bg-amber-50/80 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700/60 rounded-2xl space-y-3">
+                <HelpCircle className="w-8 h-8 text-amber-600 dark:text-amber-400 mx-auto" />
+                <h4 className="text-sm font-bold text-amber-950 dark:text-amber-100 font-serif-brand">
+                  Sinkronisasi Tanya Jawab Terkendala ({qaError.category === 'resource-exhausted' ? 'Batas Kuota Firestore' : 'Jaringan'})
+                </h4>
+                <p className="text-xs text-stone-600 dark:text-stone-300 max-w-sm mx-auto leading-relaxed">
+                  Data konsultasi tetap aman tersimpan di Google Cloud Firestore. Anda dapat mencoba memuat ulang kembali.
+                </p>
+                <button
+                  onClick={() => loadHomeQA(true)}
+                  disabled={isRetryingQa}
+                  className="mt-1 px-4 py-2 bg-amber-600 text-white text-xs font-bold rounded-xl hover:bg-amber-700 transition cursor-pointer"
+                >
+                  {isRetryingQa ? 'Memuat...' : 'Coba Muat Ulang'}
+                </button>
+              </div>
+            ) : (
+              <div className="p-8 text-center bg-[#F7F6EF]/60 dark:bg-[#0c2b23] border border-dashed border-[#073B2E]/20 dark:border-[#C9A34E]/30 rounded-2xl space-y-3">
+                <HelpCircle className="w-8 h-8 text-[#C9A34E] mx-auto opacity-70" />
+                <h4 className="text-sm font-bold text-[#073B2E] dark:text-[#F7F6EF] font-serif-brand">
+                  Belum Ada Tanya Jawab Dipublikasikan
+                </h4>
+                <p className="text-xs text-[#6B7C7A] dark:text-[#8C9E9B] max-w-sm mx-auto leading-relaxed">
+                  Pertanyaan materi pembelajaran yang telah disetujui akan ditampilkan di sini. Anda dapat mengajukan pertanyaan baru melalui Ruang Konsultasi.
+                </p>
+                <button
+                  onClick={handleAskQuestion}
+                  className="mt-1 px-4 py-2 bg-[#073B2E] text-white text-xs font-bold rounded-xl hover:bg-[#0a4d3c] transition cursor-pointer"
+                >
+                  Kirim Pertanyaan Pertama
+                </button>
+              </div>
+            )
           )}
         </div>
       </section>

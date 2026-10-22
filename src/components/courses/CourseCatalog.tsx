@@ -5,6 +5,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Course, Category, Enrollment } from '../../types';
 import { CourseCard } from './CourseCard';
 import { useLanguage } from '../../context/LanguageContext';
+import { ServiceDisruptionBanner } from '../common/ServiceDisruptionBanner';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -16,6 +17,10 @@ interface CourseCatalogProps {
   searchQuery?: string;
   onSelectCourse: (course: Course) => void;
   onClearFilters?: () => void;
+  loadError?: { category: string; summary: string; code: string } | null;
+  onRetry?: () => void;
+  isRetrying?: boolean;
+  lastAttemptTimestamp?: number;
 }
 
 export const CourseCatalog: React.FC<CourseCatalogProps> = ({
@@ -24,7 +29,11 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({
   enrollments,
   selectedCategoryId: initialCat = 'all',
   searchQuery: initialSearch = '',
-  onSelectCourse
+  onSelectCourse,
+  loadError = null,
+  onRetry,
+  isRetrying = false,
+  lastAttemptTimestamp = 0
 }) => {
   const { t } = useLanguage();
   const [activeCategory, setActiveCategory] = useState<string>(initialCat);
@@ -86,6 +95,19 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({
           Pilih kurikulum yang ingin Anda pelajari. Seluruh video dan naskah materi terbuka untuk umum tanpa wajib login. Mendaftar akun diperlukan jika ingin menyimpan riwayat progres dan mengerjakan kuis evaluasi.
         </p>
       </div>
+
+      {/* SERVICE DISRUPTION BANNER WHEN DATA IS RETAINED IN MEMORY */}
+      {loadError && courses.length > 0 && (
+        <ServiceDisruptionBanner
+          category={loadError.category}
+          code={loadError.code}
+          onRetry={onRetry}
+          isRetrying={isRetrying}
+          lastAttemptTimestamp={lastAttemptTimestamp}
+          mode="banner"
+          hasExistingData={true}
+        />
+      )}
 
       {/* Filter and Search Bar */}
       <div
@@ -173,25 +195,35 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({
             </div>
           ))}
         </div>
-      ) : (
-        <div className="text-center py-16 bg-white dark:bg-stone-900/50 border border-stone-200 dark:border-stone-800 rounded-3xl p-8 space-y-4 shadow-sm">
-          <BookOpen className="w-12 h-12 text-stone-400 dark:text-stone-600 mx-auto" />
-          <h3 className="text-lg font-semibold text-stone-800 dark:text-stone-200">Tidak ada kursus yang cocok</h3>
-          <p className="text-sm text-stone-600 dark:text-stone-400 max-w-md mx-auto">
-            Coba ubah kata kunci pencarian atau bersihkan filter untuk melihat seluruh materi kursus yang tersedia.
-          </p>
-          <button
-            onClick={() => {
-              setActiveCategory('all');
-              setActiveLevel('all');
-              setSearchTerm('');
-            }}
-            className="px-4 py-2 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 rounded-xl text-xs font-medium transition cursor-pointer"
-          >
-            Reset Semua Filter
-          </button>
-        </div>
-      )}
+      ) : loadError && courses.length === 0 ? (
+          <ServiceDisruptionBanner
+            category={loadError.category}
+            code={loadError.code}
+            onRetry={onRetry}
+            isRetrying={isRetrying}
+            lastAttemptTimestamp={lastAttemptTimestamp}
+            mode="full"
+            hasExistingData={false}
+          />
+        ) : (
+          <div className="text-center py-16 bg-white dark:bg-stone-900/50 border border-stone-200 dark:border-stone-800 rounded-3xl p-8 space-y-4 shadow-sm">
+            <BookOpen className="w-12 h-12 text-stone-400 dark:text-stone-600 mx-auto" />
+            <h3 className="text-lg font-semibold text-stone-800 dark:text-stone-200">Tidak ada kursus yang cocok</h3>
+            <p className="text-sm text-stone-600 dark:text-stone-400 max-w-md mx-auto">
+              Coba ubah kata kunci pencarian atau bersihkan filter untuk melihat seluruh materi kursus yang tersedia.
+            </p>
+            <button
+              onClick={() => {
+                setActiveCategory('all');
+                setActiveLevel('all');
+                setSearchTerm('');
+              }}
+              className="px-4 py-2 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 rounded-xl text-xs font-medium transition cursor-pointer"
+            >
+              Reset Semua Filter
+            </button>
+          </div>
+        )}
     </div>
   );
 };

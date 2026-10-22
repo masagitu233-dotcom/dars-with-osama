@@ -1280,6 +1280,95 @@ test('Case 35: mergeCourseSessions memilih versi sesi terbaru berdasarkan update
   assert.deepEqual(reconciled.missingOnServer.map((i) => i.id), ['post-local-only']);
 });
 
+// Case 36: Validasi Named Database Firestore dan Klasifikasi Diagnostik Error yang Aman
+test('Case 36: Validasi Named Database Firestore dan klasifikasi error diagnostik tanpa membocorkan kredensial', async () => {
+  const {
+    REQUIRED_DATABASE_ID,
+    firebaseConfig,
+    classifyFirestoreError
+  } = await import('../firebase/config.js');
+
+  // 1. Pastikan named database ID sesuai dengan database produksi yang berisi data lengkap
+  assert.equal(REQUIRED_DATABASE_ID, 'ai-studio-remixdarswithosa-978e37b7-a164-496c-8e6a-39738edc5d93');
+  assert.equal(firebaseConfig.firestoreDatabaseId, 'ai-studio-remixdarswithosa-978e37b7-a164-496c-8e6a-39738edc5d93');
+  assert.notEqual(firebaseConfig.firestoreDatabaseId, '(default)');
+  assert.notEqual(firebaseConfig.firestoreDatabaseId, '');
+
+  // 2. Klasifikasi error permission-denied
+  const permErr = classifyFirestoreError({ code: 'permission-denied', message: 'Missing or insufficient permissions.' });
+  assert.equal(permErr.category, 'permission-denied');
+
+  // 3. Klasifikasi error koneksi offline / domain terblokir
+  const netErr = classifyFirestoreError(new Error('Failed to get document because the client is offline'));
+  assert.equal(netErr.category, 'network-or-domain-blocked');
+
+  // 4. Klasifikasi error unauthenticated
+  const authErr = classifyFirestoreError({ code: 'unauthenticated', message: 'Token expired' });
+  assert.equal(authErr.category, 'unauthenticated');
+
+  // 5. Klasifikasi error database not-found
+  const notFoundErr = classifyFirestoreError({ code: 'not-found', message: 'NOT_FOUND: database does not exist' });
+  assert.equal(notFoundErr.category, 'database-not-found');
+});
+
+// Case 37: Penanganan Gangguan Layanan (resource-exhausted / kuota), Retensi Data di Memori, dan Jeda Ulang (Cooldown)
+test('Case 37: Penanganan kegagalan pemuatan data Firestore mempertahankan data memori dan menerapkan jeda coba lagi', async () => {
+  const {
+    canAttemptRetry,
+    getRemainingCooldownSeconds,
+    retainExistingDataOnFailure,
+    formatDisruptionMessage,
+    DEFAULT_RETRY_COOLDOWN_SECONDS
+  } = await import('./serviceDisruptionHelper.js');
+
+  // 1. Retensi data in-memory: Jangan hapus data yang sudah ada saat terjadi error
+  const existingArticles = [
+    { id: 'art-1', title: 'Artikel Shahih Pertama' },
+    { id: 'art-2', title: 'Artikel Shahih Kedua' }
+  ];
+
+  // Saat fetch berikutnya error (errorOccurred = true), data lama HARUS tetap dipertahankan
+  const retainedOnError = retainExistingDataOnFailure(existingArticles, [], true);
+  assert.equal(retainedOnError.length, 2);
+  assert.deepEqual(retainedOnError, existingArticles);
+
+  // Saat fetch sukses (errorOccurred = false), data baru diperbarui
+  const freshArticles = [{ id: 'art-3', title: 'Artikel Baru Berhasil Dimuat' }];
+  const updatedOnSuccess = retainExistingDataOnFailure(existingArticles, freshArticles, false);
+  assert.equal(updatedOnSuccess.length, 1);
+  assert.equal(updatedOnSuccess[0].id, 'art-3');
+
+  // 2. Evaluasi jeda coba lagi (cooldown) untuk mencegah permintaan agresif
+  const now = 1000000;
+  const recentAttempt = now - 3000; // 3 detik yang lalu (cooldown default 10 detik)
+
+  assert.equal(canAttemptRetry(recentAttempt, DEFAULT_RETRY_COOLDOWN_SECONDS, now), false);
+  const remaining = getRemainingCooldownSeconds(recentAttempt, DEFAULT_RETRY_COOLDOWN_SECONDS, now);
+  assert.equal(remaining, 7); // 10 - 3 = 7 detik tersisa
+
+  // Setelah lewat 10 detik, coba lagi diizinkan
+  const oldAttempt = now - 11000; // 11 detik yang lalu
+  assert.equal(canAttemptRetry(oldAttempt, DEFAULT_RETRY_COOLDOWN_SECONDS, now), true);
+  assert.equal(getRemainingCooldownSeconds(oldAttempt, DEFAULT_RETRY_COOLDOWN_SECONDS, now), 0);
+
+  // 3. Format pesan gangguan layanan yang jujur dan membedakan kuota vs jaringan
+  const quotaMsg = formatDisruptionMessage('resource-exhausted', 'resource-exhausted');
+  assert.equal(quotaMsg.isQuota, true);
+  assert.ok(quotaMsg.title.includes('Batas Kuota'));
+  assert.ok(quotaMsg.message.includes('Cloud Firestore'));
+  assert.ok(quotaMsg.message.includes('aman tersimpan'));
+
+  const netMsg = formatDisruptionMessage('network-or-domain-blocked');
+  assert.equal(netMsg.isQuota, false);
+  assert.ok(netMsg.title.includes('Koneksi'));
+
+  const genMsg = formatDisruptionMessage('unknown-error');
+  assert.equal(genMsg.isQuota, false);
+  assert.ok(genMsg.title.includes('Gangguan'));
+});
+
+
+
 
 
 

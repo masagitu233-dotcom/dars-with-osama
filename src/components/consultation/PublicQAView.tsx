@@ -18,10 +18,13 @@ import {
 } from 'lucide-react';
 import { Consultation } from '../../types';
 import { getPublishedPublicQA } from '../../firebase/services';
+import { classifyFirestoreError } from '../../firebase/config';
 import { useAuth } from '../../context/AuthContext';
 import { autoWrapArabicText } from '../../utils/arabicFontHelper';
 import { ShareQAModal } from './ShareQAModal';
 import { useQASEO } from '../../hooks/useQASEO';
+import { ServiceDisruptionBanner } from '../common/ServiceDisruptionBanner';
+import { canAttemptRetry, DEFAULT_RETRY_COOLDOWN_SECONDS } from '../../utils/serviceDisruptionHelper';
 
 interface PublicQAViewProps {
   onNavigateToConsultation: () => void;
@@ -47,6 +50,11 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  // Disruption error state & cooldown tracking
+  const [qaError, setQaError] = useState<{ category: string; summary: string; code: string } | null>(null);
+  const [lastFetchTimestamp, setLastFetchTimestamp] = useState<number>(0);
+  const [isRetrying, setIsRetrying] = useState<boolean>(false);
+
   // Sharing Modal State
   const [shareModalOpen, setShareModalOpen] = useState<boolean>(false);
   const [selectedQaForShare, setSelectedQaForShare] = useState<Consultation | null>(null);
@@ -56,15 +64,30 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
   const activeQAForSEO = qaList.find(q => q.id === expandedId) || null;
   useQASEO(activeQAForSEO);
 
-  const loadPublicQA = async () => {
-    setLoading(true);
+  const loadPublicQA = async (isManualRetry = false) => {
+    if (isManualRetry) {
+      if (!canAttemptRetry(lastFetchTimestamp, DEFAULT_RETRY_COOLDOWN_SECONDS)) {
+        return;
+      }
+      setIsRetrying(true);
+    } else {
+      setLoading(true);
+    }
+    setLastFetchTimestamp(Date.now());
+
     try {
       const list = await getPublishedPublicQA();
+      // IN-MEMORY RETENTION: only update on success
       setQaList(list);
+      setQaError(null);
     } catch (err) {
       console.warn('Error loading public Q&A:', err);
+      const diag = classifyFirestoreError(err);
+      setQaError(diag);
+      // Retain existing in-memory qaList without wiping!
     } finally {
       setLoading(false);
+      setIsRetrying(false);
     }
   };
 
@@ -205,6 +228,19 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
         </div>
       </div>
 
+      {/* SERVICE DISRUPTION BANNER WHEN DATA IS RETAINED IN MEMORY */}
+      {qaError && qaList.length > 0 && (
+        <ServiceDisruptionBanner
+          category={qaError.category}
+          code={qaError.code}
+          onRetry={() => loadPublicQA(true)}
+          isRetrying={isRetrying}
+          lastAttemptTimestamp={lastFetchTimestamp}
+          mode="banner"
+          hasExistingData={true}
+        />
+      )}
+
       {/* QA LIST ACCORDION */}
       {loading ? (
         <div className="py-16 text-center space-y-3">
@@ -214,23 +250,35 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
           </p>
         </div>
       ) : filteredQA.length === 0 ? (
-        <div className="p-12 text-center bg-white dark:bg-[#071B16] border border-[#073B2E]/15 dark:border-[#C9A34E]/25 rounded-3xl space-y-3">
-          <HelpCircle className="w-10 h-10 text-[#C9A34E] mx-auto opacity-70" />
-          <h3 className="text-base font-bold font-serif-brand text-[#073B2E] dark:text-[#F7F6EF]">
-            Belum Ada Tanya Jawab Publik
-          </h3>
-          <p className="text-xs text-[#6B7C7A] dark:text-[#8C9E9B] max-w-md mx-auto leading-relaxed">
-            {searchQuery
-              ? `Tidak ditemukan tanya jawab yang cocok dengan kata kunci "${searchQuery}".`
-              : 'Belum ada pertanyaan materi yang dipublikasikan. Anda dapat menjadi yang pertama mengajukan pertanyaan.'}
-          </p>
-          <button
-            onClick={handleAskQuestion}
-            className="mt-2 px-5 py-2 bg-[#073B2E] dark:bg-[#123B6D] hover:bg-[#0a4d3c] text-white text-xs font-bold rounded-xl transition cursor-pointer"
-          >
-            Kirim Pertanyaan Konsultasi
-          </button>
-        </div>
+        qaError && qaList.length === 0 ? (
+          <ServiceDisruptionBanner
+            category={qaError.category}
+            code={qaError.code}
+            onRetry={() => loadPublicQA(true)}
+            isRetrying={isRetrying}
+            lastAttemptTimestamp={lastFetchTimestamp}
+            mode="full"
+            hasExistingData={false}
+          />
+        ) : (
+          <div className="p-12 text-center bg-white dark:bg-[#071B16] border border-[#073B2E]/15 dark:border-[#C9A34E]/25 rounded-3xl space-y-3">
+            <HelpCircle className="w-10 h-10 text-[#C9A34E] mx-auto opacity-70" />
+            <h3 className="text-base font-bold font-serif-brand text-[#073B2E] dark:text-[#F7F6EF]">
+              Belum Ada Tanya Jawab Publik
+            </h3>
+            <p className="text-xs text-[#6B7C7A] dark:text-[#8C9E9B] max-w-md mx-auto leading-relaxed">
+              {searchQuery
+                ? `Tidak ditemukan tanya jawab yang cocok dengan kata kunci "${searchQuery}".`
+                : 'Belum ada pertanyaan materi yang dipublikasikan. Anda dapat menjadi yang pertama mengajukan pertanyaan.'}
+            </p>
+            <button
+              onClick={handleAskQuestion}
+              className="mt-2 px-5 py-2 bg-[#073B2E] dark:bg-[#123B6D] hover:bg-[#0a4d3c] text-white text-xs font-bold rounded-xl transition cursor-pointer"
+            >
+              Kirim Pertanyaan Konsultasi
+            </button>
+          </div>
+        )
       ) : (
         <div className="space-y-5">
           {filteredQA.map((item, idx) => {

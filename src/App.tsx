@@ -52,6 +52,9 @@ import {
   getUserEnrollments,
   getBlogPosts
 } from './firebase/services';
+import { classifyFirestoreError } from './firebase/config';
+import { ServiceDisruptionBanner } from './components/common/ServiceDisruptionBanner';
+import { canAttemptRetry, DEFAULT_RETRY_COOLDOWN_SECONDS } from './utils/serviceDisruptionHelper';
 import {
   DarsRouteState,
   DarsHistoryState,
@@ -166,6 +169,15 @@ function MainApp() {
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
   const [enrollmentsMap, setEnrollmentsMap] = useState<Record<string, Enrollment>>({});
   const [loading, setLoading] = useState<boolean>(true);
+
+  // Firestore disruption state & debounce retry tracking
+  const [loadError, setLoadError] = useState<{ category: string; summary: string; code: string } | null>(null);
+  const [lastDataFetchTimestamp, setLastDataFetchTimestamp] = useState<number>(0);
+  const [isRetryingData, setIsRetryingData] = useState<boolean>(false);
+
+  const [sessionError, setSessionError] = useState<{ category: string; summary: string; code: string } | null>(null);
+  const [lastSessionFetchTimestamp, setLastSessionFetchTimestamp] = useState<number>(0);
+  const [isRetryingSession, setIsRetryingSession] = useState<boolean>(false);
 
   // Refs to keep latest state accessible inside popstate listener without stale closures
   const currentViewRef = useRef<string>(currentView);
@@ -483,7 +495,17 @@ function MainApp() {
   }, [currentView, selectedCourse, selectedSession, selectedBlogPost, courses.length, blogPosts.length, loading]);
 
   // Fetch initial categories, published courses, and blog posts from Cloud Firestore
-  const loadData = async () => {
+  const loadData = async (isManualRetry = false) => {
+    if (isManualRetry) {
+      if (!canAttemptRetry(lastDataFetchTimestamp, DEFAULT_RETRY_COOLDOWN_SECONDS)) {
+        return;
+      }
+      setIsRetryingData(true);
+    } else {
+      setLoading(true);
+    }
+    setLastDataFetchTimestamp(Date.now());
+
     try {
       const [cats, crss, posts] = await Promise.all([
         getCategories(),
@@ -493,6 +515,8 @@ function MainApp() {
       setCategories(cats);
       setCourses(crss);
       setBlogPosts(posts);
+      setLoadError(null);
+
       setSelectedBlogPost(prev => {
         if (!prev) return null;
         return posts.find(p => p.id === prev.id) || prev;
@@ -513,10 +537,18 @@ function MainApp() {
         return prev;
       });
     } catch (err) {
-      console.warn('Initial data load notice:', err);
+      console.warn('Initial data load notice / error caught:', err);
+      const diag = classifyFirestoreError(err);
+      setLoadError(diag);
+      // IN-MEMORY RETENTION: categories, courses, and blogPosts are NOT cleared!
     } finally {
       setLoading(false);
+      setIsRetryingData(false);
     }
+  };
+
+  const handleRetryLoadData = () => {
+    loadData(true);
   };
 
   useEffect(() => {
@@ -544,20 +576,44 @@ function MainApp() {
   }, [user]);
 
   // When selectedCourse changes, fetch its sessions and refresh selectedSession with the latest server version
+  const loadCourseSessions = (courseId: string, isManualRetry = false) => {
+    if (isManualRetry) {
+      if (!canAttemptRetry(lastSessionFetchTimestamp, DEFAULT_RETRY_COOLDOWN_SECONDS)) {
+        return;
+      }
+      setIsRetryingSession(true);
+    }
+    setLastSessionFetchTimestamp(Date.now());
+
+    getSessionsByCourse(courseId, false)
+      .then(sessions => {
+        setCourseSessions(sessions);
+        setSessionError(null);
+        setSelectedSession(prev => {
+          if (prev && prev.courseId === courseId) {
+            return sessions.find(s => s.id === prev.id) || (sessions.length > 0 ? sessions[0] : null);
+          }
+          return sessions.length > 0 ? sessions[0] : null;
+        });
+      })
+      .catch(err => {
+        console.warn('Session load notice:', err);
+        const diag = classifyFirestoreError(err);
+        setSessionError(diag);
+        // IN-MEMORY RETENTION: do not wipe courseSessions!
+      })
+      .finally(() => {
+        setIsRetryingSession(false);
+      });
+  };
+
   useEffect(() => {
     if (!selectedCourse) {
       setCourseSessions([]);
+      setSessionError(null);
       return;
     }
-    getSessionsByCourse(selectedCourse.id, false).then(sessions => {
-      setCourseSessions(sessions);
-      setSelectedSession(prev => {
-        if (prev && prev.courseId === selectedCourse.id) {
-          return sessions.find(s => s.id === prev.id) || (sessions.length > 0 ? sessions[0] : null);
-        }
-        return sessions.length > 0 ? sessions[0] : null;
-      });
-    });
+    loadCourseSessions(selectedCourse.id);
   }, [selectedCourse]);
 
   // Handlers for navigation
@@ -756,25 +812,70 @@ function MainApp() {
                         setFilterCategoryId('all');
                         setSearchQuery('');
                       }}
+                      loadError={loadError}
+                      onRetry={handleRetryLoadData}
+                      isRetrying={isRetryingData}
+                      lastAttemptTimestamp={lastDataFetchTimestamp}
                     />
                   )}
 
                   {/* VIEW 3: COURSE DETAIL */}
-                  {currentView === 'course-detail' && selectedCourse && (
-                    <CourseDetail
-                      course={selectedCourse}
-                      category={categories.find(c => c.id === selectedCourse.categoryId)}
-                      sessions={courseSessions}
-                      enrollment={enrollmentsMap[selectedCourse.id] || null}
-                      onBack={() =>
-                        handleBackOrNavigate(['courses', 'student-dashboard', 'home'], {
-                          view: 'courses'
-                        })
-                      }
-                      onSelectSession={handleSelectSession}
-                      onOpenCertificate={handleOpenCertificate}
-                      onRefreshEnrollment={loadUserEnrollments}
-                    />
+                  {currentView === 'course-detail' && (
+                    selectedCourse ? (
+                      <div className="space-y-4">
+                        {sessionError && courseSessions.length > 0 && (
+                          <ServiceDisruptionBanner
+                            category={sessionError.category}
+                            code={sessionError.code}
+                            onRetry={() => loadCourseSessions(selectedCourse.id, true)}
+                            isRetrying={isRetryingSession}
+                            lastAttemptTimestamp={lastSessionFetchTimestamp}
+                            mode="banner"
+                            hasExistingData={true}
+                          />
+                        )}
+                        {sessionError && courseSessions.length === 0 && (
+                          <ServiceDisruptionBanner
+                            category={sessionError.category}
+                            code={sessionError.code}
+                            onRetry={() => loadCourseSessions(selectedCourse.id, true)}
+                            isRetrying={isRetryingSession}
+                            lastAttemptTimestamp={lastSessionFetchTimestamp}
+                            mode="full"
+                            hasExistingData={false}
+                            customTitle="Sesi Kursus Sedang Tidak Dapat Dimuat"
+                          />
+                        )}
+                        <CourseDetail
+                          course={selectedCourse}
+                          category={categories.find(c => c.id === selectedCourse.categoryId)}
+                          sessions={courseSessions}
+                          enrollment={enrollmentsMap[selectedCourse.id] || null}
+                          onBack={() =>
+                            handleBackOrNavigate(['courses', 'student-dashboard', 'home'], {
+                              view: 'courses'
+                            })
+                          }
+                          onSelectSession={handleSelectSession}
+                          onOpenCertificate={handleOpenCertificate}
+                          onRefreshEnrollment={loadUserEnrollments}
+                        />
+                      </div>
+                    ) : (
+                      loadError ? (
+                        <div className="max-w-4xl mx-auto px-4 py-12">
+                          <ServiceDisruptionBanner
+                            category={loadError.category}
+                            code={loadError.code}
+                            onRetry={handleRetryLoadData}
+                            isRetrying={isRetryingData}
+                            lastAttemptTimestamp={lastDataFetchTimestamp}
+                            mode="full"
+                            customTitle="Detail Kursus Tidak Dapat Dimuat"
+                          />
+                        </div>
+                      ) : null
+                    )
                   )}
 
                   {/* VIEW 4: SESSION CLASSROOM */}
@@ -798,12 +899,32 @@ function MainApp() {
                         onRefreshEnrollment={loadUserEnrollments}
                       />
                     ) : (
-                      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center space-y-4">
-                        <div className="w-10 h-10 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto" />
-                        <p className="text-sm text-stone-600 dark:text-stone-400 font-medium">
-                          Memuat sesi pembelajaran...
-                        </p>
-                      </div>
+                      (sessionError || loadError) ? (
+                        <div className="max-w-4xl mx-auto px-4 py-12">
+                          <ServiceDisruptionBanner
+                            category={(sessionError || loadError)?.category}
+                            code={(sessionError || loadError)?.code}
+                            onRetry={() => {
+                              if (selectedCourse) {
+                                loadCourseSessions(selectedCourse.id, true);
+                              } else {
+                                handleRetryLoadData();
+                              }
+                            }}
+                            isRetrying={isRetryingSession || isRetryingData}
+                            lastAttemptTimestamp={sessionError ? lastSessionFetchTimestamp : lastDataFetchTimestamp}
+                            mode="full"
+                            customTitle="Tidak Dapat Memuat Sesi Pembelajaran"
+                          />
+                        </div>
+                      ) : (
+                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center space-y-4">
+                          <div className="w-10 h-10 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto" />
+                          <p className="text-sm text-stone-600 dark:text-stone-400 font-medium">
+                            Memuat sesi pembelajaran...
+                          </p>
+                        </div>
+                      )
                     )
                   )}
 
@@ -843,26 +964,54 @@ function MainApp() {
                   {currentView === 'blog' && (
                     <BlogListView
                       posts={blogPosts}
+                      loading={loading}
                       onSelectArticle={(article) => {
                         handleSelectBlogPost(article);
                       }}
+                      loadError={loadError}
+                      onRetry={handleRetryLoadData}
+                      isRetrying={isRetryingData}
+                      lastAttemptTimestamp={lastDataFetchTimestamp}
                     />
                   )}
 
                   {/* VIEW 8: BLOG DETAIL */}
-                  {currentView === 'blog-detail' && (selectedBlogPost || blogPosts[0]) && (
-                    <BlogDetailView
-                      post={selectedBlogPost || blogPosts[0]}
-                      allPosts={blogPosts}
-                      onBack={() =>
-                        handleBackOrNavigate(['blog', 'home'], {
-                          view: 'blog'
-                        })
-                      }
-                      onSelectArticle={(article) => {
-                        handleSelectBlogPost(article);
-                      }}
-                    />
+                  {currentView === 'blog-detail' && (
+                    (selectedBlogPost || blogPosts[0]) ? (
+                      <BlogDetailView
+                        post={selectedBlogPost || blogPosts[0]}
+                        allPosts={blogPosts}
+                        onBack={() =>
+                          handleBackOrNavigate(['blog', 'home'], {
+                            view: 'blog'
+                          })
+                        }
+                        onSelectArticle={(article) => {
+                          handleSelectBlogPost(article);
+                        }}
+                      />
+                    ) : (
+                      loadError ? (
+                        <div className="max-w-4xl mx-auto px-4 py-12">
+                          <ServiceDisruptionBanner
+                            category={loadError.category}
+                            code={loadError.code}
+                            onRetry={handleRetryLoadData}
+                            isRetrying={isRetryingData}
+                            lastAttemptTimestamp={lastDataFetchTimestamp}
+                            mode="full"
+                            customTitle="Tidak Dapat Memuat Naskah Artikel"
+                          />
+                        </div>
+                      ) : (
+                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center space-y-4">
+                          <div className="w-10 h-10 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto" />
+                          <p className="text-sm text-stone-600 dark:text-stone-400 font-medium">
+                            Memuat naskah artikel...
+                          </p>
+                        </div>
+                      )
+                    )
                   )}
 
                   {/* VIEW 9: STUDENT CONSULTATION */}
