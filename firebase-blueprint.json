@@ -218,6 +218,26 @@
         "seededAt": { "type": "string" },
         "version": { "type": "string" }
       }
+    },
+    "InstructorProfile": {
+      "title": "InstructorProfile",
+      "description": "Public instructor profile managed by authenticated platform administrators",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 200, "minLength": 2 },
+        "role": { "type": "string", "maxLength": 200, "minLength": 2 },
+        "title": { "type": "string", "maxLength": 300, "minLength": 2 },
+        "biography": { "type": "string", "maxLength": 50000 },
+        "mainContent": { "type": "string", "maxLength": 50000 },
+        "photoUrl": { "type": "string", "maxLength": 300000 },
+        "photoCaption": { "type": "string", "maxLength": 300 },
+        "supportingImages": { "type": "array" },
+        "sections": { "type": "array" },
+        "updatedAt": { "type": "string", "maxLength": 100 },
+        "updatedBy": { "type": "string", "maxLength": 200 }
+      },
+      "required": ["id", "name", "role", "title", "updatedAt"]
     }
   },
   "firestore": {
@@ -272,6 +292,10 @@
     "/articleComments/{commentId}": {
       "schema": { "$ref": "#/entities/ArticleComment" },
       "description": "Public comments on articles with moderation status"
+    },
+    "/instructorProfiles/{profileId}": {
+      "schema": { "$ref": "#/entities/InstructorProfile" },
+      "description": "Public instructor profile document editable only by verified admins"
     }
   }
 }

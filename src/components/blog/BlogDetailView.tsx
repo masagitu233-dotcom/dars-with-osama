@@ -16,6 +16,7 @@ import {
 import { BlogPost } from '../../types';
 import { incrementBlogPostViews } from '../../firebase/services';
 import { autoWrapArabicText } from '../../utils/arabicFontHelper';
+import { sanitizeRichTextHtml } from '../../utils/richTextHelper';
 import { ArticleShareModal } from './ArticleShareModal';
 import { useArticleSEO } from '../../hooks/useArticleSEO';
 import { ArticleAudioPlayer } from './ArticleAudioPlayer';
@@ -218,8 +219,9 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
 
         {/* MAIN BODY HTML CONTENT */}
         <div
+          data-testid="article-body-content"
           className="prose dark:prose-invert max-w-none text-stone-800 dark:text-stone-200 text-sm sm:text-base leading-relaxed space-y-4 font-sans blog-content"
-          dangerouslySetInnerHTML={{ __html: autoWrapArabicText(post.content) }}
+          dangerouslySetInnerHTML={{ __html: autoWrapArabicText(sanitizeRichTextHtml(post.content)) }}
         />
 
         {/* ARABIC CONTENT SECTION (IF PRESENT) */}

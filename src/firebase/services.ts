@@ -13,9 +13,17 @@ import {
 } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { db, storage, handleFirestoreError, OperationType, auth } from './config';
-import { Category, Course, Session, Quiz, Enrollment, QuizAttempt, UserProfile, BlogPost, Consultation, ArticleComment } from '../types';
+import { Category, Course, Session, Quiz, Enrollment, QuizAttempt, UserProfile, BlogPost, Consultation, ArticleComment, InstructorProfile } from '../types';
 import { SEED_CATEGORIES, SEED_COURSES, SEED_SESSIONS, SEED_QUIZZES } from '../data/seedData';
 import { matchesSessionIdentifier, canAccessSessionPublicly } from '../utils/sessionShareHelper';
+import { sanitizeRichTextHtml } from '../utils/richTextHelper';
+import {
+  DEFAULT_INSTRUCTOR_PROFILE_ID,
+  getDefaultInstructorProfile,
+  normalizeProfileSections,
+  normalizeSupportingImages,
+  sanitizeInstructorProfilePayload
+} from '../utils/instructorProfileHelper';
 
 // Fixed initial admin emails (User email from runtime and bootstrap admin)
 export const INITIAL_ADMIN_EMAILS = [
@@ -935,7 +943,7 @@ function readAsDataURLFallback(file: File, onProgress?: (percent: number) => voi
 
 export async function uploadFileToStorage(
   file: File,
-  folder: 'covers' | 'pdfs' | 'documents' | 'avatars' | 'blog_covers' | 'blog_images' | 'article_audio',
+  folder: 'covers' | 'pdfs' | 'documents' | 'avatars' | 'blog_covers' | 'blog_images' | 'article_audio' | 'instructor_profile',
   onProgress?: (percent: number) => void
 ): Promise<string> {
   const targetFile = file.type.startsWith('image/')
@@ -1280,7 +1288,8 @@ export async function saveBlogPost(post: Partial<BlogPost> & { title: string }):
     // ignore
   }
 
-  const wordCount = (post.content || '').replace(/<[^>]*>/g, ' ').split(/\s+/).filter(Boolean).length;
+  const sanitizedContent = sanitizeRichTextHtml(post.content || '');
+  const wordCount = sanitizedContent.replace(/<[^>]*>/g, ' ').split(/\s+/).filter(Boolean).length;
   const readingTimeMinutes = Math.max(1, Math.ceil(wordCount / 180));
 
   const now = new Date().toISOString();
@@ -1301,7 +1310,7 @@ export async function saveBlogPost(post: Partial<BlogPost> & { title: string }):
     titleAr: post.titleAr || '',
     slug: finalSlug,
     excerpt: post.excerpt || '',
-    content: post.content || '',
+    content: sanitizedContent,
     contentAr: post.contentAr || '',
     coverImageUrl: post.coverImageUrl || '',
     coverImageCaption: post.coverImageCaption || '',
@@ -1642,5 +1651,114 @@ export async function deleteArticleComment(commentId: string): Promise<void> {
     throw error;
   }
 }
+
+// ==========================================
+// INSTRUCTOR PROFILE SERVICES (Profil Pengajar)
+// ==========================================
+
+const INSTRUCTOR_PROFILE_CACHE_KEY = 'dars_instructor_profile_v1';
+
+function readCachedInstructorProfile(): InstructorProfile | null {
+  if (typeof window === 'undefined' || !window.localStorage) return null;
+  try {
+    const raw = window.localStorage.getItem(INSTRUCTOR_PROFILE_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as InstructorProfile;
+    if (parsed && parsed.name && parsed.role) {
+      return {
+        ...getDefaultInstructorProfile(),
+        ...parsed,
+        supportingImages: normalizeSupportingImages(parsed.supportingImages),
+        sections: normalizeProfileSections(parsed.sections)
+      };
+    }
+  } catch {
+    // ignore storage errors
+  }
+  return null;
+}
+
+function writeCachedInstructorProfile(profile: InstructorProfile): void {
+  if (typeof window === 'undefined' || !window.localStorage) return;
+  try {
+    window.localStorage.setItem(INSTRUCTOR_PROFILE_CACHE_KEY, JSON.stringify(profile));
+  } catch {
+    // ignore quota or storage errors
+  }
+}
+
+export async function getInstructorProfile(): Promise<InstructorProfile> {
+  const docId = DEFAULT_INSTRUCTOR_PROFILE_ID;
+  try {
+    const snap = await getDoc(doc(db, 'instructorProfiles', docId));
+    if (snap.exists()) {
+      const data = snap.data() as Partial<InstructorProfile>;
+      const defaults = getDefaultInstructorProfile();
+      const merged: InstructorProfile = {
+        id: docId,
+        name: (data.name ?? defaults.name).trim() || defaults.name,
+        role: (data.role ?? defaults.role).trim() || defaults.role,
+        title: (data.title ?? defaults.title).trim() || defaults.title,
+        biography: sanitizeRichTextHtml(data.biography ?? defaults.biography),
+        mainContent: sanitizeRichTextHtml(data.mainContent ?? defaults.mainContent),
+        photoUrl: data.photoUrl || '',
+        photoCaption: data.photoCaption || '',
+        supportingImages: normalizeSupportingImages(data.supportingImages),
+        sections: normalizeProfileSections(data.sections),
+        updatedAt: data.updatedAt || defaults.updatedAt,
+        ...(data.updatedBy ? { updatedBy: data.updatedBy } : {})
+      };
+      writeCachedInstructorProfile(merged);
+      return merged;
+    }
+  } catch (err) {
+    console.warn('getInstructorProfile Firestore read notice:', err);
+  }
+
+  const cached = readCachedInstructorProfile();
+  if (cached) {
+    return cached;
+  }
+
+  return getDefaultInstructorProfile();
+}
+
+export async function saveInstructorProfile(
+  input: Partial<InstructorProfile>
+): Promise<InstructorProfile> {
+  const currentUser = auth.currentUser;
+  if (!currentUser) {
+    throw new Error('Akses ditolak: Anda harus login sebagai administrator untuk menyimpan Profil Pengajar.');
+  }
+
+  const isVerifiedAdmin = await checkIsAdmin(currentUser.uid, currentUser.email);
+  if (!isVerifiedAdmin) {
+    throw new Error('Akses ditolak: Hanya administrator terautentikasi yang berhak mengubah Profil Pengajar.');
+  }
+
+  const sanitizedProfile = sanitizeInstructorProfilePayload(
+    input,
+    currentUser.email || currentUser.uid
+  );
+
+  // Guard against oversized inline Base64 data URLs exceeding Firestore 1MB document limit
+  const serializedSize = JSON.stringify(sanitizedProfile).length;
+  if (serializedSize > 900000) {
+    throw new Error(
+      `Ukuran data profil (${Math.round(serializedSize / 1024)} KB) mendekati batas 1 MB dokumen Cloud Firestore. Harap kurangi ukuran gambar pendukung atau gunakan URL gambar terkompresi.`
+    );
+  }
+
+  const path = `instructorProfiles/${DEFAULT_INSTRUCTOR_PROFILE_ID}`;
+  try {
+    await setDoc(doc(db, 'instructorProfiles', DEFAULT_INSTRUCTOR_PROFILE_ID), sanitizedProfile, { merge: true });
+    writeCachedInstructorProfile(sanitizedProfile);
+    return sanitizedProfile;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+    throw error;
+  }
+}
+
 
 

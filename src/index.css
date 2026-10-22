@@ -267,15 +267,89 @@ html.dark .prose td, html.dark .rich-editor-content td, html.dark .blog-content 
   line-height: 1.4;
 }
 
+/* Paragraphs, Lists, Blockquotes, Links & Alignment in Editor and Public Content */
+.rich-editor-content p, .blog-content p {
+  margin-top: 0.65rem;
+  margin-bottom: 0.65rem;
+  line-height: 1.75;
+}
+
+.rich-editor-content ul, .blog-content ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.rich-editor-content ol, .blog-content ol {
+  list-style-type: decimal;
+  padding-left: 1.5rem;
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.rich-editor-content li, .blog-content li {
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+  line-height: 1.7;
+}
+
+.rich-editor-content blockquote, .blog-content blockquote {
+  border-left: 4px solid #059669;
+  padding: 0.75rem 1rem;
+  margin: 1rem 0;
+  font-style: italic;
+  background-color: rgba(236, 253, 245, 0.5);
+  border-radius: 0 0.75rem 0.75rem 0;
+}
+
+html.dark .rich-editor-content blockquote, html.dark .blog-content blockquote {
+  border-left-color: #10b981;
+  background-color: rgba(6, 78, 59, 0.25);
+}
+
+.rich-editor-content a, .blog-content a {
+  color: #047857;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font-weight: 600;
+  word-break: break-word;
+  cursor: pointer;
+}
+
+.rich-editor-content a:hover, .blog-content a:hover {
+  color: #059669;
+}
+
+html.dark .rich-editor-content a, html.dark .blog-content a {
+  color: #34d399;
+}
+
+html.dark .rich-editor-content a:hover, html.dark .blog-content a:hover {
+  color: #6ee7b7;
+}
+
+.rich-editor-content [align="justify"], .blog-content [align="justify"] {
+  text-align: justify;
+}
+
+.rich-editor-content [align="center"], .blog-content [align="center"] {
+  text-align: center;
+}
+
+.rich-editor-content [align="right"], .blog-content [align="right"] {
+  text-align: right;
+}
+
+.rich-editor-content [align="left"], .blog-content [align="left"] {
+  text-align: left;
+}
+
 /* Automatic Arabic Font (Amiri) for Arabic text blocks and RTL */
 [dir="rtl"], .font-amiri, :lang(ar) {
   font-family: 'Amiri', 'Noto Sans Arabic', 'Traditional Arabic', serif !important;
 }
 
-/* Auto-detect Arabic characters in paragraphs or text nodes if possible via font class */
-.blog-content p, .blog-content li, .blog-content blockquote, .rich-editor-content p, .rich-editor-content li {
-  /* Ensure smooth reading */
-}
 
 /* Reduced Motion Preference Accessibility */
 @media (prefers-reduced-motion: reduce) {

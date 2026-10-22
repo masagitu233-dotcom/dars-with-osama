@@ -201,4 +201,36 @@ export interface ArticleComment {
   moderatedBy?: string;
 }
 
+export interface InstructorProfileImage {
+  id: string;
+  url: string;
+  caption?: string;
+  order: number;
+}
+
+export interface InstructorProfileSection {
+  id: string;
+  title: string;
+  content: string;
+  imageUrl?: string;
+  imageCaption?: string;
+  order: number;
+}
+
+export interface InstructorProfile {
+  id: string;
+  name: string;
+  role: string;
+  biography: string;
+  title: string;
+  mainContent: string;
+  photoUrl: string;
+  photoCaption?: string;
+  supportingImages: InstructorProfileImage[];
+  sections: InstructorProfileSection[];
+  updatedAt: string;
+  updatedBy?: string;
+}
+
+
 

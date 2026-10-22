@@ -39,6 +39,7 @@ import { BlogListView } from './components/blog/BlogListView';
 import { BlogDetailView } from './components/blog/BlogDetailView';
 import { StudentConsultationView } from './components/consultation/StudentConsultationView';
 import { PublicQAView } from './components/consultation/PublicQAView';
+import { InstructorProfileView } from './components/profile/InstructorProfileView';
 import { Course, Category, Session, Quiz, Enrollment, BlogPost } from './types';
 import AOS from 'aos';
 import 'aos/dist/aos.css';
@@ -104,6 +105,7 @@ function MainApp() {
   // Certificate Modal State
   const [certModalOpen, setCertModalOpen] = useState(false);
   const [certCourse, setCertCourse] = useState<Course | null>(null);
+  const [adminInitialTab, setAdminInitialTab] = useState<'dashboard' | 'courses' | 'categories' | 'sessions' | 'quizzes' | 'users' | 'attempts' | 'firebase' | 'blog' | 'consultation' | 'comments' | 'instructor-profile' | undefined>(undefined);
 
   // Welcome & Video Intro Modal State (First visit in session, skipped on direct deep links)
   const [welcomeModalOpen, setWelcomeModalOpen] = useState<boolean>(() => {
@@ -114,6 +116,10 @@ function MainApp() {
         p.startsWith('/session/') ||
         p.startsWith('/article/') ||
         p.startsWith('/qa/') ||
+        p === '/profil-pengajar' ||
+        p === '/profil-pengajar/' ||
+        p === '/profil' ||
+        p === '/pengajar' ||
         s.has('session') ||
         s.has('sessionId') ||
         s.has('view') ||
@@ -646,8 +652,14 @@ function MainApp() {
       <div className="min-h-screen bg-stone-100 dark:bg-stone-950 text-stone-900 dark:text-stone-100 font-sans selection:bg-emerald-500/20 selection:text-emerald-300 transition-colors duration-250">
         {currentView === 'admin-dashboard' && isAdmin ? (
           <AdminDashboard
+            initialTab={adminInitialTab}
             onNavigateToSiswa={() => {
+              setAdminInitialTab(undefined);
               navigateTo({ view: 'home' });
+            }}
+            onNavigateToInstructorProfile={() => {
+              setAdminInitialTab(undefined);
+              navigateTo({ view: 'instructor-profile' });
             }}
             onPreviewBlogPost={(post) => {
               handleSelectBlogPost(post);
@@ -857,6 +869,24 @@ function MainApp() {
                       initialQaId={targetQaId}
                       onNavigateToConsultation={() => {
                         navigateTo({ view: 'consultation' });
+                      }}
+                    />
+                  )}
+
+                  {/* VIEW 11: INSTRUCTOR PROFILE */}
+                  {currentView === 'instructor-profile' && (
+                    <InstructorProfileView
+                      onBack={() =>
+                        handleBackOrNavigate(['home', 'courses', 'blog', 'public-qa'], {
+                          view: 'home'
+                        })
+                      }
+                      onNavigate={(view) => {
+                        navigateTo({ view });
+                      }}
+                      onEditInAdmin={() => {
+                        setAdminInitialTab('instructor-profile');
+                        navigateTo({ view: 'admin-dashboard' });
                       }}
                     />
                   )}

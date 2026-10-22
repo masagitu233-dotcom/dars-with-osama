@@ -223,6 +223,21 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                 {!isCollapsed && <span className="truncate">Tanya Jawab Publik</span>}
               </button>
 
+              {/* Profil Pengajar */}
+              <button
+                onClick={() => navigate('instructor-profile')}
+                data-testid="nav-instructor-profile"
+                title="Profil Pembuat & Pengajar Dars with Osama"
+                className={`w-full flex items-center ${isCollapsed ? 'justify-center px-0 py-3' : 'gap-3.5 px-3.5 py-3'} rounded-2xl text-xs font-semibold transition-all duration-200 cursor-pointer active:scale-95 ${
+                  currentView === 'instructor-profile'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border-l-4 border-emerald-600 dark:border-emerald-500 shadow-xs'
+                    : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800/60 hover:text-stone-900 dark:hover:text-stone-100'
+                }`}
+              >
+                <User className={`w-4 h-4 shrink-0 ${currentView === 'instructor-profile' ? 'text-[#073B2E] dark:text-[#C9A34E]' : ''}`} />
+                {!isCollapsed && <span className="truncate">Profil Pengajar</span>}
+              </button>
+
               {/* Sambutan & Perkenalan Trigger Button */}
               {onOpenWelcomeModal && (
                 <button

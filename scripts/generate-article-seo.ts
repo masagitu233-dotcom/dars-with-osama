@@ -59,6 +59,22 @@ const INITIAL_PUBLIC_QAS = [
   }
 ];
 
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`Timeout after ${ms}ms`)), ms);
+    promise.then(
+      (val) => {
+        clearTimeout(timer);
+        resolve(val);
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      }
+    );
+  });
+}
+
 async function generateAllSeoHtml() {
   const distPath = path.resolve(__dirname, '../dist');
   const publicPath = path.resolve(__dirname, '../public');
@@ -78,7 +94,7 @@ async function generateAllSeoHtml() {
     allPostsMap.set(p.id, p);
   }
   try {
-    const livePosts = await getBlogPosts(false);
+    const livePosts = await withTimeout(getBlogPosts(false), 5000);
     for (const lp of livePosts) {
       if (lp.status === 'published') {
         allPostsMap.set(lp.id, lp);
@@ -180,7 +196,7 @@ async function generateAllSeoHtml() {
 
   // Fetch live published courses and sessions from Cloud Firestore
   try {
-    const liveCourses = await getCourses(false);
+    const liveCourses = await withTimeout(getCourses(false), 5000);
     for (const c of liveCourses) {
       if (!c.isPublished) continue;
       coursesMap.set(c.id, c);
@@ -197,7 +213,7 @@ async function generateAllSeoHtml() {
         }
       }
 
-      const liveSessions = await getSessionsByCourse(c.id, false);
+      const liveSessions = await withTimeout(getSessionsByCourse(c.id, false), 5000);
       sessionsByCourseMap.set(c.id, liveSessions.filter((s) => s.isPublished));
     }
   } catch (err) {

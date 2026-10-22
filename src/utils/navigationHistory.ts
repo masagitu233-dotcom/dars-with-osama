@@ -153,6 +153,20 @@ export function parseUrlToRouteState(pathname: string, search: string): DarsRout
     };
   }
 
+  if (
+    cleanPath === '/profil-pengajar' ||
+    cleanPath === '/profil-pengajar/' ||
+    cleanPath === '/profil' ||
+    cleanPath === '/pengajar' ||
+    urlView === 'instructor-profile'
+  ) {
+    return {
+      view: 'instructor-profile',
+      filterCategoryId,
+      searchQuery
+    };
+  }
+
   if (urlView) {
     return {
       view: urlView,
@@ -181,6 +195,9 @@ export function buildUrlFromRouteState(route: DarsRouteState): string {
   switch (route.view) {
     case 'home':
       return '/';
+
+    case 'instructor-profile':
+      return '/profil-pengajar';
 
     case 'blog':
       return '/?view=blog';

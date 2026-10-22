@@ -1,18 +1,22 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
+import {execFileSync} from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import {Readable} from 'stream';
+import {fileURLToPath} from 'url';
 import {defineConfig, Plugin} from 'vite';
-import {SEED_COURSES, SEED_SESSIONS} from './src/data/seedData';
-import {getCourses, getSessionsByCourse} from './src/firebase/services';
-import {Course, Session} from './src/types';
+import {SEED_COURSES, SEED_SESSIONS} from './src/data/seedData.ts';
+import type {Course, Session} from './src/types/index.ts';
 import {
   buildSessionMetaTagsHtml,
   canAccessSessionPublicly,
   injectSeoMetaIntoHtml,
   matchesSessionIdentifier,
-} from './src/utils/sessionShareHelper';
+} from './src/utils/sessionShareHelper.ts';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 let cachedEntries: {
   timestamp: number;
@@ -52,22 +56,6 @@ async function getPublishedSessionForSeo(
       }
     } catch {
       // Ignore manifest read error
-    }
-
-    // 3. Also query live Cloud Firestore via Firebase SDK for any newly published sessions
-    try {
-      const liveCourses = await getCourses(false);
-      for (const c of liveCourses) {
-        if (!c.isPublished) continue;
-        const liveSessions = await getSessionsByCourse(c.id, false);
-        for (const s of liveSessions) {
-          if (s.isPublished) {
-            entriesMap.set(s.id, {course: c, session: s});
-          }
-        }
-      }
-    } catch {
-      // Fallback to manifest + seed data if offline
     }
 
     cachedEntries = {
@@ -116,6 +104,36 @@ function sessionSeoServerPlugin(): Plugin {
         );
         return injectSeoMetaIntoHtml(html, seoMetaTags);
       },
+    },
+    closeBundle() {
+      const seoScript = path.resolve(
+        __dirname,
+        'scripts/generate-article-seo.ts'
+      );
+      if (fs.existsSync(seoScript)) {
+        try {
+          execFileSync('npx', ['tsx', seoScript], {
+            cwd: __dirname,
+            stdio: 'inherit',
+            timeout: 15000,
+          });
+        } catch (err) {
+          console.warn(
+            'generate-article-seo notice (continuing build):',
+            err instanceof Error ? err.message : String(err)
+          );
+        }
+      }
+
+      const indexHtml = path.resolve(__dirname, 'dist/index.html');
+      const notFoundHtml = path.resolve(__dirname, 'dist/404.html');
+      if (fs.existsSync(indexHtml)) {
+        try {
+          fs.copyFileSync(indexHtml, notFoundHtml);
+        } catch {
+          // Ignore copy error
+        }
+      }
     },
   };
 }
@@ -237,6 +255,9 @@ function gdriveAudioProxyPlugin(): Plugin {
 export default defineConfig(() => {
   return {
     base: '/',
+    build: {
+      chunkSizeWarningLimit: 2500,
+    },
     plugins: [
       gdriveAudioProxyPlugin(),
       sessionSeoServerPlugin(),

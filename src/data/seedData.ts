@@ -1,4 +1,4 @@
-import { Category, Course, Session, Quiz } from '../types';
+import type { Category, Course, Session, Quiz } from '../types/index.ts';
 
 export const SEED_CATEGORIES: Category[] = [
   {

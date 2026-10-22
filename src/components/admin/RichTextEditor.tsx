@@ -7,26 +7,38 @@ import {
   Heading1,
   Heading2,
   Heading3,
+  Pilcrow,
   List,
   ListOrdered,
   Quote,
   Link as LinkIcon,
+  Unlink,
+  ExternalLink,
   Image as ImageIcon,
   AlignLeft,
   AlignCenter,
   AlignRight,
+  AlignJustify,
   RotateCcw,
-  Upload,
   X,
   Languages,
   Table as TableIcon,
-  Plus,
   Trash2,
   Rows,
   Columns,
-  Type
+  Type,
+  AlertCircle
 } from 'lucide-react';
 import { uploadFileToStorage } from '../../firebase/services';
+import {
+  sanitizeRichTextHtml,
+  normalizeHyperlinkUrl,
+  convertPastedPlainTextToHtml,
+  escapeHtml,
+  linkifyPlainTextSegment,
+  TextAlignOption,
+  BlockFormatOption
+} from '../../utils/richTextHelper';
 
 interface RichTextEditorProps {
   value: string;
@@ -48,87 +60,57 @@ const FONT_OPTIONS = [
   { label: 'Tahoma / Sans', value: 'Tahoma' }
 ];
 
-function sanitizeRichHtml(rawHtml: string): string {
+function sanitizeAndLinkifyHtml(rawHtml: string): string {
+  const sanitized = sanitizeRichTextHtml(rawHtml);
+  if (typeof DOMParser === 'undefined') {
+    return sanitized;
+  }
   try {
     const parser = new DOMParser();
-    const doc = parser.parseFromString(rawHtml, 'text/html');
+    const doc = parser.parseFromString(sanitized, 'text/html');
 
-    // Remove forbidden or dangerous tags
-    const FORBIDDEN_TAGS = ['script', 'iframe', 'object', 'embed', 'form', 'input', 'button', 'select', 'textarea', 'style', 'link', 'meta', 'xml'];
-    FORBIDDEN_TAGS.forEach(tag => {
-      doc.querySelectorAll(tag).forEach(el => el.remove());
+    // Convert plain-text URLs inside non-anchor text nodes into clickable <a> tags
+    const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
+    const textNodesToProcess: Text[] = [];
+    let currentNode = walker.nextNode();
+    while (currentNode) {
+      const parentEl = currentNode.parentElement;
+      if (
+        parentEl &&
+        !parentEl.closest('a, script, style, code, pre') &&
+        /(?:https?:\/\/|mailto:|www\.)[^\s<>"'`]+/i.test(currentNode.nodeValue || '')
+      ) {
+        textNodesToProcess.push(currentNode as Text);
+      }
+      currentNode = walker.nextNode();
+    }
+
+    for (const textNode of textNodesToProcess) {
+      const rawText = textNode.nodeValue || '';
+      const linkedHtml = linkifyPlainTextSegment(rawText);
+      if (linkedHtml !== escapeHtml(rawText)) {
+        const temp = doc.createElement('span');
+        temp.innerHTML = linkedHtml;
+        const frag = doc.createDocumentFragment();
+        while (temp.firstChild) {
+          frag.appendChild(temp.firstChild);
+        }
+        textNode.parentNode?.replaceChild(frag, textNode);
+      }
+    }
+
+    // Format tables pasted from Word / Excel
+    doc.querySelectorAll('table').forEach(el => {
+      el.className = 'w-full border-collapse border border-stone-300 dark:border-stone-700 text-xs sm:text-sm my-4';
+    });
+    doc.querySelectorAll('td, th').forEach(el => {
+      el.classList.add('border', 'border-stone-300', 'dark:border-stone-700', 'p-2');
     });
 
-    // Remove HTML comment nodes from Word / Google Docs
-    const removeComments = (node: Node) => {
-      for (let i = node.childNodes.length - 1; i >= 0; i--) {
-        const child = node.childNodes[i];
-        if (child.nodeType === Node.COMMENT_NODE) {
-          child.remove();
-        } else if (child.nodeType === Node.ELEMENT_NODE) {
-          removeComments(child);
-        }
-      }
-    };
-    removeComments(doc.body);
-
-    // Normalize elements and convert Google Docs / Word / web inline styles to semantic HTML
-    const allElements = doc.querySelectorAll('*');
-    allElements.forEach(el => {
-      // Strip inline event attributes and javascript links
-      Array.from(el.attributes).forEach(attr => {
-        if (attr.name.startsWith('on') || attr.value.toLowerCase().includes('javascript:')) {
-          el.removeAttribute(attr.name);
-        }
-      });
-
-      const style = el.getAttribute('style') || '';
-
-      // Preserve or convert bold styles (e.g., Google Docs <span style="font-weight: 700">)
-      if (/font-weight:\s*(bold|[7-9]00)/i.test(style) && !['STRONG', 'B', 'H1', 'H2', 'H3', 'TH'].includes(el.tagName)) {
-        const strong = doc.createElement('strong');
-        strong.innerHTML = el.innerHTML;
-        el.replaceWith(strong);
-        return;
-      }
-
-      // Preserve or convert italic styles
-      if (/font-style:\s*italic/i.test(style) && !['EM', 'I'].includes(el.tagName)) {
-        const em = doc.createElement('em');
-        em.innerHTML = el.innerHTML;
-        el.replaceWith(em);
-        return;
-      }
-
-      // Preserve or convert underline styles
-      if (/text-decoration:\s*underline/i.test(style) && !['U'].includes(el.tagName)) {
-        const u = doc.createElement('u');
-        u.innerHTML = el.innerHTML;
-        el.replaceWith(u);
-        return;
-      }
-
-      // Format tables pasted from Word / Excel
-      if (el.tagName === 'TABLE') {
-        el.className = 'w-full border-collapse border border-stone-300 dark:border-stone-700 text-xs sm:text-sm my-4';
-      }
-      if (el.tagName === 'TD' || el.tagName === 'TH') {
-        el.classList.add('border', 'border-stone-300', 'dark:border-stone-700', 'p-2');
-      }
-    });
-
-    return doc.body.innerHTML;
-  } catch (err) {
-    return rawHtml;
+    return sanitizeRichTextHtml(doc.body.innerHTML);
+  } catch {
+    return sanitized;
   }
-}
-
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
 }
 
 export const RichTextEditor: React.FC<RichTextEditorProps> = ({
@@ -140,9 +122,14 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   const editorRef = useRef<HTMLDivElement>(null);
   const savedRangeRef = useRef<Range | null>(null);
 
+  // Inline feedback banner (replaces window.alert)
+  const [editorError, setEditorError] = useState<string | null>(null);
+
   // Modals state
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
+  const [linkText, setLinkText] = useState('');
+  const [linkModalError, setLinkModalError] = useState<string | null>(null);
 
   const [showImageModal, setShowImageModal] = useState(false);
   const [imageUrl, setImageUrl] = useState('');
@@ -155,15 +142,18 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   const [tableCols, setTableCols] = useState(3);
   const [tableHeader, setTableHeader] = useState(true);
 
-  // Active States & Table Selection
+  // Active States, Block Format, Alignment, Link & Table Selection
   const [activeStates, setActiveStates] = useState<Record<string, boolean>>({});
+  const [activeBlock, setActiveBlock] = useState<BlockFormatOption>('p');
+  const [activeAlign, setActiveAlign] = useState<TextAlignOption>('left');
   const [selectedFont, setSelectedFont] = useState<string>(FONT_OPTIONS[0].value);
   const [activeTableInfo, setActiveTableInfo] = useState<{ table: HTMLTableElement; cell: HTMLTableCellElement } | null>(null);
+  const [activeLinkElement, setActiveLinkElement] = useState<HTMLAnchorElement | null>(null);
 
   // Save selection before opening modal or dropdown
   const saveSelection = () => {
     const sel = window.getSelection();
-    if (sel && sel.rangeCount > 0) {
+    if (sel && sel.rangeCount > 0 && editorRef.current?.contains(sel.anchorNode)) {
       savedRangeRef.current = sel.getRangeAt(0).cloneRange();
     }
   };
@@ -189,8 +179,57 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     }
   }, [value]);
 
+  const getEnclosingBlockElement = (node: Node | null): HTMLElement | null => {
+    if (!node || !editorRef.current) return null;
+    const el = node.nodeType === Node.TEXT_NODE ? node.parentElement : (node as HTMLElement);
+    if (!el || !editorRef.current.contains(el)) return null;
+    const block = el.closest('p, h1, h2, h3, h4, h5, h6, blockquote, li, div') as HTMLElement | null;
+    if (block && block !== editorRef.current && editorRef.current.contains(block)) {
+      return block;
+    }
+    return null;
+  };
+
   const updateActiveStates = () => {
     if (!editorRef.current) return;
+
+    const sel = window.getSelection();
+    const insideEditor = sel && sel.anchorNode && editorRef.current.contains(sel.anchorNode);
+    if (!insideEditor) return;
+
+    const blockEl = getEnclosingBlockElement(sel.anchorNode);
+
+    // Detect active block tag (Normal paragraph vs H1/H2/H3/Blockquote)
+    if (blockEl) {
+      const tag = blockEl.tagName.toLowerCase();
+      if (tag === 'h1') setActiveBlock('h1');
+      else if (tag === 'h2') setActiveBlock('h2');
+      else if (tag === 'h3') setActiveBlock('h3');
+      else if (tag === 'blockquote') setActiveBlock('blockquote');
+      else setActiveBlock('p');
+    } else {
+      setActiveBlock('p');
+    }
+
+    // Detect active text alignment (left, center, right, justify)
+    let detectedAlign: TextAlignOption = 'left';
+    if (blockEl) {
+      const inlineAlign = (blockEl.style.textAlign || blockEl.getAttribute('align') || '').toLowerCase();
+      if (inlineAlign === 'justify' || inlineAlign === 'center' || inlineAlign === 'right' || inlineAlign === 'left') {
+        detectedAlign = inlineAlign as TextAlignOption;
+      } else if (document.queryCommandState('justifyFull')) {
+        detectedAlign = 'justify';
+      } else if (document.queryCommandState('justifyCenter')) {
+        detectedAlign = 'center';
+      } else if (document.queryCommandState('justifyRight')) {
+        detectedAlign = 'right';
+      }
+    } else {
+      if (document.queryCommandState('justifyFull')) detectedAlign = 'justify';
+      else if (document.queryCommandState('justifyCenter')) detectedAlign = 'center';
+      else if (document.queryCommandState('justifyRight')) detectedAlign = 'right';
+    }
+    setActiveAlign(detectedAlign);
 
     setActiveStates({
       bold: document.queryCommandState('bold'),
@@ -198,17 +237,20 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       underline: document.queryCommandState('underline'),
       strikeThrough: document.queryCommandState('strikeThrough'),
       ul: document.queryCommandState('insertUnorderedList'),
-      ol: document.queryCommandState('insertOrderedList'),
-      justifyLeft: document.queryCommandState('justifyLeft'),
-      justifyCenter: document.queryCommandState('justifyCenter'),
-      justifyRight: document.queryCommandState('justifyRight')
+      ol: document.queryCommandState('insertOrderedList')
     });
 
-    // Detect if cursor is inside a table cell
-    const sel = window.getSelection();
+    // Detect if cursor is inside a link or table cell
     if (sel && sel.anchorNode) {
-      const parent = sel.anchorNode.nodeType === 3 ? sel.anchorNode.parentNode : sel.anchorNode;
+      const parent = sel.anchorNode.nodeType === 3 ? sel.anchorNode.parentElement : (sel.anchorNode as Element);
       if (parent && parent instanceof Element) {
+        const link = parent.closest('a') as HTMLAnchorElement | null;
+        if (link && editorRef.current.contains(link)) {
+          setActiveLinkElement(link);
+        } else {
+          setActiveLinkElement(null);
+        }
+
         const cell = parent.closest('td, th') as HTMLTableCellElement | null;
         const table = parent.closest('table') as HTMLTableElement | null;
         if (cell && table && editorRef.current.contains(table)) {
@@ -217,10 +259,9 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
           setActiveTableInfo(null);
         }
       } else {
+        setActiveLinkElement(null);
         setActiveTableInfo(null);
       }
-    } else {
-      setActiveTableInfo(null);
     }
   };
 
@@ -232,22 +273,166 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     return () => document.removeEventListener('selectionchange', handleSelectionChange);
   }, []);
 
-  const execCommand = (command: string, value: string = '') => {
-    if (editorRef.current) {
-      editorRef.current.focus();
-    }
-    document.execCommand(command, false, value);
+  const emitChange = () => {
     if (editorRef.current) {
       onChange(editorRef.current.innerHTML);
     }
     updateActiveStates();
   };
 
-  const handleInput = () => {
+  const execCommand = (command: string, commandValue: string = '') => {
     if (editorRef.current) {
-      onChange(editorRef.current.innerHTML);
+      editorRef.current.focus();
     }
-    updateActiveStates();
+    document.execCommand(command, false, commandValue);
+    emitChange();
+  };
+
+  /**
+   * Applies block formatting: Normal ('p'), Heading 1 ('h1'), Heading 2 ('h2'), Heading 3 ('h3'), or Quote ('blockquote').
+   * Ensures that converting from Heading 1/2/3 back to Normal ('p') reliably replaces the heading tag with <p>.
+   */
+  const applyBlockFormat = (format: BlockFormatOption) => {
+    if (!editorRef.current) return;
+    editorRef.current.focus();
+
+    const sel = window.getSelection();
+    const currentBlock = sel && sel.anchorNode ? getEnclosingBlockElement(sel.anchorNode) : null;
+    const preservedAlign = currentBlock?.style?.textAlign || '';
+
+    // Execute standard formatBlock command
+    document.execCommand('formatBlock', false, `<${format}>`);
+
+    // Verify if the enclosing block was actually converted (especially when converting H1/H2/H3/blockquote back to <p>)
+    const afterSel = window.getSelection();
+    const afterBlock = afterSel && afterSel.anchorNode ? getEnclosingBlockElement(afterSel.anchorNode) : null;
+
+    if (afterBlock && afterBlock.tagName.toLowerCase() !== format && afterBlock.tagName.toLowerCase() !== 'li') {
+      const replacement = document.createElement(format);
+      replacement.innerHTML = afterBlock.innerHTML;
+      if (preservedAlign || afterBlock.style.textAlign) {
+        replacement.style.textAlign = preservedAlign || afterBlock.style.textAlign;
+      }
+      afterBlock.replaceWith(replacement);
+
+      // Place caret inside the new element
+      if (afterSel) {
+        const range = document.createRange();
+        range.selectNodeContents(replacement);
+        range.collapse(false);
+        afterSel.removeAllRanges();
+        afterSel.addRange(range);
+      }
+    } else if (afterBlock && preservedAlign) {
+      afterBlock.style.textAlign = preservedAlign;
+    }
+
+    setActiveBlock(format);
+    emitChange();
+  };
+
+  /**
+   * Applies text alignment ('left' | 'center' | 'right' | 'justify') and persists inline style="text-align: ..."
+   * on the target block element(s) so alignment survives save, re-edit, preview, and publication.
+   */
+  const applyAlignment = (align: TextAlignOption) => {
+    if (!editorRef.current) return;
+    editorRef.current.focus();
+
+    const cmdMap: Record<TextAlignOption, string> = {
+      left: 'justifyLeft',
+      center: 'justifyCenter',
+      right: 'justifyRight',
+      justify: 'justifyFull'
+    };
+
+    document.execCommand(cmdMap[align], false, '');
+
+    // Explicitly stamp style="text-align: <align>" on all affected block elements inside editorRef
+    const sel = window.getSelection();
+    let stamped = false;
+
+    if (sel && sel.rangeCount > 0) {
+      const range = sel.getRangeAt(0);
+      const blocks = editorRef.current.querySelectorAll('p, h1, h2, h3, h4, h5, h6, blockquote, li, div');
+      blocks.forEach((b) => {
+        const blockEl = b as HTMLElement;
+        if (range.intersectsNode(blockEl)) {
+          blockEl.removeAttribute('align');
+          blockEl.style.textAlign = align;
+          stamped = true;
+        }
+      });
+
+      if (!stamped) {
+        const enclosing = getEnclosingBlockElement(sel.anchorNode);
+        if (enclosing) {
+          enclosing.removeAttribute('align');
+          enclosing.style.textAlign = align;
+          stamped = true;
+        }
+      }
+    }
+
+    // If editor only had bare text nodes with no block wrapper, wrap in <p style="text-align: ...">
+    if (!stamped && editorRef.current) {
+      const hasBlock = editorRef.current.querySelector('p, h1, h2, h3, h4, blockquote, ul, ol, div');
+      if (!hasBlock) {
+        const content = editorRef.current.innerHTML || '<br>';
+        editorRef.current.innerHTML = `<p style="text-align: ${align};">${content}</p>`;
+      }
+    }
+
+    setActiveAlign(align);
+    emitChange();
+  };
+
+  const handleInput = () => {
+    emitChange();
+  };
+
+  // Auto-linkify URL when user types a URL and presses Space or Enter
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === ' ' || e.key === 'Enter') {
+      const sel = window.getSelection();
+      if (sel && sel.isCollapsed && sel.anchorNode && sel.anchorNode.nodeType === Node.TEXT_NODE) {
+        const textNode = sel.anchorNode as Text;
+        const parentEl = textNode.parentElement;
+        if (parentEl && !parentEl.closest('a')) {
+          const offset = sel.anchorOffset;
+          const textBefore = (textNode.nodeValue || '').slice(0, offset);
+          const match = textBefore.match(/((?:https?:\/\/|mailto:|www\.)[^\s<>"'`]+)$/i);
+          if (match) {
+            const rawUrl = match[1];
+            const safeHref = normalizeHyperlinkUrl(rawUrl);
+            if (safeHref) {
+              const startOffset = offset - rawUrl.length;
+              const range = document.createRange();
+              range.setStart(textNode, startOffset);
+              range.setEnd(textNode, offset);
+
+              const anchor = document.createElement('a');
+              anchor.href = safeHref;
+              anchor.target = '_blank';
+              anchor.rel = 'noopener noreferrer';
+              anchor.className = 'text-emerald-700 dark:text-emerald-400 underline font-medium hover:text-emerald-600';
+              anchor.textContent = rawUrl;
+
+              range.deleteContents();
+              range.insertNode(anchor);
+
+              // Move caret after the newly created anchor
+              const afterRange = document.createRange();
+              afterRange.setStartAfter(anchor);
+              afterRange.collapse(true);
+              sel.removeAllRanges();
+              sel.addRange(afterRange);
+              emitChange();
+            }
+          }
+        }
+      }
+    }
   };
 
   // Font family change handler
@@ -258,13 +443,66 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     execCommand('fontName', fontValue);
   };
 
-  // Insert Link
-  const handleInsertLink = () => {
-    restoreSelection();
-    if (linkUrl) {
-      execCommand('createLink', linkUrl);
+  // Open Link Modal & pre-fill with current selection or active link
+  const handleOpenLinkModal = () => {
+    saveSelection();
+    setLinkModalError(null);
+    const sel = window.getSelection();
+    const selectedStr = sel ? sel.toString().trim() : '';
+
+    if (activeLinkElement) {
+      setLinkUrl(activeLinkElement.getAttribute('href') || '');
+      setLinkText(activeLinkElement.textContent || selectedStr || '');
+    } else {
       setLinkUrl('');
-      setShowLinkModal(false);
+      setLinkText(selectedStr);
+    }
+    setShowLinkModal(true);
+  };
+
+  // Insert or Update Link
+  const handleInsertLink = () => {
+    const safeHref = normalizeHyperlinkUrl(linkUrl);
+    if (!safeHref) {
+      setLinkModalError('Format URL tidak valid atau tidak diizinkan. Gunakan https://, http://, atau mailto:.');
+      return;
+    }
+
+    restoreSelection();
+
+    if (activeLinkElement && editorRef.current?.contains(activeLinkElement)) {
+      activeLinkElement.href = safeHref;
+      activeLinkElement.target = '_blank';
+      activeLinkElement.rel = 'noopener noreferrer';
+      activeLinkElement.className = 'text-emerald-700 dark:text-emerald-400 underline font-medium hover:text-emerald-600';
+      if (linkText.trim()) {
+        activeLinkElement.textContent = linkText.trim();
+      }
+      emitChange();
+    } else {
+      const sel = window.getSelection();
+      const currentSelectedText = sel ? sel.toString().trim() : '';
+      const label = linkText.trim() || currentSelectedText || safeHref;
+      const anchorHtml = `<a href="${escapeHtml(safeHref)}" target="_blank" rel="noopener noreferrer" class="text-emerald-700 dark:text-emerald-400 underline font-medium hover:text-emerald-600">${escapeHtml(label)}</a>`;
+      document.execCommand('insertHTML', false, anchorHtml);
+      emitChange();
+    }
+
+    setLinkUrl('');
+    setLinkText('');
+    setLinkModalError(null);
+    setShowLinkModal(false);
+  };
+
+  // Remove Link (Unlink)
+  const handleUnlink = () => {
+    if (activeLinkElement && editorRef.current?.contains(activeLinkElement)) {
+      const textNode = document.createTextNode(activeLinkElement.textContent || '');
+      activeLinkElement.replaceWith(textNode);
+      setActiveLinkElement(null);
+      emitChange();
+    } else {
+      execCommand('unlink');
     }
   };
 
@@ -272,7 +510,8 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   const handleInsertImage = () => {
     restoreSelection();
     if (imageUrl) {
-      const imgHtml = `<figure class="my-6 max-w-full"><img src="${imageUrl}" alt="${imageCaption || 'Gambar Artikel'}" class="w-full h-auto rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs" />${imageCaption ? `<figcaption class="text-center text-xs text-stone-500 dark:text-stone-400 mt-2 font-medium">${imageCaption}</figcaption>` : ''}</figure><p><br></p>`;
+      const safeCaption = escapeHtml(imageCaption || '');
+      const imgHtml = `<figure class="my-6 max-w-full"><img src="${escapeHtml(imageUrl)}" alt="${safeCaption || 'Gambar Artikel'}" class="w-full h-auto rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs" />${safeCaption ? `<figcaption class="text-center text-xs text-stone-500 dark:text-stone-400 mt-2 font-medium">${safeCaption}</figcaption>` : ''}</figure><p><br></p>`;
       execCommand('insertHTML', imgHtml);
       setImageUrl('');
       setImageCaption('');
@@ -286,15 +525,16 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      alert('Harap pilih berkas gambar (JPG, PNG, WebP).');
+      setEditorError('Harap pilih berkas gambar yang valid (JPG, PNG, WebP).');
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      alert('Ukuran berkas gambar maksimal 5 MB.');
+      setEditorError('Ukuran berkas gambar maksimal 5 MB.');
       return;
     }
 
+    setEditorError(null);
     setUploadingImage(true);
     setUploadProgress(10);
 
@@ -304,7 +544,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       });
       setImageUrl(downloadUrl);
     } catch (err: any) {
-      alert('Gagal mengunggah gambar: ' + err.message);
+      setEditorError('Gagal mengunggah gambar: ' + (err.message || String(err)));
     } finally {
       setUploadingImage(false);
     }
@@ -342,7 +582,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   // Table Manipulation Controls
   const handleAddRow = (above = false) => {
     if (!activeTableInfo) return;
-    const { table, cell } = activeTableInfo;
+    const { cell } = activeTableInfo;
     const tr = cell.closest('tr');
     if (!tr) return;
 
@@ -451,35 +691,65 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     }
   };
 
-  // Rich Text Paste Event Handler
+  // Rich Text Paste Event Handler (Supports Auto-Hyperlink on Paste)
   const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
     const rawHtml = e.clipboardData.getData('text/html');
     const text = e.clipboardData.getData('text/plain');
+    const sel = window.getSelection();
+    const selectedText = sel && !sel.isCollapsed ? sel.toString().trim() : '';
 
+    // Case 1: Pasting a single standalone URL (especially when text is selected in editor)
+    if (text && !/\s/.test(text.trim())) {
+      const directUrl = normalizeHyperlinkUrl(text.trim());
+      if (directUrl) {
+        const htmlToInsert = convertPastedPlainTextToHtml(text.trim(), selectedText);
+        document.execCommand('insertHTML', false, htmlToInsert);
+        handleInput();
+        return;
+      }
+    }
+
+    // Case 2: Pasting rich HTML from external source
     if (rawHtml) {
-      const cleanHtml = sanitizeRichHtml(rawHtml);
+      const cleanHtml = sanitizeAndLinkifyHtml(rawHtml);
       document.execCommand('insertHTML', false, cleanHtml);
     } else if (text) {
-      const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-      const formatted = lines.map(line => `<p>${escapeHtml(line)}</p>`).join('');
-      document.execCommand('insertHTML', false, formatted || escapeHtml(text));
+      // Case 3: Pasting plain text (automatically linkifies any URLs inside the text)
+      const formatted = convertPastedPlainTextToHtml(text, selectedText);
+      document.execCommand('insertHTML', false, formatted);
     }
     handleInput();
   };
 
   return (
     <div className="border border-stone-200 dark:border-stone-800 rounded-2xl overflow-hidden bg-white dark:bg-stone-900 transition-colors shadow-xs">
+      {/* Inline Editor Error Banner */}
+      {editorError && (
+        <div className="px-3 py-2 bg-rose-50 dark:bg-rose-950/70 border-b border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200 text-xs flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5">
+            <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+            <span>{editorError}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setEditorError(null)}
+            className="p-0.5 text-rose-500 hover:text-rose-700 cursor-pointer"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
       {/* Editor Main Toolbar */}
       <div className="p-2 bg-stone-50 dark:bg-stone-800/80 border-b border-stone-200 dark:border-stone-800 flex flex-wrap items-center gap-1.5 text-stone-700 dark:text-stone-300">
-        
         {/* Font Selection Dropdown */}
         <div className="flex items-center gap-1 pr-1 border-r border-stone-300 dark:border-stone-700">
           <Type className="w-3.5 h-3.5 text-stone-400 shrink-0 ml-1" />
           <select
             value={selectedFont}
             onChange={(e) => handleFontChange(e.target.value)}
-            className="px-2 py-1 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-lg text-xs font-semibold focus:ring-2 focus:ring-emerald-500 text-stone-900 dark:text-white cursor-pointer max-w-[140px] sm:max-w-[170px] truncate"
+            className="px-2 py-1 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-lg text-xs font-semibold focus:ring-2 focus:ring-emerald-500 text-stone-900 dark:text-white cursor-pointer max-w-[140px] sm:max-w-[165px] truncate"
             title="Pilih Jenis Font Tulisan"
           >
             {FONT_OPTIONS.map(font => (
@@ -488,28 +758,57 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
           </select>
         </div>
 
-        {/* Headings */}
+        {/* Paragraph (Normal) & Headings (H1, H2, H3) */}
         <button
           type="button"
-          onClick={() => execCommand('formatBlock', 'h1')}
-          className="p-1.5 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-lg transition"
-          title="Heading 1"
+          data-testid="rte-format-p"
+          onClick={() => applyBlockFormat('p')}
+          className={`px-2 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
+            activeBlock === 'p'
+              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800'
+              : 'hover:bg-stone-200 dark:hover:bg-stone-700'
+          }`}
+          title="Paragraf Normal (Kembalikan ke Teks Biasa)"
+        >
+          <Pilcrow className="w-3.5 h-3.5" />
+          <span>Normal</span>
+        </button>
+        <button
+          type="button"
+          data-testid="rte-format-h1"
+          onClick={() => applyBlockFormat('h1')}
+          className={`p-1.5 rounded-lg transition cursor-pointer ${
+            activeBlock === 'h1'
+              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-bold border border-emerald-300 dark:border-emerald-800'
+              : 'hover:bg-stone-200 dark:hover:bg-stone-700'
+          }`}
+          title="Heading 1 (Judul Utama)"
         >
           <Heading1 className="w-4 h-4" />
         </button>
         <button
           type="button"
-          onClick={() => execCommand('formatBlock', 'h2')}
-          className="p-1.5 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-lg transition"
-          title="Heading 2"
+          data-testid="rte-format-h2"
+          onClick={() => applyBlockFormat('h2')}
+          className={`p-1.5 rounded-lg transition cursor-pointer ${
+            activeBlock === 'h2'
+              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-bold border border-emerald-300 dark:border-emerald-800'
+              : 'hover:bg-stone-200 dark:hover:bg-stone-700'
+          }`}
+          title="Heading 2 (Subjudul)"
         >
           <Heading2 className="w-4 h-4" />
         </button>
         <button
           type="button"
-          onClick={() => execCommand('formatBlock', 'h3')}
-          className="p-1.5 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-lg transition"
-          title="Heading 3"
+          data-testid="rte-format-h3"
+          onClick={() => applyBlockFormat('h3')}
+          className={`p-1.5 rounded-lg transition cursor-pointer ${
+            activeBlock === 'h3'
+              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-bold border border-emerald-300 dark:border-emerald-800'
+              : 'hover:bg-stone-200 dark:hover:bg-stone-700'
+          }`}
+          title="Heading 3 (Sub-subjudul)"
         >
           <Heading3 className="w-4 h-4" />
         </button>
@@ -519,32 +818,36 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         {/* Inline formatting with active state highlighting */}
         <button
           type="button"
+          data-testid="rte-bold"
           onClick={() => execCommand('bold')}
-          className={`p-1.5 rounded-lg transition ${activeStates.bold ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-bold' : 'hover:bg-stone-200 dark:hover:bg-stone-700'}`}
+          className={`p-1.5 rounded-lg transition cursor-pointer ${activeStates.bold ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-bold' : 'hover:bg-stone-200 dark:hover:bg-stone-700'}`}
           title="Tebal (Bold)"
         >
           <Bold className="w-4 h-4" />
         </button>
         <button
           type="button"
+          data-testid="rte-italic"
           onClick={() => execCommand('italic')}
-          className={`p-1.5 rounded-lg transition ${activeStates.italic ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-bold' : 'hover:bg-stone-200 dark:hover:bg-stone-700'}`}
+          className={`p-1.5 rounded-lg transition cursor-pointer ${activeStates.italic ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-bold' : 'hover:bg-stone-200 dark:hover:bg-stone-700'}`}
           title="Miring (Italic)"
         >
           <Italic className="w-4 h-4" />
         </button>
         <button
           type="button"
+          data-testid="rte-underline"
           onClick={() => execCommand('underline')}
-          className={`p-1.5 rounded-lg transition ${activeStates.underline ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-bold' : 'hover:bg-stone-200 dark:hover:bg-stone-700'}`}
+          className={`p-1.5 rounded-lg transition cursor-pointer ${activeStates.underline ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-bold' : 'hover:bg-stone-200 dark:hover:bg-stone-700'}`}
           title="Garis Bawah (Underline)"
         >
           <Underline className="w-4 h-4" />
         </button>
         <button
           type="button"
+          data-testid="rte-strikethrough"
           onClick={() => execCommand('strikeThrough')}
-          className={`p-1.5 rounded-lg transition ${activeStates.strikeThrough ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-bold' : 'hover:bg-stone-200 dark:hover:bg-stone-700'}`}
+          className={`p-1.5 rounded-lg transition cursor-pointer ${activeStates.strikeThrough ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-bold' : 'hover:bg-stone-200 dark:hover:bg-stone-700'}`}
           title="Coretan (Strikethrough)"
         >
           <Strikethrough className="w-4 h-4" />
@@ -552,30 +855,42 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
         <div className="h-4 w-[1px] bg-stone-300 dark:bg-stone-700 mx-1" />
 
-        {/* Alignment */}
+        {/* Alignment: Left, Center, Right, Justify */}
         <button
           type="button"
-          onClick={() => execCommand('justifyLeft')}
-          className={`p-1.5 rounded-lg transition ${activeStates.justifyLeft ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'hover:bg-stone-200 dark:hover:bg-stone-700'}`}
+          data-testid="rte-align-left"
+          onClick={() => applyAlignment('left')}
+          className={`p-1.5 rounded-lg transition cursor-pointer ${activeAlign === 'left' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800' : 'hover:bg-stone-200 dark:hover:bg-stone-700'}`}
           title="Rata Kiri"
         >
           <AlignLeft className="w-4 h-4" />
         </button>
         <button
           type="button"
-          onClick={() => execCommand('justifyCenter')}
-          className={`p-1.5 rounded-lg transition ${activeStates.justifyCenter ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'hover:bg-stone-200 dark:hover:bg-stone-700'}`}
+          data-testid="rte-align-center"
+          onClick={() => applyAlignment('center')}
+          className={`p-1.5 rounded-lg transition cursor-pointer ${activeAlign === 'center' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800' : 'hover:bg-stone-200 dark:hover:bg-stone-700'}`}
           title="Rata Tengah"
         >
           <AlignCenter className="w-4 h-4" />
         </button>
         <button
           type="button"
-          onClick={() => execCommand('justifyRight')}
-          className={`p-1.5 rounded-lg transition ${activeStates.justifyRight ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'hover:bg-stone-200 dark:hover:bg-stone-700'}`}
+          data-testid="rte-align-right"
+          onClick={() => applyAlignment('right')}
+          className={`p-1.5 rounded-lg transition cursor-pointer ${activeAlign === 'right' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800' : 'hover:bg-stone-200 dark:hover:bg-stone-700'}`}
           title="Rata Kanan"
         >
           <AlignRight className="w-4 h-4" />
+        </button>
+        <button
+          type="button"
+          data-testid="rte-align-justify"
+          onClick={() => applyAlignment('justify')}
+          className={`p-1.5 rounded-lg transition cursor-pointer ${activeAlign === 'justify' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800' : 'hover:bg-stone-200 dark:hover:bg-stone-700'}`}
+          title="Rata Kiri-Kanan (Justify)"
+        >
+          <AlignJustify className="w-4 h-4" />
         </button>
 
         <div className="h-4 w-[1px] bg-stone-300 dark:bg-stone-700 mx-1" />
@@ -583,24 +898,31 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         {/* Lists & Quotes */}
         <button
           type="button"
+          data-testid="rte-ul"
           onClick={() => execCommand('insertUnorderedList')}
-          className={`p-1.5 rounded-lg transition ${activeStates.ul ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'hover:bg-stone-200 dark:hover:bg-stone-700'}`}
+          className={`p-1.5 rounded-lg transition cursor-pointer ${activeStates.ul ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'hover:bg-stone-200 dark:hover:bg-stone-700'}`}
           title="Daftar Poin (Bullet List)"
         >
           <List className="w-4 h-4" />
         </button>
         <button
           type="button"
+          data-testid="rte-ol"
           onClick={() => execCommand('insertOrderedList')}
-          className={`p-1.5 rounded-lg transition ${activeStates.ol ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'hover:bg-stone-200 dark:hover:bg-stone-700'}`}
+          className={`p-1.5 rounded-lg transition cursor-pointer ${activeStates.ol ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'hover:bg-stone-200 dark:hover:bg-stone-700'}`}
           title="Daftar Angka (Numbered List)"
         >
           <ListOrdered className="w-4 h-4" />
         </button>
         <button
           type="button"
-          onClick={() => execCommand('formatBlock', '<blockquote>')}
-          className="p-1.5 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-lg transition"
+          data-testid="rte-blockquote"
+          onClick={() => applyBlockFormat('blockquote')}
+          className={`p-1.5 rounded-lg transition cursor-pointer ${
+            activeBlock === 'blockquote'
+              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800'
+              : 'hover:bg-stone-200 dark:hover:bg-stone-700'
+          }`}
           title="Kutipan (Blockquote)"
         >
           <Quote className="w-4 h-4" />
@@ -612,7 +934,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         <button
           type="button"
           onClick={() => { saveSelection(); setShowTableModal(true); }}
-          className="p-1.5 hover:bg-emerald-100 dark:hover:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 rounded-lg transition flex items-center gap-1 font-semibold text-xs"
+          className="p-1.5 hover:bg-emerald-100 dark:hover:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 rounded-lg transition flex items-center gap-1 font-semibold text-xs cursor-pointer"
           title="Buat Tabel Baru"
         >
           <TableIcon className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
@@ -624,16 +946,33 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         {/* Media & Links */}
         <button
           type="button"
-          onClick={() => { saveSelection(); setShowLinkModal(true); }}
-          className="p-1.5 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-lg transition"
-          title="Sisipkan Tautan (Link)"
+          data-testid="rte-insert-link"
+          onClick={handleOpenLinkModal}
+          className={`p-1.5 rounded-lg transition cursor-pointer ${
+            activeLinkElement
+              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800'
+              : 'hover:bg-stone-200 dark:hover:bg-stone-700'
+          }`}
+          title="Sisipkan atau Edit Tautan (Hyperlink)"
         >
           <LinkIcon className="w-4 h-4" />
         </button>
+        {activeLinkElement && (
+          <button
+            type="button"
+            data-testid="rte-unlink"
+            onClick={handleUnlink}
+            className="p-1.5 hover:bg-rose-100 dark:hover:bg-rose-950/60 text-rose-600 rounded-lg transition cursor-pointer"
+            title="Hapus Tautan (Unlink)"
+          >
+            <Unlink className="w-4 h-4" />
+          </button>
+        )}
         <button
           type="button"
+          data-testid="rte-insert-image"
           onClick={() => { saveSelection(); setShowImageModal(true); }}
-          className="p-1.5 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-lg transition"
+          className="p-1.5 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-lg transition cursor-pointer"
           title="Sisipkan Gambar"
         >
           <ImageIcon className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
@@ -654,13 +993,52 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
         <button
           type="button"
-          onClick={() => execCommand('removeFormat')}
-          className="p-1.5 hover:bg-rose-100 dark:hover:bg-rose-950/50 text-rose-600 rounded-lg transition ml-auto"
-          title="Hapus Format Teks"
+          data-testid="rte-reset-format"
+          onClick={() => {
+            execCommand('removeFormat');
+            applyBlockFormat('p');
+          }}
+          className="p-1.5 hover:bg-rose-100 dark:hover:bg-rose-950/50 text-rose-600 rounded-lg transition ml-auto cursor-pointer"
+          title="Hapus Format & Kembalikan ke Paragraf Normal"
         >
           <RotateCcw className="w-4 h-4" />
         </button>
       </div>
+
+      {/* Contextual Active Hyperlink Action Bar */}
+      {activeLinkElement && (
+        <div className="px-3 py-1.5 bg-emerald-50/90 dark:bg-emerald-950/70 border-b border-emerald-200 dark:border-emerald-800/80 flex flex-wrap items-center justify-between gap-2 text-xs text-emerald-900 dark:text-emerald-200 animate-fade-in">
+          <div className="flex items-center gap-2 min-w-0">
+            <LinkIcon className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+            <span className="font-semibold shrink-0">Tautan Aktif:</span>
+            <a
+              href={activeLinkElement.getAttribute('href') || '#'}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline text-emerald-700 dark:text-emerald-300 truncate max-w-xs sm:max-w-md inline-flex items-center gap-1 font-medium"
+            >
+              <span className="truncate">{activeLinkElement.getAttribute('href')}</span>
+              <ExternalLink className="w-3 h-3 shrink-0" />
+            </a>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={handleOpenLinkModal}
+              className="px-2 py-0.5 bg-white dark:bg-stone-800 border border-emerald-300 dark:border-emerald-700 rounded-md font-semibold hover:bg-emerald-100 transition cursor-pointer"
+            >
+              Edit URL
+            </button>
+            <button
+              type="button"
+              onClick={handleUnlink}
+              className="px-2 py-0.5 bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800 rounded-md font-semibold hover:bg-rose-200 transition cursor-pointer"
+            >
+              Hapus Tautan
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Contextual Table Controls Action Bar (shown when cursor is inside a table cell) */}
       {activeTableInfo && (
@@ -731,7 +1109,9 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       <div
         ref={editorRef}
         contentEditable
+        data-testid="rich-text-editor-body"
         onInput={handleInput}
+        onKeyDown={handleKeyDown}
         onCopy={handleCopy}
         onPaste={handlePaste}
         style={{ minHeight }}
@@ -748,7 +1128,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
                 <TableIcon className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                 <span>Buat Tabel Baru</span>
               </h4>
-              <button onClick={() => setShowTableModal(false)} className="text-stone-400 hover:text-stone-600">
+              <button type="button" onClick={() => setShowTableModal(false)} className="text-stone-400 hover:text-stone-600">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -822,30 +1202,71 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         <div className="fixed inset-0 z-70 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
           <div className="bg-white dark:bg-stone-900 p-6 rounded-3xl border border-stone-200 dark:border-stone-800 w-full max-w-md space-y-4 shadow-2xl">
             <div className="flex items-center justify-between border-b border-stone-200 dark:border-stone-800 pb-3">
-              <h4 className="font-bold text-stone-900 dark:text-white text-base">Sisipkan Tautan (URL)</h4>
-              <button onClick={() => setShowLinkModal(false)} className="text-stone-400 hover:text-stone-600">
+              <h4 className="font-bold text-stone-900 dark:text-white text-base flex items-center gap-2">
+                <LinkIcon className="w-4 h-4 text-emerald-600" />
+                <span>Sisipkan Tautan (Hyperlink)</span>
+              </h4>
+              <button type="button" onClick={() => setShowLinkModal(false)} className="text-stone-400 hover:text-stone-600">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <input
-              type="url"
-              value={linkUrl}
-              onChange={(e) => setLinkUrl(e.target.value)}
-              placeholder="https://example.com"
-              className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 text-stone-900 dark:text-white"
-            />
+
+            {linkModalError && (
+              <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{linkModalError}</span>
+              </div>
+            )}
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 block mb-1">
+                  Teks Tautan (Opsional)
+                </label>
+                <input
+                  type="text"
+                  data-testid="rte-link-text-input"
+                  value={linkText}
+                  onChange={(e) => setLinkText(e.target.value)}
+                  placeholder="Contoh: Kunjungi Referensi Kitab"
+                  className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 text-stone-900 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 block mb-1">
+                  Alamat URL Tautan *
+                </label>
+                <input
+                  type="url"
+                  data-testid="rte-link-url-input"
+                  value={linkUrl}
+                  onChange={(e) => {
+                    setLinkUrl(e.target.value);
+                    if (linkModalError) setLinkModalError(null);
+                  }}
+                  placeholder="https://darswithosama.com"
+                  className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 text-stone-900 dark:text-white"
+                />
+                <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-1">
+                  Tips: Anda juga dapat langsung menempelkan (paste) URL ke dalam editor untuk membuatnya menjadi hyperlink otomatis.
+                </p>
+              </div>
+            </div>
+
             <div className="flex justify-end gap-2 pt-2 border-t border-stone-200 dark:border-stone-800">
               <button
                 type="button"
                 onClick={() => setShowLinkModal(false)}
-                className="px-4 py-2 bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold"
+                className="px-4 py-2 bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold cursor-pointer"
               >
                 Batal
               </button>
               <button
                 type="button"
+                data-testid="rte-link-submit-btn"
                 onClick={handleInsertLink}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow"
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow cursor-pointer"
               >
                 Terapkan Tautan
               </button>
@@ -859,8 +1280,8 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         <div className="fixed inset-0 z-70 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
           <div className="bg-white dark:bg-stone-900 p-6 rounded-3xl border border-stone-200 dark:border-stone-800 w-full max-w-md space-y-4 shadow-2xl">
             <div className="flex items-center justify-between border-b border-stone-200 dark:border-stone-800 pb-3">
-              <h4 className="font-bold text-stone-900 dark:text-white text-base">Sisipkan Gambar dalam Artikel</h4>
-              <button onClick={() => setShowImageModal(false)} className="text-stone-400 hover:text-stone-600">
+              <h4 className="font-bold text-stone-900 dark:text-white text-base">Sisipkan Gambar dalam Konten</h4>
+              <button type="button" onClick={() => setShowImageModal(false)} className="text-stone-400 hover:text-stone-600">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -894,6 +1315,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
                 </label>
                 <input
                   type="url"
+                  data-testid="rte-image-url-input"
                   value={imageUrl}
                   onChange={(e) => setImageUrl(e.target.value)}
                   placeholder="https://images.unsplash.com/photo-..."
@@ -907,6 +1329,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
                 </label>
                 <input
                   type="text"
+                  data-testid="rte-image-caption-input"
                   value={imageCaption}
                   onChange={(e) => setImageCaption(e.target.value)}
                   placeholder="Deskripsi singkat gambar..."
@@ -925,15 +1348,16 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
               <button
                 type="button"
                 onClick={() => setShowImageModal(false)}
-                className="px-4 py-2 bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold"
+                className="px-4 py-2 bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold cursor-pointer"
               >
                 Batal
               </button>
               <button
                 type="button"
+                data-testid="rte-image-submit-btn"
                 onClick={handleInsertImage}
                 disabled={!imageUrl}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl text-xs font-semibold shadow"
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl text-xs font-semibold shadow cursor-pointer"
               >
                 Sisipkan
               </button>

@@ -1001,6 +1001,155 @@ test('Case 29: extractGoogleDriveFileId dan resolveAudioSourceCandidates menanga
   assert.equal(resolvedDirect.candidates[0].url, directMp3);
 });
 
+// Case 30: Penyempurnaan Editor Teks - Hyperlink Otomatis, Validasi URL, dan Pembungkusan Teks Terpilih
+test('Case 30: normalizeHyperlinkUrl, linkifyPlainTextSegment, dan convertPastedPlainTextToHtml menangani hyperlink otomatis dan teks terpilih', async () => {
+  const {
+    normalizeHyperlinkUrl,
+    isValidSafeUrl,
+    linkifyPlainTextSegment,
+    convertPastedPlainTextToHtml
+  } = await import('./richTextHelper.js');
+
+  // 1. Validasi URL aman vs skrip berbahaya
+  assert.equal(normalizeHyperlinkUrl('https://darswithosama.com/kajian'), 'https://darswithosama.com/kajian');
+  assert.equal(normalizeHyperlinkUrl('www.darswithosama.com'), 'https://www.darswithosama.com');
+  assert.equal(normalizeHyperlinkUrl('mailto:osamanursamsil@gmail.com'), 'mailto:osamanursamsil@gmail.com');
+  assert.equal(normalizeHyperlinkUrl('javascript:alert(1)'), null);
+  assert.equal(normalizeHyperlinkUrl('data:text/html,<script>alert(1)</script>'), null);
+  assert.equal(isValidSafeUrl('javascript:void(0)'), false);
+  assert.equal(isValidSafeUrl('https://drive.google.com/file/d/123/view'), true);
+
+  // 2. Tempel URL langsung pada teks terpilih -> membungkus teks terpilih menjadi tautan
+  const wrappedSelection = convertPastedPlainTextToHtml(
+    'https://darswithosama.com/profil-pengajar',
+    'Profil Ustaz Osama Nur Samsil, S.H.'
+  );
+  assert.ok(wrappedSelection.includes('<a href="https://darswithosama.com/profil-pengajar"'));
+  assert.ok(wrappedSelection.includes('target="_blank"'));
+  assert.ok(wrappedSelection.includes('rel="noopener noreferrer"'));
+  assert.ok(wrappedSelection.includes('>Profil Ustaz Osama Nur Samsil, S.H.</a>'));
+
+  // 3. Tempel paragraf yang memuat URL -> otomatis dikenali sebagai hyperlink yang dapat diklik
+  const pastedParagraph = convertPastedPlainTextToHtml(
+    'Silakan kunjungi https://darswithosama.com untuk membaca artikel ilmiah.'
+  );
+  assert.ok(pastedParagraph.includes('<a href="https://darswithosama.com"'));
+  assert.ok(pastedParagraph.includes('>https://darswithosama.com</a>'));
+
+  // 4. Tanda baca di akhir kalimat tidak ikut masuk ke atribut href
+  const sentenceWithDot = linkifyPlainTextSegment('Rujukan tersedia di https://darswithosama.com/kitab.');
+  assert.ok(sentenceWithDot.includes('href="https://darswithosama.com/kitab"'));
+  assert.ok(sentenceWithDot.endsWith('</a>.'));
+});
+
+// Case 31: Penyempurnaan Editor Teks - Format Normal/Paragraph & Perataan Justify
+test('Case 31: convertBlocksToNormalParagraphHtml dan applyAlignmentToHtmlBlocks mempertahankan format Normal dan Justify', async () => {
+  const {
+    convertBlocksToNormalParagraphHtml,
+    applyAlignmentToHtmlBlocks
+  } = await import('./richTextHelper.js');
+
+  // 1. Mengembalikan Heading 1, 2, 3 dan Blockquote menjadi paragraf normal (<p>)
+  const headingHtml = '<h1>Judul Utama</h1><h2 style="text-align: center">Subjudul Tengah</h2><h3>Subjudul Kecil</h3><blockquote>Kutipan</blockquote>';
+  const normalHtml = convertBlocksToNormalParagraphHtml(headingHtml);
+  assert.equal(normalHtml.includes('<h1>'), false);
+  assert.equal(normalHtml.includes('<h2'), false);
+  assert.equal(normalHtml.includes('<h3>'), false);
+  assert.equal(normalHtml.includes('<blockquote>'), false);
+  assert.ok(normalHtml.includes('<p>Judul Utama</p>'));
+  assert.ok(normalHtml.includes('<p style="text-align: center;">Subjudul Tengah</p>'));
+  assert.ok(normalHtml.includes('<p>Subjudul Kecil</p>'));
+  assert.ok(normalHtml.includes('<p>Kutipan</p>'));
+
+  // 2. Perataan Justify (rata kiri-kanan) pada paragraf dan heading
+  const rawParagraphs = '<p>Paragraf pertama kajian ilmiah.</p><h2>Judul Bagian</h2>';
+  const justifiedHtml = applyAlignmentToHtmlBlocks(rawParagraphs, 'justify');
+  assert.ok(justifiedHtml.includes('text-align: justify'));
+  assert.equal((justifiedHtml.match(/text-align:\s*justify/g) || []).length, 2);
+});
+
+// Case 32: Sanitasi HTML Konten Rich Text (Mencegah XSS sekaligus Mempertahankan Format, Gambar, dan Tautan)
+test('Case 32: sanitizeRichTextHtml menghapus skrip/event berbahaya dan mempertahankan Justify, Normal, daftar, gambar, serta hyperlink', async () => {
+  const { sanitizeRichTextHtml } = await import('./richTextHelper.js');
+
+  const dirtyHtml = `
+    <p style="text-align: justify;" onclick="alert('xss')">Paragraf ilmiah yang rata kiri-kanan.</p>
+    <script>window.hacked = true;</script>
+    <iframe src="https://evil.example.com"></iframe>
+    <p><a href="https://darswithosama.com" onmouseover="evil()">Tautan Resmi</a></p>
+    <p><a href="javascript:alert(1)">Tautan Berbahaya</a></p>
+    <img src="https://images.unsplash.com/photo-1532012197267-da84d127e765" alt="Kitab" onerror="alert(2)" />
+    <ul><li>Butir pertama</li><li>Butir kedua</li></ul>
+  `;
+
+  const sanitized = sanitizeRichTextHtml(dirtyHtml);
+
+  // Bebas dari XSS
+  assert.equal(sanitized.includes('<script'), false);
+  assert.equal(sanitized.includes('<iframe'), false);
+  assert.equal(sanitized.includes('onclick='), false);
+  assert.equal(sanitized.includes('onmouseover='), false);
+  assert.equal(sanitized.includes('onerror='), false);
+  assert.equal(sanitized.includes('javascript:'), false);
+
+  // Format yang sah tetap utuh setelah sanitasi
+  assert.ok(sanitized.includes('style="text-align: justify;"'));
+  assert.ok(sanitized.includes('href="https://darswithosama.com"'));
+  assert.ok(sanitized.includes('target="_blank"'));
+  assert.ok(sanitized.includes('rel="noopener noreferrer"'));
+  assert.ok(sanitized.includes('<img src="https://images.unsplash.com/photo-1532012197267-da84d127e765" alt="Kitab"'));
+  assert.ok(sanitized.includes('<ul><li>Butir pertama</li><li>Butir kedua</li></ul>'));
+});
+
+// Case 33: Pengelolaan Halaman Profil Pengajar (Data Default Jujur, Urutan Bagian, dan Sanitasi Payload)
+test('Case 33: getDefaultInstructorProfile, moveProfileSection, dan sanitizeInstructorProfilePayload mengelola profil pengajar secara akurat', async () => {
+  const {
+    getDefaultInstructorProfile,
+    moveProfileSection,
+    sanitizeInstructorProfilePayload
+  } = await import('./instructorProfileHelper.js');
+  const { parseUrlToRouteState, buildUrlFromRouteState } = await import('./navigationHistory.js');
+
+  // 1. Data awal hanya memuat identitas faktual Osama Nur Samsil, S.H. tanpa mengarang pendidikan/prestasi fiktif
+  const defaultProfile = getDefaultInstructorProfile();
+  assert.equal(defaultProfile.name, 'Osama Nur Samsil, S.H.');
+  assert.equal(defaultProfile.role, 'Pembuat & Pengajar Dars with Osama');
+  assert.equal(defaultProfile.photoUrl, '');
+
+  // 2. Pengaturan urutan bagian (naik/turun)
+  const sampleSections = [
+    { id: 'sec-1', title: 'Bagian Pertama', content: '<p>Isi 1</p>', order: 1 },
+    { id: 'sec-2', title: 'Bagian Kedua', content: '<p>Isi 2</p>', order: 2 },
+    { id: 'sec-3', title: 'Bagian Ketiga', content: '<p>Isi 3</p>', order: 3 }
+  ];
+
+  const movedDown = moveProfileSection(sampleSections, 'sec-1', 'down');
+  assert.deepEqual(movedDown.map((s) => s.id), ['sec-2', 'sec-1', 'sec-3']);
+  assert.deepEqual(movedDown.map((s) => s.order), [1, 2, 3]);
+
+  const movedUp = moveProfileSection(movedDown, 'sec-3', 'up');
+  assert.deepEqual(movedUp.map((s) => s.id), ['sec-2', 'sec-3', 'sec-1']);
+
+  // 3. Sanitasi payload profil sebelum disimpan ke Firestore
+  const sanitizedProfile = sanitizeInstructorProfilePayload({
+    name: 'Osama Nur Samsil, S.H.',
+    role: 'Pembuat & Pengajar Dars with Osama',
+    title: 'Profil Pengajar',
+    biography: 'Pengajar kajian kitab kuning.',
+    mainContent: '<p style="text-align: justify">Selamat datang di <a href="https://darswithosama.com">Dars with Osama</a>.</p><script>evil()</script>',
+    sections: movedUp
+  });
+  assert.equal(sanitizedProfile.mainContent.includes('<script'), false);
+  assert.ok(sanitizedProfile.mainContent.includes('text-align: justify'));
+  assert.equal(sanitizedProfile.sections.length, 3);
+
+  // 4. Routing halaman publik /profil-pengajar
+  const profileRoute = parseUrlToRouteState('/profil-pengajar', '');
+  assert.equal(profileRoute.view, 'instructor-profile');
+  assert.equal(buildUrlFromRouteState(profileRoute), '/profil-pengajar');
+});
+
+
 
 
 

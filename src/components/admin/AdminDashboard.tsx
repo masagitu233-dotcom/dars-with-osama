@@ -73,16 +73,18 @@ import { YouTubeEmbed } from '../common/YouTubeEmbed';
 import { AdminBlogManager } from './AdminBlogManager';
 import { AdminConsultationManager } from './AdminConsultationManager';
 import { AdminCommentsManager } from './AdminCommentsManager';
+import { AdminInstructorProfileManager } from './AdminInstructorProfileManager';
 import { RichTextEditor } from './RichTextEditor';
-import { MessageSquare } from 'lucide-react';
+import { MessageSquare, UserCheck } from 'lucide-react';
 import { getAllArticleCommentsForAdmin } from '../../firebase/services';
 
 export const AdminDashboard: React.FC<{
   initialCourseId?: string;
-  initialTab?: 'dashboard' | 'courses' | 'categories' | 'sessions' | 'quizzes' | 'users' | 'attempts' | 'firebase' | 'blog' | 'consultation' | 'comments';
+  initialTab?: 'dashboard' | 'courses' | 'categories' | 'sessions' | 'quizzes' | 'users' | 'attempts' | 'firebase' | 'blog' | 'consultation' | 'comments' | 'instructor-profile';
   autoOpenAddSession?: boolean;
   onClearAutoOpen?: () => void;
   onNavigateToSiswa?: () => void;
+  onNavigateToInstructorProfile?: () => void;
   onPreviewBlogPost?: (post: BlogPost) => void;
   onRefreshData: () => void;
 }> = ({
@@ -91,6 +93,7 @@ export const AdminDashboard: React.FC<{
   autoOpenAddSession,
   onClearAutoOpen,
   onNavigateToSiswa,
+  onNavigateToInstructorProfile,
   onPreviewBlogPost,
   onRefreshData
 }) => {
@@ -98,7 +101,7 @@ export const AdminDashboard: React.FC<{
   const { theme, effectiveTheme, setTheme } = useTheme();
 
   // Active Menu / Tab in Sidebar
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'courses' | 'categories' | 'sessions' | 'quizzes' | 'users' | 'attempts' | 'firebase' | 'blog' | 'consultation' | 'comments'>(initialTab || 'dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'courses' | 'categories' | 'sessions' | 'quizzes' | 'users' | 'attempts' | 'firebase' | 'blog' | 'consultation' | 'comments' | 'instructor-profile'>(initialTab || 'dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [quickSearch, setQuickSearch] = useState('');
@@ -1055,6 +1058,22 @@ export const AdminDashboard: React.FC<{
                 <div className="flex items-center gap-3 truncate">
                   <MessageSquare className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                   {!sidebarCollapsed && <span className="truncate">Konsultasi & Q&A</span>}
+                </div>
+              </button>
+
+              <button
+                onClick={() => { setActiveTab('instructor-profile'); setSidebarOpen(false); }}
+                data-testid="admin-tab-instructor-profile"
+                title="Kelola Halaman Profil Pengajar"
+                className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3.5 py-2.5'} rounded-xl text-xs font-semibold transition cursor-pointer ${
+                  activeTab === 'instructor-profile'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60 shadow-xs'
+                    : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800/60'
+                }`}
+              >
+                <div className="flex items-center gap-3 truncate">
+                  <UserCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  {!sidebarCollapsed && <span className="truncate">Profil Pengajar</span>}
                 </div>
               </button>
             </div>
@@ -2202,6 +2221,17 @@ export const AdminDashboard: React.FC<{
           {activeTab === 'consultation' && (
             <div className="animate-fade-in">
               <AdminConsultationManager />
+            </div>
+          )}
+
+          {/* ========================================================= */}
+          {/* VIEW: INSTRUCTOR PROFILE MANAGER */}
+          {/* ========================================================= */}
+          {activeTab === 'instructor-profile' && (
+            <div className="animate-fade-in">
+              <AdminInstructorProfileManager
+                onOpenPublicProfile={onNavigateToInstructorProfile}
+              />
             </div>
           )}
         </main>

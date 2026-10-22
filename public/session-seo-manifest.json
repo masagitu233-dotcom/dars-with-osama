@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-10-20T14:34:52.062Z",
+  "updatedAt": "2026-10-22T14:27:35.431Z",
   "entries": [
     {
       "course": {
@@ -295,6 +295,276 @@
         "order": 5,
         "youtubeUrl": "https://youtu.be/LzLF8OWFKDs?si=J7b5Y2HUKOR38tbr",
         "durationMinutes": 25,
+        "isPublished": true
+      }
+    },
+    {
+      "course": {
+        "id": "course-1792197763057",
+        "title": "mutammimah al-ajurumiyah",
+        "titleAr": "",
+        "instructor": "osama nur samsil",
+        "categoryId": "cat-1792197742358",
+        "level": "beginner",
+        "description": "",
+        "coverImageUrl": "https://darswithosama.com/covers/course-1792197763057.jpg",
+        "isPublished": true,
+        "hasCertificate": true,
+        "passingGrade": 75,
+        "order": 1
+      },
+      "session": {
+        "id": "session-1792585176466",
+        "courseId": "course-1792197763057",
+        "title": "Seputar Tanda-tanda I'rab Part 1",
+        "titleAr": "",
+        "description": "",
+        "order": 6,
+        "youtubeUrl": "https://youtu.be/9dPaU_G0DgM?si=gI71S3R2ZyScMAxD",
+        "durationMinutes": 30,
+        "isPublished": true
+      }
+    },
+    {
+      "course": {
+        "id": "course-1792197763057",
+        "title": "mutammimah al-ajurumiyah",
+        "titleAr": "",
+        "instructor": "osama nur samsil",
+        "categoryId": "cat-1792197742358",
+        "level": "beginner",
+        "description": "",
+        "coverImageUrl": "https://darswithosama.com/covers/course-1792197763057.jpg",
+        "isPublished": true,
+        "hasCertificate": true,
+        "passingGrade": 75,
+        "order": 1
+      },
+      "session": {
+        "id": "session-1792585667423",
+        "courseId": "course-1792197763057",
+        "title": "Seputar Tanda-tanda I'raab part 2",
+        "titleAr": "",
+        "description": "",
+        "order": 7,
+        "youtubeUrl": "https://youtu.be/lM6PxpR3Jak",
+        "durationMinutes": 20,
+        "isPublished": true
+      }
+    },
+    {
+      "course": {
+        "id": "course-1792197763057",
+        "title": "mutammimah al-ajurumiyah",
+        "titleAr": "",
+        "instructor": "osama nur samsil",
+        "categoryId": "cat-1792197742358",
+        "level": "beginner",
+        "description": "",
+        "coverImageUrl": "https://darswithosama.com/covers/course-1792197763057.jpg",
+        "isPublished": true,
+        "hasCertificate": true,
+        "passingGrade": 75,
+        "order": 1
+      },
+      "session": {
+        "id": "session-1792586160978",
+        "courseId": "course-1792197763057",
+        "title": "Isim laa yansharif",
+        "titleAr": "",
+        "description": "",
+        "order": 8,
+        "youtubeUrl": "https://youtu.be/ehf1jgYkkV8",
+        "durationMinutes": 30,
+        "isPublished": true
+      }
+    },
+    {
+      "course": {
+        "id": "course-1792197763057",
+        "title": "mutammimah al-ajurumiyah",
+        "titleAr": "",
+        "instructor": "osama nur samsil",
+        "categoryId": "cat-1792197742358",
+        "level": "beginner",
+        "description": "",
+        "coverImageUrl": "https://darswithosama.com/covers/course-1792197763057.jpg",
+        "isPublished": true,
+        "hasCertificate": true,
+        "passingGrade": 75,
+        "order": 1
+      },
+      "session": {
+        "id": "session-1792586728262",
+        "courseId": "course-1792197763057",
+        "title": "Bab Nakirah dan Makrifah",
+        "titleAr": "",
+        "description": "",
+        "order": 9,
+        "youtubeUrl": "https://youtu.be/3xH6_1A4sLE",
+        "durationMinutes": 25,
+        "isPublished": true
+      }
+    },
+    {
+      "course": {
+        "id": "course-1792197763057",
+        "title": "mutammimah al-ajurumiyah",
+        "titleAr": "",
+        "instructor": "osama nur samsil",
+        "categoryId": "cat-1792197742358",
+        "level": "beginner",
+        "description": "",
+        "coverImageUrl": "https://darswithosama.com/covers/course-1792197763057.jpg",
+        "isPublished": true,
+        "hasCertificate": true,
+        "passingGrade": 75,
+        "order": 1
+      },
+      "session": {
+        "id": "session-1792587348870",
+        "courseId": "course-1792197763057",
+        "title": "isim 'Alam",
+        "titleAr": "",
+        "description": "",
+        "order": 10,
+        "youtubeUrl": "https://youtu.be/p_pRTEWwH0Q",
+        "durationMinutes": 20,
+        "isPublished": true
+      }
+    },
+    {
+      "course": {
+        "id": "course-1792197763057",
+        "title": "mutammimah al-ajurumiyah",
+        "titleAr": "",
+        "instructor": "osama nur samsil",
+        "categoryId": "cat-1792197742358",
+        "level": "beginner",
+        "description": "",
+        "coverImageUrl": "https://darswithosama.com/covers/course-1792197763057.jpg",
+        "isPublished": true,
+        "hasCertificate": true,
+        "passingGrade": 75,
+        "order": 1
+      },
+      "session": {
+        "id": "session-1792587775965",
+        "courseId": "course-1792197763057",
+        "title": "Isim Maushul part 1",
+        "titleAr": "",
+        "description": "",
+        "order": 11,
+        "youtubeUrl": "https://youtu.be/HwifI1vqsQo",
+        "durationMinutes": 22,
+        "isPublished": true
+      }
+    },
+    {
+      "course": {
+        "id": "course-1792197763057",
+        "title": "mutammimah al-ajurumiyah",
+        "titleAr": "",
+        "instructor": "osama nur samsil",
+        "categoryId": "cat-1792197742358",
+        "level": "beginner",
+        "description": "",
+        "coverImageUrl": "https://darswithosama.com/covers/course-1792197763057.jpg",
+        "isPublished": true,
+        "hasCertificate": true,
+        "passingGrade": 75,
+        "order": 1
+      },
+      "session": {
+        "id": "session-1792587909662",
+        "courseId": "course-1792197763057",
+        "title": "Isim Maushul Part 2",
+        "titleAr": "",
+        "description": "",
+        "order": 12,
+        "youtubeUrl": "https://youtu.be/Q3f7yKq8QQo",
+        "durationMinutes": 25,
+        "isPublished": true
+      }
+    },
+    {
+      "course": {
+        "id": "course-1792197763057",
+        "title": "mutammimah al-ajurumiyah",
+        "titleAr": "",
+        "instructor": "osama nur samsil",
+        "categoryId": "cat-1792197742358",
+        "level": "beginner",
+        "description": "",
+        "coverImageUrl": "https://darswithosama.com/covers/course-1792197763057.jpg",
+        "isPublished": true,
+        "hasCertificate": true,
+        "passingGrade": 75,
+        "order": 1
+      },
+      "session": {
+        "id": "session-1792588639638",
+        "courseId": "course-1792197763057",
+        "title": "Isim Ma'rifah dengan Alif lam dan idhafah",
+        "titleAr": "",
+        "description": "",
+        "order": 13,
+        "youtubeUrl": "https://youtu.be/bet1r1BHL4E",
+        "durationMinutes": 17,
+        "isPublished": true
+      }
+    },
+    {
+      "course": {
+        "id": "course-1792197763057",
+        "title": "mutammimah al-ajurumiyah",
+        "titleAr": "",
+        "instructor": "osama nur samsil",
+        "categoryId": "cat-1792197742358",
+        "level": "beginner",
+        "description": "",
+        "coverImageUrl": "https://darswithosama.com/covers/course-1792197763057.jpg",
+        "isPublished": true,
+        "hasCertificate": true,
+        "passingGrade": 75,
+        "order": 1
+      },
+      "session": {
+        "id": "session-1792589266141",
+        "courseId": "course-1792197763057",
+        "title": "Bab Isim-Isim Marfu'",
+        "titleAr": "",
+        "description": "",
+        "order": 14,
+        "youtubeUrl": "https://youtu.be/8oB3gIYDf10",
+        "durationMinutes": 35,
+        "isPublished": true
+      }
+    },
+    {
+      "course": {
+        "id": "course-1792197763057",
+        "title": "mutammimah al-ajurumiyah",
+        "titleAr": "",
+        "instructor": "osama nur samsil",
+        "categoryId": "cat-1792197742358",
+        "level": "beginner",
+        "description": "",
+        "coverImageUrl": "https://darswithosama.com/covers/course-1792197763057.jpg",
+        "isPublished": true,
+        "hasCertificate": true,
+        "passingGrade": 75,
+        "order": 1
+      },
+      "session": {
+        "id": "session-1792589632532",
+        "courseId": "course-1792197763057",
+        "title": "Variasi posisi Fa'il dan maf'ul",
+        "titleAr": "",
+        "description": "",
+        "order": 15,
+        "youtubeUrl": "https://youtu.be/8bq_5MCsxn8",
+        "durationMinutes": 10,
         "isPublished": true
       }
     },

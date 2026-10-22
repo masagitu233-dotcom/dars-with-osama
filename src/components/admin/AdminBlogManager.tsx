@@ -32,6 +32,8 @@ import { RichTextEditor } from './RichTextEditor';
 import { saveBlogPost, deleteBlogPost, uploadFileToStorage, deleteDummyBlogPostsFromFirestore } from '../../firebase/services';
 import { ConfirmModal } from '../common/ConfirmModal';
 import { resolveAudioSourceCandidates, describeAudioPlaybackError } from '../../utils/articleAudioHelper';
+import { sanitizeRichTextHtml } from '../../utils/richTextHelper';
+import { autoWrapArabicText } from '../../utils/arabicFontHelper';
 
 interface AdminBlogManagerProps {
   posts: BlogPost[];
@@ -59,6 +61,7 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
 
   // Editor Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isInModalPreview, setIsInModalPreview] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
   const [coverProgress, setCoverProgress] = useState(0);
@@ -174,7 +177,7 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
 
   const handlePreviewVoice = () => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
-      alert('Peramban Anda saat ini belum mendukung Web Speech API.');
+      setFeedback({ type: 'error', text: 'Peramban Anda saat ini belum mendukung Web Speech API.' });
       return;
     }
 
@@ -212,12 +215,12 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
     if (!file) return;
 
     if (!file.type.startsWith('audio/') && !file.name.match(/\.(mp3|wav|ogg|m4a|aac)$/i)) {
-      alert('Harap pilih berkas audio yang valid (.mp3, .m4a, .wav, .ogg, .aac).');
+      setFeedback({ type: 'error', text: 'Harap pilih berkas audio yang valid (.mp3, .m4a, .wav, .ogg, .aac).' });
       return;
     }
 
     if (file.size > 25 * 1024 * 1024) {
-      alert('Ukuran berkas audio maksimal 25 MB.');
+      setFeedback({ type: 'error', text: 'Ukuran berkas audio maksimal 25 MB.' });
       return;
     }
 
@@ -237,7 +240,7 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
         }
       }));
     } catch (err: any) {
-      alert('Gagal mengunggah berkas audio: ' + (err.message || String(err)));
+      setFeedback({ type: 'error', text: 'Gagal mengunggah berkas audio: ' + (err.message || String(err)) });
     } finally {
       setUploadingAudio(false);
     }
@@ -248,12 +251,12 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      alert('Harap pilih berkas gambar sampul yang valid.');
+      setFeedback({ type: 'error', text: 'Harap pilih berkas gambar sampul yang valid.' });
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      alert('Ukuran berkas gambar maksimal 5 MB.');
+      setFeedback({ type: 'error', text: 'Ukuran berkas gambar maksimal 5 MB.' });
       return;
     }
 
@@ -266,7 +269,7 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
       });
       setFormData(prev => ({ ...prev, coverImageUrl: downloadUrl }));
     } catch (err: any) {
-      alert('Gagal mengunggah sampul: ' + err.message);
+      setFeedback({ type: 'error', text: 'Gagal mengunggah sampul: ' + err.message });
     } finally {
       setUploadingCover(false);
     }
@@ -276,12 +279,12 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
     if (saving) return; // Prevent double-clicks / duplicate submissions
 
     if (!formData.title?.trim()) {
-      alert('Judul artikel tidak boleh kosong.');
+      setFeedback({ type: 'error', text: 'Judul artikel tidak boleh kosong.' });
       return;
     }
 
     if (!formData.content?.trim()) {
-      alert('Isi artikel tidak boleh kosong.');
+      setFeedback({ type: 'error', text: 'Isi artikel tidak boleh kosong.' });
       return;
     }
 
@@ -1166,17 +1169,56 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
                 )}
               </div>
 
-              {/* Rich Text Editor for Content */}
+              {/* Rich Text Editor for Content + Live Preview */}
               <div className="space-y-2">
-                <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 block">
-                  Isi Artikel Utama (Bahasa Indonesia) *
-                </label>
-                <RichTextEditor
-                  value={formData.content || ''}
-                  onChange={(html) => setFormData(prev => ({ ...prev, content: html }))}
-                  placeholder="Tuliskan naskah ilmu, paragraf, poin-poin, dan sisipkan gambar di sini..."
-                  minHeight="350px"
-                />
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 block">
+                    Isi Artikel Utama (Bahasa Indonesia) *
+                  </label>
+                  <button
+                    type="button"
+                    data-testid="blog-modal-preview-toggle"
+                    onClick={() => setIsInModalPreview(prev => !prev)}
+                    className={`px-3 py-1 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                      isInModalPreview
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/60'
+                    }`}
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>{isInModalPreview ? 'Kembali ke Editor' : 'Pratinjau Format Konten'}</span>
+                  </button>
+                </div>
+
+                {isInModalPreview ? (
+                  <div
+                    data-testid="blog-modal-preview-content"
+                    className="p-6 bg-stone-50/70 dark:bg-stone-950/70 border border-emerald-200 dark:border-emerald-800/60 rounded-2xl space-y-4 min-h-[350px]"
+                  >
+                    <div className="pb-3 border-b border-stone-200 dark:border-stone-800 flex items-center justify-between text-[11px] text-emerald-700 dark:text-emerald-400 font-bold uppercase tracking-wider">
+                      <span>Pratinjau Tampilan Publik</span>
+                      <span>Format tersimpan & tervalidasi</span>
+                    </div>
+                    {formData.title && (
+                      <h2 className="text-xl sm:text-2xl font-bold text-stone-900 dark:text-white">
+                        {formData.title}
+                      </h2>
+                    )}
+                    <div
+                      className="prose dark:prose-invert max-w-none text-stone-800 dark:text-stone-200 text-sm sm:text-base leading-relaxed space-y-4 font-sans blog-content"
+                      dangerouslySetInnerHTML={{
+                        __html: autoWrapArabicText(sanitizeRichTextHtml(formData.content || '<p class="text-stone-400 italic">Belum ada isi konten...</p>'))
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <RichTextEditor
+                    value={formData.content || ''}
+                    onChange={(html) => setFormData(prev => ({ ...prev, content: html }))}
+                    placeholder="Tuliskan naskah ilmu, paragraf, poin-poin, dan sisipkan gambar di sini..."
+                    minHeight="350px"
+                  />
+                )}
               </div>
             </div>
 
@@ -1184,13 +1226,25 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
             <div className="p-4 border-t border-stone-200 dark:border-stone-800 bg-stone-50/80 dark:bg-stone-900/80 flex items-center justify-between shrink-0">
               <button
                 type="button"
-                onClick={() => setIsModalOpen(false)}
+                onClick={() => {
+                  setIsInModalPreview(false);
+                  setIsModalOpen(false);
+                }}
                 className="px-4 py-2 bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold hover:bg-stone-200 transition cursor-pointer"
               >
                 Batal
               </button>
 
               <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsInModalPreview(prev => !prev)}
+                  className="px-3.5 py-2 bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-1.5"
+                >
+                  <Eye className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>{isInModalPreview ? 'Edit' : 'Pratinjau'}</span>
+                </button>
+
                 <button
                   type="button"
                   onClick={() => handleSave('draft')}

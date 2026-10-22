@@ -94,6 +94,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         return 'Ruang Konsultasi Siswa';
       case 'public-qa':
         return 'Arsip Tanya Jawab Publik';
+      case 'instructor-profile':
+        return 'Profil Pengajar';
       case 'admin-dashboard':
         return 'Dashboard Administrasi';
       default:
