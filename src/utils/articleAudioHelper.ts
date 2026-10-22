@@ -204,3 +204,224 @@ export function findIndonesianVoice(voices: SpeechSynthesisVoice[]): SpeechSynth
   // Default fallback voice
   return voices.find(v => v.default) || voices[0] || null;
 }
+
+export interface ResolvedAudioSource {
+  originalUrl: string;
+  isGoogleDrive: boolean;
+  isGoogleDriveFolder: boolean;
+  fileId: string | null;
+  primaryUrl: string;
+  directCorsUrl: string | null;
+  legacyUcUrl: string | null;
+  candidates: Array<{
+    url: string;
+    label: 'proxy' | 'gdrive-cors' | 'gdrive-uc' | 'direct';
+    useCrossOrigin: boolean;
+  }>;
+}
+
+/**
+ * Checks whether a string looks like a valid Google Drive file ID.
+ */
+export function isValidGoogleDriveFileId(id: string | null | undefined): boolean {
+  if (!id || typeof id !== 'string') return false;
+  const trimmed = id.trim();
+  return /^[a-zA-Z0-9_-]{10,120}$/.test(trimmed);
+}
+
+/**
+ * Checks if a URL points to Google Drive or Google UserContent.
+ */
+export function isGoogleDriveUrl(rawUrl: string | null | undefined): boolean {
+  if (!rawUrl || typeof rawUrl !== 'string') return false;
+  const trimmed = rawUrl.trim();
+  if (!trimmed) return false;
+  try {
+    const parsed = new URL(trimmed);
+    const host = parsed.hostname.toLowerCase();
+    return (
+      host === 'drive.google.com' ||
+      host === 'www.drive.google.com' ||
+      host === 'drive.usercontent.google.com' ||
+      (host === 'docs.google.com' && parsed.pathname.startsWith('/uc'))
+    );
+  } catch {
+    return /drive\.google\.com|drive\.usercontent\.google\.com/i.test(trimmed);
+  }
+}
+
+/**
+ * Checks if a Google Drive URL points to a folder instead of a single file.
+ */
+export function isGoogleDriveFolderUrl(rawUrl: string | null | undefined): boolean {
+  if (!rawUrl || typeof rawUrl !== 'string') return false;
+  return /drive\.google\.com\/(?:drive\/(?:u\/\d+\/)?)?folders\//i.test(rawUrl.trim());
+}
+
+/**
+ * Extracts the Google Drive file ID from common sharing/download URL formats:
+ * - https://drive.google.com/file/d/{FILE_ID}/view?usp=drive_link
+ * - https://drive.google.com/file/u/0/d/{FILE_ID}/view?usp=sharing
+ * - https://drive.google.com/open?id={FILE_ID}
+ * - https://drive.google.com/uc?export=download&id={FILE_ID}
+ * - https://drive.usercontent.google.com/download?id={FILE_ID}&export=download
+ */
+export function extractGoogleDriveFileId(rawUrl: string | null | undefined): string | null {
+  if (!rawUrl || typeof rawUrl !== 'string') return null;
+  const trimmed = rawUrl.trim();
+  if (!trimmed) return null;
+
+  // Reject folder URLs explicitly
+  if (isGoogleDriveFolderUrl(trimmed)) {
+    return null;
+  }
+
+  try {
+    const parsed = new URL(trimmed);
+    const host = parsed.hostname.toLowerCase();
+    const isDriveHost =
+      host === 'drive.google.com' ||
+      host === 'www.drive.google.com' ||
+      host === 'drive.usercontent.google.com' ||
+      (host === 'docs.google.com' && parsed.pathname.startsWith('/uc'));
+
+    if (!isDriveHost) {
+      return null;
+    }
+
+    // Pattern 1: /file/d/{fileId} or /file/u/0/d/{fileId}
+    const pathMatch = parsed.pathname.match(/\/file\/(?:u\/\d+\/)?d\/([a-zA-Z0-9_-]+)/);
+    if (pathMatch && isValidGoogleDriveFileId(pathMatch[1])) {
+      return pathMatch[1];
+    }
+
+    // Pattern 2: ?id={fileId} (used by /open, /uc, /download)
+    const queryId = parsed.searchParams.get('id');
+    if (queryId && isValidGoogleDriveFileId(queryId)) {
+      return queryId.trim();
+    }
+  } catch {
+    // Fallback regex parsing if URL lacks protocol
+    const match = trimmed.match(/\/file\/(?:u\/\d+\/)?d\/([a-zA-Z0-9_-]{10,120})/);
+    if (match && isValidGoogleDriveFileId(match[1])) {
+      return match[1];
+    }
+    const idParam = trimmed.match(/[?&]id=([a-zA-Z0-9_-]{10,120})/);
+    if (idParam && isValidGoogleDriveFileId(idParam[1])) {
+      return idParam[1];
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Resolves any custom audio URL (Google Drive share URL or direct audio URL)
+ * into ordered playback source candidates for HTML5 <audio>.
+ */
+export function resolveAudioSourceCandidates(rawUrl: string | null | undefined): ResolvedAudioSource {
+  const originalUrl = (rawUrl || '').trim();
+  if (!originalUrl) {
+    return {
+      originalUrl: '',
+      isGoogleDrive: false,
+      isGoogleDriveFolder: false,
+      fileId: null,
+      primaryUrl: '',
+      directCorsUrl: null,
+      legacyUcUrl: null,
+      candidates: []
+    };
+  }
+
+  const isFolder = isGoogleDriveFolderUrl(originalUrl);
+  const isGDrive = isGoogleDriveUrl(originalUrl) || isFolder;
+  const fileId = extractGoogleDriveFileId(originalUrl);
+
+  if (isGDrive) {
+    if (!fileId) {
+      return {
+        originalUrl,
+        isGoogleDrive: true,
+        isGoogleDriveFolder: isFolder,
+        fileId: null,
+        primaryUrl: '',
+        directCorsUrl: null,
+        legacyUcUrl: null,
+        candidates: []
+      };
+    }
+
+    const encodedId = encodeURIComponent(fileId);
+    const proxyUrl = `/api/gdrive-audio?id=${encodedId}`;
+    const directCorsUrl = `https://drive.usercontent.google.com/download?id=${encodedId}&export=download&confirm=t`;
+    const legacyUcUrl = `https://drive.google.com/uc?export=download&id=${encodedId}`;
+
+    return {
+      originalUrl,
+      isGoogleDrive: true,
+      isGoogleDriveFolder: false,
+      fileId,
+      primaryUrl: proxyUrl,
+      directCorsUrl,
+      legacyUcUrl,
+      candidates: [
+        { url: proxyUrl, label: 'proxy', useCrossOrigin: false },
+        { url: directCorsUrl, label: 'gdrive-cors', useCrossOrigin: true },
+        { url: legacyUcUrl, label: 'gdrive-uc', useCrossOrigin: false }
+      ]
+    };
+  }
+
+  // Non-Google Drive direct URL (e.g., Firebase Storage, CDN MP3/M4A/WAV/OGG, or local /api/ path)
+  return {
+    originalUrl,
+    isGoogleDrive: false,
+    isGoogleDriveFolder: false,
+    fileId: null,
+    primaryUrl: originalUrl,
+    directCorsUrl: null,
+    legacyUcUrl: null,
+    candidates: [
+      { url: originalUrl, label: 'direct', useCrossOrigin: false }
+    ]
+  };
+}
+
+/**
+ * Produces a user-friendly Indonesian diagnostic message when audio playback fails.
+ */
+export function describeAudioPlaybackError(params: {
+  isGoogleDrive: boolean;
+  isGoogleDriveFolder?: boolean;
+  fileId: string | null;
+  mediaErrorCode?: number | null;
+  serverMessage?: string | null;
+}): string {
+  if (params.serverMessage) {
+    return params.serverMessage;
+  }
+
+  if (params.isGoogleDriveFolder) {
+    return 'Tautan Google Drive yang dimasukkan adalah tautan Folder, bukan berkas audio. Silakan gunakan tautan berbagi langsung dari berkas audio (.mp3, .m4a, .wav).';
+  }
+
+  if (params.isGoogleDrive && !params.fileId) {
+    return 'Format tautan Google Drive tidak valid atau ID berkas tidak ditemukan. Gunakan format https://drive.google.com/file/d/ID_FILE/view?usp=drive_link.';
+  }
+
+  if (params.isGoogleDrive) {
+    return 'Berkas audio dari Google Drive tidak dapat diputar. Pastikan: (1) Akses umum berkas di Google Drive telah diatur ke "Siapa saja yang memiliki link" (Anyone with the link), dan (2) Berkas berformat audio yang didukung peramban (.mp3, .m4a, .wav, .ogg).';
+  }
+
+  if (params.mediaErrorCode === 2) {
+    return 'Terjadi gangguan jaringan saat mengunduh aliran audio. Periksa koneksi internet Anda lalu coba kembali.';
+  }
+
+  if (params.mediaErrorCode === 3) {
+    return 'Berkas audio rusak atau format pengkodean (codec) tidak didukung oleh peramban ini.';
+  }
+
+  return 'Gagal memuat berkas audio. Pastikan tautan audio valid, dapat diakses secara publik, dan berformat MP3/M4A/WAV/OGG.';
+}
+

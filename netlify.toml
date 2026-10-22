@@ -3,6 +3,10 @@
   command = "npm run build"
 
 [[edge_functions]]
+  path = "/api/gdrive-audio"
+  function = "gdrive-audio"
+
+[[edge_functions]]
   path = "/session/*"
   function = "session-seo"
 
@@ -10,3 +14,4 @@
   from = "/*"
   to = "/index.html"
   status = 200
+

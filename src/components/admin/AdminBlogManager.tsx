@@ -31,6 +31,7 @@ import { BlogPost, BlogPostAudioConfig } from '../../types';
 import { RichTextEditor } from './RichTextEditor';
 import { saveBlogPost, deleteBlogPost, uploadFileToStorage, deleteDummyBlogPostsFromFirestore } from '../../firebase/services';
 import { ConfirmModal } from '../common/ConfirmModal';
+import { resolveAudioSourceCandidates, describeAudioPlaybackError } from '../../utils/articleAudioHelper';
 
 interface AdminBlogManagerProps {
   posts: BlogPost[];
@@ -1017,109 +1018,144 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
                     )}
 
                     {/* MODE 2: CUSTOM AUDIO FILE / RECORDING */}
-                    {formData.audioConfig?.mode === 'custom' && (
-                      <div className="space-y-4 animate-fade-in text-xs">
-                        <div className="p-3 bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 rounded-xl flex items-start gap-2.5 text-stone-700 dark:text-stone-300">
-                          <Music className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                          <div className="text-[11px] leading-relaxed">
-                            <strong className="text-amber-900 dark:text-amber-300">Mode Rekaman Suara Asli:</strong> Unggah file audio rekaman kajian/bacaan (.mp3, .m4a, .wav) atau masukkan tautan audio eksternal. Pemutar audio artikel publik akan memutar berkas rekaman ini.
+                    {formData.audioConfig?.mode === 'custom' && (() => {
+                      const resolvedAdminAudio = resolveAudioSourceCandidates(formData.audioConfig?.customAudioUrl);
+                      return (
+                        <div className="space-y-4 animate-fade-in text-xs">
+                          <div className="p-3 bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 rounded-xl flex items-start gap-2.5 text-stone-700 dark:text-stone-300">
+                            <Music className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                            <div className="text-[11px] leading-relaxed">
+                              <strong className="text-amber-900 dark:text-amber-300">Mode Rekaman Suara Asli (Google Drive / MP3):</strong> Masukkan tautan berbagi berkas audio dari Google Drive (pastikan akses disetel ke <em>"Siapa saja yang memiliki link"</em>) atau unggah berkas audio (.mp3, .m4a, .wav). Audio akan diputar langsung di halaman artikel.
+                            </div>
                           </div>
-                        </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
-                          {/* Upload Audio File */}
-                          <div className="space-y-2">
-                            <label className="text-[11px] font-semibold text-stone-700 dark:text-stone-300 block">
-                              Unggah Berkas Audio Rekaman (.mp3, .m4a, .wav):
-                            </label>
-                            <input
-                              type="file"
-                              accept="audio/*,.mp3,.m4a,.wav,.ogg,.aac"
-                              onChange={handleAudioFileUpload}
-                              disabled={uploadingAudio}
-                              className="w-full text-xs text-stone-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-100 file:text-emerald-800 hover:file:bg-emerald-200 cursor-pointer disabled:opacity-50"
-                            />
-                            {uploadingAudio && (
-                              <div className="space-y-1">
-                                <p className="text-[10px] text-emerald-600 font-bold">
-                                  Mengunggah berkas audio rekaman... {audioProgress}%
-                                </p>
-                                <div className="w-full bg-stone-200 dark:bg-stone-700 h-1.5 rounded-full overflow-hidden">
-                                  <div
-                                    className="bg-emerald-600 h-full transition-all duration-300"
-                                    style={{ width: `${audioProgress}%` }}
-                                  />
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                            {/* Upload Audio File */}
+                            <div className="space-y-2">
+                              <label className="text-[11px] font-semibold text-stone-700 dark:text-stone-300 block">
+                                Unggah Berkas Audio Rekaman (.mp3, .m4a, .wav):
+                              </label>
+                              <input
+                                type="file"
+                                accept="audio/*,.mp3,.m4a,.wav,.ogg,.aac"
+                                onChange={handleAudioFileUpload}
+                                disabled={uploadingAudio}
+                                className="w-full text-xs text-stone-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-100 file:text-emerald-800 hover:file:bg-emerald-200 cursor-pointer disabled:opacity-50"
+                              />
+                              {uploadingAudio && (
+                                <div className="space-y-1">
+                                  <p className="text-[10px] text-emerald-600 font-bold">
+                                    Mengunggah berkas audio rekaman... {audioProgress}%
+                                  </p>
+                                  <div className="w-full bg-stone-200 dark:bg-stone-700 h-1.5 rounded-full overflow-hidden">
+                                    <div
+                                      className="bg-emerald-600 h-full transition-all duration-300"
+                                      style={{ width: `${audioProgress}%` }}
+                                    />
+                                  </div>
                                 </div>
-                              </div>
-                            )}
-                            <p className="text-[10px] text-stone-400">
-                              Maksimal ukuran file 25 MB. Berkas akan disimpan aman di Cloud Storage.
-                            </p>
-                          </div>
+                              )}
+                              <p className="text-[10px] text-stone-400">
+                                Maksimal ukuran file 25 MB. Berkas akan disimpan aman di Cloud Storage.
+                              </p>
+                            </div>
 
-                          {/* Atau Masukkan URL Audio */}
-                          <div className="space-y-2">
-                            <label className="text-[11px] font-semibold text-stone-700 dark:text-stone-300 block">
-                              Atau Masukkan URL File Audio Langsung:
-                            </label>
-                            <input
-                              type="url"
-                              value={formData.audioConfig?.customAudioUrl || ''}
-                              onChange={(e) =>
-                                setFormData(prev => ({
-                                  ...prev,
-                                  audioConfig: {
-                                    ...(prev.audioConfig || { mode: 'custom', enabled: true }),
-                                    enabled: true,
-                                    mode: 'custom',
-                                    customAudioUrl: e.target.value
-                                  }
-                                }))
-                              }
-                              placeholder="https://storage.googleapis.com/... atau tautan direct MP3"
-                              className="w-full px-3 py-2 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs text-stone-900 dark:text-white"
-                            />
-                            <p className="text-[10px] text-stone-400">
-                              Bisa berupa tautan berkas audio dari CDN, cloud server, atau arsip podcast dakwah.
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Audio Player Preview */}
-                        {formData.audioConfig?.customAudioUrl && (
-                          <div className="p-3 bg-white dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-700 space-y-2">
-                            <div className="flex items-center justify-between">
-                              <span className="text-[11px] font-bold text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
-                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
-                                Berkas Audio Rekaman Terpasang
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() =>
+                            {/* Atau Masukkan URL Audio / Google Drive */}
+                            <div className="space-y-2">
+                              <label className="text-[11px] font-semibold text-stone-700 dark:text-stone-300 block">
+                                Tautan Google Drive Audio atau URL MP3 Langsung:
+                              </label>
+                              <input
+                                type="url"
+                                value={formData.audioConfig?.customAudioUrl || ''}
+                                onChange={(e) =>
                                   setFormData(prev => ({
                                     ...prev,
                                     audioConfig: {
                                       ...(prev.audioConfig || { mode: 'custom', enabled: true }),
                                       enabled: true,
                                       mode: 'custom',
-                                      customAudioUrl: ''
+                                      customAudioUrl: e.target.value
                                     }
                                   }))
                                 }
-                                className="text-[10px] text-rose-500 hover:text-rose-700 underline cursor-pointer"
-                              >
-                                Hapus Berkas Audio
-                              </button>
+                                placeholder="https://drive.google.com/file/d/.../view?usp=drive_link"
+                                className="w-full px-3 py-2 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs text-stone-900 dark:text-white"
+                              />
+                              <p className="text-[10px] text-stone-400">
+                                Mendukung tautan berbagi Google Drive (<code>drive.google.com/file/d/...</code>) maupun tautan audio langsung (.mp3, .m4a, .wav).
+                              </p>
                             </div>
-                            <audio
-                              controls
-                              src={formData.audioConfig.customAudioUrl}
-                              className="w-full h-9 rounded-lg"
-                            />
                           </div>
-                        )}
-                      </div>
-                    )}
+
+                          {/* Audio Player Preview & Google Drive Diagnostic */}
+                          {formData.audioConfig?.customAudioUrl && (
+                            <div className="p-3 bg-white dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-700 space-y-2">
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <span className="text-[11px] font-bold text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
+                                  {resolvedAdminAudio.isGoogleDrive && !resolvedAdminAudio.fileId ? (
+                                    <>
+                                      <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
+                                      <span className="text-rose-600 dark:text-rose-400">Tautan Google Drive Tidak Valid</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                                      <span>
+                                        {resolvedAdminAudio.isGoogleDrive
+                                          ? `Google Drive Audio Terdeteksi (ID: ${resolvedAdminAudio.fileId})`
+                                          : 'Berkas Audio Rekaman Terpasang'}
+                                      </span>
+                                    </>
+                                  )}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      audioConfig: {
+                                        ...(prev.audioConfig || { mode: 'custom', enabled: true }),
+                                        enabled: true,
+                                        mode: 'custom',
+                                        customAudioUrl: ''
+                                      }
+                                    }))
+                                  }
+                                  className="text-[10px] text-rose-500 hover:text-rose-700 underline cursor-pointer"
+                                >
+                                  Hapus Berkas Audio
+                                </button>
+                              </div>
+
+                              {resolvedAdminAudio.isGoogleDrive && !resolvedAdminAudio.fileId ? (
+                                <p className="text-[11px] text-rose-600 dark:text-rose-400">
+                                  {describeAudioPlaybackError({
+                                    isGoogleDrive: true,
+                                    isGoogleDriveFolder: resolvedAdminAudio.isGoogleDriveFolder,
+                                    fileId: null
+                                  })}
+                                </p>
+                              ) : (
+                                <>
+                                  <audio
+                                    controls
+                                    preload="metadata"
+                                    src={resolvedAdminAudio.primaryUrl}
+                                    className="w-full h-9 rounded-lg"
+                                  />
+                                  {resolvedAdminAudio.isGoogleDrive && (
+                                    <p className="text-[10px] text-stone-500 dark:text-stone-400">
+                                      Pastikan berkas di Google Drive memiliki izin akses umum <strong>"Siapa saja yang memiliki link" (Anyone with the link)</strong> agar dapat diputar oleh seluruh pembaca.
+                                    </p>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 ) : (
                   <div className="p-3.5 bg-stone-100/60 dark:bg-stone-900/40 rounded-xl border border-dashed border-stone-300 dark:border-stone-700 text-center">

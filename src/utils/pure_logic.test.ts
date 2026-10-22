@@ -927,6 +927,81 @@ test('Case 28: Penghitungan jumlah sesi aktual per kurikulum tanpa penghitungan 
   assert.equal(formatSessionDisplay(countMulti), '3 Sesi');
 });
 
+// Case 29: Ekstraksi ID Google Drive, resolusi kandidat audio HTML5, dan diagnostik error pemutaran
+test('Case 29: extractGoogleDriveFileId dan resolveAudioSourceCandidates menangani tautan Google Drive dan non-Google Drive dengan akurat', async () => {
+  const {
+    extractGoogleDriveFileId,
+    isGoogleDriveUrl,
+    isGoogleDriveFolderUrl,
+    resolveAudioSourceCandidates,
+    describeAudioPlaybackError
+  } = await import('./articleAudioHelper.js');
+
+  // 1. Tautan berbagi standar Google Drive (/file/d/ID/view?usp=drive_link)
+  const shareUrl = 'https://drive.google.com/file/d/1hHSxqGxRDWVpy4GEewOjzQOLSRpVOwb_/view?usp=drive_link';
+  assert.equal(isGoogleDriveUrl(shareUrl), true);
+  assert.equal(isGoogleDriveFolderUrl(shareUrl), false);
+  assert.equal(extractGoogleDriveFileId(shareUrl), '1hHSxqGxRDWVpy4GEewOjzQOLSRpVOwb_');
+
+  const resolved = resolveAudioSourceCandidates(shareUrl);
+  assert.equal(resolved.isGoogleDrive, true);
+  assert.equal(resolved.isGoogleDriveFolder, false);
+  assert.equal(resolved.fileId, '1hHSxqGxRDWVpy4GEewOjzQOLSRpVOwb_');
+  assert.equal(resolved.primaryUrl, '/api/gdrive-audio?id=1hHSxqGxRDWVpy4GEewOjzQOLSRpVOwb_');
+  assert.equal(
+    resolved.directCorsUrl,
+    'https://drive.usercontent.google.com/download?id=1hHSxqGxRDWVpy4GEewOjzQOLSRpVOwb_&export=download&confirm=t'
+  );
+  assert.equal(resolved.candidates.length, 3);
+  assert.equal(resolved.candidates[0].label, 'proxy');
+  assert.equal(resolved.candidates[1].label, 'gdrive-cors');
+  assert.equal(resolved.candidates[1].useCrossOrigin, true);
+
+  // 2. Variasi format URL Google Drive lainnya (/open?id=, /uc?id=, /file/u/0/d/, drive.usercontent.google.com)
+  assert.equal(
+    extractGoogleDriveFileId('https://drive.google.com/open?id=1hHSxqGxRDWVpy4GEewOjzQOLSRpVOwb_'),
+    '1hHSxqGxRDWVpy4GEewOjzQOLSRpVOwb_'
+  );
+  assert.equal(
+    extractGoogleDriveFileId('https://drive.google.com/uc?export=download&id=1hHSxqGxRDWVpy4GEewOjzQOLSRpVOwb_'),
+    '1hHSxqGxRDWVpy4GEewOjzQOLSRpVOwb_'
+  );
+  assert.equal(
+    extractGoogleDriveFileId('https://drive.google.com/file/u/0/d/1hHSxqGxRDWVpy4GEewOjzQOLSRpVOwb_/edit'),
+    '1hHSxqGxRDWVpy4GEewOjzQOLSRpVOwb_'
+  );
+  assert.equal(
+    extractGoogleDriveFileId('https://drive.usercontent.google.com/download?id=1hHSxqGxRDWVpy4GEewOjzQOLSRpVOwb_&export=download'),
+    '1hHSxqGxRDWVpy4GEewOjzQOLSRpVOwb_'
+  );
+
+  // 3. Tautan Folder Google Drive harus ditolak sebagai file audio
+  const folderUrl = 'https://drive.google.com/drive/folders/1aBcDeFgHiJkLmNoPqRsTuVwXyZ123456?usp=sharing';
+  assert.equal(isGoogleDriveFolderUrl(folderUrl), true);
+  assert.equal(extractGoogleDriveFileId(folderUrl), null);
+  const resolvedFolder = resolveAudioSourceCandidates(folderUrl);
+  assert.equal(resolvedFolder.isGoogleDrive, true);
+  assert.equal(resolvedFolder.isGoogleDriveFolder, true);
+  assert.equal(resolvedFolder.fileId, null);
+  assert.equal(resolvedFolder.candidates.length, 0);
+  const folderErr = describeAudioPlaybackError({
+    isGoogleDrive: true,
+    isGoogleDriveFolder: true,
+    fileId: null
+  });
+  assert.ok(folderErr.includes('Folder'));
+
+  // 4. Tautan MP3 eksternal langsung (non-Google Drive)
+  const directMp3 = 'https://cdn.darswithosama.com/audio/kajian-1.mp3';
+  const resolvedDirect = resolveAudioSourceCandidates(directMp3);
+  assert.equal(resolvedDirect.isGoogleDrive, false);
+  assert.equal(resolvedDirect.fileId, null);
+  assert.equal(resolvedDirect.primaryUrl, directMp3);
+  assert.equal(resolvedDirect.candidates.length, 1);
+  assert.equal(resolvedDirect.candidates[0].url, directMp3);
+});
+
+
 
 
 

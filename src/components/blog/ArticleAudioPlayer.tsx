@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   Volume2,
   VolumeX,
@@ -6,10 +6,10 @@ import {
   Pause,
   RotateCcw,
   Headphones,
-  Sparkles,
   Info,
-  CheckCircle2,
-  Radio
+  AlertCircle,
+  Loader2,
+  RefreshCw
 } from 'lucide-react';
 import { BlogPost } from '../../types';
 import {
@@ -17,7 +17,9 @@ import {
   splitIntoSpeechChunks,
   estimateReadingDurationSeconds,
   formatSpeechTime,
-  findIndonesianVoice
+  findIndonesianVoice,
+  resolveAudioSourceCandidates,
+  describeAudioPlaybackError
 } from '../../utils/articleAudioHelper';
 
 interface ArticleAudioPlayerProps {
@@ -35,7 +37,12 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
   }
 
   const isCustomMode = post.audioConfig?.mode === 'custom' && Boolean(post.audioConfig?.customAudioUrl);
-  const customAudioUrl = post.audioConfig?.customAudioUrl;
+  const customAudioUrl = post.audioConfig?.customAudioUrl || '';
+
+  const resolvedSource = useMemo(
+    () => resolveAudioSourceCandidates(customAudioUrl),
+    [customAudioUrl]
+  );
 
   const [isSupported, setIsSupported] = useState<boolean>(true);
   const [status, setStatus] = useState<'idle' | 'playing' | 'paused' | 'ended'>('idle');
@@ -46,8 +53,18 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
   const [totalEstimatedSeconds, setTotalEstimatedSeconds] = useState<number>(0);
   const [activeVoiceName, setActiveVoiceName] = useState<string>('');
 
+  // Custom HTML5 Audio state
+  const [candidateIndex, setCandidateIndex] = useState<number>(0);
+  const [blobAudioUrl, setBlobAudioUrl] = useState<string | null>(null);
+  const [isLoadingAudio, setIsLoadingAudio] = useState<boolean>(false);
+  const [audioError, setAudioError] = useState<string | null>(null);
+  const [volume, setVolume] = useState<number>(1);
+  const [isMuted, setIsMuted] = useState<boolean>(false);
+
   // Custom Audio Ref
   const customAudioRef = useRef<HTMLAudioElement | null>(null);
+  const pendingAutoPlayRef = useRef<boolean>(false);
+  const triedBlobFallbackRef = useRef<boolean>(false);
 
   // Speech API Refs
   const chunksRef = useRef<string[]>([]);
@@ -71,9 +88,18 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
     }
   }, [post.audioConfig?.speechRate]);
 
+  // Clean up blob object URL when unmounting or changing
+  useEffect(() => {
+    return () => {
+      if (blobAudioUrl) {
+        URL.revokeObjectURL(blobAudioUrl);
+      }
+    };
+  }, [blobAudioUrl]);
+
   // Setup for Custom Audio Mode vs Web Speech Mode
   useEffect(() => {
-    // Stop any ongoing audio immediately when article changes
+    // Stop any ongoing audio immediately when article or source changes
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
     }
@@ -88,14 +114,39 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
     setStatus('idle');
     setElapsedSeconds(0);
     setCurrentChunkIndex(0);
+    setCandidateIndex(0);
+    setBlobAudioUrl(null);
+    pendingAutoPlayRef.current = false;
+    triedBlobFallbackRef.current = false;
 
     if (isCustomMode) {
-      // In custom audio mode, we rely on HTML5 Audio
       setIsSupported(true);
+      setTotalEstimatedSeconds(0);
+
+      // Validate if Google Drive link has a valid file ID
+      if (resolvedSource.isGoogleDrive && !resolvedSource.fileId) {
+        setIsLoadingAudio(false);
+        setAudioError(
+          describeAudioPlaybackError({
+            isGoogleDrive: true,
+            isGoogleDriveFolder: resolvedSource.isGoogleDriveFolder,
+            fileId: null
+          })
+        );
+      } else if (resolvedSource.candidates.length === 0) {
+        setIsLoadingAudio(false);
+        setAudioError('Tautan berkas audio kosong atau tidak valid.');
+      } else {
+        setAudioError(null);
+        setIsLoadingAudio(true);
+      }
       return;
     }
 
     // In Web Speech API mode:
+    setAudioError(null);
+    setIsLoadingAudio(false);
+
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
       setIsSupported(false);
       return;
@@ -114,7 +165,6 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
       const allVoices = window.speechSynthesis.getVoices();
       voicesRef.current = allVoices;
 
-      // Prefer admin-configured voice name if matching
       const configuredVoiceName = post.audioConfig?.speechVoiceName;
       if (configuredVoiceName) {
         const matching = allVoices.find(v => v.name === configuredVoiceName);
@@ -146,7 +196,7 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
         clearInterval(timerRef.current);
       }
     };
-  }, [post.id, isCustomMode, customAudioUrl]);
+  }, [post.id, isCustomMode, customAudioUrl, resolvedSource]);
 
   // Speech mode: Recalculate duration when rate changes
   useEffect(() => {
@@ -195,7 +245,6 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
     utterance.rate = rateRef.current;
     utterance.lang = 'id-ID';
 
-    // Voice selection: prefer configured voice, then best Indonesian voice
     const configuredVoiceName = post.audioConfig?.speechVoiceName;
     const matchingVoice = configuredVoiceName
       ? voicesRef.current.find(v => v.name === configuredVoiceName)
@@ -228,16 +277,140 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
     window.speechSynthesis.speak(utterance);
   }, [post.audioConfig?.speechVoiceName]);
 
+  // Active candidate for custom audio
+  const activeCandidate =
+    isCustomMode && resolvedSource.candidates.length > 0
+      ? resolvedSource.candidates[Math.min(candidateIndex, resolvedSource.candidates.length - 1)]
+      : null;
+
+  const effectiveAudioSrc = blobAudioUrl || activeCandidate?.url || '';
+  const effectiveCrossOrigin = blobAudioUrl
+    ? undefined
+    : activeCandidate?.useCrossOrigin
+    ? 'anonymous'
+    : undefined;
+
+  // Attempt CORS fetch -> Blob URL fallback for Google Drive if direct <audio> candidates fail
+  const attemptGoogleDriveBlobFallback = useCallback(async (): Promise<boolean> => {
+    if (!resolvedSource.isGoogleDrive || !resolvedSource.directCorsUrl || triedBlobFallbackRef.current) {
+      return false;
+    }
+    triedBlobFallbackRef.current = true;
+
+    try {
+      const response = await fetch(resolvedSource.directCorsUrl, {
+        method: 'GET',
+        mode: 'cors',
+        credentials: 'omit'
+      });
+
+      const contentType = (response.headers.get('content-type') || '').toLowerCase();
+      if (!response.ok || contentType.includes('text/html')) {
+        return false;
+      }
+
+      const rawBlob = await response.blob();
+      if (rawBlob.size < 128) {
+        return false;
+      }
+
+      const audioBlob = contentType.startsWith('audio/')
+        ? rawBlob
+        : new Blob([rawBlob], { type: 'audio/mpeg' });
+
+      const objUrl = URL.createObjectURL(audioBlob);
+      setBlobAudioUrl(objUrl);
+      setAudioError(null);
+      setIsLoadingAudio(false);
+      return true;
+    } catch {
+      return false;
+    }
+  }, [resolvedSource]);
+
+  // Handle HTML5 <audio> load error and advance through fallback candidates
+  const handleCustomAudioError = useCallback(async () => {
+    const audioEl = customAudioRef.current;
+    const mediaErrCode = audioEl?.error?.code ?? null;
+
+    // 1. Try next candidate in list if available
+    if (!blobAudioUrl && candidateIndex + 1 < resolvedSource.candidates.length) {
+      setCandidateIndex(prev => prev + 1);
+      return;
+    }
+
+    // 2. Try CORS fetch -> Blob URL fallback for Google Drive
+    const recoveredViaBlob = await attemptGoogleDriveBlobFallback();
+    if (recoveredViaBlob) {
+      return;
+    }
+
+    // 3. Inspect proxy response if Google Drive to surface exact server error reason
+    let serverErrorMsg: string | null = null;
+    if (resolvedSource.isGoogleDrive && resolvedSource.fileId) {
+      try {
+        const checkRes = await fetch(`/api/gdrive-audio?id=${encodeURIComponent(resolvedSource.fileId)}`, {
+          method: 'HEAD'
+        });
+        if (!checkRes.ok && (checkRes.status === 403 || checkRes.status === 404 || checkRes.status === 400)) {
+          serverErrorMsg =
+            'Berkas audio di Google Drive tidak dapat diakses atau belum dibagikan secara publik. Pastikan akses umum berkas di Google Drive diatur ke "Siapa saja yang memiliki link" (Anyone with the link) dan berkas berformat audio (.mp3, .m4a, .wav).';
+        }
+      } catch {
+        // Ignore network error during diagnostic probe
+      }
+    }
+
+    setIsLoadingAudio(false);
+    setStatus('idle');
+    pendingAutoPlayRef.current = false;
+    setAudioError(
+      describeAudioPlaybackError({
+        isGoogleDrive: resolvedSource.isGoogleDrive,
+        isGoogleDriveFolder: resolvedSource.isGoogleDriveFolder,
+        fileId: resolvedSource.fileId,
+        mediaErrorCode: mediaErrCode,
+        serverMessage: serverErrorMsg
+      })
+    );
+  }, [blobAudioUrl, candidateIndex, resolvedSource, attemptGoogleDriveBlobFallback]);
+
+  // Retry loading audio from the first candidate
+  const handleRetryAudio = () => {
+    setAudioError(null);
+    setIsLoadingAudio(true);
+    setBlobAudioUrl(null);
+    triedBlobFallbackRef.current = false;
+    setCandidateIndex(0);
+    if (customAudioRef.current) {
+      customAudioRef.current.load();
+    }
+  };
+
   // Play handler (supports both custom audio and speech mode)
   const handlePlay = () => {
     if (isCustomMode) {
+      if (audioError) {
+        handleRetryAudio();
+      }
       const audio = customAudioRef.current;
       if (!audio) return;
       audio.playbackRate = playbackRate;
+      audio.volume = volume;
+      audio.muted = isMuted;
+      pendingAutoPlayRef.current = true;
+      setIsLoadingAudio(true);
+
       audio.play().then(() => {
+        pendingAutoPlayRef.current = false;
+        setIsLoadingAudio(false);
+        setAudioError(null);
         setStatus('playing');
-      }).catch(err => {
-        console.warn('Custom audio play error:', err);
+      }).catch(() => {
+        // If browser is still switching candidate or loading metadata, onCanPlay will resume
+        if (audio.error) {
+          handleCustomAudioError();
+        }
       });
       return;
     }
@@ -261,6 +434,7 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
 
   // Pause handler
   const handlePause = () => {
+    pendingAutoPlayRef.current = false;
     if (isCustomMode) {
       const audio = customAudioRef.current;
       if (audio) {
@@ -278,6 +452,7 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
 
   // Stop / Reset handler
   const handleStop = () => {
+    pendingAutoPlayRef.current = false;
     if (isCustomMode) {
       const audio = customAudioRef.current;
       if (audio) {
@@ -314,17 +489,70 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
     }
   };
 
+  // Volume & Mute handlers for HTML5 Audio
+  const handleToggleMute = () => {
+    const nextMuted = !isMuted;
+    setIsMuted(nextMuted);
+    if (customAudioRef.current) {
+      customAudioRef.current.muted = nextMuted;
+    }
+  };
+
+  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const nextVol = Math.max(0, Math.min(1, parseFloat(e.target.value) || 0));
+    setVolume(nextVol);
+    const shouldMute = nextVol === 0;
+    setIsMuted(shouldMute);
+    if (customAudioRef.current) {
+      customAudioRef.current.volume = nextVol;
+      customAudioRef.current.muted = shouldMute;
+    }
+  };
+
   // Custom audio element event listeners
   const onCustomLoadedMetadata = () => {
+    setIsLoadingAudio(false);
+    setAudioError(null);
     if (customAudioRef.current) {
-      const dur = Math.round(customAudioRef.current.duration || 0);
-      setTotalEstimatedSeconds(dur);
+      const dur = customAudioRef.current.duration;
+      if (Number.isFinite(dur) && dur > 0) {
+        setTotalEstimatedSeconds(Math.round(dur));
+      }
+      customAudioRef.current.playbackRate = playbackRate;
+      customAudioRef.current.volume = volume;
+      customAudioRef.current.muted = isMuted;
+    }
+  };
+
+  const onCustomCanPlay = () => {
+    setIsLoadingAudio(false);
+    setAudioError(null);
+    if (customAudioRef.current) {
+      const dur = customAudioRef.current.duration;
+      if (Number.isFinite(dur) && dur > 0) {
+        setTotalEstimatedSeconds(Math.round(dur));
+      }
+      if (pendingAutoPlayRef.current) {
+        pendingAutoPlayRef.current = false;
+        customAudioRef.current
+          .play()
+          .then(() => {
+            setStatus('playing');
+          })
+          .catch(() => {
+            setStatus('idle');
+          });
+      }
     }
   };
 
   const onCustomTimeUpdate = () => {
     if (customAudioRef.current) {
-      setElapsedSeconds(Math.round(customAudioRef.current.currentTime || 0));
+      setElapsedSeconds(Math.floor(customAudioRef.current.currentTime || 0));
+      const dur = customAudioRef.current.duration;
+      if (Number.isFinite(dur) && dur > 0 && totalEstimatedSeconds === 0) {
+        setTotalEstimatedSeconds(Math.round(dur));
+      }
     }
   };
 
@@ -332,15 +560,22 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
     setStatus('ended');
   };
 
-  // Seek bar click for custom audio
+  // Seek bar click / range input for custom audio
   const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!isCustomMode || !customAudioRef.current || totalEstimatedSeconds === 0) return;
+    if (!isCustomMode || !customAudioRef.current || totalEstimatedSeconds <= 0) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const clickX = e.clientX - rect.left;
     const ratio = Math.max(0, Math.min(1, clickX / rect.width));
     const newTime = ratio * totalEstimatedSeconds;
     customAudioRef.current.currentTime = newTime;
-    setElapsedSeconds(Math.round(newTime));
+    setElapsedSeconds(Math.floor(newTime));
+  };
+
+  const handleSeekSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!isCustomMode || !customAudioRef.current || totalEstimatedSeconds <= 0) return;
+    const newTime = Math.max(0, Math.min(totalEstimatedSeconds, Number(e.target.value) || 0));
+    customAudioRef.current.currentTime = newTime;
+    setElapsedSeconds(Math.floor(newTime));
   };
 
   // Progress percentage calculation
@@ -366,15 +601,30 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
       data-testid="article-audio-player"
       className={`bg-gradient-to-r from-emerald-50/80 via-white to-amber-50/40 dark:from-stone-900 dark:via-stone-900 dark:to-emerald-950/30 border border-emerald-200/90 dark:border-emerald-800/60 rounded-2xl p-4 sm:p-5 shadow-xs transition-all ${className}`}
     >
-      {/* Hidden HTML5 Audio Element for custom audio files */}
-      {isCustomMode && customAudioUrl && (
+      {/* Integrated HTML5 Audio Element for custom audio / Google Drive stream */}
+      {isCustomMode && effectiveAudioSrc && (
         <audio
+          key={`${effectiveAudioSrc}_${ effectiveCrossOrigin || 'nocors' }`}
           ref={customAudioRef}
-          src={customAudioUrl}
+          src={effectiveAudioSrc}
+          crossOrigin={effectiveCrossOrigin}
           preload="metadata"
           onLoadedMetadata={onCustomLoadedMetadata}
+          onCanPlay={onCustomCanPlay}
           onTimeUpdate={onCustomTimeUpdate}
           onEnded={onCustomEnded}
+          onWaiting={() => setIsLoadingAudio(true)}
+          onPlaying={() => {
+            setIsLoadingAudio(false);
+            setAudioError(null);
+            setStatus('playing');
+          }}
+          onPause={() => {
+            if (customAudioRef.current && !customAudioRef.current.ended) {
+              setStatus('paused');
+            }
+          }}
+          onError={handleCustomAudioError}
         />
       )}
 
@@ -384,25 +634,35 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
             <Headphones className="w-4 h-4" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <h4 className="font-bold text-stone-900 dark:text-white text-xs sm:text-sm font-sans">
                 {isCustomMode ? 'Rekaman Audio Artikel' : 'Audio Reading Artikel'}
               </h4>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300/60 dark:border-emerald-800">
-                {isCustomMode
-                  ? 'Rekaman Resmi'
+              <span
+                className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+                  audioError
+                    ? 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300 border-rose-300/60 dark:border-rose-800'
+                    : 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border-emerald-300/60 dark:border-emerald-800'
+                }`}
+              >
+                {audioError
+                  ? 'Gangguan Audio'
+                  : isLoadingAudio && isCustomMode
+                  ? 'Memuat Audio...'
                   : status === 'playing'
-                  ? 'Sedang Membaca'
+                  ? 'Sedang Diputar'
                   : status === 'paused'
                   ? 'Dijeda'
                   : status === 'ended'
                   ? 'Selesai'
+                  : isCustomMode
+                  ? 'Rekaman Resmi'
                   : 'Suara Otomatis'}
               </span>
             </div>
             <p className="text-[11px] text-stone-500 dark:text-stone-400">
               {isCustomMode
-                ? 'Dengarkan rekaman audio kajian resmi untuk artikel ini.'
+                ? 'Dengarkan rekaman audio kajian sambil membaca naskah artikel di bawah ini.'
                 : activeVoiceName
                 ? `Pembacaan otomatis (${activeVoiceName}) tanpa musik pengiring.`
                 : 'Dengarkan pembacaan naskah artikel ini secara otomatis tanpa musik pengiring.'}
@@ -432,9 +692,31 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
         </div>
       </div>
 
-      {/* Main Controls & Progress Bar */}
+      {/* Diagnostic Error Alert if Custom / Google Drive Audio fails */}
+      {isCustomMode && audioError && (
+        <div
+          role="alert"
+          data-testid="article-audio-error"
+          className="mt-3 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/70 text-rose-800 dark:text-rose-200 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5"
+        >
+          <div className="flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+            <span className="leading-relaxed">{audioError}</span>
+          </div>
+          <button
+            type="button"
+            onClick={handleRetryAudio}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white dark:bg-stone-800 border border-rose-300 dark:border-rose-700 text-rose-700 dark:text-rose-300 text-[11px] font-bold hover:bg-rose-100/60 transition cursor-pointer shrink-0 self-start sm:self-center"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span>Muat Ulang Audio</span>
+          </button>
+        </div>
+      )}
+
+      {/* Main Controls, Volume & Progress Bar */}
       <div className="pt-3.5 space-y-3">
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           {/* Action Buttons */}
           <div className="flex items-center gap-2">
             {status === 'playing' ? (
@@ -451,10 +733,15 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
               <button
                 type="button"
                 onClick={handlePlay}
-                className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer active:scale-95"
+                disabled={isCustomMode && Boolean(audioError) && !resolvedSource.fileId && resolvedSource.isGoogleDrive}
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer active:scale-95"
                 title="Putar audio artikel"
               >
-                <Play className="w-3.5 h-3.5 fill-current" />
+                {isCustomMode && isLoadingAudio && pendingAutoPlayRef.current ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Play className="w-3.5 h-3.5 fill-current" />
+                )}
                 <span>
                   {status === 'paused'
                     ? 'Lanjutkan'
@@ -480,29 +767,77 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
             )}
           </div>
 
-          {/* Time & Chunk Progress Indicator */}
-          <div className="text-right">
-            <span className="font-mono text-xs font-semibold text-stone-800 dark:text-stone-200">
-              {formatSpeechTime(elapsedSeconds)} / {formatSpeechTime(totalEstimatedSeconds)}
-            </span>
-            <span className="text-[10px] text-stone-400 block">
-              {progressPercent}% selesai
-            </span>
+          {/* Right side: Volume Control (for HTML5 Custom Audio) + Duration Display */}
+          <div className="flex items-center gap-3 ml-auto">
+            {isCustomMode && (
+              <div className="flex items-center gap-1.5 bg-white/80 dark:bg-stone-800/80 px-2.5 py-1.5 rounded-xl border border-stone-200/80 dark:border-stone-700/80">
+                <button
+                  type="button"
+                  onClick={handleToggleMute}
+                  aria-label={isMuted ? 'Aktifkan suara audio' : 'Bisukan suara audio'}
+                  title={isMuted ? 'Aktifkan suara' : 'Bisukan suara'}
+                  className="text-stone-600 dark:text-stone-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition cursor-pointer"
+                >
+                  {isMuted || volume === 0 ? (
+                    <VolumeX className="w-4 h-4 text-rose-500" />
+                  ) : (
+                    <Volume2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  )}
+                </button>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value={isMuted ? 0 : volume}
+                  onChange={handleVolumeChange}
+                  aria-label="Volume audio"
+                  className="w-16 sm:w-20 h-1.5 accent-emerald-600 cursor-pointer"
+                />
+              </div>
+            )}
+
+            {/* Time & Progress Indicator */}
+            <div className="text-right">
+              <span
+                data-testid="article-audio-time"
+                className="font-mono text-xs font-semibold text-stone-800 dark:text-stone-200"
+              >
+                {formatSpeechTime(elapsedSeconds)} / {formatSpeechTime(totalEstimatedSeconds)}
+              </span>
+              <span className="text-[10px] text-stone-400 block">
+                {progressPercent}% selesai
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Visual Progress Bar (Clickable/Seekable for custom audio) */}
-        <div
-          onClick={handleSeek}
-          className={`w-full bg-stone-200/80 dark:bg-stone-800 h-2.5 rounded-full overflow-hidden shadow-inner ${
-            isCustomMode ? 'cursor-pointer' : ''
-          }`}
-          title={isCustomMode ? 'Klik untuk melompat ke detik tertentu' : undefined}
-        >
+        {/* Visual Progress Bar & Seek Control */}
+        <div className="relative flex items-center">
           <div
-            className="bg-gradient-to-r from-emerald-600 to-amber-500 h-full rounded-full transition-all duration-300 ease-out"
-            style={{ width: `${progressPercent}%` }}
-          />
+            onClick={handleSeek}
+            className={`w-full bg-stone-200/80 dark:bg-stone-800 h-2.5 rounded-full overflow-hidden shadow-inner ${
+              isCustomMode && totalEstimatedSeconds > 0 ? 'cursor-pointer' : ''
+            }`}
+            title={isCustomMode ? 'Klik atau geser untuk melompat ke detik tertentu' : undefined}
+          >
+            <div
+              className="bg-gradient-to-r from-emerald-600 to-amber-500 h-full rounded-full transition-all duration-200 ease-out"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+          {isCustomMode && totalEstimatedSeconds > 0 && (
+            <input
+              type="range"
+              min={0}
+              max={totalEstimatedSeconds}
+              step={1}
+              value={elapsedSeconds}
+              onChange={handleSeekSliderChange}
+              aria-label="Progres pemutaran audio"
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            />
+          )}
         </div>
       </div>
     </div>
