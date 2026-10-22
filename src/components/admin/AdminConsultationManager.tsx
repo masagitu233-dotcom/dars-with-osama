@@ -33,8 +33,10 @@ import { getWhatsAppConsultationUrl } from '../../config/whatsappConfig';
 import { RichTextEditor } from './RichTextEditor';
 import { autoWrapArabicText } from '../../utils/arabicFontHelper';
 import { ShareQAModal } from '../consultation/ShareQAModal';
+import { useAuth } from '../../context/AuthContext';
 
 export const AdminConsultationManager: React.FC = () => {
+  const { user, isAdmin, loading: authLoading } = useAuth();
   const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -56,6 +58,7 @@ export const AdminConsultationManager: React.FC = () => {
   const [shareTab, setShareTab] = useState<'share' | 'card'>('share');
 
   const loadConsultations = async () => {
+    if (authLoading) return;
     setLoading(true);
     try {
       const list = await getAllConsultationsForAdmin();
@@ -69,7 +72,7 @@ export const AdminConsultationManager: React.FC = () => {
 
   useEffect(() => {
     loadConsultations();
-  }, []);
+  }, [user?.uid, isAdmin, authLoading]);
 
   const openManageModal = (item: Consultation) => {
     setSelectedConsultation(item);

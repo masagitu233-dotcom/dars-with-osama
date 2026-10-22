@@ -6,7 +6,6 @@ import path from 'path';
 import {Readable} from 'stream';
 import {fileURLToPath} from 'url';
 import {defineConfig, Plugin} from 'vite';
-import {SEED_COURSES, SEED_SESSIONS} from './src/data/seedData.ts';
 import type {Course, Session} from './src/types/index.ts';
 import {
   buildSessionMetaTagsHtml,
@@ -30,17 +29,7 @@ async function getPublishedSessionForSeo(
   if (!cachedEntries || now - cachedEntries.timestamp > 30000) {
     const entriesMap = new Map<string, {course: Course; session: Session}>();
 
-    // 1. Seed courses & sessions baseline
-    for (const c of SEED_COURSES) {
-      if (!c.isPublished) continue;
-      for (const s of SEED_SESSIONS.filter(
-        x => x.courseId === c.id && x.isPublished
-      )) {
-        entriesMap.set(s.id, {course: c, session: s});
-      }
-    }
-
-    // 2. Load from public/session-seo-manifest.json if present
+    // Load from public/session-seo-manifest.json if present
     try {
       const manifestPath = path.resolve(
         __dirname,

@@ -24,6 +24,11 @@ import {
   normalizeSupportingImages,
   sanitizeInstructorProfilePayload
 } from '../utils/instructorProfileHelper';
+import {
+  isDummySeedBlogPost,
+  filterProductionBlogPosts,
+  mergeCourseSessions
+} from '../utils/dataAuditHelper';
 
 // Fixed initial admin emails (User email from runtime and bootstrap admin)
 export const INITIAL_ADMIN_EMAILS = [
@@ -305,14 +310,15 @@ export async function deleteCourse(courseId: string): Promise<void> {
 // ==========================================
 export async function getSessionsByCourse(courseId: string, includeUnpublished = false): Promise<Session[]> {
   try {
-    const sessionMap = new Map<string, Session>();
+    const subSessions: Session[] = [];
+    const topSessions: Session[] = [];
 
     // 1. Check subcollection: courses/{courseId}/sessions
     try {
       const subCol = collection(db, 'courses', courseId, 'sessions');
       const subSnapshot = await getDocs(subCol);
       subSnapshot.forEach(d => {
-        sessionMap.set(d.id, { id: d.id, courseId, ...d.data() } as Session);
+        subSessions.push({ id: d.id, courseId, ...d.data() } as Session);
       });
     } catch (e) {
       console.warn('Error reading subcollection sessions:', e);
@@ -323,21 +329,13 @@ export async function getSessionsByCourse(courseId: string, includeUnpublished =
       const q = query(collection(db, 'sessions'), where('courseId', '==', courseId));
       const topSnapshot = await getDocs(q);
       topSnapshot.forEach(d => {
-        if (!sessionMap.has(d.id)) {
-          sessionMap.set(d.id, { id: d.id, ...d.data() } as Session);
-        }
+        topSessions.push({ id: d.id, ...d.data() } as Session);
       });
     } catch (e) {
       console.warn('Error reading top-level sessions:', e);
     }
 
-    const sessions = Array.from(sessionMap.values());
-    sessions.sort((a, b) => (a.order || 0) - (b.order || 0));
-
-    if (!includeUnpublished) {
-      return sessions.filter(s => s.isPublished);
-    }
-    return sessions;
+    return mergeCourseSessions(subSessions, topSessions, includeUnpublished);
   } catch (err) {
     console.warn('getSessionsByCourse error, returning empty list:', err);
     return [];
@@ -346,17 +344,23 @@ export async function getSessionsByCourse(courseId: string, includeUnpublished =
 
 export async function getSessionById(courseId: string, sessionId: string): Promise<Session | null> {
   try {
-    // Check subcollection
-    const d = await getDoc(doc(db, 'courses', courseId, 'sessions', sessionId));
-    if (d.exists()) {
-      return { id: d.id, courseId, ...d.data() } as Session;
+    const [subSnap, topSnap] = await Promise.all([
+      getDoc(doc(db, 'courses', courseId, 'sessions', sessionId)).catch(() => null),
+      getDoc(doc(db, 'sessions', sessionId)).catch(() => null)
+    ]);
+
+    const subSession = subSnap && subSnap.exists()
+      ? ({ id: subSnap.id, courseId, ...subSnap.data() } as Session)
+      : null;
+    const topSession = topSnap && topSnap.exists()
+      ? ({ id: topSnap.id, ...topSnap.data() } as Session)
+      : null;
+
+    if (subSession && topSession) {
+      const merged = mergeCourseSessions([subSession], [topSession], true);
+      return merged[0] || subSession;
     }
-    // Check top-level
-    const topD = await getDoc(doc(db, 'sessions', sessionId));
-    if (topD.exists()) {
-      return { id: topD.id, ...topD.data() } as Session;
-    }
-    return null;
+    return subSession || topSession || null;
   } catch (err) {
     handleFirestoreError(err, OperationType.GET, `courses/${courseId}/sessions/${sessionId}`);
   }
@@ -1118,6 +1122,9 @@ export async function deleteSeedDummyDataFromFirestore(): Promise<{ deletedCours
       }
     }
 
+    // Also delete dummy seed blog posts if present
+    await deleteDummyBlogPostsFromFirestore().catch(() => 0);
+
     return { deletedCourses, deletedCategories, deletedQuizzes };
   } catch (error) {
     console.error('Error deleting seed dummy data:', error);
@@ -1205,25 +1212,23 @@ export async function getBlogPosts(includeDrafts = false): Promise<BlogPost[]> {
   try {
     const snapshot = await getDocs(collection(db, 'blogPosts'));
     if (!snapshot.empty) {
-      const posts = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as BlogPost));
-      posts.sort((a, b) => new Date(b.publishedAt || b.createdAt).getTime() - new Date(a.publishedAt || a.createdAt).getTime());
-      if (!includeDrafts) {
-        return posts.filter(p => p.status === 'published');
+      const rawPosts = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as BlogPost));
+
+      // If an admin session detects auto-seeded dummy articles in Firestore, clean them up non-destructively
+      if (auth.currentUser && isPlatformAdminEmail(auth.currentUser.email)) {
+        for (const p of rawPosts) {
+          if (isDummySeedBlogPost(p)) {
+            deleteDoc(doc(db, 'blogPosts', p.id)).catch(() => {});
+          }
+        }
       }
-      return posts;
+
+      return filterProductionBlogPosts(rawPosts, includeDrafts);
     }
-    // If empty in Firestore, seed initial articles so articles are immediately available
-    try {
-      for (const p of INITIAL_BLOG_POSTS) {
-        await setDoc(doc(db, 'blogPosts', p.id), p);
-      }
-    } catch (seedErr) {
-      console.warn('Auto-seed blogPosts notice:', seedErr);
-    }
-    return includeDrafts ? INITIAL_BLOG_POSTS : INITIAL_BLOG_POSTS.filter(p => p.status === 'published');
+    return [];
   } catch (err) {
-    console.warn('getBlogPosts read error:', err);
-    return includeDrafts ? INITIAL_BLOG_POSTS : INITIAL_BLOG_POSTS.filter(p => p.status === 'published');
+    console.warn('getBlogPosts read error, returning empty list:', err);
+    return [];
   }
 }
 
@@ -1246,7 +1251,9 @@ export async function getBlogPostBySlug(slug: string): Promise<BlogPost | null> 
     const snapshot = await getDocs(q);
     if (!snapshot.empty) {
       const docSnap = snapshot.docs[0];
-      return { id: docSnap.id, ...docSnap.data() } as BlogPost;
+      const post = { id: docSnap.id, ...docSnap.data() } as BlogPost;
+      if (isDummySeedBlogPost(post)) return null;
+      return post;
     }
     return null;
   } catch (error) {
@@ -1259,7 +1266,9 @@ export async function getBlogPostById(id: string): Promise<BlogPost | null> {
   try {
     const d = await getDoc(doc(db, 'blogPosts', id));
     if (d.exists()) {
-      return { id: d.id, ...d.data() } as BlogPost;
+      const post = { id: d.id, ...d.data() } as BlogPost;
+      if (isDummySeedBlogPost(post)) return null;
+      return post;
     }
     return null;
   } catch (error) {
@@ -1711,16 +1720,17 @@ export async function getInstructorProfile(): Promise<InstructorProfile> {
       writeCachedInstructorProfile(merged);
       return merged;
     }
+    // Document does not exist on server: return clean defaults so all browsers stay consistent
+    return getDefaultInstructorProfile();
   } catch (err) {
     console.warn('getInstructorProfile Firestore read notice:', err);
+    // Only use local cache when offline or network request fails
+    const cached = readCachedInstructorProfile();
+    if (cached) {
+      return cached;
+    }
+    return getDefaultInstructorProfile();
   }
-
-  const cached = readCachedInstructorProfile();
-  if (cached) {
-    return cached;
-  }
-
-  return getDefaultInstructorProfile();
 }
 
 export async function saveInstructorProfile(

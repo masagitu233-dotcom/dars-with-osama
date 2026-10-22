@@ -77,6 +77,7 @@ import { AdminInstructorProfileManager } from './AdminInstructorProfileManager';
 import { RichTextEditor } from './RichTextEditor';
 import { MessageSquare, UserCheck } from 'lucide-react';
 import { getAllArticleCommentsForAdmin } from '../../firebase/services';
+import { auditBrowserStorageEntries } from '../../utils/dataAuditHelper';
 
 export const AdminDashboard: React.FC<{
   initialCourseId?: string;
@@ -276,7 +277,7 @@ export const AdminDashboard: React.FC<{
 
   useEffect(() => {
     loadAllAdminData();
-  }, []);
+  }, [user?.uid, isAdmin]);
 
   // Sync tab if initialTab prop changes
   useEffect(() => {
@@ -2138,83 +2139,182 @@ export const AdminDashboard: React.FC<{
           {/* ========================================================= */}
           {/* VIEW: FIREBASE STATUS & DATA MANAGEMENT */}
           {/* ========================================================= */}
-          {activeTab === 'firebase' && (
-            <div className="space-y-6 animate-fade-in">
-              <h2 className="text-lg font-bold text-stone-900 dark:text-white">
-                Status Integrasi Cloud Firestore & Data Seed
-              </h2>
+          {activeTab === 'firebase' && (() => {
+            const storageSnapshot: Record<string, string> = {};
+            if (typeof window !== 'undefined' && window.localStorage) {
+              for (let i = 0; i < window.localStorage.length; i++) {
+                const k = window.localStorage.key(i);
+                if (k) {
+                  storageSnapshot[k] = window.localStorage.getItem(k) || '';
+                }
+              }
+            }
+            const localAudit = auditBrowserStorageEntries(storageSnapshot);
 
-              <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl p-6 space-y-4 shadow-xs">
-                <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
-                  <p className="font-semibold text-sm text-stone-900 dark:text-white">
-                    Cloud Firestore Terhubung Real-Time
+            const handleDownloadFullBackup = () => {
+              const payload = {
+                exportedAt: new Date().toISOString(),
+                projectId: firebaseConfig.projectId,
+                firestoreDatabaseId: firebaseConfig.firestoreDatabaseId,
+                collections: {
+                  categories,
+                  courses,
+                  sessionsByCourse: allSessionsMap,
+                  quizzes,
+                  blogPosts,
+                  users,
+                  quizAttempts: attempts
+                },
+                localStorageAudit: localAudit
+              };
+              const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `dars-backup-${new Date().toISOString().slice(0, 10)}.json`;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+              showStatus('success', 'Cadangan data lengkap (Server + Lokal) berhasil diunduh sebagai berkas JSON.');
+            };
+
+            return (
+              <div className="space-y-6 animate-fade-in">
+                <h2 className="text-lg font-bold text-stone-900 dark:text-white">
+                  Status Integrasi Cloud Firestore, Pencadangan & Audit Penyimpanan
+                </h2>
+
+                <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl p-6 space-y-4 shadow-xs">
+                  <div className="flex items-center justify-between flex-wrap gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
+                      <p className="font-semibold text-sm text-stone-900 dark:text-white">
+                        Cloud Firestore Terhubung Persisten (Sumber Data Utama Lintas Perangkat)
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleDownloadFullBackup}
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold transition shadow flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Unduh Cadangan Data (Backup JSON)</span>
+                    </button>
+                  </div>
+
+                  <p className="text-xs text-stone-500 leading-relaxed">
+                    Seluruh data artikel, tanya jawab konsultasi, video pembelajaran, kurikulum, kuis evaluasi, dan profil pengajar disimpan secara persisten di Cloud Firestore project ID: <strong>{firebaseConfig.projectId}</strong> (Database: <strong>{firebaseConfig.firestoreDatabaseId}</strong>). Penyimpanan lokal browser tidak pernah menimpa data server secara otomatis.
                   </p>
+
+                  {/* Live Server Data Summary */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-2">
+                    <div className="p-3 rounded-xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700">
+                      <div className="text-[11px] text-stone-500">Bab / Kategori</div>
+                      <div className="text-base font-bold text-stone-900 dark:text-white">{categories.length}</div>
+                    </div>
+                    <div className="p-3 rounded-xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700">
+                      <div className="text-[11px] text-stone-500">Mata Pelajaran</div>
+                      <div className="text-base font-bold text-stone-900 dark:text-white">{courses.length}</div>
+                    </div>
+                    <div className="p-3 rounded-xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700">
+                      <div className="text-[11px] text-stone-500">Video / Sesi</div>
+                      <div className="text-base font-bold text-stone-900 dark:text-white">{totalSessionsCount}</div>
+                    </div>
+                    <div className="p-3 rounded-xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700">
+                      <div className="text-[11px] text-stone-500">Kuis Evaluasi</div>
+                      <div className="text-base font-bold text-stone-900 dark:text-white">{quizzes.length}</div>
+                    </div>
+                    <div className="p-3 rounded-xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700">
+                      <div className="text-[11px] text-stone-500">Artikel Asli</div>
+                      <div className="text-base font-bold text-emerald-600 dark:text-emerald-400">{blogPosts.length}</div>
+                    </div>
+                    <div className="p-3 rounded-xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700">
+                      <div className="text-[11px] text-stone-500">Akun Terdaftar</div>
+                      <div className="text-base font-bold text-stone-900 dark:text-white">{users.length}</div>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-stone-200 dark:border-stone-800 flex flex-wrap items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setConfirmDialog({
+                          isOpen: true,
+                          title: 'Hapus Data Contoh (Dummy)',
+                          itemName: 'Pembersihan Dokumen Prototype & Artikel Dummy',
+                          message: 'Menghapus dokumen contoh bawaan (termasuk post-1 dan post-2 jika ada) tanpa menyentuh artikel, kursus, atau sesi produksi asli Anda.',
+                          loading: false,
+                          onConfirm: async () => {
+                            setConfirmDialog(prev => ({ ...prev, loading: true }));
+                            try {
+                              await deleteSeedDummyDataFromFirestore();
+                              showStatus('success', 'Pembersihan data contoh selesai. Seluruh konten produksi asli tetap aman.');
+                              await loadAllAdminData();
+                              onRefreshData();
+                              setConfirmDialog(prev => ({ ...prev, isOpen: false, loading: false }));
+                            } catch (err: any) {
+                              showStatus('error', 'Gagal menghapus: ' + err.message);
+                              setConfirmDialog(prev => ({ ...prev, loading: false }));
+                            }
+                          }
+                        });
+                      }}
+                      className="px-4 py-2 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 border border-stone-200 dark:border-stone-700 rounded-xl text-xs font-semibold transition cursor-pointer"
+                    >
+                      Bersihkan Data Contoh (Dummy)
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await loadAllAdminData();
+                        onRefreshData();
+                        showStatus('success', 'Data berhasil disinkronkan ulang dari Cloud Firestore.');
+                      }}
+                      className="px-4 py-2 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 border border-stone-200 dark:border-stone-700 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      <span>Sinkronkan Ulang dari Server</span>
+                    </button>
+                  </div>
                 </div>
-                <p className="text-xs text-stone-500 leading-relaxed">
-                  Seluruh perubahan data mata pelajaran, sesi pembelajaran, PDF, dan kuis evaluasi disimpan secara persisten di Cloud Firestore project ID: <strong>{firebaseConfig.projectId}</strong>.
-                </p>
 
-                <div className="pt-4 border-t border-stone-200 dark:border-stone-800 flex flex-wrap items-center gap-3">
-                  <button
-                    onClick={() => {
-                      setConfirmDialog({
-                        isOpen: true,
-                        title: 'Muat Data Contoh Awal',
-                        itemName: 'Koleksi Contoh Kursus & Kuis',
-                        message: 'Memuat data contoh ke Cloud Firestore jika koleksi masih kosong.',
-                        loading: false,
-                        onConfirm: async () => {
-                          setConfirmDialog(prev => ({ ...prev, loading: true }));
-                          try {
-                            await seedInitialDatabase();
-                            showStatus('success', 'Data contoh berhasil dimuat.');
-                            await loadAllAdminData();
-                            onRefreshData();
-                            setConfirmDialog(prev => ({ ...prev, isOpen: false, loading: false }));
-                          } catch (err: any) {
-                            showStatus('error', 'Gagal memuat data: ' + err.message);
-                            setConfirmDialog(prev => ({ ...prev, loading: false }));
-                          }
-                        }
-                      });
-                    }}
-                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold transition shadow cursor-pointer"
-                  >
-                    Muat Data Contoh Awal
-                  </button>
+                {/* Browser LocalStorage Audit Panel */}
+                <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl p-6 space-y-4 shadow-xs">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-bold text-sm text-stone-900 dark:text-white">
+                        Audit Penyimpanan Lokal Browser Ini (localStorage)
+                      </h3>
+                      <p className="text-xs text-stone-500 mt-0.5">
+                        Memeriksa apakah terdapat data lama yang tersimpan secara lokal di browser ini ({localAudit.totalKeys} kunci terdeteksi).
+                      </p>
+                    </div>
+                    <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                      Aman • Tidak Menimpa Server
+                    </span>
+                  </div>
 
-                  <button
-                    onClick={() => {
-                      setConfirmDialog({
-                        isOpen: true,
-                        title: 'Hapus Data Contoh (Dummy)',
-                        itemName: 'Pembersihan Dokumen Prototype',
-                        message: 'Menghapus dokumen kursus contoh bawaan agar menyisakan data asli buatan Anda.',
-                        loading: false,
-                        onConfirm: async () => {
-                          setConfirmDialog(prev => ({ ...prev, loading: true }));
-                          try {
-                            await deleteSeedDummyDataFromFirestore();
-                            showStatus('success', 'Pembersihan data contoh selesai.');
-                            await loadAllAdminData();
-                            onRefreshData();
-                            setConfirmDialog(prev => ({ ...prev, isOpen: false, loading: false }));
-                          } catch (err: any) {
-                            showStatus('error', 'Gagal menghapus: ' + err.message);
-                            setConfirmDialog(prev => ({ ...prev, loading: false }));
-                          }
-                        }
-                      });
-                    }}
-                    className="px-4 py-2 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 border border-stone-200 dark:border-stone-700 rounded-xl text-xs font-semibold transition cursor-pointer"
-                  >
-                    Bersihkan Data Contoh (Dummy)
-                  </button>
+                  {localAudit.entries.length === 0 ? (
+                    <p className="text-xs text-stone-500 italic">Tidak ada item localStorage pada browser ini.</p>
+                  ) : (
+                    <div className="divide-y divide-stone-200 dark:divide-stone-800 border border-stone-200 dark:border-stone-800 rounded-xl overflow-hidden text-xs">
+                      {localAudit.entries.map((entry) => (
+                        <div key={entry.key} className="p-3 flex items-center justify-between gap-4 bg-stone-50/40 dark:bg-stone-800/30">
+                          <div>
+                            <div className="font-mono font-semibold text-stone-800 dark:text-stone-200">{entry.key}</div>
+                            <div className="text-[11px] text-stone-500">{entry.summary}</div>
+                          </div>
+                          <span className="text-[11px] text-stone-400 shrink-0">{entry.sizeBytes} B</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
           {/* ========================================================= */}
           {/* VIEW: CONSULTATION & Q&A MANAGER */}
           {/* ========================================================= */}

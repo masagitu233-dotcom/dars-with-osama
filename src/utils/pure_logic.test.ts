@@ -1149,6 +1149,137 @@ test('Case 33: getDefaultInstructorProfile, moveProfileSection, dan sanitizeInst
   assert.equal(buildUrlFromRouteState(profileRoute), '/profil-pengajar');
 });
 
+// Case 34: Pemisahan Artikel Dummy (post-1, post-2) dari Artikel Produksi Asli
+test('Case 34: isDummySeedBlogPost dan filterProductionBlogPosts menyaring artikel dummy bawaan tanpa menghapus artikel produksi asli', async () => {
+  const { isDummySeedBlogPost, filterProductionBlogPosts } = await import('./dataAuditHelper.js');
+
+  const samplePosts: any[] = [
+    {
+      id: 'post-1',
+      title: "Menuntut Ilmu Syar'i: Keutamaan, Niat, dan Adab Para Penuntut Ilmu",
+      slug: 'menuntut-ilmu-syari-keutamaan-niat-dan-adab',
+      status: 'published',
+      publishedAt: '2026-10-19T16:29:48.654Z',
+      createdAt: '2026-10-19T16:29:48.654Z'
+    },
+    {
+      id: 'post-2',
+      title: "Panduan Tadabbur Al-Qur'an: Memahami Makna dan Meresapi Renungan Ayat",
+      slug: 'panduan-tadabbur-al-quran-memahami-makna-dan-renungan',
+      status: 'published',
+      publishedAt: '2026-10-15T16:29:48.654Z',
+      createdAt: '2026-10-15T16:29:48.654Z'
+    },
+    {
+      id: 'post-1792227068136',
+      title: 'Kisah tentang al kalam dalam ilmu nahwu',
+      slug: 'kisah-tentang-al-kalam-dalam-ilmu-nahwu',
+      status: 'published',
+      publishedAt: '2026-10-17T08:51:08.136Z',
+      createdAt: '2026-10-17T08:51:08.136Z'
+    },
+    {
+      id: 'post-1792509202990',
+      title: 'Bitcoin sebagai Alat Tukar dalam Perspektif Fikih Islam',
+      slug: 'bitcoin-sebagai-alat-tukar-dalam-perspektif-fikih-islam',
+      status: 'published',
+      publishedAt: '2026-10-20T15:13:22.990Z',
+      createdAt: '2026-10-20T15:13:22.990Z'
+    },
+    {
+      id: 'post-draft-999',
+      title: 'Draf Kajian Baru',
+      slug: 'draf-kajian-baru',
+      status: 'draft',
+      createdAt: '2026-10-21T10:00:00.000Z'
+    }
+  ];
+
+  assert.equal(isDummySeedBlogPost(samplePosts[0]), true);
+  assert.equal(isDummySeedBlogPost(samplePosts[1]), true);
+  assert.equal(isDummySeedBlogPost(samplePosts[2]), false);
+  assert.equal(isDummySeedBlogPost(samplePosts[3]), false);
+
+  const publicPosts = filterProductionBlogPosts(samplePosts, false);
+  assert.equal(publicPosts.length, 2);
+  assert.deepEqual(
+    publicPosts.map((p) => p.id),
+    ['post-1792509202990', 'post-1792227068136']
+  );
+
+  const adminPosts = filterProductionBlogPosts(samplePosts, true);
+  assert.equal(adminPosts.length, 3);
+  assert.equal(adminPosts.some((p) => p.id === 'post-1' || p.id === 'post-2'), false);
+});
+
+// Case 35: Konsistensi Penggabungan Sesi Lintas Koleksi dan Rekonsiliasi Penyimpanan Lokal yang Aman
+test('Case 35: mergeCourseSessions memilih versi sesi terbaru berdasarkan updatedAt dan reconcileLocalWithServerEntities tidak menimpa data server', async () => {
+  const {
+    mergeCourseSessions,
+    auditBrowserStorageEntries,
+    reconcileLocalWithServerEntities
+  } = await import('./dataAuditHelper.js');
+
+  const subSessions: any[] = [
+    {
+      id: 'session-1',
+      courseId: 'course-1',
+      title: 'Sesi 1 (Versi Lama)',
+      order: 1,
+      isPublished: true,
+      updatedAt: '2026-10-18T10:00:00.000Z'
+    },
+    {
+      id: 'session-2',
+      courseId: 'course-1',
+      title: 'Sesi 2',
+      order: 2,
+      isPublished: true,
+      updatedAt: '2026-10-19T10:00:00.000Z'
+    }
+  ];
+
+  const topSessions: any[] = [
+    {
+      id: 'session-1',
+      courseId: 'course-1',
+      title: 'Sesi 1 (Versi Baru)',
+      order: 1,
+      isPublished: true,
+      updatedAt: '2026-10-21T12:00:00.000Z'
+    },
+    {
+      id: 'session-3',
+      courseId: 'course-1',
+      title: 'Sesi 3 (Draf)',
+      order: 3,
+      isPublished: false,
+      updatedAt: '2026-10-21T14:00:00.000Z'
+    }
+  ];
+
+  const mergedPublic = mergeCourseSessions(subSessions, topSessions, false);
+  assert.equal(mergedPublic.length, 2);
+  assert.equal(mergedPublic[0].title, 'Sesi 1 (Versi Baru)');
+
+  const mergedAdmin = mergeCourseSessions(subSessions, topSessions, true);
+  assert.equal(mergedAdmin.length, 3);
+
+  const audit = auditBrowserStorageEntries({
+    'dars-theme': 'dark',
+    'dars_instructor_profile_v1': JSON.stringify({ name: 'Osama Nur Samsil, S.H.', updatedAt: '2026-10-22' })
+  });
+  assert.equal(audit.totalKeys, 2);
+  assert.equal(audit.hasUnsyncedLegacyContent, false);
+
+  const reconciled = reconcileLocalWithServerEntities(
+    [{ id: 'post-1792227068136' }, { id: 'post-local-only' }],
+    [{ id: 'post-1792227068136' }]
+  );
+  assert.deepEqual(reconciled.alreadyOnServer.map((i) => i.id), ['post-1792227068136']);
+  assert.deepEqual(reconciled.missingOnServer.map((i) => i.id), ['post-local-only']);
+});
+
 
 
 

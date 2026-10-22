@@ -1,63 +1,23 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { getCourses, getSessionsByCourse, getBlogPosts } from '../src/firebase/services';
-import { SEED_COURSES, SEED_SESSIONS } from '../src/data/seedData';
+import {
+  getCourses,
+  getSessionsByCourse,
+  getBlogPosts,
+  getPublishedPublicQA
+} from '../src/firebase/services';
 import {
   buildSessionMetaTagsHtml,
   canAccessSessionPublicly,
   generateSessionSlug,
   injectSeoMetaIntoHtml
 } from '../src/utils/sessionShareHelper';
-import { Course, Session } from '../src/types';
+import { isDummySeedBlogPost } from '../src/utils/dataAuditHelper';
+import { Course, Session, Consultation } from '../src/types';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-// Initial published articles for static SEO generation
-const INITIAL_BLOG_POSTS = [
-  {
-    id: 'post-1',
-    title: "Menuntut Ilmu Syar'i: Keutamaan, Niat, dan Adab Para Penuntut Ilmu",
-    slug: 'menuntut-ilmu-syari-keutamaan-niat-dan-adab',
-    excerpt: "Memahami betapa tingginya kedudukan ilmu agama dalam Islam serta pentingnya meluruskan niat dan menjaga adab dalam majelis ilmu.",
-    coverImageUrl: 'https://images.unsplash.com/photo-1532012197267-da84d127e765?q=80&w=1200&auto=format&fit=crop',
-    category: 'Adab & Akhlak',
-    status: 'published'
-  },
-  {
-    id: 'post-2',
-    title: "Panduan Tadabbur Al-Qur'an: Memahami Makna dan Meresapi Renungan Ayat",
-    slug: 'panduan-tadabbur-al-quran-memahami-makna-dan-renungan',
-    excerpt: "Langkah-langkah praktis bagi setiap muslim untuk menyelami keindahan serta hikmah Al-Qur'an dalam kehidupan sehari-hari.",
-    coverImageUrl: 'https://images.unsplash.com/photo-1609599006353-e629aaabfeae?q=80&w=1200&auto=format&fit=crop',
-    category: "Tafsir & Al-Qur'an",
-    status: 'published'
-  },
-  {
-    id: 'post-3',
-    title: 'Kisah tentang al kalam dalam ilmu nahwu',
-    slug: 'kisah-tentang-al-kalam-dalam-ilmu-nahwu',
-    excerpt: 'Latar belakang penamaan al kalam dalam tradisi ilmu nahwu serta urgensinya dalam memahami lisan Arab.',
-    coverImageUrl: 'https://images.unsplash.com/photo-1516979187457-637abb4f9353?q=80&w=1200&auto=format&fit=crop',
-    category: 'Bahasa Arab',
-    status: 'published'
-  }
-];
-
-// Initial published Q&As for static SEO generation (QUESTION ONLY in description so readers must click to see answer)
-const INITIAL_PUBLIC_QAS = [
-  {
-    id: 'qa-1',
-    title: 'Bagaimana Hukum Shalat Berjamaah Bagi Masbuq?',
-    content: 'Apabila seseorang terlambat masuk shalat berjamaah dan mendapati imam pada rakaat kedua atau ketiga, bagaimana tata cara menyempurnakan rakaat shalat yang tertinggal?'
-  },
-  {
-    id: 'qa-2',
-    title: 'Syarat Sah Wudhu Menurut Madzhab Syafi\'i',
-    content: 'Mohon penjelasan rinci mengenai syarat-syarat sah wudhu serta hal-hal yang membatalkannya sesuai rujukan kitab matan Safinatun Naja.'
-  }
-];
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -88,20 +48,17 @@ async function generateAllSeoHtml() {
   const baseHtml = fs.readFileSync(templatePath, 'utf-8');
   let generatedArticleCount = 0;
 
-  // Merge initial blog posts with live Firestore published blog posts
+  // Fetch strictly live Firestore published blog posts (no dummy seed data)
   const allPostsMap = new Map<string, any>();
-  for (const p of INITIAL_BLOG_POSTS) {
-    allPostsMap.set(p.id, p);
-  }
   try {
-    const livePosts = await withTimeout(getBlogPosts(false), 5000);
+    const livePosts = await withTimeout(getBlogPosts(false), 8000);
     for (const lp of livePosts) {
-      if (lp.status === 'published') {
+      if (lp.status === 'published' && !isDummySeedBlogPost(lp)) {
         allPostsMap.set(lp.id, lp);
       }
     }
-  } catch {
-    // Ignore offline error during build
+  } catch (err) {
+    console.warn('generate-seo notice: live Firestore blogPosts fetch notice:', err);
   }
 
   // 1. Generate Article Static OpenGraph Pages
@@ -147,9 +104,16 @@ async function generateAllSeoHtml() {
     generatedArticleCount++;
   }
 
-  // 2. Generate Q&A Static OpenGraph Pages (Question ONLY in description)
+  // 2. Generate Q&A Static OpenGraph Pages from live Firestore published Q&As
   let qaCount = 0;
-  for (const qa of INITIAL_PUBLIC_QAS) {
+  let liveQAs: Consultation[] = [];
+  try {
+    liveQAs = await withTimeout(getPublishedPublicQA(), 8000);
+  } catch (err) {
+    console.warn('generate-seo notice: live Firestore Q&A fetch notice:', err);
+  }
+
+  for (const qa of liveQAs) {
     const title = `${qa.title} | Tanya Jawab Dars with Osama`;
     const description = `Pertanyaan: "${qa.content}" • Klik tautan ini untuk membaca jawaban resmi dari Ustaz Osama Nur Samsil di Dars with Osama.`;
     const imageUrl = 'https://images.unsplash.com/photo-1532012197267-da84d127e765?q=80&w=1200&auto=format&fit=crop';
@@ -179,24 +143,12 @@ async function generateAllSeoHtml() {
     qaCount++;
   }
 
-  // 3. Generate Learning Session Static OpenGraph Pages (for both ID and Slug routes)
+  // 3. Generate Learning Session Static OpenGraph Pages (strictly from live Firestore courses & sessions)
   const coursesMap = new Map<string, Course>();
   const sessionsByCourseMap = new Map<string, Session[]>();
 
-  // Include seed courses and sessions as baseline
-  for (const c of SEED_COURSES) {
-    if (c.isPublished) {
-      coursesMap.set(c.id, c);
-      sessionsByCourseMap.set(
-        c.id,
-        SEED_SESSIONS.filter((s) => s.courseId === c.id && s.isPublished)
-      );
-    }
-  }
-
-  // Fetch live published courses and sessions from Cloud Firestore
   try {
-    const liveCourses = await withTimeout(getCourses(false), 5000);
+    const liveCourses = await withTimeout(getCourses(false), 8000);
     for (const c of liveCourses) {
       if (!c.isPublished) continue;
       coursesMap.set(c.id, c);
@@ -213,11 +165,11 @@ async function generateAllSeoHtml() {
         }
       }
 
-      const liveSessions = await withTimeout(getSessionsByCourse(c.id, false), 5000);
+      const liveSessions = await withTimeout(getSessionsByCourse(c.id, false), 8000);
       sessionsByCourseMap.set(c.id, liveSessions.filter((s) => s.isPublished));
     }
   } catch (err) {
-    console.warn('generate-seo notice: live Firestore session fetch fallback to seed data:', err);
+    console.warn('generate-seo notice: live Firestore session fetch notice:', err);
   }
 
   let sessionRouteCount = 0;

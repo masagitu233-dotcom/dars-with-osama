@@ -493,14 +493,25 @@ function MainApp() {
       setCategories(cats);
       setCourses(crss);
       setBlogPosts(posts);
+      setSelectedBlogPost(prev => {
+        if (!prev) return null;
+        return posts.find(p => p.id === prev.id) || prev;
+      });
       const isDirectSessionRoute =
         typeof window !== 'undefined' &&
         (window.location.pathname.startsWith('/session/') ||
           new URLSearchParams(window.location.search).has('session') ||
           new URLSearchParams(window.location.search).has('sessionId'));
-      if (crss.length > 0 && !selectedCourse && !isDirectSessionRoute) {
-        setSelectedCourse(crss[0]);
-      }
+      setSelectedCourse(prev => {
+        if (prev) {
+          const updatedCourse = crss.find(c => c.id === prev.id);
+          if (updatedCourse) return updatedCourse;
+        }
+        if (crss.length > 0 && !prev && !isDirectSessionRoute) {
+          return crss[0];
+        }
+        return prev;
+      });
     } catch (err) {
       console.warn('Initial data load notice:', err);
     } finally {
@@ -510,7 +521,7 @@ function MainApp() {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [user?.uid, isAdmin]);
 
   // Fetch user enrollments when user changes
   const loadUserEnrollments = async () => {
@@ -532,7 +543,7 @@ function MainApp() {
     loadUserEnrollments();
   }, [user]);
 
-  // When selectedCourse changes, fetch its sessions while preserving an already-selected session of the same course
+  // When selectedCourse changes, fetch its sessions and refresh selectedSession with the latest server version
   useEffect(() => {
     if (!selectedCourse) {
       setCourseSessions([]);
@@ -542,7 +553,7 @@ function MainApp() {
       setCourseSessions(sessions);
       setSelectedSession(prev => {
         if (prev && prev.courseId === selectedCourse.id) {
-          return prev;
+          return sessions.find(s => s.id === prev.id) || (sessions.length > 0 ? sessions[0] : null);
         }
         return sessions.length > 0 ? sessions[0] : null;
       });
