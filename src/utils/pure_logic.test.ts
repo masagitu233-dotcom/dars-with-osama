@@ -1367,6 +1367,57 @@ test('Case 37: Penanganan kegagalan pemuatan data Firestore mempertahankan data 
   assert.ok(genMsg.title.includes('Gangguan'));
 });
 
+// Case 38: End-to-End Test Penulisan & Pembacaan Artikel "uji coba" pada Query Publik
+test('Case 38: Verifikasi alur penulisan dan pembacaan artikel "uji coba" pada kueri publik', async () => {
+  const { isDummySeedBlogPost, filterProductionBlogPosts } = await import('./dataAuditHelper.js');
+
+  const sampleArticles = [
+    {
+      id: 'post-1',
+      title: "Menuntut Ilmu Syar'i",
+      slug: 'menuntut-ilmu-syari-keutamaan-niat-dan-adab',
+      status: 'published' as const,
+      publishedAt: '2026-10-15T00:00:00.000Z'
+    },
+    {
+      id: 'post-1792723000000',
+      title: 'uji coba',
+      slug: 'uji-coba',
+      status: 'published' as const,
+      publishedAt: '2026-10-22T19:30:00.000Z',
+      category: 'Kajian Fiqih'
+    },
+    {
+      id: 'post-1792723000001',
+      title: 'Draf Artikel Belum Terbit',
+      slug: 'draf-artikel',
+      status: 'draft' as const,
+      publishedAt: ''
+    }
+  ];
+
+  // 1. Verifikasi artikel "uji coba" bukan artikel dummy seed
+  const testArticle = sampleArticles[1];
+  assert.equal(isDummySeedBlogPost(testArticle), false, 'Artikel "uji coba" tidak boleh diklasifikasikan sebagai dummy seed');
+
+  // 2. Verifikasi kueri publik (includeDrafts = false) hanya mengembalikan artikel published yang valid
+  const publicPosts = filterProductionBlogPosts(sampleArticles as any, false);
+  const foundUjiCoba = publicPosts.find((p) => p.title === 'uji coba');
+
+  assert.ok(foundUjiCoba, 'Artikel "uji coba" yang berstatus published HARUS ditemukan dalam kueri publik');
+  assert.equal(foundUjiCoba?.id, 'post-1792723000000');
+  assert.equal(foundUjiCoba?.status, 'published');
+  assert.equal(foundUjiCoba?.slug, 'uji-coba');
+
+  // 3. Verifikasi kueri publik menyaring artikel draft
+  const draftFound = publicPosts.find((p) => p.title === 'Draf Artikel Belum Terbit');
+  assert.equal(draftFound, undefined, 'Artikel berstatus draft HARUS disaring dari kueri publik');
+
+  // 4. Verifikasi kueri admin (includeDrafts = true) mengembalikan seluruh artikel termasuk draft
+  const adminPosts = filterProductionBlogPosts(sampleArticles as any, true);
+  assert.equal(adminPosts.length, 2, 'Kueri admin mengembalikan seluruh artikel non-dummy');
+});
+
 
 
 

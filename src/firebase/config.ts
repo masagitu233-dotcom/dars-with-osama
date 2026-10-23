@@ -278,8 +278,14 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     }
   };
 
-  console.error(`[Firestore Error - ${category}] ${summary} (Code: ${code}, Path: ${path || '-'})`);
-  throw new Error(JSON.stringify(errInfo));
+  console.error(`[Firestore Error - ${category}] ${summary} (Code: ${code}, Path: ${path || '-'})`, errInfo);
+  
+  const customError = new Error(`${summary} [Kode: ${code}]`);
+  (customError as any).category = category;
+  (customError as any).code = code;
+  (customError as any).path = path;
+  (customError as any).errInfo = errInfo;
+  throw customError;
 }
 
 export async function testConnection(): Promise<boolean> {

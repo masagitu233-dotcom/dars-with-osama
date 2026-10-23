@@ -123,7 +123,10 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
     return matchesSearch && matchesStatus && matchesCategory;
   });
 
+  const modalBodyRef = React.useRef<HTMLDivElement>(null);
+
   const handleOpenAddModal = () => {
+    setFeedback(null);
     setFormData({
       id: undefined,
       title: '',
@@ -153,6 +156,7 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
   };
 
   const handleOpenEditModal = (post: BlogPost) => {
+    setFeedback(null);
     setFormData({
       ...post,
       audioConfig: post.audioConfig
@@ -277,14 +281,20 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
 
   const handleSave = async (status: 'published' | 'draft') => {
     if (saving) return; // Prevent double-clicks / duplicate submissions
+    setFeedback(null);
 
-    if (!formData.title?.trim()) {
-      setFeedback({ type: 'error', text: 'Judul artikel tidak boleh kosong.' });
+    const titleText = formData.title?.trim() || '';
+    if (!titleText) {
+      setFeedback({ type: 'error', text: 'Judul artikel wajib diisi terlebih dahulu.' });
+      if (modalBodyRef.current) modalBodyRef.current.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
-    if (!formData.content?.trim()) {
-      setFeedback({ type: 'error', text: 'Isi artikel tidak boleh kosong.' });
+    const rawContent = formData.content || '';
+    const cleanContentText = rawContent.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+    if (!cleanContentText && !rawContent.includes('<img')) {
+      setFeedback({ type: 'error', text: 'Isi naskah artikel wajib diisi terlebih dahulu.' });
+      if (modalBodyRef.current) modalBodyRef.current.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
@@ -297,7 +307,7 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
 
       await saveBlogPost({
         ...formData,
-        title: formData.title.trim(),
+        title: titleText,
         tags: parsedTags,
         status
       });
@@ -306,7 +316,7 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
       await onRefreshPosts();
       setFeedback({
         type: 'success',
-        text: `Artikel "${formData.title}" berhasil disimpan sebagai ${status === 'published' ? 'Terbit (Published)' : 'Draf'}.`
+        text: `Artikel "${titleText}" berhasil disimpan sebagai ${status === 'published' ? 'Terbit (Published)' : 'Draf'}.`
       });
     } catch (err: any) {
       let msg = err?.message || String(err);
@@ -318,6 +328,7 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
         type: 'error',
         text: 'Gagal menyimpan artikel: ' + msg
       });
+      if (modalBodyRef.current) modalBodyRef.current.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setSaving(false);
     }
@@ -660,7 +671,32 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
             </div>
 
             {/* Modal Form Body */}
-            <div className="p-6 overflow-y-auto space-y-6 flex-1 text-xs sm:text-sm">
+            <div ref={modalBodyRef} className="p-6 overflow-y-auto space-y-6 flex-1 text-xs sm:text-sm">
+              {/* MODAL INLINE FEEDBACK BANNER */}
+              {feedback && (
+                <div className={`p-4 rounded-2xl border text-xs sm:text-sm flex items-center justify-between gap-3 animate-fade-in ${
+                  feedback.type === 'success'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
+                    : 'bg-rose-50 dark:bg-rose-950/60 border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300'
+                }`}>
+                  <div className="flex items-center gap-2">
+                    {feedback.type === 'success' ? (
+                      <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                    ) : (
+                      <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                    )}
+                    <span>{feedback.text}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setFeedback(null)}
+                    className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 p-1 rounded-lg cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+
               {/* Judul & Judul Arab */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -1223,19 +1259,34 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 border-t border-stone-200 dark:border-stone-800 bg-stone-50/80 dark:bg-stone-900/80 flex items-center justify-between shrink-0">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsInModalPreview(false);
-                  setIsModalOpen(false);
-                }}
-                className="px-4 py-2 bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold hover:bg-stone-200 transition cursor-pointer"
-              >
-                Batal
-              </button>
+            <div className="p-4 border-t border-stone-200 dark:border-stone-800 bg-stone-50/80 dark:bg-stone-900/80 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
+              {feedback && (
+                <div className={`w-full sm:w-auto px-3 py-1.5 rounded-xl border text-xs flex items-center gap-2 ${
+                  feedback.type === 'success'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-200 text-emerald-800 dark:text-emerald-300'
+                    : 'bg-rose-50 dark:bg-rose-950/60 border-rose-200 text-rose-800 dark:text-rose-300'
+                }`}>
+                  {feedback.type === 'success' ? (
+                    <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  ) : (
+                    <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                  )}
+                  <span className="font-semibold truncate max-w-xs">{feedback.text}</span>
+                </div>
+              )}
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 ml-auto">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsInModalPreview(false);
+                    setIsModalOpen(false);
+                  }}
+                  className="px-4 py-2 bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold hover:bg-stone-200 transition cursor-pointer"
+                >
+                  Batal
+                </button>
+
                 <button
                   type="button"
                   onClick={() => setIsInModalPreview(prev => !prev)}
@@ -1247,20 +1298,27 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
 
                 <button
                   type="button"
+                  data-testid="btn-save-draft"
                   onClick={() => handleSave('draft')}
-                  disabled={saving || uploadingCover}
-                  className="px-4 py-2 bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-300 hover:bg-amber-200 disabled:opacity-50 rounded-xl text-xs font-bold transition cursor-pointer active:scale-95"
+                  disabled={saving || uploadingCover || uploadingAudio}
+                  className="px-4 py-2 bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-300 hover:bg-amber-200 disabled:opacity-50 rounded-xl text-xs font-bold transition cursor-pointer active:scale-95 flex items-center gap-1.5"
                 >
-                  {saving ? 'Menyimpan...' : 'Simpan Draf'}
+                  {saving && <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-900 dark:text-amber-300" />}
+                  <span>{saving ? 'Menyimpan Draf...' : 'Simpan Draf'}</span>
                 </button>
 
                 <button
                   type="button"
+                  data-testid="btn-save-publish"
                   onClick={() => handleSave('published')}
-                  disabled={saving || uploadingCover}
+                  disabled={saving || uploadingCover || uploadingAudio}
                   className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-md transition cursor-pointer active:scale-95 flex items-center gap-1.5"
                 >
-                  <Globe className="w-4 h-4" />
+                  {saving ? (
+                    <RefreshCw className="w-4 h-4 animate-spin text-white" />
+                  ) : (
+                    <Globe className="w-4 h-4" />
+                  )}
                   <span>{saving ? 'Menyimpan...' : (formData.id ? 'Perbarui & Terbitkan' : 'Terbitkan Sekarang')}</span>
                 </button>
               </div>

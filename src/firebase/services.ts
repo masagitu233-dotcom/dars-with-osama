@@ -12,7 +12,7 @@ import {
   writeBatch
 } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { db, storage, handleFirestoreError, OperationType, auth, logFirestoreDiagnostic, classifyFirestoreError } from './config';
+import { db, storage, handleFirestoreError, OperationType, auth, logFirestoreDiagnostic, classifyFirestoreError, firebaseConfig } from './config';
 import { Category, Course, Session, Quiz, Enrollment, QuizAttempt, UserProfile, BlogPost, Consultation, ArticleComment, InstructorProfile } from '../types';
 import { SEED_CATEGORIES, SEED_COURSES, SEED_SESSIONS, SEED_QUIZZES } from '../data/seedData';
 import { matchesSessionIdentifier, canAccessSessionPublicly } from '../utils/sessionShareHelper';
@@ -51,6 +51,21 @@ export function isPlatformAdminEmail(email?: string | null): boolean {
   if (!email) return false;
   const clean = email.trim().toLowerCase();
   return INITIAL_ADMIN_EMAILS.some(adminEmail => adminEmail.toLowerCase() === clean);
+}
+
+export function logCrudDiagnostic(op: string, path: string, status: 'start' | 'success' | 'failed', error?: any): void {
+  const user = auth.currentUser;
+  const userEmail = user?.email || 'unauthenticated';
+  const dbName = firebaseConfig.firestoreDatabaseId || 'ai-studio-remixdarswithosa-978e37b7-a164-496c-8e6a-39738edc5d93';
+  if (status === 'start') {
+    console.log(`[CRUD Diagnostic START] Op: ${op} | Path: ${path} | Db: ${dbName} | Auth: ${userEmail}`);
+  } else if (status === 'success') {
+    console.log(`[CRUD Diagnostic SUCCESS] Op: ${op} | Path: ${path} | Db: ${dbName} | Auth: ${userEmail}`);
+  } else {
+    const code = error?.code || 'ERR_UNKNOWN';
+    const msg = error?.message || String(error);
+    console.error(`[CRUD Diagnostic FAILED] Op: ${op} | Path: ${path} | Db: ${dbName} | Code: ${code} | Msg: ${msg} | Auth: ${userEmail}`);
+  }
 }
 
 // ==========================================
@@ -107,15 +122,27 @@ export async function getCategories(): Promise<Category[]> {
     const snapshot = await getDocs(q);
     if (!snapshot.empty) {
       const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Category));
+      if (categoriesCache && Array.isArray(categoriesCache.data)) {
+        const fetchedIds = new Set(list.map(c => c.id));
+        const extraLocal = categoriesCache.data.filter(c => c && !fetchedIds.has(c.id));
+        const merged = [...list, ...extraLocal];
+        merged.sort((a, b) => (a.order || 0) - (b.order || 0));
+        categoriesCache = { data: merged, timestamp: now };
+        return merged;
+      }
       categoriesCache = { data: list, timestamp: now };
       return list;
     }
-    // If empty on server, use verified production categories
+    if (categoriesCache && Array.isArray(categoriesCache.data) && categoriesCache.data.length > 0) {
+      return categoriesCache.data;
+    }
     categoriesCache = { data: PRODUCTION_CATEGORIES, timestamp: now };
     return PRODUCTION_CATEGORIES;
   } catch (err) {
     logFirestoreDiagnostic({ operation: 'getCategories', collection: 'categories' }, err);
-    // On quota exhaustion or network disruption, return authentic production snapshot
+    if (categoriesCache && Array.isArray(categoriesCache.data) && categoriesCache.data.length > 0) {
+      return categoriesCache.data;
+    }
     return PRODUCTION_CATEGORIES;
   }
 }
@@ -123,6 +150,7 @@ export async function getCategories(): Promise<Category[]> {
 export async function saveCategory(category: Partial<Category> & { name: string; slug: string }): Promise<string> {
   const id = category.id || `cat-${Date.now()}`;
   const path = `categories/${id}`;
+  logCrudDiagnostic('saveCategory', path, 'start');
   try {
     const data: Category = {
       id,
@@ -134,20 +162,52 @@ export async function saveCategory(category: Partial<Category> & { name: string;
       createdAt: category.createdAt || new Date().toISOString()
     };
     await setDoc(doc(db, 'categories', id), data, { merge: true });
-    invalidateServicesCache('categories');
+
+    try {
+      const vSnap = await getDoc(doc(db, 'categories', id));
+      if (vSnap.exists()) {
+        logCrudDiagnostic(`saveCategory Verification [ID: ${id}]`, path, 'success');
+      }
+    } catch (vErr) {
+      console.warn('[saveCategory] Verification notice:', vErr);
+    }
+
+    if (categoriesCache && Array.isArray(categoriesCache.data)) {
+      const idx = categoriesCache.data.findIndex((c) => c.id === id);
+      if (idx >= 0) {
+        categoriesCache.data[idx] = data;
+      } else {
+        categoriesCache.data.push(data);
+      }
+      categoriesCache.data.sort((a, b) => (a.order || 0) - (b.order || 0));
+      categoriesCache.timestamp = Date.now();
+    } else {
+      categoriesCache = { data: [data], timestamp: Date.now() };
+    }
+
+    logCrudDiagnostic('saveCategory', path, 'success');
     return id;
   } catch (error) {
+    logCrudDiagnostic('saveCategory', path, 'failed', error);
     handleFirestoreError(error, OperationType.WRITE, path);
+    throw error;
   }
 }
 
 export async function deleteCategory(id: string): Promise<void> {
   const path = `categories/${id}`;
+  logCrudDiagnostic('deleteCategory', path, 'start');
   try {
     await deleteDoc(doc(db, 'categories', id));
-    invalidateServicesCache('categories');
+    if (categoriesCache && Array.isArray(categoriesCache.data)) {
+      categoriesCache.data = categoriesCache.data.filter((c) => c.id !== id);
+      categoriesCache.timestamp = Date.now();
+    }
+    logCrudDiagnostic('deleteCategory', path, 'success');
   } catch (error) {
+    logCrudDiagnostic('deleteCategory', path, 'failed', error);
     handleFirestoreError(error, OperationType.DELETE, path);
+    throw error;
   }
 }
 
@@ -268,7 +328,7 @@ export async function getCourses(includeUnpublished = false): Promise<Course[]> 
   }
 
   // Pre-calculate authentic production courses with session counts
-  const fallbackCounts = await getSessionCountsByCourse(includeUnpublished).catch(() => ({}));
+  const fallbackCounts: Record<string, number> = await getSessionCountsByCourse(includeUnpublished).catch((): Record<string, number> => ({}));
   const enrichedProductionCourses = PRODUCTION_COURSES.map(c => {
     const actualCount = fallbackCounts[c.id] ?? c.sessionsCount ?? 0;
     return {
@@ -298,11 +358,28 @@ export async function getCourses(includeUnpublished = false): Promise<Course[]> 
         console.warn('Failed to attach dynamic session counts:', e);
       }
 
+      if (coursesCache && Array.isArray(coursesCache.data)) {
+        const fetchedIds = new Set(courses.map(c => c.id));
+        const extraLocal = coursesCache.data.filter(c => c && !fetchedIds.has(c.id));
+        const merged = [...courses, ...extraLocal];
+        merged.sort((a, b) => (a.order || 0) - (b.order || 0));
+        coursesCache = { data: merged, timestamp: now };
+        return includeUnpublished ? merged : merged.filter(c => c.isPublished);
+      }
+
       coursesCache = { data: courses, timestamp: now };
       if (!includeUnpublished) {
         courses = courses.filter(c => c.isPublished);
       }
       return courses;
+    }
+
+    if (coursesCache && Array.isArray(coursesCache.data) && coursesCache.data.length > 0) {
+      let filtered = coursesCache.data;
+      if (!includeUnpublished) {
+        filtered = filtered.filter(c => c.isPublished);
+      }
+      return filtered;
     }
 
     // Server empty: return authentic production courses
@@ -314,7 +391,13 @@ export async function getCourses(includeUnpublished = false): Promise<Course[]> 
     return filtered;
   } catch (err) {
     logFirestoreDiagnostic({ operation: 'getCourses', collection: 'courses' }, err);
-    // On quota exhaustion or network disruption, return authentic production courses
+    if (coursesCache && Array.isArray(coursesCache.data) && coursesCache.data.length > 0) {
+      let filtered = coursesCache.data;
+      if (!includeUnpublished) {
+        filtered = filtered.filter(c => c.isPublished);
+      }
+      return filtered;
+    }
     let filtered = enrichedProductionCourses;
     if (!includeUnpublished) {
       filtered = filtered.filter(c => c.isPublished);
@@ -338,8 +421,9 @@ export async function getCourseById(courseId: string): Promise<Course | null> {
 export async function saveCourse(course: Partial<Course> & { title: string; categoryId: string }): Promise<string> {
   const id = course.id || `course-${Date.now()}`;
   const path = `courses/${id}`;
+  logCrudDiagnostic('saveCourse', path, 'start');
   try {
-    await setDoc(doc(db, 'courses', id), {
+    const courseData: Course = {
       ...course,
       id,
       isPublished: course.isPublished ?? true,
@@ -348,20 +432,51 @@ export async function saveCourse(course: Partial<Course> & { title: string; cate
       order: course.order || 1,
       updatedAt: new Date().toISOString(),
       createdAt: course.createdAt || new Date().toISOString()
-    }, { merge: true });
-    invalidateServicesCache('courses');
+    } as Course;
+
+    await setDoc(doc(db, 'courses', id), courseData, { merge: true });
+
+    try {
+      const vSnap = await getDoc(doc(db, 'courses', id));
+      if (vSnap.exists()) {
+        logCrudDiagnostic(`saveCourse Verification [ID: ${id}]`, path, 'success');
+      }
+    } catch (vErr) {
+      console.warn('[saveCourse] Verification notice:', vErr);
+    }
+
+    if (coursesCache && Array.isArray(coursesCache.data)) {
+      const idx = coursesCache.data.findIndex((c) => c.id === id);
+      if (idx >= 0) {
+        coursesCache.data[idx] = courseData;
+      } else {
+        coursesCache.data.push(courseData);
+      }
+      coursesCache.data.sort((a, b) => (a.order || 0) - (b.order || 0));
+      coursesCache.timestamp = Date.now();
+    } else {
+      coursesCache = { data: [courseData], timestamp: Date.now() };
+    }
+
+    logCrudDiagnostic('saveCourse', path, 'success');
     return id;
   } catch (error) {
+    logCrudDiagnostic('saveCourse', path, 'failed', error);
     handleFirestoreError(error, OperationType.WRITE, path);
+    throw error;
   }
 }
 
 export async function deleteCourse(courseId: string): Promise<void> {
   const path = `courses/${courseId}`;
+  logCrudDiagnostic('deleteCourse', path, 'start');
   try {
     // 1. Delete course document from Cloud Firestore
     await deleteDoc(doc(db, 'courses', courseId));
-    invalidateServicesCache('courses');
+    if (coursesCache && Array.isArray(coursesCache.data)) {
+      coursesCache.data = coursesCache.data.filter((c) => c.id !== courseId);
+      coursesCache.timestamp = Date.now();
+    }
 
     // 2. Cascading delete subcollection sessions: courses/{courseId}/sessions
     try {
@@ -422,8 +537,11 @@ export async function deleteCourse(courseId: string): Promise<void> {
     } catch (e) {
       console.warn('Attempts cleanup notice:', e);
     }
+    logCrudDiagnostic('deleteCourse', path, 'success');
   } catch (error) {
+    logCrudDiagnostic('deleteCourse', path, 'failed', error);
     handleFirestoreError(error, OperationType.DELETE, path);
+    throw error;
   }
 }
 
@@ -615,6 +733,7 @@ export async function resolveSessionFromRoute(
 export async function saveSession(courseId: string, session: Partial<Session> & { title: string }): Promise<string> {
   const id = session.id || `session-${Date.now()}`;
   const path = `courses/${courseId}/sessions/${id}`;
+  logCrudDiagnostic('saveSession', path, 'start');
   try {
     const rawData = {
       id,
@@ -667,19 +786,48 @@ export async function saveSession(courseId: string, session: Partial<Session> & 
       console.warn('Update course sessionsCount notice:', e);
     }
 
+    // Update write-through cache
+    const savedSessionObj = { id, courseId, ...sessionData } as Session;
+    const cachedEntry = sessionsByCourseCache.get(courseId);
+    if (cachedEntry && Array.isArray(cachedEntry.data)) {
+      const idx = cachedEntry.data.findIndex((s) => s.id === id);
+      if (idx >= 0) {
+        cachedEntry.data[idx] = savedSessionObj;
+      } else {
+        cachedEntry.data.push(savedSessionObj);
+      }
+      cachedEntry.data.sort((a, b) => (a.order || 0) - (b.order || 0));
+      cachedEntry.timestamp = Date.now();
+    } else {
+      sessionsByCourseCache.set(courseId, { data: [savedSessionObj], timestamp: Date.now() });
+    }
+
+    invalidateServicesCache('courses');
+    logCrudDiagnostic('saveSession', path, 'success');
     return id;
   } catch (error) {
+    logCrudDiagnostic('saveSession', path, 'failed', error);
     handleFirestoreError(error, OperationType.WRITE, path);
+    throw error;
   }
 }
 
 export async function deleteSession(courseId: string, sessionId: string): Promise<void> {
   const path = `courses/${courseId}/sessions/${sessionId}`;
+  logCrudDiagnostic('deleteSession', path, 'start');
   try {
     // 1. Delete from subcollection
     await deleteDoc(doc(db, 'courses', courseId, 'sessions', sessionId)).catch(() => {});
     // 2. Delete from top-level sessions
     await deleteDoc(doc(db, 'sessions', sessionId)).catch(() => {});
+
+    // Update write-through cache
+    const cachedEntry = sessionsByCourseCache.get(courseId);
+    if (cachedEntry && Array.isArray(cachedEntry.data)) {
+      cachedEntry.data = cachedEntry.data.filter((s) => s.id !== sessionId);
+      cachedEntry.timestamp = Date.now();
+    }
+
     // 3. Unlink from any quizzes that reference this sessionId
     try {
       const quizzes = await getDocs(query(collection(db, 'quizzes'), where('sessionId', '==', sessionId)));
@@ -705,8 +853,12 @@ export async function deleteSession(courseId: string, sessionId: string): Promis
     } catch (e) {
       console.warn('Update course sessionsCount on delete notice:', e);
     }
+    invalidateServicesCache('courses');
+    logCrudDiagnostic('deleteSession', path, 'success');
   } catch (error) {
+    logCrudDiagnostic('deleteSession', path, 'failed', error);
     handleFirestoreError(error, OperationType.DELETE, path);
+    throw error;
   }
 }
 
@@ -753,8 +905,9 @@ export async function getAllQuizzes(): Promise<Quiz[]> {
 export async function saveQuiz(quiz: Partial<Quiz> & { title: string; courseId: string; questions: any[] }): Promise<string> {
   const id = quiz.id || `quiz-${Date.now()}`;
   const path = `quizzes/${id}`;
+  logCrudDiagnostic('saveQuiz', path, 'start');
   try {
-    await setDoc(doc(db, 'quizzes', id), {
+    const quizData = {
       ...quiz,
       id,
       passingScore: quiz.passingScore ?? 75,
@@ -764,7 +917,18 @@ export async function saveQuiz(quiz: Partial<Quiz> & { title: string; courseId: 
       isPublished: quiz.isPublished ?? true,
       updatedAt: new Date().toISOString(),
       createdAt: quiz.createdAt || new Date().toISOString()
-    }, { merge: true });
+    };
+    await setDoc(doc(db, 'quizzes', id), quizData, { merge: true });
+
+    // Verification read-back
+    try {
+      const vSnap = await getDoc(doc(db, 'quizzes', id));
+      if (vSnap.exists()) {
+        logCrudDiagnostic(`saveQuiz Verification [ID: ${id}]`, path, 'success');
+      }
+    } catch (vErr) {
+      console.warn('[saveQuiz] Verification notice:', vErr);
+    }
 
     // If quiz has sessionId, update that session's quizId
     if (quiz.sessionId && quiz.courseId) {
@@ -772,14 +936,18 @@ export async function saveQuiz(quiz: Partial<Quiz> & { title: string; courseId: 
       await updateDoc(doc(db, 'sessions', quiz.sessionId), { quizId: id }).catch(() => {});
     }
 
+    logCrudDiagnostic('saveQuiz', path, 'success');
     return id;
   } catch (error) {
+    logCrudDiagnostic('saveQuiz', path, 'failed', error);
     handleFirestoreError(error, OperationType.WRITE, path);
+    throw error;
   }
 }
 
 export async function deleteQuiz(quizId: string): Promise<void> {
   const path = `quizzes/${quizId}`;
+  logCrudDiagnostic('deleteQuiz', path, 'start');
   try {
     await deleteDoc(doc(db, 'quizzes', quizId));
     // Clear quizId from any sessions
@@ -793,8 +961,11 @@ export async function deleteQuiz(quizId: string): Promise<void> {
         }
       }
     }
+    logCrudDiagnostic('deleteQuiz', path, 'success');
   } catch (error) {
+    logCrudDiagnostic('deleteQuiz', path, 'failed', error);
     handleFirestoreError(error, OperationType.DELETE, path);
+    throw error;
   }
 }
 
@@ -1387,17 +1558,29 @@ export async function getBlogPosts(includeDrafts = false): Promise<BlogPost[]> {
 
       const filtered = filterProductionBlogPosts(rawPosts, true);
       if (filtered.length > 0) {
+        if (blogPostsCache && Array.isArray(blogPostsCache.data)) {
+          const fetchedIds = new Set(filtered.map(p => p.id));
+          const extraLocal = blogPostsCache.data.filter(p => p && !fetchedIds.has(p.id));
+          const merged = [...extraLocal, ...filtered];
+          blogPostsCache = { data: merged, timestamp: now };
+          return filterProductionBlogPosts(merged, includeDrafts);
+        }
         blogPostsCache = { data: filtered, timestamp: now };
         return filterProductionBlogPosts(filtered, includeDrafts);
       }
     }
 
-    // If server returned empty, use authentic production posts
+    if (blogPostsCache && Array.isArray(blogPostsCache.data) && blogPostsCache.data.length > 0) {
+      return filterProductionBlogPosts(blogPostsCache.data, includeDrafts);
+    }
+
     blogPostsCache = { data: PRODUCTION_BLOG_POSTS, timestamp: now };
     return filterProductionBlogPosts(PRODUCTION_BLOG_POSTS, includeDrafts);
   } catch (err) {
     logFirestoreDiagnostic({ operation: 'getBlogPosts', collection: 'blogPosts' }, err);
-    // On quota exhaustion or network disruption, return authentic production snapshot
+    if (blogPostsCache && Array.isArray(blogPostsCache.data) && blogPostsCache.data.length > 0) {
+      return filterProductionBlogPosts(blogPostsCache.data, includeDrafts);
+    }
     blogPostsCache = { data: PRODUCTION_BLOG_POSTS, timestamp: now };
     return filterProductionBlogPosts(PRODUCTION_BLOG_POSTS, includeDrafts);
   }
@@ -1447,6 +1630,7 @@ export async function getBlogPostById(id: string): Promise<BlogPost | null> {
 export async function saveBlogPost(post: Partial<BlogPost> & { title: string }): Promise<string> {
   const id = post.id || `post-${Date.now()}`;
   const path = `blogPosts/${id}`;
+  logCrudDiagnostic('saveBlogPost', path, 'start');
 
   let baseSlug = (post.slug || post.title)
     .toLowerCase()
@@ -1481,7 +1665,7 @@ export async function saveBlogPost(post: Partial<BlogPost> & { title: string }):
     publishedAt = post.publishedAt || '';
   }
 
-  const data: BlogPost = {
+  const data: Record<string, any> = {
     id,
     title: post.title.trim(),
     titleAr: post.titleAr || '',
@@ -1494,23 +1678,63 @@ export async function saveBlogPost(post: Partial<BlogPost> & { title: string }):
     category: post.category || 'Kajian Umum',
     tags: Array.isArray(post.tags) ? post.tags : [],
     status,
-    isFeatured: post.isFeatured || false,
+    isFeatured: Boolean(post.isFeatured),
     authorName: post.authorName || 'Osama',
     authorPhoto: post.authorPhoto || '',
     authorRole: post.authorRole || 'Pengasuh Dars with Osama',
     readingTimeMinutes,
-    viewsCount: post.viewsCount || 0,
+    viewsCount: Number(post.viewsCount) || 0,
     publishedAt,
-    ...(post.audioConfig ? { audioConfig: post.audioConfig } : {}),
     createdAt: post.createdAt || now,
     updatedAt: now
   };
 
+  if (post.audioConfig) {
+    data.audioConfig = {
+      enabled: Boolean(post.audioConfig.enabled),
+      mode: post.audioConfig.mode || 'speech',
+      speechRate: Number(post.audioConfig.speechRate) || 1.0,
+      speechVoiceName: post.audioConfig.speechVoiceName || '',
+      customAudioUrl: post.audioConfig.customAudioUrl || ''
+    };
+  }
+
   try {
+    // 1. Write document to Firestore
     await setDoc(doc(db, 'blogPosts', id), data, { merge: true });
-    invalidateServicesCache('blog');
+
+    // 2. Perform verification read-back from server/cache
+    let verifiedPost: BlogPost = data as BlogPost;
+    try {
+      const verifySnap = await getDoc(doc(db, 'blogPosts', id));
+      if (verifySnap.exists()) {
+        verifiedPost = { id: verifySnap.id, ...verifySnap.data() } as BlogPost;
+        logCrudDiagnostic(`saveBlogPost Verification [ID: ${verifiedPost.id}, Status: ${verifiedPost.status}, Title: "${verifiedPost.title}"]`, path, 'success');
+      }
+    } catch (vErr) {
+      console.warn('[saveBlogPost] Verification read-back notice:', vErr);
+    }
+
+    // 3. Immediately update in-memory cache with the verified/saved post
+    if (blogPostsCache && Array.isArray(blogPostsCache.data)) {
+      const idx = blogPostsCache.data.findIndex((p) => p.id === id);
+      if (idx >= 0) {
+        blogPostsCache.data[idx] = verifiedPost;
+      } else {
+        blogPostsCache.data.unshift(verifiedPost);
+      }
+      blogPostsCache.timestamp = Date.now();
+    } else {
+      blogPostsCache = {
+        data: [verifiedPost, ...PRODUCTION_BLOG_POSTS.filter((p) => p.id !== id)],
+        timestamp: Date.now()
+      };
+    }
+
+    logCrudDiagnostic('saveBlogPost', path, 'success');
     return id;
   } catch (error) {
+    logCrudDiagnostic('saveBlogPost', path, 'failed', error);
     handleFirestoreError(error, OperationType.WRITE, path);
     throw error;
   }
@@ -1518,10 +1742,16 @@ export async function saveBlogPost(post: Partial<BlogPost> & { title: string }):
 
 export async function deleteBlogPost(id: string): Promise<void> {
   const path = `blogPosts/${id}`;
+  logCrudDiagnostic('deleteBlogPost', path, 'start');
   try {
     await deleteDoc(doc(db, 'blogPosts', id));
-    invalidateServicesCache('blog');
+    if (blogPostsCache && Array.isArray(blogPostsCache.data)) {
+      blogPostsCache.data = blogPostsCache.data.filter((p) => p.id !== id);
+      blogPostsCache.timestamp = Date.now();
+    }
+    logCrudDiagnostic('deleteBlogPost', path, 'success');
   } catch (error) {
+    logCrudDiagnostic('deleteBlogPost', path, 'failed', error);
     handleFirestoreError(error, OperationType.DELETE, path);
   }
 }
@@ -1652,13 +1882,31 @@ export async function getPublishedPublicQA(): Promise<Consultation[]> {
     if (!snapshot.empty) {
       const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Consultation));
       list.sort((a, b) => new Date(b.publishedAt || b.createdAt).getTime() - new Date(a.publishedAt || a.createdAt).getTime());
+
+      if (publicQACache && Array.isArray(publicQACache.data)) {
+        const fetchedIds = new Set(list.map(c => c.id));
+        const extraLocal = publicQACache.data.filter(c => c && !fetchedIds.has(c.id));
+        const merged = [...list, ...extraLocal];
+        merged.sort((a, b) => new Date(b.publishedAt || b.createdAt).getTime() - new Date(a.publishedAt || a.createdAt).getTime());
+        publicQACache = { data: merged, timestamp: now };
+        return merged;
+      }
+
       publicQACache = { data: list, timestamp: now };
       return list;
     }
+
+    if (publicQACache && Array.isArray(publicQACache.data) && publicQACache.data.length > 0) {
+      return publicQACache.data;
+    }
+
     publicQACache = { data: fallbackQA, timestamp: now };
     return fallbackQA;
   } catch (error) {
     logFirestoreDiagnostic({ operation: 'getPublishedPublicQA', collection: 'consultations' }, error);
+    if (publicQACache && Array.isArray(publicQACache.data) && publicQACache.data.length > 0) {
+      return publicQACache.data;
+    }
     publicQACache = { data: fallbackQA, timestamp: now };
     return fallbackQA;
   }
@@ -1671,6 +1919,7 @@ export async function replyConsultation(
 ): Promise<void> {
   const path = `consultations/${consultationId}`;
   const now = new Date().toISOString();
+  logCrudDiagnostic('replyConsultation', path, 'start');
   
   try {
     const docRef = doc(db, 'consultations', consultationId);
@@ -1681,7 +1930,10 @@ export async function replyConsultation(
       status: newStatus,
       updatedAt: now
     });
+    invalidateServicesCache('qa');
+    logCrudDiagnostic('replyConsultation', path, 'success');
   } catch (error) {
+    logCrudDiagnostic('replyConsultation', path, 'failed', error);
     handleFirestoreError(error, OperationType.WRITE, path);
     throw error;
   }
@@ -1693,6 +1945,7 @@ export async function togglePublishConsultation(
 ): Promise<void> {
   const path = `consultations/${consultationId}`;
   const now = new Date().toISOString();
+  logCrudDiagnostic('togglePublishConsultation', path, 'start');
 
   try {
     const docRef = doc(db, 'consultations', consultationId);
@@ -1710,7 +1963,10 @@ export async function togglePublishConsultation(
       publishedAt: isPublished ? now : null,
       updatedAt: now
     });
+    invalidateServicesCache('qa');
+    logCrudDiagnostic('togglePublishConsultation', path, 'success');
   } catch (error) {
+    logCrudDiagnostic('togglePublishConsultation', path, 'failed', error);
     handleFirestoreError(error, OperationType.WRITE, path);
     throw error;
   }
@@ -1722,6 +1978,7 @@ export async function updateConsultationStatus(
 ): Promise<void> {
   const path = `consultations/${consultationId}`;
   const now = new Date().toISOString();
+  logCrudDiagnostic('updateConsultationStatus', path, 'start');
 
   try {
     const docRef = doc(db, 'consultations', consultationId);
@@ -1729,7 +1986,10 @@ export async function updateConsultationStatus(
       status,
       updatedAt: now
     });
+    invalidateServicesCache('qa');
+    logCrudDiagnostic('updateConsultationStatus', path, 'success');
   } catch (error) {
+    logCrudDiagnostic('updateConsultationStatus', path, 'failed', error);
     handleFirestoreError(error, OperationType.WRITE, path);
     throw error;
   }
@@ -1789,13 +2049,17 @@ export async function getApprovedArticleComments(articleId: string): Promise<Art
       where('status', '==', 'approved')
     );
     const snapshot = await getDocs(q);
-    const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ArticleComment));
-    list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    return list;
+    if (!snapshot.empty) {
+      const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ArticleComment));
+      list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      return list;
+    }
   } catch (error) {
-    handleFirestoreError(error, OperationType.LIST, path);
-    return [];
+    logFirestoreDiagnostic({ operation: 'getApprovedArticleComments', collection: 'articleComments', path }, error);
   }
+  return (PRODUCTION_COMMENTS || [])
+    .filter(c => c.articleId === articleId && c.status === 'approved')
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
 export async function getAllArticleCommentsForAdmin(articleId?: string): Promise<ArticleComment[]> {
@@ -1808,13 +2072,17 @@ export async function getAllArticleCommentsForAdmin(articleId?: string): Promise
       q = query(collection(db, 'articleComments'));
     }
     const snapshot = await getDocs(q);
-    const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ArticleComment));
-    list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    return list;
+    if (!snapshot.empty) {
+      const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ArticleComment));
+      list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      return list;
+    }
   } catch (error) {
-    handleFirestoreError(error, OperationType.LIST, path);
-    return [];
+    logFirestoreDiagnostic({ operation: 'getAllArticleCommentsForAdmin', collection: 'articleComments', path }, error);
   }
+  return (PRODUCTION_COMMENTS || [])
+    .filter(c => !articleId || c.articleId === articleId)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
 export async function moderateArticleComment(

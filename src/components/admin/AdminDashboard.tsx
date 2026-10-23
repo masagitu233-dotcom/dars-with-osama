@@ -2439,6 +2439,16 @@ export const AdminDashboard: React.FC<{
 
             {/* Modal Form Content */}
             <form onSubmit={handleSaveMultiStepSession} className="p-6 space-y-6 overflow-y-auto flex-1">
+              {statusMessage && (
+                <div className={`p-3.5 rounded-2xl border text-xs sm:text-sm flex items-center gap-3 animate-fade-in ${
+                  statusMessage.type === 'success'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/80 border-emerald-300 text-emerald-800 dark:text-emerald-200'
+                    : 'bg-rose-50 dark:bg-rose-950/80 border-rose-300 text-rose-800 dark:text-rose-200'
+                }`}>
+                  {statusMessage.type === 'success' ? <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" /> : <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />}
+                  <span>{statusMessage.text}</span>
+                </div>
+              )}
               {/* TAB 1: INFORMASI SESI */}
               {sessionFormTab === 1 && (
                 <div className="space-y-4 animate-fade-in">
@@ -2871,6 +2881,16 @@ export const AdminDashboard: React.FC<{
             </div>
 
             <form onSubmit={handleSaveCategory} className="space-y-4">
+              {statusMessage && (
+                <div className={`p-3.5 rounded-2xl border text-xs sm:text-sm flex items-center gap-3 animate-fade-in ${
+                  statusMessage.type === 'success'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/80 border-emerald-300 text-emerald-800 dark:text-emerald-200'
+                    : 'bg-rose-50 dark:bg-rose-950/80 border-rose-300 text-rose-800 dark:text-rose-200'
+                }`}>
+                  {statusMessage.type === 'success' ? <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" /> : <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />}
+                  <span>{statusMessage.text}</span>
+                </div>
+              )}
               <div>
                 <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 block mb-1">
                   Nama Bab / Modul (Bahasa Indonesia) <span className="text-rose-500">*</span>
@@ -2945,6 +2965,16 @@ export const AdminDashboard: React.FC<{
             </div>
 
             <form onSubmit={handleSaveCourse} className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
+              {statusMessage && (
+                <div className={`p-3.5 rounded-2xl border text-xs sm:text-sm flex items-center gap-3 animate-fade-in ${
+                  statusMessage.type === 'success'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/80 border-emerald-300 text-emerald-800 dark:text-emerald-200'
+                    : 'bg-rose-50 dark:bg-rose-950/80 border-rose-300 text-rose-800 dark:text-rose-200'
+                }`}>
+                  {statusMessage.type === 'success' ? <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" /> : <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />}
+                  <span>{statusMessage.text}</span>
+                </div>
+              )}
               <div>
                 <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 block mb-1">
                   Bab / Modul Kategori <span className="text-rose-500">*</span>
