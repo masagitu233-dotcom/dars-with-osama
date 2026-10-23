@@ -156,11 +156,11 @@ export const AuthModal: React.FC = () => {
       } else if (err?.code === 'auth/unauthorized-domain') {
         const domain = typeof window !== 'undefined' ? window.location.hostname : 'Netlify';
         setError(
-          `Domain (${domain}) belum didaftarkan di Authorized Domains Firebase.\n\n` +
+          `Domain saat ini (${domain}) belum terdaftar di Authorized Domains Firebase.\n\n` +
           `Cara Mengatasi:\n` +
           `1. Buka Firebase Console > Authentication > Settings > Authorized Domains.\n` +
-          `2. Klik "Add Domain" dan masukkan "${domain}".\n` +
-          `3. Pengguna sekarang dapat login dengan Google.`
+          `2. Klik "Add Domain" dan masukkan: ${domain}\n` +
+          `3. Setelah disimpan, klik kembali tombol "Lanjutkan dengan Google".`
         );
       } else if (err?.code === 'auth/operation-not-allowed') {
         setError('Metode login Google belum diaktifkan di Firebase Console (Authentication > Sign-in method > Google).');
@@ -173,7 +173,7 @@ export const AuthModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/65 dark:bg-black/85 backdrop-blur-md animate-fade-in overflow-y-auto">
+    <div className="fixed inset-0 z-[110] flex items-center justify-center p-3 sm:p-4 bg-black/65 dark:bg-black/85 backdrop-blur-md animate-fade-in overflow-y-auto">
       <div className="relative w-full max-w-md my-auto bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl shadow-2xl p-5 sm:p-7 text-stone-900 dark:text-stone-100 max-h-[92dvh] overflow-y-auto animate-modal-in">
         {/* Soft Ambient Background Elements */}
         <div className="absolute -top-16 -right-16 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none animate-pulse-glow" />

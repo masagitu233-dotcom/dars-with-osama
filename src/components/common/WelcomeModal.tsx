@@ -5,9 +5,10 @@ import { LogoSymbol } from './Logo';
 interface WelcomeModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onLogin?: () => void;
 }
 
-export const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose }) => {
+export const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose, onLogin }) => {
   if (!isOpen) return null;
 
   return (
@@ -107,8 +108,16 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose }) =
               onClick={onClose}
               className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-[#073B2E]/20 dark:border-[#C9A34E]/30 text-[#073B2E] dark:text-[#F7F6EF] hover:bg-[#073B2E]/5 dark:hover:bg-[#C9A34E]/10 text-xs font-semibold transition cursor-pointer"
             >
-              Tutup
+              Jelajahi sebagai Tamu
             </button>
+            {onLogin && (
+              <button
+                onClick={onLogin}
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-emerald-600/40 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-800 dark:text-emerald-300 text-xs font-bold transition cursor-pointer"
+              >
+                Masuk / Login Akun
+              </button>
+            )}
             <button
               onClick={onClose}
               className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-[#073B2E] hover:bg-[#0a4d3c] text-white text-xs font-bold shadow-lg hover:shadow-xl transition flex items-center justify-center gap-2 cursor-pointer active:scale-95"

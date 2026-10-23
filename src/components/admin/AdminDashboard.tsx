@@ -62,7 +62,8 @@ import {
   deleteSeedDummyDataFromFirestore,
   getQuizById,
   getBlogPosts,
-  seedDefaultBlogPostsIfEmpty
+  seedDefaultBlogPostsIfEmpty,
+  invalidateServicesCache
 } from '../../firebase/services';
 import { firebaseConfig, getLatestFirestoreDiagnostic } from '../../firebase/config';
 import { useAuth } from '../../context/AuthContext';
@@ -230,16 +231,19 @@ export const AdminDashboard: React.FC<{
     loading: false
   });
 
-  const loadAllAdminData = async () => {
+  const loadAllAdminData = async (forceRefresh = true) => {
     setLoading(true);
     try {
+      if (forceRefresh) {
+        invalidateServicesCache('all');
+      }
       const [cats, crss, qzs, usrs, atts, posts] = await Promise.all([
-        getCategories(),
-        getCourses(true), // include unpublished
+        getCategories(forceRefresh),
+        getCourses(true, forceRefresh), // include unpublished
         getAllQuizzes(),
         getAllUsers(),
         getAllQuizAttempts(),
-        getBlogPosts(true)
+        getBlogPosts(true, forceRefresh)
       ]);
       setCategories(cats);
       setCourses(crss);
@@ -251,7 +255,7 @@ export const AdminDashboard: React.FC<{
       // Load sessions for all courses
       const sessMap: Record<string, Session[]> = {};
       for (const crs of crss) {
-        const sList = await getSessionsByCourse(crs.id, true);
+        const sList = await getSessionsByCourse(crs.id, true, forceRefresh);
         sessMap[crs.id] = sList;
       }
       setAllSessionsMap(sessMap);
@@ -2021,7 +2025,7 @@ export const AdminDashboard: React.FC<{
             <AdminBlogManager
               posts={blogPosts}
               onRefreshPosts={async () => {
-                const updated = await getBlogPosts(true);
+                const updated = await getBlogPosts(true, true);
                 setBlogPosts(updated);
                 if (onRefreshData) onRefreshData();
               }}
@@ -2294,7 +2298,8 @@ export const AdminDashboard: React.FC<{
                     <button
                       type="button"
                       onClick={async () => {
-                        await loadAllAdminData();
+                        invalidateServicesCache('all');
+                        await loadAllAdminData(true);
                         onRefreshData();
                         showStatus('success', 'Data berhasil disinkronkan ulang dari Cloud Firestore.');
                       }}

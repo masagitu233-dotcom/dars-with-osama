@@ -1,5 +1,14 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getAuth, Auth } from 'firebase/auth';
+import {
+  getAuth,
+  initializeAuth,
+  indexedDBLocalPersistence,
+  browserLocalPersistence,
+  browserSessionPersistence,
+  inMemoryPersistence,
+  browserPopupRedirectResolver,
+  Auth
+} from 'firebase/auth';
 import { getFirestore, Firestore, doc, getDocFromServer } from 'firebase/firestore';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 import rawAppletConfig from '../../firebase-applet-config.json';
@@ -130,7 +139,28 @@ if (getApps().length > 0) {
 
 // 4. Initialize Firestore strictly targeting the verified named database ID
 export const db: Firestore = getFirestore(app, targetDatabaseId);
-export const auth: Auth = getAuth(app);
+
+function createResilientAuth(firebaseApp: FirebaseApp): Auth {
+  if (typeof window !== 'undefined') {
+    try {
+      return initializeAuth(firebaseApp, {
+        persistence: [
+          indexedDBLocalPersistence,
+          browserLocalPersistence,
+          browserSessionPersistence,
+          inMemoryPersistence
+        ],
+        popupRedirectResolver: browserPopupRedirectResolver
+      });
+    } catch {
+      // Auth already initialized on this app instance
+      return getAuth(firebaseApp);
+    }
+  }
+  return getAuth(firebaseApp);
+}
+
+export const auth: Auth = createResilientAuth(app);
 export const storage: FirebaseStorage = getStorage(app);
 
 export enum OperationType {

@@ -80,7 +80,7 @@ interface CacheEntry<T> {
 
 let categoriesCache: CacheEntry<Category[]> | null = null;
 let coursesCache: CacheEntry<Course[]> | null = null;
-let sessionCountsCache: CacheEntry<Record<string, number>> | null = null;
+const sessionCountsCache = new Map<boolean, CacheEntry<Record<string, number>>>();
 const sessionsByCourseCache = new Map<string, CacheEntry<Session[]>>();
 let blogPostsCache: CacheEntry<BlogPost[]> | null = null;
 let publicQACache: CacheEntry<Consultation[]> | null = null;
@@ -89,7 +89,7 @@ export function invalidateServicesCache(target?: 'categories' | 'courses' | 'ses
   if (!target || target === 'all') {
     categoriesCache = null;
     coursesCache = null;
-    sessionCountsCache = null;
+    sessionCountsCache.clear();
     sessionsByCourseCache.clear();
     blogPostsCache = null;
     publicQACache = null;
@@ -97,9 +97,10 @@ export function invalidateServicesCache(target?: 'categories' | 'courses' | 'ses
     categoriesCache = null;
   } else if (target === 'courses') {
     coursesCache = null;
-    sessionCountsCache = null;
+    sessionCountsCache.clear();
   } else if (target === 'sessions') {
-    sessionCountsCache = null;
+    coursesCache = null;
+    sessionCountsCache.clear();
     sessionsByCourseCache.clear();
   } else if (target === 'blog') {
     blogPostsCache = null;
@@ -109,35 +110,21 @@ export function invalidateServicesCache(target?: 'categories' | 'courses' | 'ses
 }
 
 // ==========================================
-// CATEGORIES (Cloud Firestore with Production Fallback)
+// CATEGORIES (Cloud Firestore with Production Fallback on Error)
 // ==========================================
-export async function getCategories(): Promise<Category[]> {
+export async function getCategories(forceRefresh = false): Promise<Category[]> {
   const now = Date.now();
-  if (categoriesCache && now - categoriesCache.timestamp < CACHE_TTL_MS) {
+  if (!forceRefresh && categoriesCache && now - categoriesCache.timestamp < CACHE_TTL_MS) {
     return categoriesCache.data;
   }
 
   try {
     const q = query(collection(db, 'categories'), orderBy('order', 'asc'));
     const snapshot = await getDocs(q);
-    if (!snapshot.empty) {
-      const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Category));
-      if (categoriesCache && Array.isArray(categoriesCache.data)) {
-        const fetchedIds = new Set(list.map(c => c.id));
-        const extraLocal = categoriesCache.data.filter(c => c && !fetchedIds.has(c.id));
-        const merged = [...list, ...extraLocal];
-        merged.sort((a, b) => (a.order || 0) - (b.order || 0));
-        categoriesCache = { data: merged, timestamp: now };
-        return merged;
-      }
-      categoriesCache = { data: list, timestamp: now };
-      return list;
-    }
-    if (categoriesCache && Array.isArray(categoriesCache.data) && categoriesCache.data.length > 0) {
-      return categoriesCache.data;
-    }
-    categoriesCache = { data: PRODUCTION_CATEGORIES, timestamp: now };
-    return PRODUCTION_CATEGORIES;
+    const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Category));
+    list.sort((a, b) => (a.order || 0) - (b.order || 0));
+    categoriesCache = { data: list, timestamp: now };
+    return list;
   } catch (err) {
     logFirestoreDiagnostic({ operation: 'getCategories', collection: 'categories' }, err);
     if (categoriesCache && Array.isArray(categoriesCache.data) && categoriesCache.data.length > 0) {
@@ -154,11 +141,11 @@ export async function saveCategory(category: Partial<Category> & { name: string;
   try {
     const data: Category = {
       id,
-      name: category.name,
+      name: category.name.trim(),
       nameAr: category.nameAr || '',
-      slug: category.slug,
+      slug: category.slug.trim(),
       description: category.description || '',
-      order: category.order || 1,
+      order: Number(category.order) || 1,
       createdAt: category.createdAt || new Date().toISOString()
     };
     await setDoc(doc(db, 'categories', id), data, { merge: true });
@@ -172,19 +159,7 @@ export async function saveCategory(category: Partial<Category> & { name: string;
       console.warn('[saveCategory] Verification notice:', vErr);
     }
 
-    if (categoriesCache && Array.isArray(categoriesCache.data)) {
-      const idx = categoriesCache.data.findIndex((c) => c.id === id);
-      if (idx >= 0) {
-        categoriesCache.data[idx] = data;
-      } else {
-        categoriesCache.data.push(data);
-      }
-      categoriesCache.data.sort((a, b) => (a.order || 0) - (b.order || 0));
-      categoriesCache.timestamp = Date.now();
-    } else {
-      categoriesCache = { data: [data], timestamp: Date.now() };
-    }
-
+    invalidateServicesCache('categories');
     logCrudDiagnostic('saveCategory', path, 'success');
     return id;
   } catch (error) {
@@ -199,10 +174,7 @@ export async function deleteCategory(id: string): Promise<void> {
   logCrudDiagnostic('deleteCategory', path, 'start');
   try {
     await deleteDoc(doc(db, 'categories', id));
-    if (categoriesCache && Array.isArray(categoriesCache.data)) {
-      categoriesCache.data = categoriesCache.data.filter((c) => c.id !== id);
-      categoriesCache.timestamp = Date.now();
-    }
+    invalidateServicesCache('categories');
     logCrudDiagnostic('deleteCategory', path, 'success');
   } catch (error) {
     logCrudDiagnostic('deleteCategory', path, 'failed', error);
@@ -224,8 +196,8 @@ export async function seedDefaultCategoriesIfEmpty(): Promise<Category[]> {
     for (const cat of SEED_CATEGORIES) {
       await setDoc(doc(db, 'categories', cat.id), cat, { merge: true });
     }
-    const fresh = await getCategories();
-    return fresh;
+    invalidateServicesCache('categories');
+    return await getCategories(true);
   } catch (err) {
     console.warn('seedDefaultCategoriesIfEmpty notice:', err);
     return PRODUCTION_CATEGORIES;
@@ -233,15 +205,15 @@ export async function seedDefaultCategoriesIfEmpty(): Promise<Category[]> {
 }
 
 // ==========================================
-// COURSES (Cloud Firestore with Production Fallback)
+// COURSES (Cloud Firestore with Production Fallback on Error)
 // ==========================================
-export async function getSessionCountsByCourse(includeUnpublished = false): Promise<Record<string, number>> {
+export async function getSessionCountsByCourse(includeUnpublished = false, forceRefresh = false): Promise<Record<string, number>> {
   const now = Date.now();
-  if (sessionCountsCache && now - sessionCountsCache.timestamp < CACHE_TTL_MS) {
-    return sessionCountsCache.data;
+  const cached = sessionCountsCache.get(includeUnpublished);
+  if (!forceRefresh && cached && now - cached.timestamp < CACHE_TTL_MS) {
+    return cached.data;
   }
 
-  // Pre-calculate fallback counts directly from authentic PRODUCTION_SESSIONS
   const fallbackCounts: Record<string, number> = {};
   for (const s of PRODUCTION_SESSIONS) {
     if (s.courseId) {
@@ -253,10 +225,13 @@ export async function getSessionCountsByCourse(includeUnpublished = false): Prom
 
   try {
     const countsMap: Record<string, Set<string>> = {};
+    let subScanSucceeded = false;
+    let topScanSucceeded = false;
 
     // 1. Scan courses and check subcollection sessions
     try {
       const coursesSnapshot = await getDocs(collection(db, 'courses'));
+      subScanSucceeded = true;
       if (!coursesSnapshot.empty) {
         for (const cDoc of coursesSnapshot.docs) {
           const courseId = cDoc.id;
@@ -281,6 +256,7 @@ export async function getSessionCountsByCourse(includeUnpublished = false): Prom
     // 2. Scan top-level sessions collection
     try {
       const topSnapshot = await getDocs(collection(db, 'sessions'));
+      topScanSucceeded = true;
       topSnapshot.forEach(d => {
         const data = d.data();
         if (data.courseId) {
@@ -296,113 +272,66 @@ export async function getSessionCountsByCourse(includeUnpublished = false): Prom
       logFirestoreDiagnostic({ operation: 'getSessionCountsByCourse (top-level scan)', collection: 'sessions' }, e);
     }
 
+    if (!subScanSucceeded && !topScanSucceeded) {
+      sessionCountsCache.set(includeUnpublished, { data: fallbackCounts, timestamp: now });
+      return fallbackCounts;
+    }
+
     const result: Record<string, number> = {};
     for (const courseId in countsMap) {
       result[courseId] = countsMap[courseId].size;
     }
 
-    // If live queries returned 0 results (or failed/quota-exhausted), merge fallback counts
-    for (const courseId in fallbackCounts) {
-      if (!result[courseId] || result[courseId] === 0) {
-        result[courseId] = fallbackCounts[courseId];
-      }
-    }
-
-    sessionCountsCache = { data: result, timestamp: now };
+    sessionCountsCache.set(includeUnpublished, { data: result, timestamp: now });
     return result;
   } catch (err) {
     logFirestoreDiagnostic({ operation: 'getSessionCountsByCourse (fallback)', collection: 'sessions' }, err);
-    sessionCountsCache = { data: fallbackCounts, timestamp: now };
+    sessionCountsCache.set(includeUnpublished, { data: fallbackCounts, timestamp: now });
     return fallbackCounts;
   }
 }
 
-export async function getCourses(includeUnpublished = false): Promise<Course[]> {
-  const now = Date.now();
-  if (coursesCache && now - coursesCache.timestamp < CACHE_TTL_MS) {
-    let cached = coursesCache.data;
-    if (!includeUnpublished) {
-      cached = cached.filter(c => c.isPublished);
-    }
-    return cached;
-  }
+function attachCourseSessionCount(c: Course, counts: Record<string, number>): Course {
+  const actualCount = counts[c.id] ?? c.sessionsCount ?? 0;
+  const rawDuration = (c.totalDuration || '').trim();
+  const shouldAutoFormatDuration = !rawDuration || /^\d+\s+Sesi$/i.test(rawDuration);
+  return {
+    ...c,
+    sessionsCount: actualCount,
+    totalDuration: shouldAutoFormatDuration ? `${actualCount} Sesi` : rawDuration
+  };
+}
 
-  // Pre-calculate authentic production courses with session counts
-  const fallbackCounts: Record<string, number> = await getSessionCountsByCourse(includeUnpublished).catch((): Record<string, number> => ({}));
-  const enrichedProductionCourses = PRODUCTION_COURSES.map(c => {
-    const actualCount = fallbackCounts[c.id] ?? c.sessionsCount ?? 0;
-    return {
-      ...c,
-      sessionsCount: actualCount,
-      totalDuration: `${actualCount} Sesi`
-    };
-  });
+export async function getCourses(includeUnpublished = false, forceRefresh = false): Promise<Course[]> {
+  const now = Date.now();
+  if (!forceRefresh && coursesCache && now - coursesCache.timestamp < CACHE_TTL_MS) {
+    const cached = coursesCache.data;
+    return includeUnpublished ? cached : cached.filter(c => c.isPublished);
+  }
 
   try {
     const snapshot = await getDocs(collection(db, 'courses'));
-    if (!snapshot.empty) {
-      let courses = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Course));
-      courses.sort((a, b) => (a.order || 0) - (b.order || 0));
+    let courses = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Course));
+    courses.sort((a, b) => (a.order || 0) - (b.order || 0));
 
-      try {
-        const counts = await getSessionCountsByCourse(includeUnpublished);
-        courses = courses.map(c => {
-          const actualCount = counts[c.id] ?? c.sessionsCount ?? 0;
-          return {
-            ...c,
-            sessionsCount: actualCount,
-            totalDuration: `${actualCount} Sesi`
-          };
-        });
-      } catch (e) {
-        console.warn('Failed to attach dynamic session counts:', e);
-      }
-
-      if (coursesCache && Array.isArray(coursesCache.data)) {
-        const fetchedIds = new Set(courses.map(c => c.id));
-        const extraLocal = coursesCache.data.filter(c => c && !fetchedIds.has(c.id));
-        const merged = [...courses, ...extraLocal];
-        merged.sort((a, b) => (a.order || 0) - (b.order || 0));
-        coursesCache = { data: merged, timestamp: now };
-        return includeUnpublished ? merged : merged.filter(c => c.isPublished);
-      }
-
-      coursesCache = { data: courses, timestamp: now };
-      if (!includeUnpublished) {
-        courses = courses.filter(c => c.isPublished);
-      }
-      return courses;
+    try {
+      const counts = await getSessionCountsByCourse(includeUnpublished, forceRefresh);
+      courses = courses.map(c => attachCourseSessionCount(c, counts));
+    } catch (e) {
+      console.warn('Failed to attach dynamic session counts:', e);
     }
 
-    if (coursesCache && Array.isArray(coursesCache.data) && coursesCache.data.length > 0) {
-      let filtered = coursesCache.data;
-      if (!includeUnpublished) {
-        filtered = filtered.filter(c => c.isPublished);
-      }
-      return filtered;
-    }
-
-    // Server empty: return authentic production courses
-    coursesCache = { data: enrichedProductionCourses, timestamp: now };
-    let filtered = enrichedProductionCourses;
-    if (!includeUnpublished) {
-      filtered = filtered.filter(c => c.isPublished);
-    }
-    return filtered;
+    coursesCache = { data: courses, timestamp: now };
+    return includeUnpublished ? courses : courses.filter(c => c.isPublished);
   } catch (err) {
     logFirestoreDiagnostic({ operation: 'getCourses', collection: 'courses' }, err);
     if (coursesCache && Array.isArray(coursesCache.data) && coursesCache.data.length > 0) {
-      let filtered = coursesCache.data;
-      if (!includeUnpublished) {
-        filtered = filtered.filter(c => c.isPublished);
-      }
-      return filtered;
+      const cached = coursesCache.data;
+      return includeUnpublished ? cached : cached.filter(c => c.isPublished);
     }
-    let filtered = enrichedProductionCourses;
-    if (!includeUnpublished) {
-      filtered = filtered.filter(c => c.isPublished);
-    }
-    return filtered;
+    const fallbackCounts: Record<string, number> = await getSessionCountsByCourse(includeUnpublished).catch((): Record<string, number> => ({}));
+    const enrichedProductionCourses = PRODUCTION_COURSES.map(c => attachCourseSessionCount(c, fallbackCounts));
+    return includeUnpublished ? enrichedProductionCourses : enrichedProductionCourses.filter(c => c.isPublished);
   }
 }
 
@@ -412,10 +341,11 @@ export async function getCourseById(courseId: string): Promise<Course | null> {
     if (d.exists()) {
       return { id: d.id, ...d.data() } as Course;
     }
+    return null;
   } catch (error) {
     console.warn('getCourseById live fetch notice:', error);
+    return PRODUCTION_COURSES.find(c => c.id === courseId) || null;
   }
-  return PRODUCTION_COURSES.find(c => c.id === courseId) || null;
 }
 
 export async function saveCourse(course: Partial<Course> & { title: string; categoryId: string }): Promise<string> {
@@ -426,10 +356,11 @@ export async function saveCourse(course: Partial<Course> & { title: string; cate
     const courseData: Course = {
       ...course,
       id,
+      title: course.title.trim(),
       isPublished: course.isPublished ?? true,
       hasCertificate: course.hasCertificate ?? true,
       passingGrade: course.passingGrade ?? 75,
-      order: course.order || 1,
+      order: Number(course.order) || 1,
       updatedAt: new Date().toISOString(),
       createdAt: course.createdAt || new Date().toISOString()
     } as Course;
@@ -445,19 +376,7 @@ export async function saveCourse(course: Partial<Course> & { title: string; cate
       console.warn('[saveCourse] Verification notice:', vErr);
     }
 
-    if (coursesCache && Array.isArray(coursesCache.data)) {
-      const idx = coursesCache.data.findIndex((c) => c.id === id);
-      if (idx >= 0) {
-        coursesCache.data[idx] = courseData;
-      } else {
-        coursesCache.data.push(courseData);
-      }
-      coursesCache.data.sort((a, b) => (a.order || 0) - (b.order || 0));
-      coursesCache.timestamp = Date.now();
-    } else {
-      coursesCache = { data: [courseData], timestamp: Date.now() };
-    }
-
+    invalidateServicesCache('courses');
     logCrudDiagnostic('saveCourse', path, 'success');
     return id;
   } catch (error) {
@@ -473,10 +392,6 @@ export async function deleteCourse(courseId: string): Promise<void> {
   try {
     // 1. Delete course document from Cloud Firestore
     await deleteDoc(doc(db, 'courses', courseId));
-    if (coursesCache && Array.isArray(coursesCache.data)) {
-      coursesCache.data = coursesCache.data.filter((c) => c.id !== courseId);
-      coursesCache.timestamp = Date.now();
-    }
 
     // 2. Cascading delete subcollection sessions: courses/{courseId}/sessions
     try {
@@ -537,6 +452,9 @@ export async function deleteCourse(courseId: string): Promise<void> {
     } catch (e) {
       console.warn('Attempts cleanup notice:', e);
     }
+
+    invalidateServicesCache('courses');
+    invalidateServicesCache('sessions');
     logCrudDiagnostic('deleteCourse', path, 'success');
   } catch (error) {
     logCrudDiagnostic('deleteCourse', path, 'failed', error);
@@ -546,17 +464,14 @@ export async function deleteCourse(courseId: string): Promise<void> {
 }
 
 // ==========================================
-// SESSIONS (Cloud Firestore with Production Fallback)
+// SESSIONS (Cloud Firestore with Production Fallback on Error)
 // ==========================================
-export async function getSessionsByCourse(courseId: string, includeUnpublished = false): Promise<Session[]> {
+export async function getSessionsByCourse(courseId: string, includeUnpublished = false, forceRefresh = false): Promise<Session[]> {
   const now = Date.now();
   const cached = sessionsByCourseCache.get(courseId);
-  if (cached && now - cached.timestamp < CACHE_TTL_MS) {
-    let list = cached.data;
-    if (!includeUnpublished) {
-      list = list.filter(s => s.isPublished !== false);
-    }
-    return list;
+  if (!forceRefresh && cached && now - cached.timestamp < CACHE_TTL_MS) {
+    const list = cached.data;
+    return includeUnpublished ? list : list.filter(s => s.isPublished !== false);
   }
 
   const fallbackSessions = PRODUCTION_SESSIONS
@@ -566,11 +481,14 @@ export async function getSessionsByCourse(courseId: string, includeUnpublished =
   try {
     const subSessions: Session[] = [];
     const topSessions: Session[] = [];
+    let subQuerySucceeded = false;
+    let topQuerySucceeded = false;
 
     // 1. Check subcollection: courses/{courseId}/sessions
     try {
       const subCol = collection(db, 'courses', courseId, 'sessions');
       const subSnapshot = await getDocs(subCol);
+      subQuerySucceeded = true;
       subSnapshot.forEach(d => {
         subSessions.push({ id: d.id, courseId, ...d.data() } as Session);
       });
@@ -582,6 +500,7 @@ export async function getSessionsByCourse(courseId: string, includeUnpublished =
     try {
       const q = query(collection(db, 'sessions'), where('courseId', '==', courseId));
       const topSnapshot = await getDocs(q);
+      topQuerySucceeded = true;
       topSnapshot.forEach(d => {
         topSessions.push({ id: d.id, ...d.data() } as Session);
       });
@@ -589,21 +508,19 @@ export async function getSessionsByCourse(courseId: string, includeUnpublished =
       logFirestoreDiagnostic({ operation: 'getSessionsByCourse (top-level)', collection: 'sessions' }, e);
     }
 
-    const merged = mergeCourseSessions(subSessions, topSessions, true);
-    if (merged.length > 0) {
-      sessionsByCourseCache.set(courseId, { data: merged, timestamp: now });
-      return includeUnpublished ? merged : merged.filter(s => s.isPublished !== false);
+    if (!subQuerySucceeded && !topQuerySucceeded) {
+      sessionsByCourseCache.set(courseId, { data: fallbackSessions, timestamp: now });
+      return includeUnpublished ? fallbackSessions : fallbackSessions.filter(s => s.isPublished !== false);
     }
 
-    // If server returned empty, fallback to authentic production sessions
-    sessionsByCourseCache.set(courseId, { data: fallbackSessions, timestamp: now });
-    return includeUnpublished ? fallbackSessions : fallbackSessions.filter(s => s.isPublished !== false);
+    const merged = mergeCourseSessions(subSessions, topSessions, true);
+    sessionsByCourseCache.set(courseId, { data: merged, timestamp: now });
+    return includeUnpublished ? merged : merged.filter(s => s.isPublished !== false);
   } catch (err) {
     logFirestoreDiagnostic(
       { operation: 'getSessionsByCourse', collection: 'sessions', path: `courses/${courseId}/sessions` },
       err
     );
-    // On quota exhaustion or network disruption, return authentic production sessions
     sessionsByCourseCache.set(courseId, { data: fallbackSessions, timestamp: now });
     return includeUnpublished ? fallbackSessions : fallbackSessions.filter(s => s.isPublished !== false);
   }
@@ -611,10 +528,23 @@ export async function getSessionsByCourse(courseId: string, includeUnpublished =
 
 export async function getSessionById(courseId: string, sessionId: string): Promise<Session | null> {
   try {
-    const [subSnap, topSnap] = await Promise.all([
-      getDoc(doc(db, 'courses', courseId, 'sessions', sessionId)).catch(() => null),
-      getDoc(doc(db, 'sessions', sessionId)).catch(() => null)
-    ]);
+    let subSnap: any = null;
+    let topSnap: any = null;
+    let anySucceeded = false;
+
+    try {
+      subSnap = await getDoc(doc(db, 'courses', courseId, 'sessions', sessionId));
+      anySucceeded = true;
+    } catch {
+      // ignore subSnap error
+    }
+
+    try {
+      topSnap = await getDoc(doc(db, 'sessions', sessionId));
+      anySucceeded = true;
+    } catch {
+      // ignore topSnap error
+    }
 
     const subSession = subSnap && subSnap.exists()
       ? ({ id: subSnap.id, courseId, ...subSnap.data() } as Session)
@@ -629,6 +559,9 @@ export async function getSessionById(courseId: string, sessionId: string): Promi
     }
     if (subSession || topSession) {
       return subSession || topSession;
+    }
+    if (anySucceeded) {
+      return null;
     }
   } catch (err) {
     console.warn('getSessionById live fetch notice:', err);
@@ -735,10 +668,26 @@ export async function saveSession(courseId: string, session: Partial<Session> & 
   const path = `courses/${courseId}/sessions/${id}`;
   logCrudDiagnostic('saveSession', path, 'start');
   try {
+    // Check if this session previously belonged to another course so we can clean up its old subcollection document
+    let previousCourseId: string | null = null;
+    if (session.id) {
+      try {
+        const existingTopSnap = await getDoc(doc(db, 'sessions', id));
+        if (existingTopSnap.exists()) {
+          const existingTopData = existingTopSnap.data();
+          if (existingTopData?.courseId && existingTopData.courseId !== courseId) {
+            previousCourseId = existingTopData.courseId;
+          }
+        }
+      } catch {
+        // ignore pre-check notice
+      }
+    }
+
     const rawData = {
       id,
       courseId,
-      title: session.title || `Sesi ${session.order || 1}`,
+      title: session.title ? session.title.trim() : `Sesi ${session.order || 1}`,
       titleAr: session.titleAr || '',
       description: session.description || '',
       descriptionAr: session.descriptionAr || '',
@@ -771,6 +720,24 @@ export async function saveSession(courseId: string, session: Partial<Session> & 
     // 2. Also save to top-level sessions for flat queries
     await setDoc(doc(db, 'sessions', id), sessionData, { merge: true });
 
+    // 2b. If moved from a different course, remove orphaned subcollection document from old course
+    if (previousCourseId && previousCourseId !== courseId) {
+      try {
+        await deleteDoc(doc(db, 'courses', previousCourseId, 'sessions', id));
+        const oldCourseRef = doc(db, 'courses', previousCourseId);
+        const oldCourseDoc = await getDoc(oldCourseRef);
+        if (oldCourseDoc.exists()) {
+          const oldSubSnap = await getDocs(collection(db, 'courses', previousCourseId, 'sessions'));
+          await updateDoc(oldCourseRef, {
+            sessionsCount: oldSubSnap.size,
+            updatedAt: new Date().toISOString()
+          }).catch(() => {});
+        }
+      } catch (cleanupErr) {
+        console.warn('Old course subcollection session cleanup notice:', cleanupErr);
+      }
+    }
+
     // 3. Update parent course sessionsCount
     try {
       const courseRef = doc(db, 'courses', courseId);
@@ -786,22 +753,7 @@ export async function saveSession(courseId: string, session: Partial<Session> & 
       console.warn('Update course sessionsCount notice:', e);
     }
 
-    // Update write-through cache
-    const savedSessionObj = { id, courseId, ...sessionData } as Session;
-    const cachedEntry = sessionsByCourseCache.get(courseId);
-    if (cachedEntry && Array.isArray(cachedEntry.data)) {
-      const idx = cachedEntry.data.findIndex((s) => s.id === id);
-      if (idx >= 0) {
-        cachedEntry.data[idx] = savedSessionObj;
-      } else {
-        cachedEntry.data.push(savedSessionObj);
-      }
-      cachedEntry.data.sort((a, b) => (a.order || 0) - (b.order || 0));
-      cachedEntry.timestamp = Date.now();
-    } else {
-      sessionsByCourseCache.set(courseId, { data: [savedSessionObj], timestamp: Date.now() });
-    }
-
+    invalidateServicesCache('sessions');
     invalidateServicesCache('courses');
     logCrudDiagnostic('saveSession', path, 'success');
     return id;
@@ -817,16 +769,9 @@ export async function deleteSession(courseId: string, sessionId: string): Promis
   logCrudDiagnostic('deleteSession', path, 'start');
   try {
     // 1. Delete from subcollection
-    await deleteDoc(doc(db, 'courses', courseId, 'sessions', sessionId)).catch(() => {});
+    await deleteDoc(doc(db, 'courses', courseId, 'sessions', sessionId));
     // 2. Delete from top-level sessions
-    await deleteDoc(doc(db, 'sessions', sessionId)).catch(() => {});
-
-    // Update write-through cache
-    const cachedEntry = sessionsByCourseCache.get(courseId);
-    if (cachedEntry && Array.isArray(cachedEntry.data)) {
-      cachedEntry.data = cachedEntry.data.filter((s) => s.id !== sessionId);
-      cachedEntry.timestamp = Date.now();
-    }
+    await deleteDoc(doc(db, 'sessions', sessionId));
 
     // 3. Unlink from any quizzes that reference this sessionId
     try {
@@ -839,6 +784,7 @@ export async function deleteSession(courseId: string, sessionId: string): Promis
     } catch (e) {
       console.warn('Quiz unlink notice:', e);
     }
+
     // 4. Update parent course sessionsCount
     try {
       const courseRef = doc(db, 'courses', courseId);
@@ -853,6 +799,8 @@ export async function deleteSession(courseId: string, sessionId: string): Promis
     } catch (e) {
       console.warn('Update course sessionsCount on delete notice:', e);
     }
+
+    invalidateServicesCache('sessions');
     invalidateServicesCache('courses');
     logCrudDiagnostic('deleteSession', path, 'success');
   } catch (error) {
@@ -863,7 +811,7 @@ export async function deleteSession(courseId: string, sessionId: string): Promis
 }
 
 // ==========================================
-// QUIZZES (Cloud Firestore with Production Fallback)
+// QUIZZES (Cloud Firestore with Production Fallback on Error)
 // ==========================================
 export async function getQuizById(quizId: string): Promise<Quiz | null> {
   try {
@@ -871,35 +819,32 @@ export async function getQuizById(quizId: string): Promise<Quiz | null> {
     if (d.exists()) {
       return { id: d.id, ...d.data() } as Quiz;
     }
+    return null;
   } catch (error) {
     console.warn('getQuizById live fetch notice:', error);
+    return PRODUCTION_QUIZZES.find(q => q.id === quizId) || null;
   }
-  return PRODUCTION_QUIZZES.find(q => q.id === quizId) || null;
 }
 
 export async function getQuizzesByCourse(courseId: string): Promise<Quiz[]> {
   try {
     const q = query(collection(db, 'quizzes'), where('courseId', '==', courseId));
     const snapshot = await getDocs(q);
-    if (!snapshot.empty) {
-      return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Quiz));
-    }
+    return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Quiz));
   } catch (err) {
     console.warn('getQuizzesByCourse live fetch notice:', err);
+    return PRODUCTION_QUIZZES.filter(q => q.courseId === courseId);
   }
-  return PRODUCTION_QUIZZES.filter(q => q.courseId === courseId);
 }
 
 export async function getAllQuizzes(): Promise<Quiz[]> {
   try {
     const snapshot = await getDocs(collection(db, 'quizzes'));
-    if (!snapshot.empty) {
-      return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Quiz));
-    }
+    return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Quiz));
   } catch (err) {
     console.warn('getAllQuizzes live fetch notice:', err);
+    return PRODUCTION_QUIZZES;
   }
-  return PRODUCTION_QUIZZES;
 }
 
 export async function saveQuiz(quiz: Partial<Quiz> & { title: string; courseId: string; questions: any[] }): Promise<string> {
@@ -910,6 +855,7 @@ export async function saveQuiz(quiz: Partial<Quiz> & { title: string; courseId: 
     const quizData = {
       ...quiz,
       id,
+      title: quiz.title.trim(),
       passingScore: quiz.passingScore ?? 75,
       timeLimitMinutes: quiz.timeLimitMinutes ?? 0,
       maxAttempts: quiz.maxAttempts ?? 3,
@@ -934,6 +880,7 @@ export async function saveQuiz(quiz: Partial<Quiz> & { title: string; courseId: 
     if (quiz.sessionId && quiz.courseId) {
       await updateDoc(doc(db, 'courses', quiz.courseId, 'sessions', quiz.sessionId), { quizId: id }).catch(() => {});
       await updateDoc(doc(db, 'sessions', quiz.sessionId), { quizId: id }).catch(() => {});
+      invalidateServicesCache('sessions');
     }
 
     logCrudDiagnostic('saveQuiz', path, 'success');
@@ -961,6 +908,7 @@ export async function deleteQuiz(quizId: string): Promise<void> {
         }
       }
     }
+    invalidateServicesCache('sessions');
     logCrudDiagnostic('deleteQuiz', path, 'success');
   } catch (error) {
     logCrudDiagnostic('deleteQuiz', path, 'failed', error);
@@ -1114,7 +1062,10 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
 export async function saveUserProfile(profile: UserProfile): Promise<void> {
   const path = `users/${profile.id}`;
   try {
-    await setDoc(doc(db, 'users', profile.id), profile, { merge: true });
+    const cleanProfile = Object.fromEntries(
+      Object.entries(profile).filter(([, val]) => val !== undefined)
+    );
+    await setDoc(doc(db, 'users', profile.id), cleanProfile, { merge: true });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
@@ -1589,6 +1540,12 @@ export function saveLocalCustomBlogPost(post: BlogPost): void {
     }
     localStorage.setItem(LOCAL_BLOG_STORAGE_KEY, JSON.stringify(existing));
   } catch (err) {
+    // If localStorage quota is exceeded, clear the stale key so frozen old data can never persist
+    try {
+      localStorage.removeItem(LOCAL_BLOG_STORAGE_KEY);
+    } catch {
+      // ignore
+    }
     console.warn('[saveLocalCustomBlogPost] Notice writing to local blog storage:', err);
   }
 }
@@ -1630,45 +1587,36 @@ export function mergeBlogPostsLists(primary: BlogPost[], secondary: BlogPost[], 
   return Array.from(map.values()).filter(p => !tombstones.has(p.id));
 }
 
-export async function getBlogPosts(includeDrafts = false): Promise<BlogPost[]> {
+export async function getBlogPosts(includeDrafts = false, forceRefresh = false): Promise<BlogPost[]> {
   const now = Date.now();
-  const localCustom = getLocalCustomBlogPosts();
-  const deletedIds = getDeletedBlogPostIds();
 
-  if (blogPostsCache && now - blogPostsCache.timestamp < CACHE_TTL_MS) {
-    const mergedWithLocal = mergeBlogPostsLists(blogPostsCache.data, localCustom, deletedIds);
-    return filterProductionBlogPosts(mergedWithLocal, includeDrafts);
+  if (!forceRefresh && blogPostsCache && now - blogPostsCache.timestamp < CACHE_TTL_MS) {
+    return filterProductionBlogPosts(blogPostsCache.data, includeDrafts);
   }
 
   try {
     const snapshot = await getDocs(collection(db, 'blogPosts'));
-    if (!snapshot.empty) {
-      const rawPosts = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as BlogPost));
+    const rawPosts = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as BlogPost));
+    const filtered = filterProductionBlogPosts(rawPosts, true);
 
-      const mergedWithLocal = mergeBlogPostsLists(rawPosts, localCustom, deletedIds);
-      const filtered = filterProductionBlogPosts(mergedWithLocal, true);
-
-      // Save non-dummy custom posts back to local storage
-      filtered.forEach((p) => {
-        if (!isDummySeedBlogPost(p)) {
-          saveLocalCustomBlogPost(p);
-        }
-      });
-
-      blogPostsCache = { data: filtered, timestamp: now };
-      return filterProductionBlogPosts(filtered, includeDrafts);
+    // Clear any stale localStorage blog cache/tombstones so browser localStorage never conflicts with live Firestore
+    if (typeof window !== 'undefined' && window.localStorage) {
+      try {
+        window.localStorage.removeItem(LOCAL_BLOG_STORAGE_KEY);
+        window.localStorage.removeItem(DELETED_BLOG_POSTS_STORAGE_KEY);
+      } catch {
+        // ignore storage cleanup errors
+      }
     }
 
-    const mergedFallback = mergeBlogPostsLists(localCustom, PRODUCTION_BLOG_POSTS, deletedIds);
-    blogPostsCache = { data: mergedFallback, timestamp: now };
-    return filterProductionBlogPosts(mergedFallback, includeDrafts);
+    blogPostsCache = { data: filtered, timestamp: now };
+    return filterProductionBlogPosts(filtered, includeDrafts);
   } catch (err) {
     logFirestoreDiagnostic({ operation: 'getBlogPosts', collection: 'blogPosts' }, err);
-
-    // On quota exhaustion or network error, merge local custom posts with production cache so user posts are never lost
-    const mergedFallback = mergeBlogPostsLists(localCustom, PRODUCTION_BLOG_POSTS, deletedIds);
-    blogPostsCache = { data: mergedFallback, timestamp: now };
-    return filterProductionBlogPosts(mergedFallback, includeDrafts);
+    if (blogPostsCache && Array.isArray(blogPostsCache.data) && blogPostsCache.data.length > 0) {
+      return filterProductionBlogPosts(blogPostsCache.data, includeDrafts);
+    }
+    return filterProductionBlogPosts(PRODUCTION_BLOG_POSTS, includeDrafts);
   }
 }
 
@@ -1682,83 +1630,79 @@ export async function deleteDummyBlogPostsFromFirestore(): Promise<number> {
       // ignore if not exists
     }
   }
+  invalidateServicesCache('blog');
   return count;
 }
 
-export async function getBlogPostBySlug(slug: string): Promise<BlogPost | null> {
+export async function getBlogPostBySlug(slug: string, forceRefresh = false): Promise<BlogPost | null> {
   const cleanSlug = (slug || '').trim().toLowerCase();
-  const deletedIds = getDeletedBlogPostIds();
+  if (!cleanSlug) return null;
 
-  // 1. Check in-memory cache
-  if (blogPostsCache && Array.isArray(blogPostsCache.data)) {
+  // 1. Check in-memory cache if valid and not forced
+  if (!forceRefresh && blogPostsCache && Date.now() - blogPostsCache.timestamp < CACHE_TTL_MS && Array.isArray(blogPostsCache.data)) {
     const found = blogPostsCache.data.find(
-      p => ((p.slug || '').toLowerCase() === cleanSlug || p.id === slug) && !deletedIds.has(p.id)
+      p => (p.slug || '').toLowerCase() === cleanSlug || p.id === slug
     );
     if (found && !isDummySeedBlogPost(found)) return found;
   }
 
-  // 2. Check localStorage
-  const localCustom = getLocalCustomBlogPosts();
-  const localMatch = localCustom.find(
-    p => ((p.slug || '').toLowerCase() === cleanSlug || p.id === slug) && !deletedIds.has(p.id)
-  );
-  if (localMatch && !isDummySeedBlogPost(localMatch)) return localMatch;
-
-  // 3. Live query Firestore
+  // 2. Live query Cloud Firestore directly (Authoritative Source of Truth)
   try {
     const q = query(collection(db, 'blogPosts'), where('slug', '==', cleanSlug));
     const snapshot = await getDocs(q);
     if (!snapshot.empty) {
       const docSnap = snapshot.docs[0];
       const post = { id: docSnap.id, ...docSnap.data() } as BlogPost;
-      if (!isDummySeedBlogPost(post) && !deletedIds.has(post.id)) {
-        saveLocalCustomBlogPost(post);
+      if (!isDummySeedBlogPost(post)) {
+        return post;
+      }
+      return null;
+    }
+
+    // Also check if slug passed is actually a document ID
+    const directDoc = await getDoc(doc(db, 'blogPosts', slug));
+    if (directDoc.exists()) {
+      const post = { id: directDoc.id, ...directDoc.data() } as BlogPost;
+      if (!isDummySeedBlogPost(post)) {
         return post;
       }
     }
+    return null;
   } catch (error) {
     console.warn('getBlogPostBySlug live fetch notice:', error);
+    // 3. Fallback to production cache only when Firestore query fails
+    const prodMatch = PRODUCTION_BLOG_POSTS.find(
+      p => (p.slug || '').toLowerCase() === cleanSlug || p.id === slug
+    );
+    return prodMatch || null;
   }
-
-  // 4. Fallback to production cache
-  const prodMatch = PRODUCTION_BLOG_POSTS.find(
-    p => ((p.slug || '').toLowerCase() === cleanSlug || p.id === slug) && !deletedIds.has(p.id)
-  );
-  return prodMatch || null;
 }
 
-export async function getBlogPostById(id: string): Promise<BlogPost | null> {
-  const deletedIds = getDeletedBlogPostIds();
-  if (deletedIds.has(id)) return null;
+export async function getBlogPostById(id: string, forceRefresh = false): Promise<BlogPost | null> {
+  if (!id) return null;
 
-  // 1. Check in-memory cache
-  if (blogPostsCache && Array.isArray(blogPostsCache.data)) {
-    const found = blogPostsCache.data.find(p => p.id === id && !deletedIds.has(p.id));
+  // 1. Check in-memory cache if valid and not forced
+  if (!forceRefresh && blogPostsCache && Date.now() - blogPostsCache.timestamp < CACHE_TTL_MS && Array.isArray(blogPostsCache.data)) {
+    const found = blogPostsCache.data.find(p => p.id === id);
     if (found && !isDummySeedBlogPost(found)) return found;
   }
 
-  // 2. Check localStorage
-  const localCustom = getLocalCustomBlogPosts();
-  const localMatch = localCustom.find(p => p.id === id && !deletedIds.has(p.id));
-  if (localMatch && !isDummySeedBlogPost(localMatch)) return localMatch;
-
-  // 3. Live query Firestore
+  // 2. Live query Cloud Firestore directly (Authoritative Source of Truth)
   try {
     const d = await getDoc(doc(db, 'blogPosts', id));
     if (d.exists()) {
       const post = { id: d.id, ...d.data() } as BlogPost;
-      if (!isDummySeedBlogPost(post) && !deletedIds.has(post.id)) {
-        saveLocalCustomBlogPost(post);
+      if (!isDummySeedBlogPost(post)) {
         return post;
       }
     }
+    return null;
   } catch (error) {
     console.warn('getBlogPostById live fetch notice:', error);
+    // 3. Fallback to production cache only when Firestore query fails
+    const prodMatch = PRODUCTION_BLOG_POSTS.find(p => p.id === id);
+    return prodMatch || null;
   }
-
-  // 4. Fallback to production cache
-  const prodMatch = PRODUCTION_BLOG_POSTS.find(p => p.id === id && !deletedIds.has(p.id));
-  return prodMatch || null;
 }
 
 export async function saveBlogPost(post: Partial<BlogPost> & { title: string }): Promise<string> {
@@ -1775,7 +1719,7 @@ export async function saveBlogPost(post: Partial<BlogPost> & { title: string }):
 
   let finalSlug = baseSlug;
   try {
-    const existingWithSlug = await getBlogPostBySlug(finalSlug);
+    const existingWithSlug = await getBlogPostBySlug(finalSlug, true);
     if (existingWithSlug && existingWithSlug.id !== id) {
       finalSlug = `${baseSlug}-${Date.now().toString().slice(-4)}`;
     }
@@ -1835,13 +1779,18 @@ export async function saveBlogPost(post: Partial<BlogPost> & { title: string }):
     };
   }
 
-  const savedObj = data as BlogPost;
+  const serializedSize = JSON.stringify(data).length;
+  if (serializedSize > 950000) {
+    throw new Error(
+      `Ukuran dokumen artikel (${Math.round(serializedSize / 1024)} KB) melebihi batas aman 1 MB Cloud Firestore. Harap kurangi ukuran gambar inline di dalam artikel atau gunakan gambar yang lebih terkompresi.`
+    );
+  }
 
   try {
-    // 1. Write document to Firestore
+    // 1. Write document to Cloud Firestore and await server completion
     await setDoc(doc(db, 'blogPosts', id), data, { merge: true });
 
-    // 2. Perform verification read-back from server/cache
+    // 2. Perform verification read-back from Firestore
     try {
       const verifySnap = await getDoc(doc(db, 'blogPosts', id));
       if (verifySnap.exists()) {
@@ -1851,33 +1800,13 @@ export async function saveBlogPost(post: Partial<BlogPost> & { title: string }):
       console.warn('[saveBlogPost] Verification read-back notice:', vErr);
     }
 
-    // 3. Persist to local storage so article is never lost on refresh even if quota is exhausted
-    saveLocalCustomBlogPost(savedObj);
-
-    // 4. Immediately update in-memory cache
-    if (blogPostsCache && Array.isArray(blogPostsCache.data)) {
-      const idx = blogPostsCache.data.findIndex((p) => p.id === id);
-      if (idx >= 0) {
-        blogPostsCache.data[idx] = savedObj;
-      } else {
-        blogPostsCache.data.unshift(savedObj);
-      }
-      blogPostsCache.timestamp = Date.now();
-    } else {
-      const localItems = getLocalCustomBlogPosts();
-      const mergedAll = mergeBlogPostsLists(localItems, PRODUCTION_BLOG_POSTS);
-      blogPostsCache = {
-        data: mergedAll,
-        timestamp: Date.now()
-      };
-    }
+    // 3. Invalidate in-memory blog cache so subsequent reads fetch authoritative server state
+    invalidateServicesCache('blog');
 
     logCrudDiagnostic('saveBlogPost', path, 'success');
     return id;
   } catch (error) {
     logCrudDiagnostic('saveBlogPost', path, 'failed', error);
-    // Persist locally so user content is preserved
-    saveLocalCustomBlogPost(savedObj);
     handleFirestoreError(error, OperationType.WRITE, path);
     throw error;
   }
@@ -1886,21 +1815,16 @@ export async function saveBlogPost(post: Partial<BlogPost> & { title: string }):
 export async function deleteBlogPost(id: string): Promise<void> {
   const path = `blogPosts/${id}`;
   logCrudDiagnostic('deleteBlogPost', path, 'start');
-  
-  addDeletedBlogPostId(id);
-  removeLocalCustomBlogPost(id);
-
-  if (blogPostsCache && Array.isArray(blogPostsCache.data)) {
-    blogPostsCache.data = blogPostsCache.data.filter((p) => p.id !== id);
-    blogPostsCache.timestamp = Date.now();
-  }
 
   try {
     await deleteDoc(doc(db, 'blogPosts', id));
+    removeLocalCustomBlogPost(id);
+    invalidateServicesCache('blog');
     logCrudDiagnostic('deleteBlogPost', path, 'success');
   } catch (error) {
     logCrudDiagnostic('deleteBlogPost', path, 'failed', error);
     handleFirestoreError(error, OperationType.DELETE, path);
+    throw error;
   }
 }
 
@@ -1931,7 +1855,8 @@ export async function seedDefaultBlogPostsIfEmpty(): Promise<BlogPost[]> {
     for (const post of INITIAL_BLOG_POSTS) {
       await setDoc(doc(db, 'blogPosts', post.id), post, { merge: true });
     }
-    return await getBlogPosts(true);
+    invalidateServicesCache('blog');
+    return await getBlogPosts(true, true);
   } catch (err) {
     console.warn('seedDefaultBlogPostsIfEmpty notice:', err);
     return [];
@@ -1980,7 +1905,6 @@ export async function createConsultation(data: {
 }
 
 export async function getStudentConsultations(studentId: string): Promise<Consultation[]> {
-  const path = `consultations`;
   try {
     const q = query(collection(db, 'consultations'), where('studentId', '==', studentId));
     const snapshot = await getDocs(q);
@@ -1994,25 +1918,22 @@ export async function getStudentConsultations(studentId: string): Promise<Consul
 }
 
 export async function getAllConsultationsForAdmin(): Promise<Consultation[]> {
-  const path = `consultations`;
   try {
     const snapshot = await getDocs(collection(db, 'consultations'));
-    if (!snapshot.empty) {
-      const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Consultation));
-      list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      return list;
-    }
+    const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Consultation));
+    list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return list;
   } catch (error) {
     console.warn('getAllConsultationsForAdmin live fetch notice:', error);
+    return [...PRODUCTION_CONSULTATIONS].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
   }
-  return [...PRODUCTION_CONSULTATIONS].sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
 }
 
-export async function getPublishedPublicQA(): Promise<Consultation[]> {
+export async function getPublishedPublicQA(forceRefresh = false): Promise<Consultation[]> {
   const now = Date.now();
-  if (publicQACache && now - publicQACache.timestamp < CACHE_TTL_MS) {
+  if (!forceRefresh && publicQACache && now - publicQACache.timestamp < CACHE_TTL_MS) {
     return publicQACache.data;
   }
 
@@ -2027,29 +1948,10 @@ export async function getPublishedPublicQA(): Promise<Consultation[]> {
       where('isPublished', '==', true)
     );
     const snapshot = await getDocs(q);
-    if (!snapshot.empty) {
-      const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Consultation));
-      list.sort((a, b) => new Date(b.publishedAt || b.createdAt).getTime() - new Date(a.publishedAt || a.createdAt).getTime());
-
-      if (publicQACache && Array.isArray(publicQACache.data)) {
-        const fetchedIds = new Set(list.map(c => c.id));
-        const extraLocal = publicQACache.data.filter(c => c && !fetchedIds.has(c.id));
-        const merged = [...list, ...extraLocal];
-        merged.sort((a, b) => new Date(b.publishedAt || b.createdAt).getTime() - new Date(a.publishedAt || a.createdAt).getTime());
-        publicQACache = { data: merged, timestamp: now };
-        return merged;
-      }
-
-      publicQACache = { data: list, timestamp: now };
-      return list;
-    }
-
-    if (publicQACache && Array.isArray(publicQACache.data) && publicQACache.data.length > 0) {
-      return publicQACache.data;
-    }
-
-    publicQACache = { data: fallbackQA, timestamp: now };
-    return fallbackQA;
+    const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Consultation));
+    list.sort((a, b) => new Date(b.publishedAt || b.createdAt).getTime() - new Date(a.publishedAt || a.createdAt).getTime());
+    publicQACache = { data: list, timestamp: now };
+    return list;
   } catch (error) {
     logFirestoreDiagnostic({ operation: 'getPublishedPublicQA', collection: 'consultations' }, error);
     if (publicQACache && Array.isArray(publicQACache.data) && publicQACache.data.length > 0) {
@@ -2197,17 +2099,15 @@ export async function getApprovedArticleComments(articleId: string): Promise<Art
       where('status', '==', 'approved')
     );
     const snapshot = await getDocs(q);
-    if (!snapshot.empty) {
-      const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ArticleComment));
-      list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      return list;
-    }
+    const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ArticleComment));
+    list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return list;
   } catch (error) {
     logFirestoreDiagnostic({ operation: 'getApprovedArticleComments', collection: 'articleComments', path }, error);
+    return (PRODUCTION_COMMENTS || [])
+      .filter(c => c.articleId === articleId && c.status === 'approved')
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
-  return (PRODUCTION_COMMENTS || [])
-    .filter(c => c.articleId === articleId && c.status === 'approved')
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
 export async function getAllArticleCommentsForAdmin(articleId?: string): Promise<ArticleComment[]> {
@@ -2220,17 +2120,15 @@ export async function getAllArticleCommentsForAdmin(articleId?: string): Promise
       q = query(collection(db, 'articleComments'));
     }
     const snapshot = await getDocs(q);
-    if (!snapshot.empty) {
-      const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ArticleComment));
-      list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      return list;
-    }
+    const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ArticleComment));
+    list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return list;
   } catch (error) {
     logFirestoreDiagnostic({ operation: 'getAllArticleCommentsForAdmin', collection: 'articleComments', path }, error);
+    return (PRODUCTION_COMMENTS || [])
+      .filter(c => !articleId || c.articleId === articleId)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
-  return (PRODUCTION_COMMENTS || [])
-    .filter(c => !articleId || c.articleId === articleId)
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
 export async function moderateArticleComment(
@@ -2240,6 +2138,7 @@ export async function moderateArticleComment(
 ): Promise<void> {
   const path = `articleComments/${commentId}`;
   const now = new Date().toISOString();
+  logCrudDiagnostic('moderateArticleComment', path, 'start');
 
   try {
     const docRef = doc(db, 'articleComments', commentId);
@@ -2249,7 +2148,9 @@ export async function moderateArticleComment(
       moderatedBy,
       updatedAt: now
     });
+    logCrudDiagnostic('moderateArticleComment', path, 'success');
   } catch (error) {
+    logCrudDiagnostic('moderateArticleComment', path, 'failed', error);
     handleFirestoreError(error, OperationType.WRITE, path);
     throw error;
   }
@@ -2257,10 +2158,13 @@ export async function moderateArticleComment(
 
 export async function deleteArticleComment(commentId: string): Promise<void> {
   const path = `articleComments/${commentId}`;
+  logCrudDiagnostic('deleteArticleComment', path, 'start');
   try {
     const docRef = doc(db, 'articleComments', commentId);
     await deleteDoc(docRef);
+    logCrudDiagnostic('deleteArticleComment', path, 'success');
   } catch (error) {
+    logCrudDiagnostic('deleteArticleComment', path, 'failed', error);
     handleFirestoreError(error, OperationType.DELETE, path);
     throw error;
   }
@@ -2371,11 +2275,22 @@ export async function saveInstructorProfile(
   }
 
   const path = `instructorProfiles/${DEFAULT_INSTRUCTOR_PROFILE_ID}`;
+  logCrudDiagnostic('saveInstructorProfile', path, 'start');
   try {
     await setDoc(doc(db, 'instructorProfiles', DEFAULT_INSTRUCTOR_PROFILE_ID), sanitizedProfile, { merge: true });
+    try {
+      const vSnap = await getDoc(doc(db, 'instructorProfiles', DEFAULT_INSTRUCTOR_PROFILE_ID));
+      if (vSnap.exists()) {
+        logCrudDiagnostic(`saveInstructorProfile Verification [ID: ${DEFAULT_INSTRUCTOR_PROFILE_ID}]`, path, 'success');
+      }
+    } catch (vErr) {
+      console.warn('[saveInstructorProfile] Verification notice:', vErr);
+    }
     writeCachedInstructorProfile(sanitizedProfile);
+    logCrudDiagnostic('saveInstructorProfile', path, 'success');
     return sanitizedProfile;
   } catch (error) {
+    logCrudDiagnostic('saveInstructorProfile', path, 'failed', error);
     handleFirestoreError(error, OperationType.WRITE, path);
     throw error;
   }

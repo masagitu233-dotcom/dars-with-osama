@@ -50,7 +50,9 @@ import {
   resolveSessionFromRoute,
   getQuizById,
   getUserEnrollments,
-  getBlogPosts
+  getBlogPosts,
+  getBlogPostBySlug,
+  invalidateServicesCache
 } from './firebase/services';
 import { classifyFirestoreError } from './firebase/config';
 import { ServiceDisruptionBanner } from './components/common/ServiceDisruptionBanner';
@@ -70,6 +72,7 @@ function MainApp() {
     user,
     isAdmin,
     logout,
+    authModalOpen,
     openAuthModal,
     profileModalOpen,
     closeProfileModal,
@@ -230,7 +233,16 @@ function MainApp() {
             : selectedBlogPostRef.current || postsList[0];
           if (targetPost && (targetPost.status === 'published' || adminFlag)) {
             setSelectedBlogPost(targetPost);
+            setCurrentView('blog-detail');
+            return;
           }
+        }
+        if (slugOrId) {
+          getBlogPostBySlug(slugOrId).then(post => {
+            if (post && (post.status === 'published' || adminFlag)) {
+              setSelectedBlogPost(post);
+            }
+          });
         }
         setCurrentView('blog-detail');
         return;
@@ -495,22 +507,26 @@ function MainApp() {
   }, [currentView, selectedCourse, selectedSession, selectedBlogPost, courses.length, blogPosts.length, loading]);
 
   // Fetch initial categories, published courses, and blog posts from Cloud Firestore
-  const loadData = async (isManualRetry = false) => {
+  const loadData = async (isManualRetry = false, forceRefresh = false) => {
+    const bypassCache = isManualRetry || forceRefresh;
     if (isManualRetry) {
       if (!canAttemptRetry(lastDataFetchTimestamp, DEFAULT_RETRY_COOLDOWN_SECONDS)) {
         return;
       }
       setIsRetryingData(true);
-    } else {
+    } else if (!forceRefresh) {
       setLoading(true);
     }
     setLastDataFetchTimestamp(Date.now());
 
     try {
+      if (bypassCache) {
+        invalidateServicesCache('all');
+      }
       const [cats, crss, posts] = await Promise.all([
-        getCategories(),
-        getCourses(false), // published only for main app
-        getBlogPosts(false) // published only for public blog
+        getCategories(bypassCache),
+        getCourses(false, bypassCache), // published only for main app
+        getBlogPosts(false, bypassCache) // published only for public blog
       ]);
       setCategories(cats);
       setCourses(crss);
@@ -536,6 +552,10 @@ function MainApp() {
         }
         return prev;
       });
+
+      if (bypassCache && selectedCourseRef.current) {
+        loadCourseSessions(selectedCourseRef.current.id, false, true);
+      }
     } catch (err) {
       console.warn('Initial data load notice / error caught:', err);
       const diag = classifyFirestoreError(err);
@@ -548,7 +568,7 @@ function MainApp() {
   };
 
   const handleRetryLoadData = () => {
-    loadData(true);
+    loadData(true, true);
   };
 
   useEffect(() => {
@@ -576,7 +596,8 @@ function MainApp() {
   }, [user]);
 
   // When selectedCourse changes, fetch its sessions and refresh selectedSession with the latest server version
-  const loadCourseSessions = (courseId: string, isManualRetry = false) => {
+  const loadCourseSessions = (courseId: string, isManualRetry = false, forceRefresh = false) => {
+    const bypassCache = isManualRetry || forceRefresh;
     if (isManualRetry) {
       if (!canAttemptRetry(lastSessionFetchTimestamp, DEFAULT_RETRY_COOLDOWN_SECONDS)) {
         return;
@@ -585,15 +606,23 @@ function MainApp() {
     }
     setLastSessionFetchTimestamp(Date.now());
 
-    getSessionsByCourse(courseId, false)
+    getSessionsByCourse(courseId, false, bypassCache)
       .then(sessions => {
         setCourseSessions(sessions);
         setSessionError(null);
         setSelectedSession(prev => {
-          if (prev && prev.courseId === courseId) {
-            return sessions.find(s => s.id === prev.id) || (sessions.length > 0 ? sessions[0] : null);
+          const nextSession =
+            prev && prev.courseId === courseId
+              ? sessions.find(s => s.id === prev.id) || (sessions.length > 0 ? sessions[0] : null)
+              : sessions.length > 0
+              ? sessions[0]
+              : null;
+          if (nextSession?.quizId) {
+            getQuizById(nextSession.quizId).then(q => setSelectedQuiz(q));
+          } else if (nextSession) {
+            setSelectedQuiz(null);
           }
-          return sessions.length > 0 ? sessions[0] : null;
+          return nextSession;
         });
       })
       .catch(err => {
@@ -732,7 +761,7 @@ function MainApp() {
               handleSelectBlogPost(post);
             }}
             onRefreshData={() => {
-              loadData();
+              loadData(false, true);
               loadUserEnrollments();
             }}
           />
@@ -1066,7 +1095,14 @@ function MainApp() {
         )}
 
         {/* Global Modals */}
-        <WelcomeModal isOpen={welcomeModalOpen} onClose={handleCloseWelcomeModal} />
+        <WelcomeModal
+          isOpen={welcomeModalOpen && !authModalOpen && !user}
+          onClose={handleCloseWelcomeModal}
+          onLogin={() => {
+            handleCloseWelcomeModal();
+            openAuthModal('login');
+          }}
+        />
         <AuthModal />
         <ProfileSettingsModal isOpen={profileModalOpen} onClose={closeProfileModal} />
 

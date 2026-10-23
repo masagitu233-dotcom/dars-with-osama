@@ -1504,11 +1504,61 @@ test('Case 40: mergeBlogPostsLists memilih versi terbaru dan mencegah kebangkita
   assert.equal(mergedWithTombstone.some((p) => p.id === 'post-deleted-id'), false, 'Artikel terhapus tidak boleh muncul kembali');
 });
 
+// Case 41: Verifikasi Pembacaan Langsung dari Named Database Cloud Firestore & Konsistensi Cache Invalidation (forceRefresh)
+test('Case 41: getCategories, getCourses, getSessionsByCourse, getBlogPosts, getBlogPostById, getBlogPostBySlug, getPublishedPublicQA, dan getInstructorProfile membaca langsung dari server Firestore saat forceRefresh=true', async () => {
+  const {
+    getCategories,
+    getCourses,
+    getSessionsByCourse,
+    getBlogPosts,
+    getBlogPostById,
+    getBlogPostBySlug,
+    getPublishedPublicQA,
+    getInstructorProfile,
+    invalidateServicesCache
+  } = await import('../firebase/services.js');
+  const { firebaseConfig } = await import('../firebase/config.js');
 
+  // 1. Pastikan konfigurasi menunjuk ke project dan named database produksi yang benar
+  assert.equal(firebaseConfig.projectId, 'premium-generator-4lxdt');
+  assert.equal(
+    firebaseConfig.firestoreDatabaseId,
+    'ai-studio-remixdarswithosa-978e37b7-a164-496c-8e6a-39738edc5d93'
+  );
 
+  // 2. Invalidate seluruh cache dan baca ulang langsung dari server (forceRefresh = true)
+  invalidateServicesCache('all');
 
+  const [cats, courses, posts, publicQA, profile] = await Promise.all([
+    getCategories(true),
+    getCourses(true, true),
+    getBlogPosts(true, true),
+    getPublishedPublicQA(true),
+    getInstructorProfile()
+  ]);
 
+  assert.ok(Array.isArray(cats) && cats.length >= 2, 'Kategori server harus terbaca minimal 2 dokumen');
+  assert.ok(Array.isArray(courses) && courses.length >= 2, 'Kursus server harus terbaca minimal 2 dokumen');
+  assert.ok(Array.isArray(posts) && posts.length >= 1, 'Artikel blog server harus terbaca');
+  assert.ok(Array.isArray(publicQA), 'Konsultasi publik harus terbaca');
+  assert.equal(profile.id, 'main', 'Profil pengajar utama (id: main) harus terbaca');
 
+  // 3. Verifikasi pembacaan detail artikel berdasarkan ID dan Slug langsung dari server
+  const samplePost = posts[0];
+  const byId = await getBlogPostById(samplePost.id, true);
+  const bySlug = await getBlogPostBySlug(samplePost.slug, true);
+  assert.equal(byId?.id, samplePost.id);
+  assert.equal(byId?.title, samplePost.title);
+  assert.equal(bySlug?.id, samplePost.id);
+  assert.equal(bySlug?.slug, samplePost.slug);
 
+  // 4. Verifikasi sesi kursus terbaca konsisten setelah refresh
+  const sampleCourse = courses[0];
+  const sessions = await getSessionsByCourse(sampleCourse.id, true, true);
+  assert.ok(Array.isArray(sessions) && sessions.length > 0, 'Sesi kursus harus terbaca dari server');
+  assert.equal(sampleCourse.sessionsCount, sessions.length, 'sessionsCount pada kursus harus sinkron dengan jumlah sesi aktual');
 
-
+  const { terminate } = await import('firebase/firestore');
+  const { db } = await import('../firebase/config.js');
+  await terminate(db).catch(() => {});
+});

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import {
   User,
   onAuthStateChanged,
@@ -7,6 +7,8 @@ import {
   signOut,
   sendPasswordResetEmail,
   signInWithPopup,
+  getRedirectResult,
+  browserPopupRedirectResolver,
   GoogleAuthProvider,
   updateProfile
 } from 'firebase/auth';
@@ -63,6 +65,24 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function buildDefaultProfile(firebaseUser: User, isAdminRole: boolean, customDisplayName?: string): UserProfile {
+  const base: UserProfile = {
+    id: firebaseUser.uid,
+    email: firebaseUser.email || '',
+    displayName:
+      customDisplayName ||
+      firebaseUser.displayName ||
+      firebaseUser.email?.split('@')[0] ||
+      'Peserta',
+    role: isAdminRole ? 'admin' : 'student',
+    createdAt: new Date().toISOString()
+  };
+  if (firebaseUser.photoURL) {
+    base.photoURL = firebaseUser.photoURL;
+  }
+  return base;
+}
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -85,64 +105,84 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Toast state
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const showToast = (msg: string) => {
+  const showToast = useCallback((msg: string) => {
     setToastMessage(msg);
     setTimeout(() => {
       setToastMessage(null);
     }, 4000);
-  };
+  }, []);
 
   const clearToast = () => setToastMessage(null);
+
+  const syncUserProfileAndAdmin = useCallback(async (currentUser: User, customDisplayName?: string) => {
+    const isOwner = Boolean(currentUser.email && isPlatformAdminEmail(currentUser.email));
+    if (isOwner) {
+      setIsAdmin(true);
+    }
+
+    // Set immediate fallback profile in state so UI updates without waiting for Firestore
+    setUserProfile(prev => prev && prev.id === currentUser.uid ? prev : buildDefaultProfile(currentUser, isOwner, customDisplayName));
+
+    try {
+      if (isOwner && currentUser.email) {
+        await bootstrapAdmin(currentUser.uid, currentUser.email).catch(() => {});
+      }
+
+      const adminStatus = await checkIsAdmin(currentUser.uid, currentUser.email);
+      const finalIsAdmin = Boolean(adminStatus || isOwner);
+      setIsAdmin(finalIsAdmin);
+
+      let profile = await getUserProfile(currentUser.uid);
+      if (!profile) {
+        profile = buildDefaultProfile(currentUser, finalIsAdmin, customDisplayName);
+        await saveUserProfile(profile).catch(() => {});
+      } else {
+        let updated = false;
+        if (finalIsAdmin && profile.role !== 'admin') {
+          profile.role = 'admin';
+          updated = true;
+        }
+        if (!profile.photoURL && currentUser.photoURL) {
+          profile.photoURL = currentUser.photoURL;
+          updated = true;
+        }
+        if (updated) {
+          await saveUserProfile(profile).catch(() => {});
+        }
+      }
+      setUserProfile(profile);
+    } catch (err) {
+      console.warn('Non-blocking profile/admin sync notice:', err);
+    }
+  }, []);
 
   useEffect(() => {
     // Test connection on boot
     testConnection().then(res => setFirebaseConnected(res));
 
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+    // Handle any pending redirect sign-in result gracefully
+    if (typeof window !== 'undefined') {
+      getRedirectResult(auth, browserPopupRedirectResolver)
+        .then(result => {
+          if (result?.user) {
+            setUser(result.user);
+            setAuthModalOpen(false);
+            setGuestModalOpen(false);
+            showToast('Berhasil masuk menggunakan akun Google.');
+            syncUserProfileAndAdmin(result.user);
+          }
+        })
+        .catch(err => {
+          console.warn('Redirect auth check notice:', err);
+        });
+    }
+
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
-        try {
-          const isOwner = currentUser.email && isPlatformAdminEmail(currentUser.email);
-
-          if (isOwner) {
-            await bootstrapAdmin(currentUser.uid, currentUser.email!);
-          }
-
-          // Check admin status
-          const adminStatus = await checkIsAdmin(currentUser.uid, currentUser.email);
-          const finalIsAdmin = Boolean(adminStatus || isOwner);
-          setIsAdmin(finalIsAdmin);
-
-          // Fetch profile or create default
-          let profile = await getUserProfile(currentUser.uid);
-          if (!profile) {
-            profile = {
-              id: currentUser.uid,
-              email: currentUser.email || '',
-              displayName: currentUser.displayName || currentUser.email?.split('@')[0] || 'Peserta',
-              role: finalIsAdmin ? 'admin' : 'student',
-              photoURL: currentUser.photoURL || undefined,
-              createdAt: new Date().toISOString()
-            };
-            await saveUserProfile(profile).catch(() => {});
-          } else {
-            let updated = false;
-            if (finalIsAdmin && profile.role !== 'admin') {
-              profile.role = 'admin';
-              updated = true;
-            }
-            if (!profile.photoURL && currentUser.photoURL) {
-              profile.photoURL = currentUser.photoURL;
-              updated = true;
-            }
-            if (updated) {
-              await saveUserProfile(profile).catch(() => {});
-            }
-          }
-          setUserProfile(profile);
-        } catch (err) {
-          console.error('Error loading user profile / admin state:', err);
-        }
+        setAuthModalOpen(false);
+        setGuestModalOpen(false);
+        syncUserProfileAndAdmin(currentUser);
       } else {
         setUserProfile(null);
         setIsAdmin(false);
@@ -151,82 +191,62 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [showToast, syncUserProfileAndAdmin]);
 
   const refreshProfile = async () => {
     if (!user) return;
-    try {
-      const profile = await getUserProfile(user.uid);
-      if (profile) setUserProfile(profile);
-      const adminStatus = await checkIsAdmin(user.uid, user.email);
-      setIsAdmin(Boolean(adminStatus || isPlatformAdminEmail(user.email)));
-    } catch (err) {
-      console.error('Profile refresh failed:', err);
-    }
+    await syncUserProfileAndAdmin(user);
   };
 
   const loginWithEmail = async (email: string, pass: string) => {
-    const cred = await signInWithEmailAndPassword(auth, email, pass);
-    setUser(cred.user);
-    await refreshProfile();
+    const cred = await signInWithEmailAndPassword(auth, email.trim(), pass);
+    const authedUser = cred.user;
+    setUser(authedUser);
+    if (isPlatformAdminEmail(authedUser.email)) {
+      setIsAdmin(true);
+    }
     setAuthModalOpen(false);
     setGuestModalOpen(false);
     showToast('Berhasil masuk ke akun Dars with Osama.');
+    // Sync Firestore profile in background so login never hangs
+    syncUserProfileAndAdmin(authedUser);
   };
 
   const signupWithEmail = async (email: string, pass: string, displayName: string) => {
-    const cred = await createUserWithEmailAndPassword(auth, email, pass);
+    const cleanEmail = email.trim();
+    const cred = await createUserWithEmailAndPassword(auth, cleanEmail, pass);
     if (displayName) {
-      await updateProfile(cred.user, { displayName });
+      await updateProfile(cred.user, { displayName }).catch(() => {});
     }
-    const isOwnerAdmin = isPlatformAdminEmail(cred.user.email || email);
-    const newProfile: UserProfile = {
-      id: cred.user.uid,
-      email: cred.user.email || email,
-      displayName: displayName || email.split('@')[0],
-      role: isOwnerAdmin ? 'admin' : 'student',
-      createdAt: new Date().toISOString()
-    };
-    await saveUserProfile(newProfile).catch(() => {});
+    const isOwnerAdmin = isPlatformAdminEmail(cred.user.email || cleanEmail);
+    setUser(cred.user);
     if (isOwnerAdmin) {
-      await bootstrapAdmin(cred.user.uid, cred.user.email || email);
       setIsAdmin(true);
     }
+    const newProfile = buildDefaultProfile(cred.user, isOwnerAdmin, displayName);
     setUserProfile(newProfile);
     setAuthModalOpen(false);
     setGuestModalOpen(false);
     showToast('Pendaftaran berhasil! Selamat datang di Dars with Osama.');
+    // Persist profile in background
+    syncUserProfileAndAdmin(cred.user, displayName);
   };
 
   const loginWithGoogle = async (): Promise<boolean> => {
     try {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
-      const result = await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, provider, browserPopupRedirectResolver);
       const googleUser = result.user;
-      const isOwnerAdmin = isPlatformAdminEmail(googleUser.email);
-      const existing = await getUserProfile(googleUser.uid);
-      if (!existing) {
-        const profile: UserProfile = {
-          id: googleUser.uid,
-          email: googleUser.email || '',
-          displayName: googleUser.displayName || 'Peserta',
-          photoURL: googleUser.photoURL || undefined,
-          role: isOwnerAdmin ? 'admin' : 'student',
-          createdAt: new Date().toISOString()
-        };
-        await saveUserProfile(profile).catch(() => {});
-        setUserProfile(profile);
-      } else {
-        setUserProfile(existing);
-      }
-      if (isOwnerAdmin) {
-        await bootstrapAdmin(googleUser.uid, googleUser.email || '');
+      setUser(googleUser);
+      if (isPlatformAdminEmail(googleUser.email)) {
         setIsAdmin(true);
       }
       setAuthModalOpen(false);
       setGuestModalOpen(false);
       showToast('Berhasil masuk menggunakan akun Google.');
+      // Sync Firestore profile & admin document in background so modal closes immediately
+      syncUserProfileAndAdmin(googleUser);
       return true;
     } catch (err: any) {
       if (
