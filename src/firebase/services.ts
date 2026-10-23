@@ -1645,15 +1645,6 @@ export async function getBlogPosts(includeDrafts = false): Promise<BlogPost[]> {
     if (!snapshot.empty) {
       const rawPosts = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as BlogPost));
 
-      // If an admin session detects auto-seeded dummy articles in Firestore, clean them up non-destructively
-      if (auth.currentUser && isPlatformAdminEmail(auth.currentUser.email)) {
-        for (const p of rawPosts) {
-          if (isDummySeedBlogPost(p)) {
-            deleteDoc(doc(db, 'blogPosts', p.id)).catch(() => {});
-          }
-        }
-      }
-
       const mergedWithLocal = mergeBlogPostsLists(rawPosts, localCustom, deletedIds);
       const filtered = filterProductionBlogPosts(mergedWithLocal, true);
 
@@ -1829,7 +1820,9 @@ export async function saveBlogPost(post: Partial<BlogPost> & { title: string }):
     viewsCount: Number(post.viewsCount) || 0,
     publishedAt,
     createdAt: post.createdAt || now,
-    updatedAt: now
+    updatedAt: now,
+    isCustomPost: true,
+    isUserModified: true
   };
 
   if (post.audioConfig) {

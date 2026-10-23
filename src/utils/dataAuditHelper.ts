@@ -31,15 +31,25 @@ export const DUMMY_SEED_QA_IDS = new Set<string>([
  */
 export function isDummySeedBlogPost(post?: Partial<BlogPost> | null): boolean {
   if (!post) return false;
+  // If the post is explicitly marked or has custom user metadata, it is not dummy
+  if ((post as any).isUserModified || (post as any).isCustomPost) {
+    return false;
+  }
+
   const id = (post.id || '').trim();
   const slug = (post.slug || '').trim().toLowerCase();
 
-  if (DUMMY_SEED_BLOG_POST_IDS.has(id)) {
+  const isDummyId = DUMMY_SEED_BLOG_POST_IDS.has(id);
+  const isDummySlug = DUMMY_SEED_BLOG_POST_SLUGS.has(slug);
+
+  if (isDummyId || isDummySlug) {
+    // If the post has been edited by the user (updatedAt differs from createdAt), it is no longer dummy
+    if (post.updatedAt && post.createdAt && post.updatedAt !== post.createdAt) {
+      return false;
+    }
     return true;
   }
-  if (DUMMY_SEED_BLOG_POST_SLUGS.has(slug)) {
-    return true;
-  }
+
   return false;
 }
 
