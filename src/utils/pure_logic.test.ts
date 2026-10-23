@@ -1418,6 +1418,93 @@ test('Case 38: Verifikasi alur penulisan dan pembacaan artikel "uji coba" pada k
   assert.equal(adminPosts.length, 2, 'Kueri admin mengembalikan seluruh artikel non-dummy');
 });
 
+// Case 39: Verifikasi Retensi dan Sinkronisasi Lokal Artikel Blog Lintas Reload/Offline
+test('Case 39: getLocalCustomBlogPosts, saveLocalCustomBlogPost, dan mergeBlogPostsLists mempertahankan artikel pengguna saat reload/quota limit', async () => {
+  const { mergeBlogPostsLists } = await import('../firebase/services.js');
+
+  const serverPosts: any[] = [
+    {
+      id: 'post-server-1',
+      title: 'Artikel Server Lama',
+      updatedAt: '2026-10-20T10:00:00.000Z'
+    }
+  ];
+
+  const localCustomPosts: any[] = [
+    {
+      id: 'post-server-1',
+      title: 'Artikel Server Diperbarui Lokal',
+      updatedAt: '2026-10-22T15:00:00.000Z'
+    },
+    {
+      id: 'post-local-new',
+      title: 'Artikel Baru Dibuat Pengguna',
+      updatedAt: '2026-10-22T16:00:00.000Z'
+    }
+  ];
+
+  // Menggabungkan postingan server dengan postingan lokal
+  const merged = mergeBlogPostsLists(serverPosts, localCustomPosts);
+
+  assert.equal(merged.length, 2, 'Penggabungan harus menghasilkan 2 artikel unik');
+  
+  const updatedDoc = merged.find((p) => p.id === 'post-server-1');
+  assert.equal(updatedDoc?.title, 'Artikel Server Diperbarui Lokal', 'Dokumen dengan updatedAt terbaru harus dipilih');
+
+  const newLocalDoc = merged.find((p) => p.id === 'post-local-new');
+  assert.ok(newLocalDoc, 'Artikel baru yang disimpan secara lokal tidak boleh hilang saat penggabungan');
+  assert.equal(newLocalDoc?.title, 'Artikel Baru Dibuat Pengguna');
+});
+
+// Case 40: Penanganan Konflik Data Lintas Perangkat dan Pencegahan Kebangkitan Artikel Terhapus (Deletion Tombstone)
+test('Case 40: mergeBlogPostsLists memilih versi terbaru dan mencegah kebangkitan artikel terhapus melalui tombstone set', async () => {
+  const { mergeBlogPostsLists } = await import('../firebase/services.js');
+
+  // 1. Browser A memperbarui artikel di server dengan timestamp lebih baru
+  const serverPostsBrowserA: any[] = [
+    {
+      id: 'post-shared-1',
+      title: 'Artikel Diperbarui dari Perangkat A (Server)',
+      updatedAt: '2026-10-22T18:00:00.000Z'
+    }
+  ];
+
+  // Browser B memiliki cache lokal lama
+  const staleLocalBrowserB: any[] = [
+    {
+      id: 'post-shared-1',
+      title: 'Artikel Lama di Perangkat B (Stale Cache)',
+      updatedAt: '2026-10-22T12:00:00.000Z'
+    }
+  ];
+
+  const mergedCrossClient = mergeBlogPostsLists(serverPostsBrowserA, staleLocalBrowserB);
+  assert.equal(mergedCrossClient.length, 1);
+  assert.equal(mergedCrossClient[0].title, 'Artikel Diperbarui dari Perangkat A (Server)');
+
+  // 2. Mencegah kebangkitan artikel terhapus (deletion tombstone)
+  const tombstoneSet = new Set(['post-deleted-id']);
+
+  const secondaryWithDeleted: any[] = [
+    {
+      id: 'post-deleted-id',
+      title: 'Artikel yang Sudah Dihapus Pengguna',
+      updatedAt: '2026-10-22T20:00:00.000Z'
+    },
+    {
+      id: 'post-active-id',
+      title: 'Artikel Aktif',
+      updatedAt: '2026-10-22T20:00:00.000Z'
+    }
+  ];
+
+  const mergedWithTombstone = mergeBlogPostsLists([], secondaryWithDeleted, tombstoneSet);
+  assert.equal(mergedWithTombstone.length, 1);
+  assert.equal(mergedWithTombstone[0].id, 'post-active-id');
+  assert.equal(mergedWithTombstone.some((p) => p.id === 'post-deleted-id'), false, 'Artikel terhapus tidak boleh muncul kembali');
+});
+
+
 
 
 

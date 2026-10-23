@@ -1535,11 +1535,109 @@ export const INITIAL_BLOG_POSTS: BlogPost[] = [
   }
 ];
 
+// Helper functions for persistent client-side blog post storage
+const LOCAL_BLOG_STORAGE_KEY = 'dars_custom_blog_posts_v1';
+const DELETED_BLOG_POSTS_STORAGE_KEY = 'dars_deleted_blog_post_ids_v1';
+
+export function getDeletedBlogPostIds(): Set<string> {
+  if (typeof window === 'undefined' || !window.localStorage) return new Set();
+  try {
+    const raw = localStorage.getItem(DELETED_BLOG_POSTS_STORAGE_KEY);
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw);
+    return new Set(Array.isArray(parsed) ? parsed : []);
+  } catch (err) {
+    console.warn('[getDeletedBlogPostIds] Notice reading deleted posts storage:', err);
+    return new Set();
+  }
+}
+
+export function addDeletedBlogPostId(id: string): void {
+  if (typeof window === 'undefined' || !window.localStorage || !id) return;
+  try {
+    const set = getDeletedBlogPostIds();
+    set.add(id);
+    localStorage.setItem(DELETED_BLOG_POSTS_STORAGE_KEY, JSON.stringify(Array.from(set)));
+  } catch (err) {
+    console.warn('[addDeletedBlogPostId] Notice writing deleted post storage:', err);
+  }
+}
+
+export function getLocalCustomBlogPosts(): BlogPost[] {
+  if (typeof window === 'undefined' || !window.localStorage) return [];
+  try {
+    const raw = localStorage.getItem(LOCAL_BLOG_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    const deleted = getDeletedBlogPostIds();
+    return (Array.isArray(parsed) ? parsed : []).filter(p => p && p.id && !deleted.has(p.id));
+  } catch (err) {
+    console.warn('[getLocalCustomBlogPosts] Notice parsing local blog storage:', err);
+    return [];
+  }
+}
+
+export function saveLocalCustomBlogPost(post: BlogPost): void {
+  if (typeof window === 'undefined' || !window.localStorage || !post || !post.id) return;
+  try {
+    const existing = getLocalCustomBlogPosts();
+    const idx = existing.findIndex((p) => p.id === post.id || (p.slug && p.slug === post.slug));
+    if (idx >= 0) {
+      existing[idx] = post;
+    } else {
+      existing.unshift(post);
+    }
+    localStorage.setItem(LOCAL_BLOG_STORAGE_KEY, JSON.stringify(existing));
+  } catch (err) {
+    console.warn('[saveLocalCustomBlogPost] Notice writing to local blog storage:', err);
+  }
+}
+
+export function removeLocalCustomBlogPost(id: string): void {
+  if (typeof window === 'undefined' || !window.localStorage || !id) return;
+  try {
+    const existing = getLocalCustomBlogPosts();
+    const filtered = existing.filter((p) => p.id !== id);
+    localStorage.setItem(LOCAL_BLOG_STORAGE_KEY, JSON.stringify(filtered));
+  } catch (err) {
+    console.warn('[removeLocalCustomBlogPost] Notice removing from local blog storage:', err);
+  }
+}
+
+export function mergeBlogPostsLists(primary: BlogPost[], secondary: BlogPost[], explicitDeletedIds?: Set<string>): BlogPost[] {
+  const tombstones = explicitDeletedIds || getDeletedBlogPostIds();
+  const map = new Map<string, BlogPost>();
+
+  for (const p of Array.isArray(secondary) ? secondary : []) {
+    if (!p || !p.id || tombstones.has(p.id)) continue;
+    map.set(p.id, p);
+  }
+
+  for (const p of Array.isArray(primary) ? primary : []) {
+    if (!p || !p.id || tombstones.has(p.id)) continue;
+    const existing = map.get(p.id);
+    if (!existing) {
+      map.set(p.id, p);
+    } else {
+      const timePrimary = new Date(p.updatedAt || p.createdAt || 0).getTime() || 0;
+      const timeExisting = new Date(existing.updatedAt || existing.createdAt || 0).getTime() || 0;
+      if (timePrimary >= timeExisting) {
+        map.set(p.id, p);
+      }
+    }
+  }
+
+  return Array.from(map.values()).filter(p => !tombstones.has(p.id));
+}
+
 export async function getBlogPosts(includeDrafts = false): Promise<BlogPost[]> {
   const now = Date.now();
+  const localCustom = getLocalCustomBlogPosts();
+  const deletedIds = getDeletedBlogPostIds();
+
   if (blogPostsCache && now - blogPostsCache.timestamp < CACHE_TTL_MS) {
-    let posts = blogPostsCache.data;
-    return filterProductionBlogPosts(posts, includeDrafts);
+    const mergedWithLocal = mergeBlogPostsLists(blogPostsCache.data, localCustom, deletedIds);
+    return filterProductionBlogPosts(mergedWithLocal, includeDrafts);
   }
 
   try {
@@ -1556,33 +1654,30 @@ export async function getBlogPosts(includeDrafts = false): Promise<BlogPost[]> {
         }
       }
 
-      const filtered = filterProductionBlogPosts(rawPosts, true);
-      if (filtered.length > 0) {
-        if (blogPostsCache && Array.isArray(blogPostsCache.data)) {
-          const fetchedIds = new Set(filtered.map(p => p.id));
-          const extraLocal = blogPostsCache.data.filter(p => p && !fetchedIds.has(p.id));
-          const merged = [...extraLocal, ...filtered];
-          blogPostsCache = { data: merged, timestamp: now };
-          return filterProductionBlogPosts(merged, includeDrafts);
+      const mergedWithLocal = mergeBlogPostsLists(rawPosts, localCustom, deletedIds);
+      const filtered = filterProductionBlogPosts(mergedWithLocal, true);
+
+      // Save non-dummy custom posts back to local storage
+      filtered.forEach((p) => {
+        if (!isDummySeedBlogPost(p)) {
+          saveLocalCustomBlogPost(p);
         }
-        blogPostsCache = { data: filtered, timestamp: now };
-        return filterProductionBlogPosts(filtered, includeDrafts);
-      }
+      });
+
+      blogPostsCache = { data: filtered, timestamp: now };
+      return filterProductionBlogPosts(filtered, includeDrafts);
     }
 
-    if (blogPostsCache && Array.isArray(blogPostsCache.data) && blogPostsCache.data.length > 0) {
-      return filterProductionBlogPosts(blogPostsCache.data, includeDrafts);
-    }
-
-    blogPostsCache = { data: PRODUCTION_BLOG_POSTS, timestamp: now };
-    return filterProductionBlogPosts(PRODUCTION_BLOG_POSTS, includeDrafts);
+    const mergedFallback = mergeBlogPostsLists(localCustom, PRODUCTION_BLOG_POSTS, deletedIds);
+    blogPostsCache = { data: mergedFallback, timestamp: now };
+    return filterProductionBlogPosts(mergedFallback, includeDrafts);
   } catch (err) {
     logFirestoreDiagnostic({ operation: 'getBlogPosts', collection: 'blogPosts' }, err);
-    if (blogPostsCache && Array.isArray(blogPostsCache.data) && blogPostsCache.data.length > 0) {
-      return filterProductionBlogPosts(blogPostsCache.data, includeDrafts);
-    }
-    blogPostsCache = { data: PRODUCTION_BLOG_POSTS, timestamp: now };
-    return filterProductionBlogPosts(PRODUCTION_BLOG_POSTS, includeDrafts);
+
+    // On quota exhaustion or network error, merge local custom posts with production cache so user posts are never lost
+    const mergedFallback = mergeBlogPostsLists(localCustom, PRODUCTION_BLOG_POSTS, deletedIds);
+    blogPostsCache = { data: mergedFallback, timestamp: now };
+    return filterProductionBlogPosts(mergedFallback, includeDrafts);
   }
 }
 
@@ -1600,31 +1695,79 @@ export async function deleteDummyBlogPostsFromFirestore(): Promise<number> {
 }
 
 export async function getBlogPostBySlug(slug: string): Promise<BlogPost | null> {
+  const cleanSlug = (slug || '').trim().toLowerCase();
+  const deletedIds = getDeletedBlogPostIds();
+
+  // 1. Check in-memory cache
+  if (blogPostsCache && Array.isArray(blogPostsCache.data)) {
+    const found = blogPostsCache.data.find(
+      p => ((p.slug || '').toLowerCase() === cleanSlug || p.id === slug) && !deletedIds.has(p.id)
+    );
+    if (found && !isDummySeedBlogPost(found)) return found;
+  }
+
+  // 2. Check localStorage
+  const localCustom = getLocalCustomBlogPosts();
+  const localMatch = localCustom.find(
+    p => ((p.slug || '').toLowerCase() === cleanSlug || p.id === slug) && !deletedIds.has(p.id)
+  );
+  if (localMatch && !isDummySeedBlogPost(localMatch)) return localMatch;
+
+  // 3. Live query Firestore
   try {
-    const q = query(collection(db, 'blogPosts'), where('slug', '==', slug));
+    const q = query(collection(db, 'blogPosts'), where('slug', '==', cleanSlug));
     const snapshot = await getDocs(q);
     if (!snapshot.empty) {
       const docSnap = snapshot.docs[0];
       const post = { id: docSnap.id, ...docSnap.data() } as BlogPost;
-      if (!isDummySeedBlogPost(post)) return post;
+      if (!isDummySeedBlogPost(post) && !deletedIds.has(post.id)) {
+        saveLocalCustomBlogPost(post);
+        return post;
+      }
     }
   } catch (error) {
     console.warn('getBlogPostBySlug live fetch notice:', error);
   }
-  return PRODUCTION_BLOG_POSTS.find(p => p.slug === slug || p.id === slug) || null;
+
+  // 4. Fallback to production cache
+  const prodMatch = PRODUCTION_BLOG_POSTS.find(
+    p => ((p.slug || '').toLowerCase() === cleanSlug || p.id === slug) && !deletedIds.has(p.id)
+  );
+  return prodMatch || null;
 }
 
 export async function getBlogPostById(id: string): Promise<BlogPost | null> {
+  const deletedIds = getDeletedBlogPostIds();
+  if (deletedIds.has(id)) return null;
+
+  // 1. Check in-memory cache
+  if (blogPostsCache && Array.isArray(blogPostsCache.data)) {
+    const found = blogPostsCache.data.find(p => p.id === id && !deletedIds.has(p.id));
+    if (found && !isDummySeedBlogPost(found)) return found;
+  }
+
+  // 2. Check localStorage
+  const localCustom = getLocalCustomBlogPosts();
+  const localMatch = localCustom.find(p => p.id === id && !deletedIds.has(p.id));
+  if (localMatch && !isDummySeedBlogPost(localMatch)) return localMatch;
+
+  // 3. Live query Firestore
   try {
     const d = await getDoc(doc(db, 'blogPosts', id));
     if (d.exists()) {
       const post = { id: d.id, ...d.data() } as BlogPost;
-      if (!isDummySeedBlogPost(post)) return post;
+      if (!isDummySeedBlogPost(post) && !deletedIds.has(post.id)) {
+        saveLocalCustomBlogPost(post);
+        return post;
+      }
     }
   } catch (error) {
     console.warn('getBlogPostById live fetch notice:', error);
   }
-  return PRODUCTION_BLOG_POSTS.find(p => p.id === id) || null;
+
+  // 4. Fallback to production cache
+  const prodMatch = PRODUCTION_BLOG_POSTS.find(p => p.id === id && !deletedIds.has(p.id));
+  return prodMatch || null;
 }
 
 export async function saveBlogPost(post: Partial<BlogPost> & { title: string }): Promise<string> {
@@ -1699,34 +1842,39 @@ export async function saveBlogPost(post: Partial<BlogPost> & { title: string }):
     };
   }
 
+  const savedObj = data as BlogPost;
+
   try {
     // 1. Write document to Firestore
     await setDoc(doc(db, 'blogPosts', id), data, { merge: true });
 
     // 2. Perform verification read-back from server/cache
-    let verifiedPost: BlogPost = data as BlogPost;
     try {
       const verifySnap = await getDoc(doc(db, 'blogPosts', id));
       if (verifySnap.exists()) {
-        verifiedPost = { id: verifySnap.id, ...verifySnap.data() } as BlogPost;
-        logCrudDiagnostic(`saveBlogPost Verification [ID: ${verifiedPost.id}, Status: ${verifiedPost.status}, Title: "${verifiedPost.title}"]`, path, 'success');
+        logCrudDiagnostic(`saveBlogPost Verification [ID: ${id}, Status: ${status}, Title: "${post.title}"]`, path, 'success');
       }
     } catch (vErr) {
       console.warn('[saveBlogPost] Verification read-back notice:', vErr);
     }
 
-    // 3. Immediately update in-memory cache with the verified/saved post
+    // 3. Persist to local storage so article is never lost on refresh even if quota is exhausted
+    saveLocalCustomBlogPost(savedObj);
+
+    // 4. Immediately update in-memory cache
     if (blogPostsCache && Array.isArray(blogPostsCache.data)) {
       const idx = blogPostsCache.data.findIndex((p) => p.id === id);
       if (idx >= 0) {
-        blogPostsCache.data[idx] = verifiedPost;
+        blogPostsCache.data[idx] = savedObj;
       } else {
-        blogPostsCache.data.unshift(verifiedPost);
+        blogPostsCache.data.unshift(savedObj);
       }
       blogPostsCache.timestamp = Date.now();
     } else {
+      const localItems = getLocalCustomBlogPosts();
+      const mergedAll = mergeBlogPostsLists(localItems, PRODUCTION_BLOG_POSTS);
       blogPostsCache = {
-        data: [verifiedPost, ...PRODUCTION_BLOG_POSTS.filter((p) => p.id !== id)],
+        data: mergedAll,
         timestamp: Date.now()
       };
     }
@@ -1735,6 +1883,8 @@ export async function saveBlogPost(post: Partial<BlogPost> & { title: string }):
     return id;
   } catch (error) {
     logCrudDiagnostic('saveBlogPost', path, 'failed', error);
+    // Persist locally so user content is preserved
+    saveLocalCustomBlogPost(savedObj);
     handleFirestoreError(error, OperationType.WRITE, path);
     throw error;
   }
@@ -1743,12 +1893,17 @@ export async function saveBlogPost(post: Partial<BlogPost> & { title: string }):
 export async function deleteBlogPost(id: string): Promise<void> {
   const path = `blogPosts/${id}`;
   logCrudDiagnostic('deleteBlogPost', path, 'start');
+  
+  addDeletedBlogPostId(id);
+  removeLocalCustomBlogPost(id);
+
+  if (blogPostsCache && Array.isArray(blogPostsCache.data)) {
+    blogPostsCache.data = blogPostsCache.data.filter((p) => p.id !== id);
+    blogPostsCache.timestamp = Date.now();
+  }
+
   try {
     await deleteDoc(doc(db, 'blogPosts', id));
-    if (blogPostsCache && Array.isArray(blogPostsCache.data)) {
-      blogPostsCache.data = blogPostsCache.data.filter((p) => p.id !== id);
-      blogPostsCache.timestamp = Date.now();
-    }
     logCrudDiagnostic('deleteBlogPost', path, 'success');
   } catch (error) {
     logCrudDiagnostic('deleteBlogPost', path, 'failed', error);
