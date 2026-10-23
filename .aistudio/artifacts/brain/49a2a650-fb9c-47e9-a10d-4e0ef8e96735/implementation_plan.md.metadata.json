@@ -1,0 +1,6 @@
+{
+  "summary":  "Implementation plan to resolve the dev server pre-warming exit error in Dars with Osama by transitioning to a persistent Express server entry point that mounts Vite middleware and serves the Google Drive audio proxy and dynamic session SEO routes without premature stdin termination.",
+  "updatedAt":  "2026-10-23T12:31:41.102315685Z",
+  "requestFeedback":  true,
+  "userFacing":  true
+}
