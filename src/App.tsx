@@ -745,7 +745,7 @@ function MainApp() {
 
   return (
     <SmoothScrollProvider currentView={routeScrollKey}>
-      <div className="min-h-screen bg-stone-100 dark:bg-stone-950 text-stone-900 dark:text-stone-100 font-sans selection:bg-emerald-500/20 selection:text-emerald-300 transition-colors duration-250">
+      <div className="min-h-screen bg-[#F8F3E8] dark:bg-[#06251D] text-[#171717] dark:text-[#F8F3E8] font-sans selection:bg-[#D9AC45]/30 selection:text-[#171717] dark:selection:text-[#F8F3E8] transition-colors duration-250">
         {currentView === 'admin-dashboard' && isAdmin ? (
           <AdminDashboard
             initialTab={adminInitialTab}
@@ -788,13 +788,15 @@ function MainApp() {
                 setCurrentView={handleNavigateView}
                 mobileOpen={mobileMenuOpen}
                 setMobileOpen={setMobileMenuOpen}
+                isCollapsed={isSidebarCollapsed}
+                setIsCollapsed={setIsSidebarCollapsed}
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
                 onOpenWelcomeModal={handleOpenWelcomeModal}
               />
 
               {/* Main Body Router */}
-              <main className="flex-1">
+              <main className="flex-1 pb-12 sm:pb-16">
                 <div key={currentView} className="animate-fade-in">
                   {/* VIEW 1: HOME */}
                   {currentView === 'home' && (
@@ -1081,15 +1083,6 @@ function MainApp() {
                   )}
                 </div>
               </main>
-
-              {/* Footer */}
-              <Footer
-                onNavigate={(view) => {
-                  setFilterCategoryId('all');
-                  setSearchQuery('');
-                  navigateTo({ view, filterCategoryId: 'all', searchQuery: '' });
-                }}
-              />
             </div>
           </div>
         )}

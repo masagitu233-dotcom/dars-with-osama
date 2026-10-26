@@ -83,6 +83,15 @@ function buildDefaultProfile(firebaseUser: User, isAdminRole: boolean, customDis
   return base;
 }
 
+function isSecureTokenApiError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err || '');
+  return (
+    msg.includes('token-service-api-has-not-been-used') ||
+    msg.includes('securetoken.googleapis.com') ||
+    msg.includes('Fetching auth token failed')
+  );
+}
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -124,6 +133,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUserProfile(prev => prev && prev.id === currentUser.uid ? prev : buildDefaultProfile(currentUser, isOwner, customDisplayName));
 
     try {
+      // Proactively test ID token to catch STS disabled issues before triggering Firestore token loop
+      try {
+        await currentUser.getIdToken();
+      } catch (tokenErr: any) {
+        if (isSecureTokenApiError(tokenErr)) {
+          console.warn('[Auth] Token service API disabled in GCP project. Resetting session to guest mode so Firestore public reads succeed:', tokenErr);
+          await signOut(auth).catch(() => {});
+          setUser(null);
+          setUserProfile(null);
+          setIsAdmin(false);
+          return;
+        }
+      }
+
       if (isOwner && currentUser.email) {
         await bootstrapAdmin(currentUser.uid, currentUser.email).catch(() => {});
       }
@@ -163,13 +186,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Handle any pending redirect sign-in result gracefully
     if (typeof window !== 'undefined') {
       getRedirectResult(auth, browserPopupRedirectResolver)
-        .then(result => {
+        .then(async (result) => {
           if (result?.user) {
-            setUser(result.user);
-            setAuthModalOpen(false);
-            setGuestModalOpen(false);
-            showToast('Berhasil masuk menggunakan akun Google.');
-            syncUserProfileAndAdmin(result.user);
+            try {
+              await result.user.getIdToken();
+              setUser(result.user);
+              setAuthModalOpen(false);
+              setGuestModalOpen(false);
+              showToast('Berhasil masuk menggunakan akun Google.');
+              syncUserProfileAndAdmin(result.user);
+            } catch (tokenErr) {
+              if (isSecureTokenApiError(tokenErr)) {
+                await signOut(auth).catch(() => {});
+                setUser(null);
+                setUserProfile(null);
+                setIsAdmin(false);
+              }
+            }
           }
         })
         .catch(err => {
@@ -177,18 +210,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
     }
 
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      if (currentUser) {
-        setAuthModalOpen(false);
-        setGuestModalOpen(false);
-        syncUserProfileAndAdmin(currentUser);
-      } else {
-        setUserProfile(null);
-        setIsAdmin(false);
+    const unsubscribe = onAuthStateChanged(
+      auth,
+      async (currentUser) => {
+        if (currentUser) {
+          try {
+            await currentUser.getIdToken();
+            setUser(currentUser);
+            setAuthModalOpen(false);
+            setGuestModalOpen(false);
+            syncUserProfileAndAdmin(currentUser);
+          } catch (tokenErr: any) {
+            if (isSecureTokenApiError(tokenErr)) {
+              console.warn('[Auth] Token service API disabled in GCP project. Resetting session to guest mode so Firestore public reads succeed:', tokenErr);
+              await signOut(auth).catch(() => {});
+              setUser(null);
+              setUserProfile(null);
+              setIsAdmin(false);
+            } else {
+              setUser(currentUser);
+              setAuthModalOpen(false);
+              setGuestModalOpen(false);
+              syncUserProfileAndAdmin(currentUser);
+            }
+          }
+        } else {
+          setUser(null);
+          setUserProfile(null);
+          setIsAdmin(false);
+        }
+        setLoading(false);
+      },
+      (error) => {
+        console.warn('[onAuthStateChanged notice]:', error);
+        setLoading(false);
       }
-      setLoading(false);
-    });
+    );
 
     return () => unsubscribe();
   }, [showToast, syncUserProfileAndAdmin]);
@@ -201,6 +258,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loginWithEmail = async (email: string, pass: string) => {
     const cred = await signInWithEmailAndPassword(auth, email.trim(), pass);
     const authedUser = cred.user;
+    try {
+      await authedUser.getIdToken();
+    } catch (tokenErr: any) {
+      if (isSecureTokenApiError(tokenErr)) {
+        await signOut(auth).catch(() => {});
+        setUser(null);
+        setUserProfile(null);
+        setIsAdmin(false);
+        showToast('Layanan Secure Token Service API di Google Cloud Project belum diaktifkan. Mode baca publik tetap dapat digunakan.');
+        return;
+      }
+    }
     setUser(authedUser);
     if (isPlatformAdminEmail(authedUser.email)) {
       setIsAdmin(true);
@@ -215,6 +284,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signupWithEmail = async (email: string, pass: string, displayName: string) => {
     const cleanEmail = email.trim();
     const cred = await createUserWithEmailAndPassword(auth, cleanEmail, pass);
+    try {
+      await cred.user.getIdToken();
+    } catch (tokenErr: any) {
+      if (isSecureTokenApiError(tokenErr)) {
+        await signOut(auth).catch(() => {});
+        setUser(null);
+        setUserProfile(null);
+        setIsAdmin(false);
+        showToast('Layanan Secure Token Service API di Google Cloud Project belum diaktifkan. Mode baca publik tetap dapat digunakan.');
+        return;
+      }
+    }
     if (displayName) {
       await updateProfile(cred.user, { displayName }).catch(() => {});
     }
@@ -238,6 +319,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       provider.setCustomParameters({ prompt: 'select_account' });
       const result = await signInWithPopup(auth, provider, browserPopupRedirectResolver);
       const googleUser = result.user;
+      try {
+        await googleUser.getIdToken();
+      } catch (tokenErr: any) {
+        if (isSecureTokenApiError(tokenErr)) {
+          await signOut(auth).catch(() => {});
+          setUser(null);
+          setUserProfile(null);
+          setIsAdmin(false);
+          showToast('Layanan Secure Token Service API di Google Cloud Project belum diaktifkan. Mode baca publik tetap dapat digunakan.');
+          return false;
+        }
+      }
       setUser(googleUser);
       if (isPlatformAdminEmail(googleUser.email)) {
         setIsAdmin(true);

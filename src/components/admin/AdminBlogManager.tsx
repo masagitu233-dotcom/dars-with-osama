@@ -8,14 +8,9 @@ import {
   CheckCircle,
   AlertCircle,
   FileText,
-  Upload,
   X,
-  Save,
   Globe,
-  Tag,
-  Clock,
   Sparkles,
-  ArrowLeft,
   RefreshCw,
   Headphones,
   Volume2,
@@ -24,10 +19,9 @@ import {
   Play,
   Square,
   MessageSquare,
-  Info,
-  Radio
+  Info
 } from 'lucide-react';
-import { BlogPost, BlogPostAudioConfig } from '../../types';
+import { BlogPost } from '../../types';
 import { RichTextEditor } from './RichTextEditor';
 import { saveBlogPost, deleteBlogPost, uploadFileToStorage, deleteDummyBlogPostsFromFirestore } from '../../firebase/services';
 import { ConfirmModal } from '../common/ConfirmModal';
@@ -52,27 +46,23 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
   const [statusFilter, setStatusFilter] = useState<'all' | 'published' | 'draft'>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
 
-  // Deletion Modal & Feedback states
   const [postToDelete, setPostToDelete] = useState<BlogPost | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteDummyModal, setShowDeleteDummyModal] = useState(false);
   const [isDeletingDummy, setIsDeletingDummy] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // Editor Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isInModalPreview, setIsInModalPreview] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
   const [coverProgress, setCoverProgress] = useState(0);
 
-  // Audio Upload & TTS Preview states
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [isPreviewSpeaking, setIsPreviewSpeaking] = useState(false);
   const [uploadingAudio, setUploadingAudio] = useState(false);
   const [audioProgress, setAudioProgress] = useState(0);
 
-  // Load available browser voices for Web Speech API
   useEffect(() => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
     const updateVoices = () => {
@@ -88,7 +78,6 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
     };
   }, []);
 
-  // Form state
   const [formData, setFormData] = useState<Partial<BlogPost>>({
     title: '',
     titleAr: '',
@@ -108,10 +97,8 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
 
   const [tagInput, setTagInput] = useState('');
 
-  // Extract unique categories
   const categories = Array.from(new Set(posts.map(p => p.category).filter(Boolean)));
 
-  // Filtered posts
   const filteredPosts = posts.filter(post => {
     const matchesSearch = !searchQuery || (
       post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -280,7 +267,7 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
   };
 
   const handleSave = async (status: 'published' | 'draft') => {
-    if (saving) return; // Prevent double-clicks / duplicate submissions
+    if (saving) return;
     setFeedback(null);
 
     const titleText = formData.title?.trim() || '';
@@ -417,22 +404,22 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
     <div className="space-y-6 animate-fade-in font-sans">
       {/* FEEDBACK STATUS BANNER */}
       {feedback && (
-        <div className={`p-4 rounded-2xl border text-xs sm:text-sm flex items-center justify-between gap-3 animate-fade-in ${
+        <div className={`p-4 rounded-md border-2 border-[#171717] shadow-[4px_4px_0px_#171717] text-xs sm:text-sm font-bold flex items-center justify-between gap-3 animate-fade-in ${
           feedback.type === 'success'
-            ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
-            : 'bg-rose-50 dark:bg-rose-950/60 border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300'
+            ? 'bg-[#D9AC45] text-[#171717]'
+            : 'bg-[#F04438] text-white'
         }`}>
           <div className="flex items-center gap-2">
             {feedback.type === 'success' ? (
-              <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+              <CheckCircle className="w-4 h-4 shrink-0" />
             ) : (
-              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+              <AlertCircle className="w-4 h-4 shrink-0" />
             )}
             <span>{feedback.text}</span>
           </div>
           <button
             onClick={() => setFeedback(null)}
-            className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 p-1 rounded-lg cursor-pointer"
+            className="p-1 rounded hover:bg-black/10 cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -440,13 +427,13 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
       )}
 
       {/* HEADER BAR */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-stone-900 p-6 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 nb-card bg-white dark:bg-[#0B3026] p-6">
         <div>
-          <h2 className="text-lg font-bold text-stone-900 dark:text-white flex items-center gap-2">
-            <FileText className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+          <h2 className="text-lg font-extrabold font-serif-brand text-[#171717] dark:text-[#F8F3E8] flex items-center gap-2">
+            <FileText className="w-5 h-5 text-[#06251D] dark:text-[#D9AC45]" />
             <span>Manajemen Blog & Artikel ({posts.length})</span>
           </h2>
-          <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
+          <p className="text-xs text-[#171717]/75 dark:text-[#F8F3E8]/75 mt-1">
             Kelola publikasi naskah ilmu, catatan kajian, artikel tazkiyah, serta faedah Islam.
           </p>
         </div>
@@ -454,7 +441,7 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
         <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={() => setShowDeleteDummyModal(true)}
-            className="px-3.5 py-2.5 bg-rose-100 dark:bg-rose-950/60 hover:bg-rose-200 text-rose-800 dark:text-rose-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer active:scale-95"
+            className="nb-btn nb-btn-danger px-3.5 py-2.5 text-xs"
             title="Hapus seluruh artikel dummy / contoh bawaan"
           >
             <Trash2 className="w-4 h-4" />
@@ -463,44 +450,42 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
 
           <button
             onClick={handleOpenAddModal}
-            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow-md transition flex items-center gap-2 cursor-pointer active:scale-95"
+            className="nb-btn nb-btn-primary px-4 py-2.5 text-xs"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-4 h-4 text-[#D9AC45]" />
             <span>+ Buat Artikel Baru</span>
           </button>
         </div>
       </div>
 
       {/* FILTER & SEARCH BAR */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white dark:bg-stone-900 p-4 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 nb-card bg-white dark:bg-[#0B3026] p-4">
         <div className="relative flex-1 max-w-md">
-          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
+          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#171717]/60 dark:text-[#F8F3E8]/60" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Cari judul artikel, ringkasan, atau kategori..."
-            className="w-full pl-10 pr-4 py-2 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 text-stone-900 dark:text-white"
+            className="nb-input w-full pl-10 pr-4 py-2 text-xs"
           />
         </div>
 
         <div className="flex items-center gap-2 overflow-x-auto">
-          {/* Status filter */}
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as any)}
-            className="px-3 py-2 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs font-semibold text-stone-900 dark:text-white"
+            className="nb-input px-3 py-2 text-xs font-bold"
           >
             <option value="all">Semua Status</option>
             <option value="published">Terbit (Published)</option>
             <option value="draft">Draf (Draft)</option>
           </select>
 
-          {/* Category filter */}
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="px-3 py-2 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs font-semibold text-stone-900 dark:text-white"
+            className="nb-input px-3 py-2 text-xs font-bold"
           >
             <option value="all">Semua Kategori</option>
             {categories.map(c => (
@@ -511,160 +496,162 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
       </div>
 
       {/* ARTICLES TABLE */}
-      <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl overflow-hidden shadow-xs">
-        <table className="w-full text-left border-collapse text-xs">
-          <thead>
-            <tr className="bg-stone-50 dark:bg-stone-800/80 border-b border-stone-200 dark:border-stone-800 text-stone-500 font-semibold">
-              <th className="p-4">Sampul & Judul Artikel</th>
-              <th className="p-4">Kategori</th>
-              <th className="p-4">Status</th>
-              <th className="p-4">Waktu Baca & Pembaca</th>
-              <th className="p-4">Tanggal Diperbarui</th>
-              <th className="p-4 text-right">Aksi</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-stone-200 dark:divide-stone-800">
-            {filteredPosts.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="p-8 text-center text-stone-500">
-                  Belum ada artikel yang sesuai. Klik "+ Buat Artikel Baru" untuk memublikasikan tulisan.
-                </td>
+      <div className="nb-card bg-white dark:bg-[#0B3026] overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr className="bg-[#06251D] text-[#D9AC45] border-b-2 border-[#171717] font-extrabold uppercase text-[11px]">
+                <th className="p-4">Sampul & Judul Artikel</th>
+                <th className="p-4">Kategori</th>
+                <th className="p-4">Status</th>
+                <th className="p-4">Waktu Baca & Pembaca</th>
+                <th className="p-4">Tanggal Diperbarui</th>
+                <th className="p-4 text-right">Aksi</th>
               </tr>
-            ) : (
-              filteredPosts.map(post => (
-                <tr key={post.id} className="hover:bg-stone-50/50 dark:hover:bg-stone-800/50 transition">
-                  <td className="p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-14 h-10 rounded-lg bg-stone-100 dark:bg-stone-800 overflow-hidden shrink-0 border border-stone-200 dark:border-stone-700">
-                        {post.coverImageUrl ? (
-                          <img src={post.coverImageUrl} alt={post.title} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-stone-400">
-                            <FileText className="w-4 h-4" />
-                          </div>
-                        )}
-                      </div>
-                      <div className="min-w-0 max-w-xs sm:max-w-md">
-                        <p className="font-bold text-stone-900 dark:text-white truncate text-xs sm:text-sm">
-                          {post.title}
-                        </p>
-                        {post.titleAr && (
-                          <p className="font-amiri text-xs text-emerald-600 dark:text-emerald-400 truncate">
-                            {post.titleAr}
-                          </p>
-                        )}
-                        <p className="text-[10px] text-stone-400 truncate">
-                          /{post.slug}
-                        </p>
-                      </div>
-                    </div>
-                  </td>
-
-                  <td className="p-4">
-                    <span className="px-2.5 py-1 rounded-lg bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 font-bold text-[10px]">
-                      {post.category}
-                    </span>
-                  </td>
-
-                  <td className="p-4">
-                    <button
-                      onClick={() => handleToggleStatus(post)}
-                      className={`px-2.5 py-1 rounded-lg font-bold text-[10px] transition cursor-pointer ${
-                        post.status === 'published'
-                          ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800'
-                          : 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800'
-                      }`}
-                    >
-                      {post.status === 'published' ? 'Terbit (Published)' : 'Draf (Draft)'}
-                    </button>
-                  </td>
-
-                  <td className="p-4 text-stone-500">
-                    <p className="font-medium text-stone-900 dark:text-stone-100">{post.readingTimeMinutes} min baca</p>
-                    <p className="text-[10px] text-stone-400">{post.viewsCount || 0} pembaca</p>
-                    {post.audioConfig?.mode === 'custom' && post.audioConfig.customAudioUrl ? (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 mt-1">
-                        <Mic className="w-3 h-3" /> Audio Rekaman
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 text-[10px] text-stone-500 dark:text-stone-400 mt-1">
-                        <Volume2 className="w-3 h-3 text-emerald-600" /> TTS {post.audioConfig?.speechRate ? `${post.audioConfig.speechRate}×` : '1×'}
-                      </span>
-                    )}
-                  </td>
-
-                  <td className="p-4 text-stone-500 text-[11px]">
-                    {new Date(post.updatedAt || post.createdAt).toLocaleString('id-ID')}
-                  </td>
-
-                  <td className="p-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      {onNavigateToComments && (
-                        <button
-                          onClick={() => onNavigateToComments(post.id)}
-                          className="p-1.5 text-stone-600 dark:text-stone-300 hover:text-emerald-600 transition cursor-pointer"
-                          title="Lihat & Moderasi Komentar Artikel Ini"
-                        >
-                          <MessageSquare className="w-4 h-4" />
-                        </button>
-                      )}
-
-                      <button
-                        onClick={() => onPreviewPost(post)}
-                        className="p-1.5 text-stone-600 dark:text-stone-300 hover:text-emerald-600 transition cursor-pointer"
-                        title="Lihat Pratinjau Artikel"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-
-                      <button
-                        onClick={() => handleOpenEditModal(post)}
-                        className="p-1.5 text-stone-600 dark:text-stone-300 hover:text-emerald-600 transition cursor-pointer"
-                        title="Edit Artikel"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-
-                      <button
-                        onClick={() => setPostToDelete(post)}
-                        disabled={isDeleting && postToDelete?.id === post.id}
-                        className="p-1.5 text-rose-500 hover:text-rose-700 transition cursor-pointer disabled:opacity-50"
-                        title="Hapus Artikel"
-                      >
-                        {isDeleting && postToDelete?.id === post.id ? (
-                          <RefreshCw className="w-4 h-4 animate-spin text-rose-500" />
-                        ) : (
-                          <Trash2 className="w-4 h-4" />
-                        )}
-                      </button>
-                    </div>
+            </thead>
+            <tbody className="divide-y-2 divide-[#171717]/15 dark:divide-[#D9AC45]/25 text-[#171717] dark:text-[#F8F3E8]">
+              {filteredPosts.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="p-8 text-center text-[#171717]/70 dark:text-[#F8F3E8]/70 font-semibold">
+                    Belum ada artikel yang sesuai. Klik "+ Buat Artikel Baru" untuk memublikasikan tulisan.
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                filteredPosts.map(post => (
+                  <tr key={post.id} className="hover:bg-[#F8F3E8] dark:hover:bg-[#06251D]/50 transition">
+                    <td className="p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-14 h-10 rounded-md bg-[#F8F3E8] dark:bg-[#06251D] overflow-hidden shrink-0 border-2 border-[#171717]">
+                          {post.coverImageUrl ? (
+                            <img src={post.coverImageUrl} alt={post.title} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-[#06251D] dark:text-[#D9AC45]">
+                              <FileText className="w-4 h-4" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0 max-w-xs sm:max-w-md">
+                          <p className="font-extrabold text-[#171717] dark:text-[#F8F3E8] truncate text-xs sm:text-sm">
+                            {post.title}
+                          </p>
+                          {post.titleAr && (
+                            <p className="font-amiri text-xs text-[#06251D] dark:text-[#D9AC45] font-bold truncate">
+                              {post.titleAr}
+                            </p>
+                          )}
+                          <p className="text-[10px] text-[#171717]/65 dark:text-[#F8F3E8]/65 font-mono truncate">
+                            /{post.slug}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+
+                    <td className="p-4">
+                      <span className="nb-badge bg-[#F8F3E8] dark:bg-[#06251D] text-[#171717] dark:text-[#F8F3E8]">
+                        {post.category}
+                      </span>
+                    </td>
+
+                    <td className="p-4">
+                      <button
+                        onClick={() => handleToggleStatus(post)}
+                        className={`nb-badge cursor-pointer ${
+                          post.status === 'published'
+                            ? 'bg-[#06251D] text-[#D9AC45]'
+                            : 'bg-[#D9AC45] text-[#171717]'
+                        }`}
+                      >
+                        {post.status === 'published' ? 'Terbit (Published)' : 'Draf (Draft)'}
+                      </button>
+                    </td>
+
+                    <td className="p-4">
+                      <p className="font-bold text-[#171717] dark:text-[#F8F3E8]">{post.readingTimeMinutes} min baca</p>
+                      <p className="text-[10px] text-[#171717]/70 dark:text-[#F8F3E8]/70">{post.viewsCount || 0} pembaca</p>
+                      {post.audioConfig?.mode === 'custom' && post.audioConfig.customAudioUrl ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-[#06251D] dark:text-[#D9AC45] mt-1">
+                          <Mic className="w-3 h-3" /> Audio Rekaman
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-[10px] text-[#171717]/75 dark:text-[#F8F3E8]/75 mt-1 font-semibold">
+                          <Volume2 className="w-3 h-3 text-[#06251D] dark:text-[#D9AC45]" /> TTS {post.audioConfig?.speechRate ? `${post.audioConfig.speechRate}×` : '1×'}
+                        </span>
+                      )}
+                    </td>
+
+                    <td className="p-4 text-[11px] font-medium">
+                      {new Date(post.updatedAt || post.createdAt).toLocaleString('id-ID')}
+                    </td>
+
+                    <td className="p-4 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        {onNavigateToComments && (
+                          <button
+                            onClick={() => onNavigateToComments(post.id)}
+                            className="nb-btn nb-btn-secondary p-1.5"
+                            title="Lihat & Moderasi Komentar Artikel Ini"
+                          >
+                            <MessageSquare className="w-4 h-4" />
+                          </button>
+                        )}
+
+                        <button
+                          onClick={() => onPreviewPost(post)}
+                          className="nb-btn nb-btn-secondary p-1.5"
+                          title="Lihat Pratinjau Artikel"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+
+                        <button
+                          onClick={() => handleOpenEditModal(post)}
+                          className="nb-btn nb-btn-gold p-1.5"
+                          title="Edit Artikel"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+
+                        <button
+                          onClick={() => setPostToDelete(post)}
+                          disabled={isDeleting && postToDelete?.id === post.id}
+                          className="nb-btn nb-btn-danger p-1.5 disabled:opacity-50"
+                          title="Hapus Artikel"
+                        >
+                          {isDeleting && postToDelete?.id === post.id ? (
+                            <RefreshCw className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-4 h-4" />
+                          )}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* ARTICLE EDITOR MODAL / DRAWER */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
-          <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden my-8 flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
+          <div className="nb-card bg-white dark:bg-[#0B3026] w-full max-w-4xl overflow-hidden my-8 flex flex-col max-h-[90vh]">
             {/* Modal Header */}
-            <div className="p-6 border-b border-stone-200 dark:border-stone-800 flex items-center justify-between bg-stone-50/50 dark:bg-stone-900/50 shrink-0">
+            <div className="p-6 border-b-2 border-[#171717] dark:border-[#D9AC45]/50 flex items-center justify-between bg-[#06251D] text-[#F8F3E8] shrink-0">
               <div>
-                <h3 className="text-lg font-bold text-stone-900 dark:text-white font-sans flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                <h3 className="text-lg font-extrabold text-[#F8F3E8] font-serif-brand flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-[#D9AC45]" />
                   <span>{formData.id ? 'Edit Artikel Blog' : 'Buat Artikel Blog Baru'}</span>
                 </h3>
-                <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
+                <p className="text-xs text-[#F8F3E8]/80 mt-0.5">
                   Tulis isi naskah, sampul, kategori, dan kelola publikasi artikel.
                 </p>
               </div>
 
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="p-2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 rounded-xl transition cursor-pointer"
+                className="nb-btn nb-btn-secondary p-2"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -674,23 +661,23 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
             <div ref={modalBodyRef} className="p-6 overflow-y-auto space-y-6 flex-1 text-xs sm:text-sm">
               {/* MODAL INLINE FEEDBACK BANNER */}
               {feedback && (
-                <div className={`p-4 rounded-2xl border text-xs sm:text-sm flex items-center justify-between gap-3 animate-fade-in ${
+                <div className={`p-4 rounded-md border-2 border-[#171717] text-xs sm:text-sm font-bold flex items-center justify-between gap-3 animate-fade-in ${
                   feedback.type === 'success'
-                    ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
-                    : 'bg-rose-50 dark:bg-rose-950/60 border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300'
+                    ? 'bg-[#D9AC45] text-[#171717]'
+                    : 'bg-[#F04438] text-white'
                 }`}>
                   <div className="flex items-center gap-2">
                     {feedback.type === 'success' ? (
-                      <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <CheckCircle className="w-4 h-4 shrink-0" />
                     ) : (
-                      <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                      <AlertCircle className="w-4 h-4 shrink-0" />
                     )}
                     <span>{feedback.text}</span>
                   </div>
                   <button
                     type="button"
                     onClick={() => setFeedback(null)}
-                    className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 p-1 rounded-lg cursor-pointer"
+                    className="p-1 rounded hover:bg-black/10 cursor-pointer"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -700,7 +687,7 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
               {/* Judul & Judul Arab */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 block mb-1">
+                  <label className="text-xs font-extrabold text-[#171717] dark:text-[#F8F3E8] block mb-1">
                     Judul Artikel (Indonesia) *
                   </label>
                   <input
@@ -708,12 +695,12 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
                     value={formData.title || ''}
                     onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
                     placeholder="Contoh: Menuntut Ilmu Syar'i: Keutamaan & Adab"
-                    className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-emerald-500 text-stone-900 dark:text-white"
+                    className="nb-input w-full px-3.5 py-2.5 text-xs font-semibold"
                   />
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 block mb-1">
+                  <label className="text-xs font-extrabold text-[#171717] dark:text-[#F8F3E8] block mb-1">
                     Judul Bahasa Arab (Opsional)
                   </label>
                   <input
@@ -722,7 +709,7 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
                     onChange={(e) => setFormData(prev => ({ ...prev, titleAr: e.target.value }))}
                     placeholder="طَلَبُ العِلْمِ الشَّرْعِيِّ..."
                     dir="rtl"
-                    className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs font-amiri font-bold text-emerald-800 dark:text-emerald-300 focus:ring-2 focus:ring-emerald-500"
+                    className="nb-input w-full px-3.5 py-2.5 text-xs font-amiri font-bold text-[#06251D] dark:text-[#D9AC45]"
                   />
                 </div>
               </div>
@@ -730,7 +717,7 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
               {/* Kategori, Tag & Unggulan */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 block mb-1">
+                  <label className="text-xs font-extrabold text-[#171717] dark:text-[#F8F3E8] block mb-1">
                     Kategori Artikel *
                   </label>
                   <input
@@ -738,12 +725,12 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
                     value={formData.category || ''}
                     onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
                     placeholder="misal: Kajian Fiqih, Adab & Akhlak, Tafsir"
-                    className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 text-stone-900 dark:text-white"
+                    className="nb-input w-full px-3.5 py-2.5 text-xs"
                   />
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 block mb-1">
+                  <label className="text-xs font-extrabold text-[#171717] dark:text-[#F8F3E8] block mb-1">
                     Tag Artikel (Pisahkan dengan Koma)
                   </label>
                   <input
@@ -751,7 +738,7 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
                     value={tagInput}
                     onChange={(e) => setTagInput(e.target.value)}
                     placeholder="ilmu, tazkiyah, adab"
-                    className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 text-stone-900 dark:text-white"
+                    className="nb-input w-full px-3.5 py-2.5 text-xs"
                   />
                 </div>
 
@@ -761,10 +748,10 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
                       type="checkbox"
                       checked={formData.isFeatured || false}
                       onChange={(e) => setFormData(prev => ({ ...prev, isFeatured: e.target.checked }))}
-                      className="w-4 h-4 accent-emerald-600 rounded"
+                      className="w-4 h-4 accent-[#06251D] rounded"
                     />
-                    <span className="text-xs font-bold text-stone-800 dark:text-stone-200 flex items-center gap-1">
-                      <Sparkles className="w-3.5 h-3.5 text-amber-500" /> Jadikan Artikel Unggulan
+                    <span className="text-xs font-extrabold text-[#171717] dark:text-[#F8F3E8] flex items-center gap-1">
+                      <Sparkles className="w-3.5 h-3.5 text-[#D9AC45]" /> Jadikan Artikel Unggulan
                     </span>
                   </label>
                 </div>
@@ -772,7 +759,7 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
 
               {/* Ringkasan / Excerpt */}
               <div>
-                <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 block mb-1">
+                <label className="text-xs font-extrabold text-[#171717] dark:text-[#F8F3E8] block mb-1">
                   Ringkasan / Teaser Singkat (Excerpt) *
                 </label>
                 <textarea
@@ -780,32 +767,32 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
                   value={formData.excerpt || ''}
                   onChange={(e) => setFormData(prev => ({ ...prev, excerpt: e.target.value }))}
                   placeholder="Ringkasan 1-2 kalimat untuk ditampilkan di kartu daftar artikel..."
-                  className="w-full p-3 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 text-stone-900 dark:text-white"
+                  className="nb-input w-full p-3 text-xs"
                 />
               </div>
 
               {/* Gambar Sampul */}
-              <div className="p-4 bg-stone-50/50 dark:bg-stone-800/40 rounded-2xl border border-stone-200 dark:border-stone-800 space-y-3">
-                <label className="text-xs font-bold text-stone-900 dark:text-white block">
+              <div className="p-4 bg-[#F8F3E8] dark:bg-[#06251D] rounded-lg border-2 border-[#171717] dark:border-[#D9AC45]/50 space-y-3">
+                <label className="text-xs font-extrabold text-[#171717] dark:text-[#F8F3E8] block">
                   Gambar Sampul Artikel (Cover Image)
                 </label>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
                   <div className="space-y-2">
-                    <label className="text-[11px] text-stone-500 block">
+                    <label className="text-[11px] font-bold text-[#171717]/80 dark:text-[#F8F3E8]/80 block">
                       Unggah Berkas Gambar Sampul:
                     </label>
                     <input
                       type="file"
                       accept="image/*"
                       onChange={handleCoverFileUpload}
-                      className="w-full text-xs text-stone-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-100 file:text-emerald-800 hover:file:bg-emerald-200 cursor-pointer"
+                      className="w-full text-xs text-[#171717] dark:text-[#F8F3E8] file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-2 file:border-[#171717] file:text-xs file:font-extrabold file:bg-[#D9AC45] file:text-[#171717] cursor-pointer"
                     />
                     {uploadingCover && (
-                      <p className="text-[10px] text-emerald-600">Mengunggah sampul... {coverProgress}%</p>
+                      <p className="text-[10px] font-bold text-[#06251D] dark:text-[#D9AC45]">Mengunggah sampul... {coverProgress}%</p>
                     )}
 
-                    <label className="text-[11px] text-stone-500 block pt-2">
+                    <label className="text-[11px] font-bold text-[#171717]/80 dark:text-[#F8F3E8]/80 block pt-2">
                       Atau Masukkan URL Sampul Langsung:
                     </label>
                     <input
@@ -813,15 +800,15 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
                       value={formData.coverImageUrl || ''}
                       onChange={(e) => setFormData(prev => ({ ...prev, coverImageUrl: e.target.value }))}
                       placeholder="https://images.unsplash.com/photo-..."
-                      className="w-full px-3 py-2 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs text-stone-900 dark:text-white"
+                      className="nb-input w-full px-3 py-2 text-xs"
                     />
                   </div>
 
-                  <div className="aspect-video w-full rounded-xl bg-stone-200 dark:bg-stone-800 overflow-hidden relative border border-stone-300 dark:border-stone-700">
+                  <div className="aspect-video w-full rounded-md bg-white dark:bg-[#0B3026] overflow-hidden relative border-2 border-[#171717]">
                     {formData.coverImageUrl ? (
                       <img src={formData.coverImageUrl} alt="Sampul" className="w-full h-full object-cover" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-stone-400 text-xs">
+                      <div className="w-full h-full flex items-center justify-center text-[#171717]/60 text-xs font-bold">
                         Belum ada sampul
                       </div>
                     )}
@@ -829,10 +816,9 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
                 </div>
               </div>
 
-              {/* PENGATURAN AUDIO READING (FITUR DENGAR ARTIKEL) */}
-              <div className="p-5 bg-stone-50/70 dark:bg-stone-800/50 rounded-2xl border border-stone-200 dark:border-stone-800 space-y-4">
-                {/* 1. PRIMARY TOGGLE: AKTIFKAN AUDIO READING */}
-                <div className="flex items-center justify-between p-4 bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-700 shadow-xs">
+              {/* PENGATURAN AUDIO READING */}
+              <div className="p-5 bg-[#F8F3E8] dark:bg-[#06251D] rounded-lg border-2 border-[#171717] dark:border-[#D9AC45]/50 space-y-4">
+                <div className="flex items-center justify-between p-4 bg-white dark:bg-[#0B3026] rounded-md border-2 border-[#171717] dark:border-[#D9AC45]/50">
                   <div className="flex items-start sm:items-center gap-3">
                     <input
                       type="checkbox"
@@ -851,25 +837,25 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
                           }
                         }))
                       }
-                      className="w-5 h-5 mt-0.5 sm:mt-0 accent-emerald-600 rounded cursor-pointer shrink-0"
+                      className="w-5 h-5 mt-0.5 sm:mt-0 accent-[#06251D] rounded cursor-pointer shrink-0"
                     />
                     <label htmlFor="checkbox-audio-enabled" className="cursor-pointer">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs sm:text-sm font-bold text-stone-900 dark:text-white flex items-center gap-1.5">
-                          <Headphones className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                        <span className="text-xs sm:text-sm font-extrabold text-[#171717] dark:text-[#F8F3E8] flex items-center gap-1.5">
+                          <Headphones className="w-4 h-4 text-[#06251D] dark:text-[#D9AC45]" />
                           <span>Aktifkan Audio Reading pada Artikel Ini</span>
                         </span>
                         {formData.audioConfig?.enabled ? (
-                          <span className="px-2 py-0.5 text-[10px] bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 rounded-full font-bold">
+                          <span className="nb-badge bg-[#06251D] text-[#D9AC45]">
                             Aktif (Tampil di Publik)
                           </span>
                         ) : (
-                          <span className="px-2 py-0.5 text-[10px] bg-stone-100 dark:bg-stone-800 text-stone-500 rounded-full font-bold">
+                          <span className="nb-badge bg-[#F8F3E8] dark:bg-[#06251D] text-[#171717] dark:text-[#F8F3E8]">
                             Nonaktif (Tidak Ditampilkan)
                           </span>
                         )}
                       </div>
-                      <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5">
+                      <p className="text-[11px] text-[#171717]/75 dark:text-[#F8F3E8]/75 mt-0.5">
                         {formData.audioConfig?.enabled
                           ? 'Tombol Audio Reading akan ditampilkan di halaman publik artikel ini sehingga pembaca dapat menyimak audio.'
                           : 'Tombol Audio Reading tidak akan ditampilkan pada artikel publik ini (fitur audio dinonaktifkan).'}
@@ -878,21 +864,19 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
                   </div>
                 </div>
 
-                {/* 2. SUB-OPTIONS (Hanya jika diaktifkan) */}
                 {formData.audioConfig?.enabled ? (
                   <div className="space-y-4 pt-1 animate-fade-in">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-200/80 dark:border-stone-700/60 pb-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 border-[#171717]/20 dark:border-[#D9AC45]/30 pb-3">
                       <div>
-                        <h4 className="text-xs font-bold text-stone-800 dark:text-stone-200">
+                        <h4 className="text-xs font-extrabold text-[#171717] dark:text-[#F8F3E8]">
                           Pilih Sumber & Suara Audio Reading
                         </h4>
-                        <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5">
+                        <p className="text-[11px] text-[#171717]/75 dark:text-[#F8F3E8]/75 mt-0.5">
                           Gunakan suara otomatis peramban (Web Speech) atau berkas audio rekaman asli.
                         </p>
                       </div>
 
-                      {/* Mode Selector Buttons */}
-                      <div className="inline-flex p-1 bg-stone-200/80 dark:bg-stone-900 rounded-xl shrink-0">
+                      <div className="inline-flex p-1 bg-white dark:bg-[#0B3026] border-2 border-[#171717] rounded-md shrink-0 gap-1">
                         <button
                           type="button"
                           onClick={() =>
@@ -907,10 +891,10 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
                               }
                             }))
                           }
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                          className={`px-3 py-1.5 rounded-sm text-xs font-extrabold transition cursor-pointer flex items-center gap-1.5 ${
                             formData.audioConfig?.mode !== 'custom'
-                              ? 'bg-white dark:bg-stone-750 text-emerald-700 dark:text-emerald-400 shadow-xs'
-                              : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
+                              ? 'bg-[#06251D] text-[#D9AC45]'
+                              : 'text-[#171717] dark:text-[#F8F3E8]'
                           }`}
                         >
                           <Volume2 className="w-3.5 h-3.5" />
@@ -931,10 +915,10 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
                               }
                             }))
                           }
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                          className={`px-3 py-1.5 rounded-sm text-xs font-extrabold transition cursor-pointer flex items-center gap-1.5 ${
                             formData.audioConfig?.mode === 'custom'
-                              ? 'bg-white dark:bg-stone-750 text-emerald-700 dark:text-emerald-400 shadow-xs'
-                              : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
+                              ? 'bg-[#06251D] text-[#D9AC45]'
+                              : 'text-[#171717] dark:text-[#F8F3E8]'
                           }`}
                         >
                           <Mic className="w-3.5 h-3.5" />
@@ -943,20 +927,18 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
                       </div>
                     </div>
 
-                    {/* MODE 1: WEB SPEECH API */}
                     {formData.audioConfig?.mode !== 'custom' && (
                       <div className="space-y-4 animate-fade-in text-xs">
-                        <div className="p-3 bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200/70 dark:border-emerald-800/40 rounded-xl flex items-start gap-2.5 text-stone-700 dark:text-stone-300">
-                          <Info className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div className="p-3 bg-white dark:bg-[#0B3026] border-2 border-[#171717] rounded-md flex items-start gap-2.5 text-[#171717] dark:text-[#F8F3E8]">
+                          <Info className="w-4 h-4 text-[#06251D] dark:text-[#D9AC45] shrink-0 mt-0.5" />
                           <div className="text-[11px] leading-relaxed">
-                            <strong className="text-emerald-800 dark:text-emerald-300">Pilihan Tanpa Biaya Penyimpanan:</strong> Artikel akan dibacakan langsung oleh teknologi sintesis suara peramban pengunjung. Pembaca di situs publik dapat memutar, menjeda, dan mengatur laju pemutaran. <em>(Catatan: Web Speech API tidak memproduksi file audio fisik)</em>.
+                            <strong className="text-[#06251D] dark:text-[#D9AC45]">Pilihan Tanpa Biaya Penyimpanan:</strong> Artikel akan dibacakan langsung oleh teknologi sintesis suara peramban pengunjung.
                           </div>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {/* Pilihan Suara Peramban */}
                           <div>
-                            <label className="text-[11px] font-semibold text-stone-700 dark:text-stone-300 block mb-1">
+                            <label className="text-[11px] font-extrabold text-[#171717] dark:text-[#F8F3E8] block mb-1">
                               Pilihan Suara Pembaca (Browser Voice):
                             </label>
                             <select
@@ -972,7 +954,7 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
                                   }
                                 }))
                               }
-                              className="w-full px-3 py-2 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs font-semibold text-stone-900 dark:text-white"
+                              className="nb-input w-full px-3 py-2 text-xs font-bold"
                             >
                               <option value="">Otomatis Deteksi Bahasa Indonesia (Rekomendasi)</option>
                               {availableVoices.length > 0 ? (
@@ -990,14 +972,10 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
                                 </option>
                               )}
                             </select>
-                            <p className="text-[10px] text-stone-500 mt-1">
-                              Jika opsi otomatis dipilih, sistem akan memprioritaskan suara resmi Bahasa Indonesia (id-ID) pada perangkat pembaca.
-                            </p>
                           </div>
 
-                          {/* Kecepatan Bicara Default */}
                           <div>
-                            <label className="text-[11px] font-semibold text-stone-700 dark:text-stone-300 block mb-1">
+                            <label className="text-[11px] font-extrabold text-[#171717] dark:text-[#F8F3E8] block mb-1">
                               Kecepatan Bicara Awal (Speech Rate):
                             </label>
                             <div className="flex items-center gap-2">
@@ -1014,7 +992,7 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
                                     }
                                   }))
                                 }
-                                className="w-full px-3 py-2 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs font-semibold text-stone-900 dark:text-white"
+                                className="nb-input w-full px-3 py-2 text-xs font-bold"
                               >
                                 <option value="0.75">0,75× (Lambat / Tartil)</option>
                                 <option value="0.85">0,85× (Santai & Khusyuk)</option>
@@ -1024,54 +1002,48 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
                                 <option value="1.5">1,50× (Sangat Cepat)</option>
                               </select>
 
-                              {/* Tombol Uji Suara */}
                               <button
                                 type="button"
                                 onClick={handlePreviewVoice}
-                                className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer active:scale-95 ${
+                                className={`nb-btn px-3 py-2 text-xs shrink-0 ${
                                   isPreviewSpeaking
-                                    ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300'
-                                    : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-900 border border-emerald-300'
+                                    ? 'nb-btn-gold'
+                                    : 'nb-btn-primary'
                                 }`}
                                 title="Uji coba pelafalan suara peramban ini"
                               >
                                 {isPreviewSpeaking ? (
                                   <>
-                                    <Square className="w-3.5 h-3.5 fill-current text-amber-700" />
+                                    <Square className="w-3.5 h-3.5 fill-current" />
                                     <span>Hentikan</span>
                                   </>
                                 ) : (
                                   <>
-                                    <Play className="w-3.5 h-3.5 fill-current text-emerald-700" />
+                                    <Play className="w-3.5 h-3.5 fill-current" />
                                     <span>Uji Suara</span>
                                   </>
                                 )}
                               </button>
                             </div>
-                            <p className="text-[10px] text-stone-500 mt-1">
-                              Pembaca tetap memiliki kendali penuh untuk menaikkan/menurunkan kecepatan saat mendengarkan artikel.
-                            </p>
                           </div>
                         </div>
                       </div>
                     )}
 
-                    {/* MODE 2: CUSTOM AUDIO FILE / RECORDING */}
                     {formData.audioConfig?.mode === 'custom' && (() => {
                       const resolvedAdminAudio = resolveAudioSourceCandidates(formData.audioConfig?.customAudioUrl);
                       return (
                         <div className="space-y-4 animate-fade-in text-xs">
-                          <div className="p-3 bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 rounded-xl flex items-start gap-2.5 text-stone-700 dark:text-stone-300">
-                            <Music className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                          <div className="p-3 bg-white dark:bg-[#0B3026] border-2 border-[#171717] rounded-md flex items-start gap-2.5 text-[#171717] dark:text-[#F8F3E8]">
+                            <Music className="w-4 h-4 text-[#D9AC45] shrink-0 mt-0.5" />
                             <div className="text-[11px] leading-relaxed">
-                              <strong className="text-amber-900 dark:text-amber-300">Mode Rekaman Suara Asli (Google Drive / MP3):</strong> Masukkan tautan berbagi berkas audio dari Google Drive (pastikan akses disetel ke <em>"Siapa saja yang memiliki link"</em>) atau unggah berkas audio (.mp3, .m4a, .wav). Audio akan diputar langsung di halaman artikel.
+                              <strong className="text-[#06251D] dark:text-[#D9AC45]">Mode Rekaman Suara Asli (Google Drive / MP3):</strong> Masukkan tautan berbagi berkas audio dari Google Drive atau unggah berkas audio (.mp3, .m4a, .wav).
                             </div>
                           </div>
 
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
-                            {/* Upload Audio File */}
                             <div className="space-y-2">
-                              <label className="text-[11px] font-semibold text-stone-700 dark:text-stone-300 block">
+                              <label className="text-[11px] font-extrabold text-[#171717] dark:text-[#F8F3E8] block">
                                 Unggah Berkas Audio Rekaman (.mp3, .m4a, .wav):
                               </label>
                               <input
@@ -1079,29 +1051,25 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
                                 accept="audio/*,.mp3,.m4a,.wav,.ogg,.aac"
                                 onChange={handleAudioFileUpload}
                                 disabled={uploadingAudio}
-                                className="w-full text-xs text-stone-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-100 file:text-emerald-800 hover:file:bg-emerald-200 cursor-pointer disabled:opacity-50"
+                                className="w-full text-xs text-[#171717] dark:text-[#F8F3E8] file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-2 file:border-[#171717] file:text-xs file:font-extrabold file:bg-[#D9AC45] file:text-[#171717] cursor-pointer disabled:opacity-50"
                               />
                               {uploadingAudio && (
                                 <div className="space-y-1">
-                                  <p className="text-[10px] text-emerald-600 font-bold">
+                                  <p className="text-[10px] text-[#06251D] dark:text-[#D9AC45] font-extrabold">
                                     Mengunggah berkas audio rekaman... {audioProgress}%
                                   </p>
-                                  <div className="w-full bg-stone-200 dark:bg-stone-700 h-1.5 rounded-full overflow-hidden">
+                                  <div className="w-full bg-white h-2 rounded-sm border border-[#171717] overflow-hidden">
                                     <div
-                                      className="bg-emerald-600 h-full transition-all duration-300"
+                                      className="bg-[#D9AC45] h-full transition-all duration-300"
                                       style={{ width: `${audioProgress}%` }}
                                     />
                                   </div>
                                 </div>
                               )}
-                              <p className="text-[10px] text-stone-400">
-                                Maksimal ukuran file 25 MB. Berkas akan disimpan aman di Cloud Storage.
-                              </p>
                             </div>
 
-                            {/* Atau Masukkan URL Audio / Google Drive */}
                             <div className="space-y-2">
-                              <label className="text-[11px] font-semibold text-stone-700 dark:text-stone-300 block">
+                              <label className="text-[11px] font-extrabold text-[#171717] dark:text-[#F8F3E8] block">
                                 Tautan Google Drive Audio atau URL MP3 Langsung:
                               </label>
                               <input
@@ -1119,27 +1087,23 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
                                   }))
                                 }
                                 placeholder="https://drive.google.com/file/d/.../view?usp=drive_link"
-                                className="w-full px-3 py-2 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs text-stone-900 dark:text-white"
+                                className="nb-input w-full px-3 py-2 text-xs"
                               />
-                              <p className="text-[10px] text-stone-400">
-                                Mendukung tautan berbagi Google Drive (<code>drive.google.com/file/d/...</code>) maupun tautan audio langsung (.mp3, .m4a, .wav).
-                              </p>
                             </div>
                           </div>
 
-                          {/* Audio Player Preview & Google Drive Diagnostic */}
                           {formData.audioConfig?.customAudioUrl && (
-                            <div className="p-3 bg-white dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-700 space-y-2">
+                            <div className="p-3 bg-white dark:bg-[#0B3026] rounded-md border-2 border-[#171717] space-y-2">
                               <div className="flex flex-wrap items-center justify-between gap-2">
-                                <span className="text-[11px] font-bold text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
+                                <span className="text-[11px] font-extrabold text-[#171717] dark:text-[#F8F3E8] flex items-center gap-1.5">
                                   {resolvedAdminAudio.isGoogleDrive && !resolvedAdminAudio.fileId ? (
                                     <>
-                                      <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
-                                      <span className="text-rose-600 dark:text-rose-400">Tautan Google Drive Tidak Valid</span>
+                                      <AlertCircle className="w-3.5 h-3.5 text-[#F04438]" />
+                                      <span className="text-[#F04438]">Tautan Google Drive Tidak Valid</span>
                                     </>
                                   ) : (
                                     <>
-                                      <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                                      <CheckCircle className="w-3.5 h-3.5 text-[#06251D] dark:text-[#D9AC45]" />
                                       <span>
                                         {resolvedAdminAudio.isGoogleDrive
                                           ? `Google Drive Audio Terdeteksi (ID: ${resolvedAdminAudio.fileId})`
@@ -1161,14 +1125,14 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
                                       }
                                     }))
                                   }
-                                  className="text-[10px] text-rose-500 hover:text-rose-700 underline cursor-pointer"
+                                  className="text-[10px] text-[#F04438] font-bold underline cursor-pointer"
                                 >
                                   Hapus Berkas Audio
                                 </button>
                               </div>
 
                               {resolvedAdminAudio.isGoogleDrive && !resolvedAdminAudio.fileId ? (
-                                <p className="text-[11px] text-rose-600 dark:text-rose-400">
+                                <p className="text-[11px] text-[#F04438]">
                                   {describeAudioPlaybackError({
                                     isGoogleDrive: true,
                                     isGoogleDriveFolder: resolvedAdminAudio.isGoogleDriveFolder,
@@ -1176,19 +1140,12 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
                                   })}
                                 </p>
                               ) : (
-                                <>
-                                  <audio
-                                    controls
-                                    preload="metadata"
-                                    src={resolvedAdminAudio.primaryUrl}
-                                    className="w-full h-9 rounded-lg"
-                                  />
-                                  {resolvedAdminAudio.isGoogleDrive && (
-                                    <p className="text-[10px] text-stone-500 dark:text-stone-400">
-                                      Pastikan berkas di Google Drive memiliki izin akses umum <strong>"Siapa saja yang memiliki link" (Anyone with the link)</strong> agar dapat diputar oleh seluruh pembaca.
-                                    </p>
-                                  )}
-                                </>
+                                <audio
+                                  controls
+                                  preload="metadata"
+                                  src={resolvedAdminAudio.primaryUrl}
+                                  className="w-full h-9 rounded-md"
+                                />
                               )}
                             </div>
                           )}
@@ -1197,9 +1154,9 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
                     })()}
                   </div>
                 ) : (
-                  <div className="p-3.5 bg-stone-100/60 dark:bg-stone-900/40 rounded-xl border border-dashed border-stone-300 dark:border-stone-700 text-center">
-                    <p className="text-xs text-stone-500 dark:text-stone-400">
-                      Audio Reading saat ini <strong>dinonaktifkan</strong> untuk artikel ini. Centang opsi di atas jika ingin menampilkan pemutar audio bagi pembaca publik.
+                  <div className="p-3.5 bg-white dark:bg-[#0B3026] rounded-md border-2 border-dashed border-[#171717]/40 text-center">
+                    <p className="text-xs text-[#171717]/75 dark:text-[#F8F3E8]/75">
+                      Audio Reading saat ini <strong>dinonaktifkan</strong> untuk artikel ini.
                     </p>
                   </div>
                 )}
@@ -1208,17 +1165,17 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
               {/* Rich Text Editor for Content + Live Preview */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between gap-2">
-                  <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 block">
+                  <label className="text-xs font-extrabold text-[#171717] dark:text-[#F8F3E8] block">
                     Isi Artikel Utama (Bahasa Indonesia) *
                   </label>
                   <button
                     type="button"
                     data-testid="blog-modal-preview-toggle"
                     onClick={() => setIsInModalPreview(prev => !prev)}
-                    className={`px-3 py-1 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                    className={`nb-btn px-3 py-1.5 text-xs ${
                       isInModalPreview
-                        ? 'bg-emerald-600 text-white shadow-xs'
-                        : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/60'
+                        ? 'nb-btn-gold'
+                        : 'nb-btn-secondary'
                     }`}
                   >
                     <Eye className="w-3.5 h-3.5" />
@@ -1229,19 +1186,19 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
                 {isInModalPreview ? (
                   <div
                     data-testid="blog-modal-preview-content"
-                    className="p-6 bg-stone-50/70 dark:bg-stone-950/70 border border-emerald-200 dark:border-emerald-800/60 rounded-2xl space-y-4 min-h-[350px]"
+                    className="nb-reading-surface p-6 bg-[#F8F3E8] dark:bg-[#06251D] space-y-4 min-h-[350px]"
                   >
-                    <div className="pb-3 border-b border-stone-200 dark:border-stone-800 flex items-center justify-between text-[11px] text-emerald-700 dark:text-emerald-400 font-bold uppercase tracking-wider">
+                    <div className="pb-3 border-b-2 border-[#171717]/20 dark:border-[#D9AC45]/30 flex items-center justify-between text-[11px] text-[#06251D] dark:text-[#D9AC45] font-extrabold uppercase tracking-wider">
                       <span>Pratinjau Tampilan Publik</span>
                       <span>Format tersimpan & tervalidasi</span>
                     </div>
                     {formData.title && (
-                      <h2 className="text-xl sm:text-2xl font-bold text-stone-900 dark:text-white">
+                      <h2 className="text-xl sm:text-2xl font-extrabold font-serif-brand text-[#171717] dark:text-[#F8F3E8]">
                         {formData.title}
                       </h2>
                     )}
                     <div
-                      className="prose dark:prose-invert max-w-none text-stone-800 dark:text-stone-200 text-sm sm:text-base leading-relaxed space-y-4 font-sans blog-content"
+                      className="prose dark:prose-invert max-w-none text-[#171717] dark:text-[#F8F3E8] text-sm sm:text-base leading-relaxed space-y-4 font-sans blog-content"
                       dangerouslySetInnerHTML={{
                         __html: autoWrapArabicText(sanitizeRichTextHtml(formData.content || '<p class="text-stone-400 italic">Belum ada isi konten...</p>'))
                       }}
@@ -1259,19 +1216,19 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 border-t border-stone-200 dark:border-stone-800 bg-stone-50/80 dark:bg-stone-900/80 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
+            <div className="p-4 border-t-2 border-[#171717] dark:border-[#D9AC45]/50 bg-[#F8F3E8] dark:bg-[#06251D] flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
               {feedback && (
-                <div className={`w-full sm:w-auto px-3 py-1.5 rounded-xl border text-xs flex items-center gap-2 ${
+                <div className={`w-full sm:w-auto px-3 py-1.5 rounded-md border-2 border-[#171717] text-xs font-bold flex items-center gap-2 ${
                   feedback.type === 'success'
-                    ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-200 text-emerald-800 dark:text-emerald-300'
-                    : 'bg-rose-50 dark:bg-rose-950/60 border-rose-200 text-rose-800 dark:text-rose-300'
+                    ? 'bg-[#D9AC45] text-[#171717]'
+                    : 'bg-[#F04438] text-white'
                 }`}>
                   {feedback.type === 'success' ? (
-                    <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <CheckCircle className="w-3.5 h-3.5 shrink-0" />
                   ) : (
-                    <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                   )}
-                  <span className="font-semibold truncate max-w-xs">{feedback.text}</span>
+                  <span className="truncate max-w-xs">{feedback.text}</span>
                 </div>
               )}
 
@@ -1282,7 +1239,7 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
                     setIsInModalPreview(false);
                     setIsModalOpen(false);
                   }}
-                  className="px-4 py-2 bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold hover:bg-stone-200 transition cursor-pointer"
+                  className="nb-btn nb-btn-secondary px-4 py-2 text-xs"
                 >
                   Batal
                 </button>
@@ -1290,9 +1247,9 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsInModalPreview(prev => !prev)}
-                  className="px-3.5 py-2 bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-1.5"
+                  className="nb-btn nb-btn-secondary px-3.5 py-2 text-xs"
                 >
-                  <Eye className="w-3.5 h-3.5 text-emerald-600" />
+                  <Eye className="w-3.5 h-3.5 text-[#06251D] dark:text-[#D9AC45]" />
                   <span>{isInModalPreview ? 'Edit' : 'Pratinjau'}</span>
                 </button>
 
@@ -1301,9 +1258,9 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
                   data-testid="btn-save-draft"
                   onClick={() => handleSave('draft')}
                   disabled={saving || uploadingCover || uploadingAudio}
-                  className="px-4 py-2 bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-300 hover:bg-amber-200 disabled:opacity-50 rounded-xl text-xs font-bold transition cursor-pointer active:scale-95 flex items-center gap-1.5"
+                  className="nb-btn nb-btn-gold px-4 py-2 text-xs disabled:opacity-50"
                 >
-                  {saving && <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-900 dark:text-amber-300" />}
+                  {saving && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
                   <span>{saving ? 'Menyimpan Draf...' : 'Simpan Draf'}</span>
                 </button>
 
@@ -1312,12 +1269,12 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
                   data-testid="btn-save-publish"
                   onClick={() => handleSave('published')}
                   disabled={saving || uploadingCover || uploadingAudio}
-                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-md transition cursor-pointer active:scale-95 flex items-center gap-1.5"
+                  className="nb-btn nb-btn-primary px-5 py-2 text-xs disabled:opacity-50"
                 >
                   {saving ? (
-                    <RefreshCw className="w-4 h-4 animate-spin text-white" />
+                    <RefreshCw className="w-4 h-4 animate-spin" />
                   ) : (
-                    <Globe className="w-4 h-4" />
+                    <Globe className="w-4 h-4 text-[#D9AC45]" />
                   )}
                   <span>{saving ? 'Menyimpan...' : (formData.id ? 'Perbarui & Terbitkan' : 'Terbitkan Sekarang')}</span>
                 </button>

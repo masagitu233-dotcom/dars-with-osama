@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { AlertTriangle, RefreshCw, Database, ShieldCheck, WifiOff } from 'lucide-react';
 import {
   formatDisruptionMessage,
-  canAttemptRetry,
   getRemainingCooldownSeconds,
   DEFAULT_RETRY_COOLDOWN_SECONDS
 } from '../../utils/serviceDisruptionHelper';
@@ -28,7 +27,6 @@ export const ServiceDisruptionBanner: React.FC<ServiceDisruptionBannerProps> = (
   cooldownSeconds = DEFAULT_RETRY_COOLDOWN_SECONDS,
   lastAttemptTimestamp = 0,
   mode = 'full',
-  hasExistingData = false,
   customTitle,
   customMessage
 }) => {
@@ -59,47 +57,45 @@ export const ServiceDisruptionBanner: React.FC<ServiceDisruptionBannerProps> = (
     }
   };
 
-  // FULL MODE: Used when 0 items exist because of the disruption
   if (mode === 'full') {
     return (
       <div
-        data-aos="fade-up"
-        className="max-w-2xl mx-auto my-8 p-6 sm:p-8 bg-amber-50/90 dark:bg-amber-950/40 border-2 border-amber-300 dark:border-amber-700/60 rounded-3xl shadow-lg backdrop-blur-xs text-stone-800 dark:text-stone-200 space-y-5"
+        className="max-w-2xl mx-auto my-8 p-6 sm:p-8 bg-white dark:bg-[#0B3026] border-2 border-[#171717] dark:border-[#D9AC45] rounded-lg shadow-[5px_5px_0px_#171717] dark:shadow-[5px_5px_0px_#000000] text-[#171717] dark:text-[#F8F3E8] space-y-5"
       >
         <div className="flex items-start gap-4">
-          <div className="p-3 bg-amber-500/15 dark:bg-amber-400/10 border border-amber-400/40 rounded-2xl text-amber-700 dark:text-amber-400 shrink-0">
+          <div className="p-3 bg-[#D9AC45] border-2 border-[#171717] rounded-md text-[#171717] shrink-0 shadow-[2px_2px_0px_#171717]">
             {info.isQuota ? (
-              <Database className="w-7 h-7 text-amber-600 dark:text-amber-400" />
+              <Database className="w-7 h-7" />
             ) : info.category === 'network-or-domain-blocked' ? (
-              <WifiOff className="w-7 h-7 text-amber-600 dark:text-amber-400" />
+              <WifiOff className="w-7 h-7" />
             ) : (
-              <AlertTriangle className="w-7 h-7 text-amber-600 dark:text-amber-400" />
+              <AlertTriangle className="w-7 h-7" />
             )}
           </div>
 
           <div className="space-y-1.5 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-amber-200/70 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700">
+              <span className="nb-badge bg-[#D9AC45] text-[#171717]">
                 {info.isQuota ? 'Batas Kuota Tercapai' : 'Kendala Server / Jaringan'}
               </span>
               {code && (
-                <span className="text-[10px] font-mono text-stone-500 dark:text-stone-400">
+                <span className="text-[10px] font-mono font-bold text-[#171717]/70 dark:text-[#D9AC45]">
                   [{code}]
                 </span>
               )}
             </div>
-            <h3 className="text-lg sm:text-xl font-bold text-amber-950 dark:text-amber-100 font-serif-brand">
+            <h3 className="text-lg sm:text-xl font-extrabold text-[#171717] dark:text-white font-serif-brand">
               {displayTitle}
             </h3>
-            <p className="text-xs sm:text-sm text-stone-700 dark:text-stone-300 leading-relaxed">
+            <p className="text-xs sm:text-sm text-[#171717]/80 dark:text-[#F8F3E8]/85 leading-relaxed font-medium">
               {displayMessage}
             </p>
           </div>
         </div>
 
         {/* REASSURANCE BADGE */}
-        <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-amber-100/70 dark:bg-amber-900/30 border border-amber-300/60 dark:border-amber-800 text-xs text-stone-700 dark:text-stone-300">
-          <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+        <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-md bg-[#F8F3E8] dark:bg-[#06251D] border-2 border-[#171717] dark:border-[#D9AC45]/50 text-xs text-[#171717] dark:text-[#F8F3E8]">
+          <ShieldCheck className="w-4 h-4 text-[#06251D] dark:text-[#D9AC45] shrink-0" />
           <span>
             <strong>Keamanan Data:</strong> Data artikel, kurikulum, dan akun Anda tetap aman tersimpan di Google Cloud Firestore.
           </span>
@@ -107,8 +103,8 @@ export const ServiceDisruptionBanner: React.FC<ServiceDisruptionBannerProps> = (
 
         {/* RETRY CONTROLS */}
         {onRetry && (
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2 border-t border-amber-200 dark:border-amber-800/80">
-            <span className="text-[11px] text-stone-500 dark:text-stone-400">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-3 border-t-2 border-[#171717]/15 dark:border-[#D9AC45]/30">
+            <span className="text-[11px] font-semibold text-[#171717]/70 dark:text-[#F8F3E8]/70">
               {isCooldownActive
                 ? `Jeda permintaan untuk mencegah beban berlebih (${remainingCooldown} dtk tersisa)`
                 : 'Siap untuk mencoba menyinkronkan data kembali'}
@@ -117,15 +113,9 @@ export const ServiceDisruptionBanner: React.FC<ServiceDisruptionBannerProps> = (
             <button
               onClick={handleRetryClick}
               disabled={isCooldownActive || isRetrying}
-              className={`inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer shadow-sm ${
-                isCooldownActive || isRetrying
-                  ? 'bg-stone-300 dark:bg-stone-800 text-stone-500 dark:text-stone-400 cursor-not-allowed opacity-75'
-                  : 'bg-amber-600 hover:bg-amber-700 active:scale-95 text-white shadow-amber-600/20'
-              }`}
+              className="nb-btn nb-btn-primary px-5 py-2.5 text-xs"
             >
-              <RefreshCw
-                className={`w-3.5 h-3.5 ${isRetrying ? 'animate-spin' : ''}`}
-              />
+              <RefreshCw className={`w-3.5 h-3.5 ${isRetrying ? 'animate-spin' : ''}`} />
               <span>
                 {isRetrying
                   ? 'Menyinkronkan...'
@@ -140,24 +130,22 @@ export const ServiceDisruptionBanner: React.FC<ServiceDisruptionBannerProps> = (
     );
   }
 
-  // BANNER MODE: Displayed when existing in-memory data is retained and shown
   return (
     <div
-      data-aos="fade-down"
-      className="p-3.5 sm:p-4 rounded-2xl bg-amber-50/95 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700/60 text-stone-800 dark:text-stone-200 shadow-md backdrop-blur-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6"
+      className="p-3.5 sm:p-4 rounded-md bg-[#F8F3E8] dark:bg-[#0B3026] border-2 border-[#171717] dark:border-[#D9AC45] text-[#171717] dark:text-[#F8F3E8] shadow-[4px_4px_0px_#171717] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6"
     >
       <div className="flex items-center gap-3">
-        <div className="p-2 bg-amber-500/15 dark:bg-amber-400/15 rounded-xl text-amber-700 dark:text-amber-400 shrink-0">
+        <div className="p-2 bg-[#D9AC45] border-2 border-[#171717] rounded-md text-[#171717] shrink-0">
           <Database className="w-4 h-4" />
         </div>
         <div className="text-xs space-y-0.5">
-          <div className="font-bold text-amber-950 dark:text-amber-200 flex items-center gap-2">
+          <div className="font-extrabold text-[#171717] dark:text-white flex items-center gap-2">
             <span>{displayTitle}</span>
-            <span className="text-[10px] font-normal px-2 py-0.2 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-sm bg-[#06251D] text-[#D9AC45] border border-[#171717]">
               Data Tersimpan di Memori
             </span>
           </div>
-          <p className="text-stone-600 dark:text-stone-300 line-clamp-1 sm:line-clamp-none">
+          <p className="text-[#171717]/80 dark:text-[#F8F3E8]/85 line-clamp-1 sm:line-clamp-none font-medium">
             {displayMessage}
           </p>
         </div>
@@ -167,11 +155,7 @@ export const ServiceDisruptionBanner: React.FC<ServiceDisruptionBannerProps> = (
         <button
           onClick={handleRetryClick}
           disabled={isCooldownActive || isRetrying}
-          className={`shrink-0 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${
-            isCooldownActive || isRetrying
-              ? 'bg-stone-200 dark:bg-stone-800 text-stone-500 dark:text-stone-400 cursor-not-allowed'
-              : 'bg-amber-600 hover:bg-amber-700 text-white cursor-pointer'
-          }`}
+          className="shrink-0 nb-btn nb-btn-gold px-3.5 py-1.5 text-xs"
         >
           <RefreshCw className={`w-3 h-3 ${isRetrying ? 'animate-spin' : ''}`} />
           <span>

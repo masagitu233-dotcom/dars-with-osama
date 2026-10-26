@@ -9,14 +9,13 @@ import {
   Eye,
   CheckCircle2,
   HelpCircle,
-  Award,
-  Video,
   ListOrdered,
   Lock,
   ExternalLink,
   Copy,
   Check,
-  Share2
+  Share2,
+  X
 } from 'lucide-react';
 import { Course, Session, Quiz, Enrollment } from '../../types';
 import { YouTubeEmbed } from '../common/YouTubeEmbed';
@@ -51,15 +50,15 @@ export const SessionView: React.FC<SessionViewProps> = ({
   onBackToCourse,
   onSelectSession,
   onStartQuiz,
-  onOpenCertificate,
   onRefreshEnrollment
 }) => {
   const { user, isAdmin, loading: authLoading, openGuestModal, openAuthModal } = useAuth();
-  const { t } = useLanguage();
+  useLanguage();
   const [pdfModalOpen, setPdfModalOpen] = useState(false);
   const [markingDone, setMarkingDone] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [isPlaylistOpen, setIsPlaylistOpen] = useState(true);
 
   // Dynamically inject OpenGraph, Twitter Card, and Canonical URL metadata for this session
   useSessionSEO(session, course);
@@ -99,7 +98,7 @@ export const SessionView: React.FC<SessionViewProps> = ({
         });
         return;
       } catch {
-        // Fallback to copying share invitation + opening share modal if user cancels or browser blocks native share
+        // Fallback to copying share invitation + opening share modal
       }
     }
     try {
@@ -112,7 +111,7 @@ export const SessionView: React.FC<SessionViewProps> = ({
     setShareModalOpen(true);
   };
 
-  // Ensure active session is kept in view inside playlist container when session changes (without hijacking window scroll on mobile)
+  // Ensure active session is kept in view inside playlist container when session changes
   const playlistScrollRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -131,21 +130,21 @@ export const SessionView: React.FC<SessionViewProps> = ({
   if (!canAccessSessionPublicly(session, course) && !isAdmin) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-16 text-center space-y-6 animate-fade-in-up">
-        <div className="w-16 h-16 mx-auto rounded-3xl bg-amber-100 dark:bg-amber-950 border border-amber-300 dark:border-amber-700/60 flex items-center justify-center text-amber-800 dark:text-amber-400 shadow-xl">
+        <div className="w-16 h-16 mx-auto rounded-lg bg-[#D9AC45] border-2 border-[#171717] shadow-[4px_4px_0px_#171717] flex items-center justify-center text-[#171717]">
           <Lock className="w-8 h-8" />
         </div>
         <div className="space-y-2">
-          <h2 className="text-2xl sm:text-3xl font-bold text-stone-900 dark:text-white font-sans">
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-[#171717] dark:text-[#F8F3E8] font-serif-brand">
             Sesi Pembelajaran Belum Dipublikasikan
           </h2>
-          <p className="text-stone-600 dark:text-stone-300 text-sm max-w-lg mx-auto leading-relaxed">
+          <p className="text-[#171717]/80 dark:text-[#F8F3E8]/80 text-sm max-w-lg mx-auto leading-relaxed">
             Mohon maaf, sesi pembelajaran ini masih berstatus draf atau tidak tersedia untuk akses publik saat ini.
           </p>
         </div>
         <div className="flex items-center justify-center pt-2">
           <button
             onClick={onBackToCourse}
-            className="px-5 py-3 bg-emerald-700 hover:bg-emerald-600 text-white rounded-xl font-medium text-sm transition duration-200 cursor-pointer active:scale-95 shadow-xs"
+            className="nb-btn nb-btn-primary px-5 py-3 text-sm"
           >
             Kembali ke Kurikulum
           </button>
@@ -202,30 +201,44 @@ export const SessionView: React.FC<SessionViewProps> = ({
     onStartQuiz(quiz);
   };
 
+  const playlistMarginClass = isPlaylistOpen ? 'lg:mr-[340px] xl:mr-[400px]' : 'mr-0';
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+    <div className="max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8 py-3 sm:py-6 space-y-3.5 sm:space-y-6">
       {/* Top Breadcrumb & Navigation */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-stone-200 dark:border-stone-800 lg:mr-[340px] xl:mr-[400px]">
+      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b-2 border-[#171717] dark:border-[#D9AC45]/50 transition-all duration-300 ${playlistMarginClass}`}>
         <button
           onClick={onBackToCourse}
-          className="inline-flex items-center gap-2 text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-white transition text-sm font-medium cursor-pointer"
+          className="inline-flex items-center gap-2 text-[#171717] dark:text-[#F8F3E8] hover:text-[#0B6B50] dark:hover:text-[#D9AC45] transition text-sm font-bold cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Kembali ke Kurikulum: <strong className="text-stone-900 dark:text-stone-200">{course.title}</strong></span>
+          <span>Kembali ke Kurikulum: <strong className="underline decoration-[#D9AC45] decoration-2">{course.title}</strong></span>
         </button>
 
         <div className="flex flex-wrap items-center gap-2">
+          {/* Toggle Session Playlist Button */}
+          <button
+            type="button"
+            onClick={() => setIsPlaylistOpen(!isPlaylistOpen)}
+            className={`nb-btn ${isPlaylistOpen ? 'nb-btn-secondary' : 'nb-btn-gold'} px-3 py-1.5 text-xs flex items-center gap-1.5`}
+            title={isPlaylistOpen ? 'Sembunyikan Panel Sesi (Perluas Tampilan)' : 'Buka Daftar Sesi Kursus'}
+          >
+            <ListOrdered className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">{isPlaylistOpen ? 'Sembunyikan Sesi' : 'Buka Daftar Sesi'}</span>
+            <span className="sm:hidden">{isPlaylistOpen ? 'Tutup Sesi' : 'Daftar Sesi'}</span>
+          </button>
+
           {/* Salin Link Button */}
           <button
             type="button"
             onClick={handleCopySessionLink}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-stone-900 hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-800 dark:text-stone-200 border border-stone-200 dark:border-stone-700 rounded-lg text-xs font-bold transition cursor-pointer active:scale-95 shadow-xs"
+            className="nb-btn nb-btn-secondary px-3 py-1.5 text-xs"
             title="Salin tautan permanen sesi pembelajaran ini"
           >
             {copiedLink ? (
-              <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <Check className="w-3.5 h-3.5 text-[#0B6B50] dark:text-[#D9AC45]" />
             ) : (
-              <Copy className="w-3.5 h-3.5 text-[#C9A34E]" />
+              <Copy className="w-3.5 h-3.5 text-[#D9AC45]" />
             )}
             <span>{copiedLink ? 'Link Disalin!' : 'Salin Link'}</span>
           </button>
@@ -234,17 +247,17 @@ export const SessionView: React.FC<SessionViewProps> = ({
           <button
             type="button"
             onClick={handleShareSession}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#073B2E] hover:bg-[#0a4d3c] text-white border border-[#C9A34E]/30 rounded-lg text-xs font-bold transition cursor-pointer active:scale-95 shadow-xs"
+            className="nb-btn nb-btn-primary px-3 py-1.5 text-xs"
             title="Bagikan sesi pembelajaran ini"
           >
-            <Share2 className="w-3.5 h-3.5 text-[#F4B942]" />
+            <Share2 className="w-3.5 h-3.5 text-[#D9AC45]" />
             <span>Bagikan</span>
           </button>
 
           {prevSession && (
             <button
               onClick={() => onSelectSession(prevSession)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 border border-stone-200 dark:border-stone-700 rounded-lg text-xs font-medium transition cursor-pointer"
+              className="nb-btn nb-btn-secondary px-3 py-1.5 text-xs"
             >
               <ChevronLeft className="w-4 h-4" />
               <span>Sesi Sebelumnya</span>
@@ -254,7 +267,7 @@ export const SessionView: React.FC<SessionViewProps> = ({
           {nextSession && (
             <button
               onClick={() => onSelectSession(nextSession)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-xs font-medium transition cursor-pointer shadow-xs"
+              className="nb-btn nb-btn-gold px-3 py-1.5 text-xs"
             >
               <span>Sesi Berikutnya</span>
               <ChevronRight className="w-4 h-4" />
@@ -266,9 +279,9 @@ export const SessionView: React.FC<SessionViewProps> = ({
       {/* Main Classroom Layout Container */}
       <div className="relative">
         {copiedLink && (
-          <div className="mb-4 lg:mr-[340px] xl:mr-[400px] p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/90 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-100 text-xs flex items-center justify-between shadow-sm animate-fade-in">
+          <div className={`mb-4 ${playlistMarginClass} p-3.5 rounded-lg bg-[#F5EFE2] dark:bg-[#0B3026] border-2 border-[#171717] dark:border-[#D9AC45] shadow-[4px_4px_0px_#171717] text-[#171717] dark:text-[#F8F3E8] text-xs flex items-center justify-between animate-fade-in`}>
             <div className="flex items-center gap-2">
-              <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <Check className="w-4 h-4 text-[#0B6B50] dark:text-[#D9AC45] shrink-0" />
               <span>
                 <strong>Link sesi berhasil disalin!</strong> ({shareData.url}) — Siap dibagikan ke WhatsApp, Telegram, atau media sosial.
               </span>
@@ -276,7 +289,7 @@ export const SessionView: React.FC<SessionViewProps> = ({
             <button
               type="button"
               onClick={() => setShareModalOpen(true)}
-              className="text-emerald-700 dark:text-emerald-300 font-bold underline ml-2 shrink-0 cursor-pointer"
+              className="text-[#0B6B50] dark:text-[#D9AC45] font-extrabold underline ml-2 shrink-0 cursor-pointer"
             >
               Opsi Bagikan
             </button>
@@ -286,24 +299,23 @@ export const SessionView: React.FC<SessionViewProps> = ({
         {/* Sticky Mobile Video Wrapper: sticks directly below AppHeader (--app-header-height) on mobile (< lg), static on desktop (lg:) */}
         <div
           data-testid="session-video-sticky-wrapper"
-          className="sticky top-[var(--app-header-height,57px)] z-20 lg:static lg:z-auto -mx-4 px-4 py-2 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0 lg:py-0 bg-[#F7F6EF]/95 dark:bg-[#071B16]/95 lg:bg-transparent dark:lg:bg-transparent backdrop-blur-md lg:backdrop-blur-none border-b border-stone-200/80 dark:border-stone-800/80 lg:border-none shadow-sm lg:shadow-none transition-colors lg:mr-[340px] xl:mr-[400px] mb-4 lg:mb-6"
+          className={`sticky top-[var(--app-header-height,57px)] z-20 lg:static lg:z-auto -mx-3 px-3 py-2 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0 lg:py-0 bg-white/95 dark:bg-[#06251D]/95 lg:bg-transparent dark:lg:bg-transparent backdrop-blur-md lg:backdrop-blur-none border-b-2 border-[#171717] dark:border-[#D9AC45]/50 lg:border-none shadow-sm lg:shadow-none transition-all duration-300 ${playlistMarginClass} mb-4 lg:mb-6`}
         >
           {authLoading ? (
-            <div className="w-full aspect-video rounded-2xl bg-stone-100 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 flex flex-col items-center justify-center p-6 text-center space-y-3 max-lg:max-h-[min(36dvh,calc(100dvh-var(--app-header-height,57px)-11rem))] max-lg:mx-auto">
-              <div className="w-8 h-8 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin" />
-              <p className="text-xs text-stone-500 dark:text-stone-400 font-medium">Memeriksa status akun siswa...</p>
+            <div className="w-full aspect-video rounded-lg bg-white dark:bg-[#0B3026] border-2 border-[#171717] dark:border-[#D9AC45] flex flex-col items-center justify-center p-6 text-center space-y-3 max-lg:max-h-[min(36dvh,calc(100dvh-var(--app-header-height,57px)-11rem))] max-lg:mx-auto">
+              <div className="w-8 h-8 border-3 border-[#06251D] dark:border-[#D9AC45] border-t-transparent rounded-full animate-spin" />
+              <p className="text-xs text-[#171717]/70 dark:text-[#F8F3E8]/70 font-bold">Memeriksa status akun siswa...</p>
             </div>
           ) : !user ? (
-            <div className="w-full aspect-video rounded-2xl bg-gradient-to-br from-stone-900 via-stone-900 to-[#07241c] border border-emerald-500/30 text-white flex flex-col items-center justify-center p-4 sm:p-6 text-center space-y-2.5 sm:space-y-3 relative overflow-hidden shadow-xl max-lg:max-h-[min(36dvh,calc(100dvh-var(--app-header-height,57px)-11rem))] max-lg:mx-auto">
-              <div className="absolute -top-12 -right-12 w-36 h-36 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
-              <div className="inline-flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-emerald-950/90 border border-emerald-500/40 text-emerald-400 shadow-inner">
+            <div className="w-full aspect-video rounded-lg bg-[#06251D] border-2 border-[#171717] dark:border-[#D9AC45] shadow-[4px_4px_0px_#171717] text-[#F8F3E8] flex flex-col items-center justify-center p-4 sm:p-6 text-center space-y-2.5 sm:space-y-3 relative overflow-hidden max-lg:max-h-[min(36dvh,calc(100dvh-var(--app-header-height,57px)-11rem))] max-lg:mx-auto">
+              <div className="inline-flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-md bg-[#D9AC45] border-2 border-[#171717] text-[#171717]">
                 <Lock className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
               <div className="space-y-1 max-w-md px-2">
-                <h3 className="text-xs sm:text-base font-bold text-white font-sans">
+                <h3 className="text-xs sm:text-base font-extrabold text-[#F8F3E8] font-serif-brand">
                   Video Pembelajaran Khusus Siswa Terdaftar
                 </h3>
-                <p className="text-[11px] sm:text-xs text-stone-300 leading-relaxed line-clamp-2 sm:line-clamp-none">
+                <p className="text-[11px] sm:text-xs text-[#F8F3E8]/85 leading-relaxed line-clamp-2 sm:line-clamp-none">
                   Silakan masuk ke akun Dars with Osama untuk mulai belajar, memutar video syarah lengkap, menyimak naskah materi, dan mengikuti evaluasi pemahaman.
                 </p>
               </div>
@@ -311,14 +323,14 @@ export const SessionView: React.FC<SessionViewProps> = ({
                 <button
                   type="button"
                   onClick={() => openAuthModal('login', { type: 'session', courseId: course.id, sessionId: session.id })}
-                  className="px-3.5 sm:px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl shadow-md transition cursor-pointer active:scale-95 min-h-[36px]"
+                  className="nb-btn nb-btn-gold px-3.5 sm:px-4 py-2 text-xs min-h-[36px]"
                 >
                   Masuk Sekarang
                 </button>
                 <button
                   type="button"
                   onClick={() => openAuthModal('register', { type: 'session', courseId: course.id, sessionId: session.id })}
-                  className="px-3.5 sm:px-4 py-2 bg-stone-800 hover:bg-stone-700 text-stone-100 border border-stone-700 text-xs font-semibold rounded-xl transition cursor-pointer active:scale-95 min-h-[36px]"
+                  className="nb-btn nb-btn-secondary px-3.5 sm:px-4 py-2 text-xs min-h-[36px]"
                 >
                   Daftar Akun Baru
                 </button>
@@ -334,14 +346,14 @@ export const SessionView: React.FC<SessionViewProps> = ({
         </div>
 
         {/* Left Primary Learning Content (Scrolls smoothly beneath sticky video on mobile) */}
-        <div className="space-y-6 lg:mr-[340px] xl:mr-[400px]">
+        <div className={`space-y-6 transition-all duration-300 ${playlistMarginClass}`}>
           {/* Session Headings & Info Panel */}
           <div
             key={session.id}
-            className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 p-5 sm:p-6 rounded-2xl space-y-4 shadow-sm dark:shadow-lg transition-colors duration-250"
+            className="nb-card p-3.5 sm:p-6 space-y-3.5 sm:space-y-4 bg-white dark:bg-[#0B3026] border-0 sm:border-2 shadow-none sm:shadow-[4px_4px_0px_#171717]"
           >
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <span className="px-3 py-1 bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-800/60 text-emerald-800 dark:text-emerald-400 text-xs font-semibold rounded-lg">
+              <span className="nb-badge bg-[#06251D] text-[#D9AC45]">
                 Sesi #{currentIndex >= 0 ? currentIndex + 1 : session.order || 1} dari {allSessions.length || 1}
               </span>
 
@@ -349,23 +361,23 @@ export const SessionView: React.FC<SessionViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setShareModalOpen(true)}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 border border-stone-200 dark:border-stone-700 transition cursor-pointer active:scale-95"
+                  className="nb-btn nb-btn-secondary px-3.5 py-2 text-xs"
                 >
-                  <Share2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <Share2 className="w-3.5 h-3.5 text-[#06251D] dark:text-[#D9AC45]" />
                   <span>Bagikan Sesi</span>
                 </button>
 
                 <button
                   onClick={handleToggleComplete}
                   disabled={markingDone}
-                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all duration-200 shadow-xs active:scale-95 cursor-pointer disabled:opacity-50 ${
+                  className={`nb-btn px-4 py-2 text-xs disabled:opacity-50 ${
                     isCompleted
-                      ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-500/30 hover:bg-emerald-200 dark:hover:bg-emerald-500/30'
-                      : 'bg-stone-100 dark:bg-stone-800 hover:bg-emerald-600 text-stone-700 dark:text-stone-200 hover:text-white border border-stone-200 dark:border-stone-700'
+                      ? 'nb-btn-gold'
+                      : 'nb-btn-primary'
                   }`}
                 >
                   {markingDone ? (
-                    <div className="w-4 h-4 border-2 border-emerald-600 dark:border-emerald-400 border-t-transparent rounded-full animate-spin" />
+                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                   ) : (
                     <CheckCircle2 className="w-4 h-4" />
                   )}
@@ -375,35 +387,33 @@ export const SessionView: React.FC<SessionViewProps> = ({
             </div>
 
             <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-stone-900 dark:text-white font-sans leading-snug">
+              <h1 className="text-xl sm:text-2xl font-extrabold text-[#171717] dark:text-[#F8F3E8] font-serif-brand leading-snug">
                 {session.title}
               </h1>
               {session.titleAr && (
-                <p className="font-amiri text-2xl font-bold text-emerald-700 dark:text-emerald-400 mt-2 leading-relaxed" dir="rtl">
+                <p className="font-amiri text-2xl font-bold text-[#06251D] dark:text-[#D9AC45] mt-2 leading-relaxed" dir="rtl">
                   {session.titleAr}
                 </p>
               )}
             </div>
 
-            <p className="text-stone-600 dark:text-stone-300 text-sm leading-relaxed">
+            <p className="text-[#171717]/80 dark:text-[#F8F3E8]/85 text-sm leading-relaxed">
               {session.description}
             </p>
           </div>
 
           {/* PDF Resource Card (if available) */}
           {session.pdfUrl && (
-            <div
-              className="bg-white dark:bg-stone-900 border border-amber-300 dark:border-amber-600/30 hover:border-amber-500/50 p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm dark:shadow-lg transition-all duration-300 hover:shadow-md"
-            >
+            <div className="nb-card p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#F8F3E8] dark:bg-[#0B3026]">
               <div className="flex items-start gap-3.5">
-                <div className="p-3 bg-amber-100 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 rounded-xl shrink-0 border border-amber-300/80 dark:border-amber-500/20">
+                <div className="p-3 bg-[#D9AC45] text-[#171717] rounded-md shrink-0 border-2 border-[#171717]">
                   <FileText className="w-6 h-6" />
                 </div>
                 <div>
-                  <h4 className="font-semibold text-stone-900 dark:text-white text-sm md:text-base">
+                  <h4 className="font-extrabold text-[#171717] dark:text-[#F8F3E8] text-sm md:text-base">
                     {session.pdfTitle || 'Materi & Naskah Matan PDF'}
                   </h4>
-                  <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
+                  <p className="text-xs text-[#171717]/75 dark:text-[#F8F3E8]/75 mt-0.5">
                     Naskah rujukan asli berbahasa Arab / terjemahan yang dibahas pada sesi ini.
                   </p>
                 </div>
@@ -424,9 +434,9 @@ export const SessionView: React.FC<SessionViewProps> = ({
                     }
                     setPdfModalOpen(true);
                   }}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 active:scale-95 text-stone-700 dark:text-stone-200 border border-stone-200 dark:border-stone-700 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer shadow-xs min-h-[40px]"
+                  className="nb-btn nb-btn-secondary px-3.5 py-2 text-xs min-h-[40px]"
                 >
-                  <Eye className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  <Eye className="w-4 h-4 text-[#06251D] dark:text-[#D9AC45]" />
                   <span>Baca di Web</span>
                 </button>
                 <button
@@ -444,7 +454,7 @@ export const SessionView: React.FC<SessionViewProps> = ({
                       window.open(session.pdfUrl, '_blank', 'noopener,noreferrer');
                     }
                   }}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-amber-600 hover:bg-amber-500 active:scale-95 text-white rounded-xl text-xs font-semibold transition-all duration-200 shadow cursor-pointer min-h-[40px]"
+                  className="nb-btn nb-btn-gold px-3.5 py-2 text-xs min-h-[40px]"
                 >
                   <Download className="w-4 h-4" />
                   <span>Unduh PDF</span>
@@ -455,18 +465,16 @@ export const SessionView: React.FC<SessionViewProps> = ({
 
           {/* Google Drive PDF Card (if available) */}
           {session.googleDriveUrl && (
-            <div
-              className="bg-white dark:bg-stone-900 border border-blue-200 dark:border-blue-800/40 hover:border-blue-500/50 p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm dark:shadow-lg transition-all duration-300"
-            >
+            <div className="nb-card p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-[#0B3026]">
               <div className="flex items-start gap-3.5">
-                <div className="p-3 bg-blue-100 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 rounded-xl shrink-0 border border-blue-200 dark:border-blue-800/40">
+                <div className="p-3 bg-[#3478F6] text-white rounded-md shrink-0 border-2 border-[#171717]">
                   <ExternalLink className="w-6 h-6" />
                 </div>
                 <div>
-                  <h4 className="font-semibold text-stone-900 dark:text-white text-sm md:text-base">
+                  <h4 className="font-extrabold text-[#171717] dark:text-[#F8F3E8] text-sm md:text-base">
                     Google Drive PDF Modul / Rujukan
                   </h4>
-                  <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
+                  <p className="text-xs text-[#171717]/75 dark:text-[#F8F3E8]/75 mt-0.5">
                     Tautan langsung ke dokumen / folder Google Drive untuk sesi ini.
                   </p>
                 </div>
@@ -487,7 +495,7 @@ export const SessionView: React.FC<SessionViewProps> = ({
                     window.open(session.googleDriveUrl, '_blank', 'noopener,noreferrer');
                   }
                 }}
-                className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 active:scale-95 text-white rounded-xl text-xs font-semibold transition-all duration-200 shadow cursor-pointer self-end sm:self-center shrink-0 min-h-[40px]"
+                className="nb-btn bg-[#3478F6] text-white border-2 border-[#171717] px-4 py-2 text-xs self-end sm:self-center shrink-0 min-h-[40px]"
               >
                 <ExternalLink className="w-4 h-4" />
                 <span>Buka di Google Drive</span>
@@ -495,37 +503,33 @@ export const SessionView: React.FC<SessionViewProps> = ({
             </div>
           )}
 
-          {/* Arabic Matan / Syarah Naskah Box (if present) */}
+          {/* Arabic Matan / Syarah Naskah Box (if present) - Calm Reading Surface */}
           {session.descriptionAr && (
-            <div
-              className="bg-stone-50 dark:bg-stone-900/90 border border-emerald-200 dark:border-emerald-800/60 p-6 md:p-8 rounded-2xl space-y-3 shadow-xs transition-colors"
-            >
-              <div className="text-xs font-sans font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 border-b border-emerald-200 dark:border-emerald-800/60 pb-2 flex items-center justify-between">
+            <div className="nb-reading-surface p-3.5 sm:p-6 md:p-8 space-y-3 bg-[#F8F3E8] dark:bg-[#0B3026] border-0 sm:border-2 shadow-none sm:shadow-[4px_4px_0px_rgba(23,23,23,0.18)]">
+              <div className="text-xs font-sans font-extrabold uppercase tracking-wider text-[#06251D] dark:text-[#D9AC45] border-b-2 border-[#171717]/20 dark:border-[#D9AC45]/30 pb-2 flex items-center justify-between">
                 <span>Matan & Naskah Bahasa Arab</span>
-                <span className="text-[10px] font-normal text-stone-400">Naskah Asli</span>
+                <span className="text-[10px] font-bold text-[#171717]/60 dark:text-[#F8F3E8]/60">Naskah Asli</span>
               </div>
               <div
-                className="font-amiri text-right text-lg sm:text-xl text-emerald-900 dark:text-emerald-300 leading-loose space-y-3"
+                className="font-amiri text-right text-base sm:text-xl text-[#06251D] dark:text-[#F8F3E8] leading-loose space-y-3"
                 dir="rtl"
                 dangerouslySetInnerHTML={{ __html: autoWrapArabicText(session.descriptionAr) }}
               />
             </div>
           )}
 
-          {/* Lesson Notes & Faedah Ilmiah Section with Blog-Quality Typography */}
+          {/* Lesson Notes & Faedah Ilmiah Section - Calm Reading Surface */}
           {session.lessonNotes && (
-            <div
-              className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 p-6 md:p-8 rounded-2xl space-y-5 shadow-sm dark:shadow-lg transition-colors duration-250"
-            >
-              <div className="flex items-center gap-2.5 border-b border-stone-200 dark:border-stone-800 pb-4">
-                <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800/60 shrink-0">
+            <div className="nb-reading-surface p-3.5 sm:p-6 md:p-8 space-y-4 sm:space-y-5 bg-white dark:bg-[#0B3026] border-0 sm:border-2 shadow-none sm:shadow-[4px_4px_0px_rgba(23,23,23,0.18)]">
+              <div className="flex items-center gap-2.5 border-b-2 border-[#171717]/15 dark:border-[#D9AC45]/30 pb-4">
+                <div className="p-2 rounded-md bg-[#06251D] text-[#D9AC45] border-2 border-[#171717] shrink-0">
                   <BookOpen className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-base sm:text-lg font-bold font-serif-brand text-stone-900 dark:text-white leading-snug">
+                  <h3 className="text-base sm:text-lg font-extrabold font-serif-brand text-[#171717] dark:text-[#F8F3E8] leading-snug">
                     Catatan Pelajaran & Faedah Ilmiah
                   </h3>
-                  <p className="text-xs text-stone-500 dark:text-stone-400 font-sans">
+                  <p className="text-xs text-[#171717]/70 dark:text-[#F8F3E8]/70 font-sans">
                     Rangkuman poin penting, syarah, dan dalil-dalil ilmiah pada sesi ini.
                   </p>
                 </div>
@@ -533,7 +537,7 @@ export const SessionView: React.FC<SessionViewProps> = ({
 
               {/* Rich Blog-Quality Typography Content Renderer */}
               <div
-                className="prose dark:prose-invert max-w-none text-stone-800 dark:text-stone-200 text-sm sm:text-base leading-relaxed space-y-4 font-sans blog-content"
+                className="prose dark:prose-invert max-w-none text-[#171717] dark:text-[#F8F3E8] text-xs sm:text-base leading-relaxed space-y-3.5 sm:space-y-4 font-sans blog-content"
                 dangerouslySetInnerHTML={{ __html: renderFormattedContentHtml(session.lessonNotes) }}
               />
             </div>
@@ -541,71 +545,80 @@ export const SessionView: React.FC<SessionViewProps> = ({
 
           {/* Quiz Evaluation Banner */}
           {quiz && (
-            <div
-              className="bg-gradient-to-r from-emerald-50 via-white to-stone-50 dark:from-emerald-950/70 dark:via-stone-900 dark:to-stone-900 border border-emerald-300 dark:border-emerald-600/40 hover:border-emerald-500/60 p-6 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-5 shadow-sm dark:shadow-xl transition-all duration-300 hover:shadow-md group"
-            >
-              <div className="space-y-1">
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 text-[11px] font-semibold rounded-md border border-emerald-300 dark:border-emerald-700/50">
+            <div className="nb-card p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-5 bg-[#06251D] text-[#F8F3E8]">
+              <div className="space-y-1.5">
+                <div className="nb-badge bg-[#D9AC45] text-[#171717]">
                   <HelpCircle className="w-3.5 h-3.5" />
                   <span>Ujian Evaluasi Pemahaman</span>
                 </div>
-                <h3 className="text-lg font-bold text-stone-900 dark:text-white font-sans group-hover:text-emerald-700 dark:group-hover:text-emerald-300 transition-colors">
+                <h3 className="text-lg font-extrabold text-[#F8F3E8] font-serif-brand">
                   {quiz.title}
                 </h3>
-                <p className="text-xs text-stone-500 dark:text-stone-400">
+                <p className="text-xs text-[#F8F3E8]/80">
                   {quiz.questions?.length || 0} Pertanyaan • Batas Kelulusan: {quiz.passingScore}% • Waktu: {quiz.timeLimitMinutes > 0 ? `${quiz.timeLimitMinutes} Menit` : 'Tanpa Batas'}
                 </p>
               </div>
 
               <button
                 onClick={handleStartQuizClick}
-                className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white rounded-xl font-semibold text-sm transition-all duration-200 shadow-md shadow-emerald-950/20 flex items-center justify-center gap-2 shrink-0 cursor-pointer"
+                className="nb-btn nb-btn-gold px-6 py-3 text-sm shrink-0"
               >
                 <span>Mulai Kuis Sekarang</span>
-                <ChevronRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
+                <ChevronRight className="w-4 h-4" />
               </button>
             </div>
           )}
         </div>
 
         {/* Right Sidebar: Sessions Playlist & Progress (Fixed to Viewport on Desktop & Responsive on Mobile) */}
-        <aside className="lg:fixed lg:top-[72px] lg:right-4 xl:right-8 lg:w-[320px] xl:w-[380px] lg:h-[calc(100dvh-5.5rem)] lg:z-20 flex flex-col space-y-4 mt-8 lg:mt-0">
+        <aside className={`${isPlaylistOpen ? 'flex' : 'hidden'} lg:fixed lg:top-[72px] lg:right-4 xl:right-8 lg:w-[320px] xl:w-[380px] lg:h-[calc(100dvh-5.5rem)] lg:z-20 flex-col space-y-4 mt-8 lg:mt-0 animate-fade-in`}>
           {/* Completed Notice */}
           {enrollment?.isCompleted && (
-            <div className="bg-gradient-to-tr from-emerald-50 to-white dark:from-emerald-950/60 dark:to-stone-900 border border-emerald-300 dark:border-emerald-500/40 p-4 rounded-2xl text-center space-y-1.5 shadow-sm dark:shadow-lg shrink-0">
-              <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 flex items-center justify-center mx-auto border border-emerald-300 dark:border-emerald-500/30">
+            <div className="nb-card bg-[#D9AC45] text-[#171717] p-4 text-center space-y-1.5 shrink-0">
+              <div className="w-8 h-8 rounded-md bg-[#06251D] text-[#D9AC45] flex items-center justify-center mx-auto border-2 border-[#171717]">
                 <CheckCircle2 className="w-4 h-4" />
               </div>
-              <h4 className="font-bold text-stone-900 dark:text-white text-xs">Alhamdulillah! Seluruh Sesi Selesai</h4>
-              <p className="text-[11px] text-stone-600 dark:text-stone-300">
+              <h4 className="font-extrabold text-[#171717] text-xs">Alhamdulillah! Seluruh Sesi Selesai</h4>
+              <p className="text-[11px] text-[#171717]/85 font-medium">
                 Anda telah menyelesaikan seluruh materi pembahasan pada kurikulum ini.
               </p>
             </div>
           )}
 
           {/* Playlist Card - Fixed Container with Internal Scroll */}
-          <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl overflow-hidden shadow-sm dark:shadow-lg flex flex-col flex-1 min-h-0 transition-colors duration-250">
-            <div className="p-4 bg-stone-50 dark:bg-stone-950 border-b border-stone-200 dark:border-stone-800 flex items-center justify-between shrink-0">
+          <div className="nb-card overflow-hidden flex flex-col flex-1 min-h-0 bg-white dark:bg-[#0B3026]">
+            <div className="p-4 bg-[#0B6B50] dark:bg-[#06251D] text-[#F8F3E8] border-b-2 border-[#171717] dark:border-[#D9AC45]/50 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
-                <ListOrdered className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                <h3 className="font-semibold text-stone-900 dark:text-white text-sm">Daftar Sesi Kursus</h3>
+                <ListOrdered className="w-4 h-4 text-[#D9AC45]" />
+                <h3 className="font-extrabold text-[#F8F3E8] text-sm">Daftar Sesi Kursus</h3>
               </div>
-              <span className="text-xs text-stone-500 dark:text-stone-400 font-medium">
-                {enrollment?.completedSessionIds?.length || 0}/{allSessions.length} Selesai
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-[#D9AC45] font-bold">
+                  {enrollment?.completedSessionIds?.length || 0}/{allSessions.length} Selesai
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsPlaylistOpen(false)}
+                  className="p-1 rounded text-[#F8F3E8] dark:text-[#D9AC45] hover:bg-black/20 dark:hover:bg-white/10 transition cursor-pointer"
+                  title="Sembunyikan Panel Sesi"
+                  aria-label="Sembunyikan panel sesi"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             {/* Progress Bar */}
             {enrollment && (
-              <div className="w-full bg-stone-200 dark:bg-stone-800 h-1 shrink-0">
+              <div className="w-full bg-[#F5EFE2] dark:bg-[#06251D] h-2 border-b-2 border-[#171717] dark:border-[#D9AC45]/40 shrink-0">
                 <div
-                  className="bg-emerald-500 h-1 transition-all duration-700 ease-out"
+                  className="bg-[#D9AC45] h-full transition-all duration-700 ease-out"
                   style={{ width: `${enrollment.progressPercent}%` }}
                 />
               </div>
             )}
 
-            <div ref={playlistScrollRef} className="p-2 space-y-1.5 flex-1 min-h-0 overflow-y-auto">
+            <div ref={playlistScrollRef} className="p-2.5 space-y-2 flex-1 min-h-0 overflow-y-auto">
               {allSessions.map((s, idx) => {
                 const isActive = s.id === session.id;
                 const isItemDone = enrollment?.completedSessionIds?.includes(s.id);
@@ -615,35 +628,35 @@ export const SessionView: React.FC<SessionViewProps> = ({
                     key={s.id}
                     data-active-session={isActive ? 'true' : 'false'}
                     onClick={() => onSelectSession(s)}
-                    className={`w-full text-left p-3 rounded-xl text-xs transition-all duration-200 flex items-start gap-3 cursor-pointer ${
+                    className={`w-full text-left p-3 rounded-md text-xs transition-all duration-150 flex items-start gap-3 cursor-pointer border-2 ${
                       isActive
-                        ? 'bg-emerald-50 dark:bg-emerald-950/90 border border-emerald-400 dark:border-emerald-600/70 text-emerald-900 dark:text-white shadow-xs ring-1 ring-emerald-500/20 scale-[1.01]'
-                        : 'text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 hover:text-stone-900 dark:hover:text-white border border-transparent'
+                        ? 'bg-[#F5EFE2] dark:bg-[#06251D] border-[#171717] dark:border-[#D9AC45] text-[#171717] dark:text-[#F8F3E8] shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#000]'
+                        : 'text-[#171717] dark:text-[#F8F3E8] hover:bg-[#F5EFE2] dark:hover:bg-[#06251D]/70 border-transparent hover:border-[#171717]/30'
                     }`}
                   >
-                    <div className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-[11px] shrink-0 transition-transform duration-200 ${
+                    <div className={`w-6 h-6 rounded-md flex items-center justify-center font-extrabold text-[11px] shrink-0 border-2 border-[#171717] ${
                       isItemDone
-                        ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400'
+                        ? 'bg-[#D9AC45] text-[#171717]'
                         : isActive
-                        ? 'bg-emerald-600 text-white scale-105'
-                        : 'bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400'
+                        ? 'bg-[#0B6B50] text-[#F8F3E8] dark:bg-[#06251D] dark:text-[#D9AC45]'
+                        : 'bg-[#F5EFE2] dark:bg-[#06251D] text-[#171717] dark:text-[#F8F3E8]'
                     }`}>
-                      {isItemDone ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : idx + 1}
+                      {isItemDone ? <CheckCircle2 className="w-3.5 h-3.5 text-[#171717]" /> : idx + 1}
                     </div>
 
                     <div className="flex-1 truncate">
-                      <p className={`font-semibold truncate transition-colors ${isActive ? 'text-emerald-800 dark:text-emerald-300' : 'text-stone-800 dark:text-stone-200'}`}>
+                      <p className={`font-extrabold truncate ${isActive ? 'text-[#0B6B50] dark:text-[#D9AC45]' : 'text-[#171717] dark:text-[#F8F3E8]'}`}>
                         {s.title}
                       </p>
                       {s.titleAr && (
-                        <p className="font-amiri text-xs text-emerald-700 dark:text-emerald-400/80 truncate text-right mt-0.5" dir="rtl">
+                        <p className="font-amiri text-xs text-[#0B6B50] dark:text-[#D9AC45] truncate text-right mt-0.5" dir="rtl">
                           {s.titleAr}
                         </p>
                       )}
                     </div>
 
                     {isActive && (
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse ml-1 self-center shrink-0" />
+                      <span className="w-2.5 h-2.5 rounded-sm bg-[#D9AC45] border border-[#171717] ml-1 self-center shrink-0" />
                     )}
                   </button>
                 );

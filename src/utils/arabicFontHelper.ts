@@ -61,6 +61,18 @@ export function autoWrapArabicText(html: string): string {
       }
     });
 
+    // 1b. Wrap any table elements inside responsive horizontal scroll containers so they never break mobile viewport
+    const tables = doc.body.querySelectorAll('table');
+    tables.forEach((table) => {
+      const parent = table.parentElement;
+      if (!parent || !parent.classList.contains('table-responsive-wrapper')) {
+        const wrapper = doc.createElement('div');
+        wrapper.className = 'table-responsive-wrapper';
+        parent?.insertBefore(wrapper, table);
+        wrapper.appendChild(table);
+      }
+    });
+
     // 2. Identify text nodes in mixed contexts that contain Arabic snippets
     const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
     const textNodesToWrap: Text[] = [];

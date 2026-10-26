@@ -4,13 +4,11 @@ import {
   Clock,
   CheckCircle2,
   XCircle,
-  AlertCircle,
   Award,
   RotateCcw,
   ChevronRight,
   ChevronLeft,
   HelpCircle,
-  Sparkles,
   Lock
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
@@ -32,7 +30,6 @@ export const QuizView: React.FC<QuizViewProps> = ({
   course,
   session,
   onBackToSession,
-  onOpenCertificate,
   onRefreshEnrollment
 }) => {
   const { user, userProfile, loading: authLoading, openGuestModal } = useAuth();
@@ -40,8 +37,8 @@ export const QuizView: React.FC<QuizViewProps> = ({
   if (authLoading) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-20 text-center space-y-4">
-        <div className="w-10 h-10 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto" />
-        <p className="text-sm text-stone-600 dark:text-stone-400 font-medium">Memeriksa status akun siswa...</p>
+        <div className="w-10 h-10 border-3 border-[#06251D] dark:border-[#D9AC45] border-t-transparent rounded-full animate-spin mx-auto" />
+        <p className="text-sm text-[#171717] dark:text-[#F8F3E8] font-bold">Memeriksa status akun siswa...</p>
       </div>
     );
   }
@@ -49,27 +46,27 @@ export const QuizView: React.FC<QuizViewProps> = ({
   if (!user) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-16 text-center space-y-6 animate-fade-in-up">
-        <div className="w-16 h-16 mx-auto rounded-3xl bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-700/60 flex items-center justify-center text-emerald-800 dark:text-emerald-400 shadow-xl">
+        <div className="w-16 h-16 mx-auto rounded-lg bg-[#D9AC45] border-2 border-[#171717] shadow-[4px_4px_0px_#171717] flex items-center justify-center text-[#171717]">
           <Lock className="w-8 h-8" />
         </div>
         <div className="space-y-2">
-          <h2 className="text-2xl sm:text-3xl font-bold text-stone-900 dark:text-white font-sans">
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-[#171717] dark:text-[#F8F3E8] font-serif-brand">
             Akses Kuis Evaluasi Terbatas
           </h2>
-          <p className="text-stone-600 dark:text-stone-300 text-sm max-w-lg mx-auto leading-relaxed">
-            Silakan masuk ke akun Dars with Osama untuk mulai belajar, mengerjakan kuis evaluasi <strong className="text-emerald-700 dark:text-emerald-300">{quiz.title}</strong>, dan menyimpan nilai kelulusan Anda.
+          <p className="text-[#171717]/80 dark:text-[#F8F3E8]/80 text-sm max-w-lg mx-auto leading-relaxed">
+            Silakan masuk ke akun Dars with Osama untuk mulai belajar, mengerjakan kuis evaluasi <strong className="text-[#06251D] dark:text-[#D9AC45]">{quiz.title}</strong>, dan menyimpan nilai kelulusan Anda.
           </p>
         </div>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
           <button
             onClick={() => openGuestModal(course, { type: 'quiz', courseId: course.id, quizId: quiz.id })}
-            className="w-full sm:w-auto px-6 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-semibold text-sm transition-all duration-200 shadow-lg shadow-emerald-950/50 cursor-pointer active:scale-95"
+            className="nb-btn nb-btn-primary w-full sm:w-auto px-6 py-3.5 text-sm"
           >
             Masuk / Daftar Akun
           </button>
           <button
             onClick={onBackToSession}
-            className="w-full sm:w-auto px-5 py-3.5 bg-white dark:bg-stone-800 hover:bg-stone-100 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 border border-stone-200 dark:border-stone-700 rounded-xl font-medium text-sm transition duration-200 cursor-pointer active:scale-95 shadow-xs"
+            className="nb-btn nb-btn-secondary w-full sm:w-auto px-5 py-3.5 text-sm"
           >
             Kembali ke Sesi Materi
           </button>
@@ -77,6 +74,7 @@ export const QuizView: React.FC<QuizViewProps> = ({
       </div>
     );
   }
+
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [submitted, setSubmitted] = useState(false);
@@ -90,11 +88,9 @@ export const QuizView: React.FC<QuizViewProps> = ({
     totalCount: number;
   } | null>(null);
 
-  // User attempts tracking
   const [pastAttempts, setPastAttempts] = useState<QuizAttempt[]>([]);
-  const [loadingAttempts, setLoadingAttempts] = useState(true);
+  const [, setLoadingAttempts] = useState(true);
 
-  // Timer countdown in seconds
   const [timeLeft, setTimeLeft] = useState<number>(
     quiz.timeLimitMinutes > 0 ? quiz.timeLimitMinutes * 60 : 0
   );
@@ -102,7 +98,6 @@ export const QuizView: React.FC<QuizViewProps> = ({
   const questions = quiz.questions || [];
   const currentQuestion = questions[currentQuestionIndex];
 
-  // Fetch past attempts for this user and quiz
   useEffect(() => {
     if (!user) return;
     getUserQuizAttempts(user.uid).then((all) => {
@@ -112,12 +107,10 @@ export const QuizView: React.FC<QuizViewProps> = ({
     });
   }, [user, quiz.id]);
 
-  // Timer countdown effect
   useEffect(() => {
     if (submitted || quiz.timeLimitMinutes <= 0) return;
 
     if (timeLeft <= 0) {
-      // Time is up! Auto submit
       handleAutoSubmit();
       return;
     }
@@ -184,7 +177,6 @@ export const QuizView: React.FC<QuizViewProps> = ({
       });
     }
 
-    // Save attempt to Cloud Firestore
     try {
       const attemptNumber = pastAttempts.length + 1;
       await saveQuizAttempt({
@@ -218,7 +210,6 @@ export const QuizView: React.FC<QuizViewProps> = ({
     setTimeLeft(quiz.timeLimitMinutes > 0 ? quiz.timeLimitMinutes * 60 : 0);
   };
 
-  // Format time mm:ss
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -232,10 +223,10 @@ export const QuizView: React.FC<QuizViewProps> = ({
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6 animate-in fade-in duration-200">
       {/* Top Header */}
-      <div className="flex items-center justify-between pb-4 border-b border-stone-200 dark:border-stone-800">
+      <div className="flex items-center justify-between pb-4 border-b-2 border-[#171717] dark:border-[#D9AC45]/50">
         <button
           onClick={onBackToSession}
-          className="inline-flex items-center gap-2 text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-white transition text-sm font-medium cursor-pointer"
+          className="nb-btn nb-btn-secondary px-4 py-2 text-xs"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Kembali ke Sesi Belajar</span>
@@ -243,10 +234,10 @@ export const QuizView: React.FC<QuizViewProps> = ({
 
         {/* Timer Badge if time limit */}
         {quiz.timeLimitMinutes > 0 && !submitted && (
-          <div className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl border text-xs font-mono font-bold shadow-xs ${
+          <div className={`nb-badge px-3.5 py-1.5 text-xs font-mono ${
             timeLeft < 60
-              ? 'bg-rose-100 dark:bg-rose-950/80 border-rose-300 dark:border-rose-700 text-rose-700 dark:text-rose-300 animate-pulse'
-              : 'bg-stone-100 dark:bg-stone-800 border-stone-300 dark:border-stone-700 text-emerald-800 dark:text-emerald-400'
+              ? 'bg-[#F04438] text-white animate-pulse'
+              : 'bg-[#D9AC45] text-[#171717]'
           }`}>
             <Clock className="w-4 h-4" />
             <span>Sisa Waktu: {formatTime(timeLeft)}</span>
@@ -256,31 +247,31 @@ export const QuizView: React.FC<QuizViewProps> = ({
 
       {/* Result Screen upon submission */}
       {submitted && scoreResult ? (
-        <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-6 sm:p-10 shadow-sm dark:shadow-2xl space-y-8 animate-modal-in transition-colors duration-250">
+        <div className="nb-card p-6 sm:p-10 space-y-8 bg-white dark:bg-[#0B3026]">
           {/* Result Card */}
           <div className="text-center space-y-4">
-            <div className={`w-20 h-20 rounded-3xl mx-auto flex items-center justify-center text-3xl shadow-md border transition-transform duration-300 hover:scale-105 ${
+            <div className={`w-20 h-20 rounded-lg mx-auto flex items-center justify-center text-3xl border-2 border-[#171717] shadow-[4px_4px_0px_#171717] ${
               scoreResult.passed
-                ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-500/30'
-                : 'bg-rose-100 dark:bg-rose-500/20 text-rose-700 dark:text-rose-400 border-rose-300 dark:border-rose-500/30'
+                ? 'bg-[#D9AC45] text-[#171717]'
+                : 'bg-[#F04438] text-white'
             }`}>
-              {scoreResult.passed ? <Award className="w-10 h-10 animate-pulse" /> : <XCircle className="w-10 h-10" />}
+              {scoreResult.passed ? <Award className="w-10 h-10" /> : <XCircle className="w-10 h-10" />}
             </div>
 
-            <div className="space-y-1">
-              <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
+            <div className="space-y-1.5">
+              <span className={`nb-badge ${
                 scoreResult.passed
-                  ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800'
-                  : 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-400 border border-rose-300 dark:border-rose-800'
+                  ? 'bg-[#06251D] text-[#D9AC45]'
+                  : 'bg-[#F04438] text-white'
               }`}>
                 {scoreResult.passed ? 'Lulus Evaluasi' : 'Belum Memenuhi Batas Kelulusan'}
               </span>
 
-              <h2 className="text-3xl sm:text-4xl font-extrabold text-stone-900 dark:text-white font-sans">
+              <h2 className="text-3xl sm:text-4xl font-extrabold text-[#171717] dark:text-[#F8F3E8] font-serif-brand pt-1">
                 Nilai Anda: {scoreResult.score}%
               </h2>
 
-              <p className="text-xs sm:text-sm text-stone-600 dark:text-stone-400">
+              <p className="text-xs sm:text-sm text-[#171717]/80 dark:text-[#F8F3E8]/80 font-medium">
                 Menjawab benar {scoreResult.correctCount} dari {scoreResult.totalCount} pertanyaan (Total Skor: {scoreResult.totalPoints}/{scoreResult.maxPoints} poin).
                 Batas kelulusan: {quiz.passingScore}%.
               </p>
@@ -288,20 +279,20 @@ export const QuizView: React.FC<QuizViewProps> = ({
           </div>
 
           {/* Action Buttons */}
-          <div className="flex flex-wrap items-center justify-center gap-3 pt-2 border-t border-stone-200 dark:border-stone-800">
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-4 border-t-2 border-[#171717]/20 dark:border-[#D9AC45]/30">
             {(!scoreResult.passed || quiz.maxAttempts === 0 || remainingAttempts > 0) && (
               <button
                 onClick={handleRetake}
-                className="px-5 py-3 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 active:scale-95 text-stone-800 dark:text-stone-200 border border-stone-200 dark:border-stone-700 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center gap-2 cursor-pointer shadow-xs"
+                className="nb-btn nb-btn-secondary px-5 py-3 text-sm"
               >
-                <RotateCcw className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <RotateCcw className="w-4 h-4 text-[#06251D] dark:text-[#D9AC45]" />
                 <span>Ulangi Kuis {quiz.maxAttempts > 0 ? `(Sisa ${remainingAttempts}x)` : ''}</span>
               </button>
             )}
 
             <button
               onClick={onBackToSession}
-              className="px-5 py-3 bg-emerald-700 hover:bg-emerald-600 active:scale-95 text-white rounded-xl text-sm font-semibold transition-all duration-200 cursor-pointer shadow-md"
+              className="nb-btn nb-btn-primary px-5 py-3 text-sm"
             >
               Lanjutkan ke Sesi Pelajaran
             </button>
@@ -309,8 +300,10 @@ export const QuizView: React.FC<QuizViewProps> = ({
 
           {/* Answer Review & Explanations (if allowed) */}
           {quiz.showAnswersAfterSubmit && (
-            <div className="space-y-4 pt-6 border-t border-stone-200 dark:border-stone-800 animate-fade-in-up">
-              <h3 className="font-bold text-stone-900 dark:text-white text-lg">Pembahasan dan Kunci Jawaban</h3>
+            <div className="space-y-4 pt-6 border-t-2 border-[#171717] dark:border-[#D9AC45]/50">
+              <h3 className="font-extrabold text-[#171717] dark:text-[#F8F3E8] text-lg font-serif-brand">
+                Pembahasan dan Kunci Jawaban
+              </h3>
               <div className="space-y-4">
                 {questions.map((q, idx) => {
                   const userAnswer = answers[q.id];
@@ -319,55 +312,57 @@ export const QuizView: React.FC<QuizViewProps> = ({
                   return (
                     <div
                       key={q.id}
-                      className={`p-5 rounded-2xl border text-left space-y-3 transition-all duration-200 ${
+                      className={`p-5 rounded-lg border-2 border-[#171717] text-left space-y-3 ${
                         isCorrect
-                          ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/40 hover:border-emerald-300 dark:hover:border-emerald-700/60'
-                          : 'bg-rose-50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800/40 hover:border-rose-300 dark:hover:border-rose-700/60'
+                          ? 'bg-[#F8F3E8] dark:bg-[#06251D]'
+                          : 'bg-rose-50 dark:bg-rose-950/30'
                       }`}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="space-y-1">
-                          <span className="text-xs font-semibold text-stone-500 dark:text-stone-400">Pertanyaan #{idx + 1}</span>
-                          <h4 className="font-semibold text-stone-900 dark:text-white text-sm sm:text-base">{q.questionText}</h4>
+                          <span className="text-xs font-extrabold uppercase tracking-wider text-[#06251D] dark:text-[#D9AC45]">
+                            Pertanyaan #{idx + 1}
+                          </span>
+                          <h4 className="font-extrabold text-[#171717] dark:text-[#F8F3E8] text-sm sm:text-base">{q.questionText}</h4>
                           {q.questionTextAr && (
-                            <p className="font-amiri text-lg font-bold text-emerald-700 dark:text-emerald-400" dir="rtl">
+                            <p className="font-amiri text-lg font-bold text-[#06251D] dark:text-[#D9AC45]" dir="rtl">
                               {q.questionTextAr}
                             </p>
                           )}
                         </div>
 
-                        <span className={`px-2 py-0.5 rounded text-xs font-bold shrink-0 ${
-                          isCorrect ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300' : 'bg-rose-100 dark:bg-rose-500/20 text-rose-800 dark:text-rose-300'
+                        <span className={`nb-badge shrink-0 ${
+                          isCorrect ? 'bg-[#06251D] text-[#D9AC45]' : 'bg-[#F04438] text-white'
                         }`}>
                           {isCorrect ? 'Benar (+ ' + q.points + ')' : 'Salah (0)'}
                         </span>
                       </div>
 
-                      <div className="space-y-1.5 text-xs sm:text-sm">
+                      <div className="space-y-2 text-xs sm:text-sm">
                         {q.options.map((opt, oIdx) => {
                           const isChosen = userAnswer === oIdx;
                           const isTarget = q.correctAnswerIndex === oIdx;
 
-                          let optClass = 'bg-white dark:bg-stone-900/60 border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300';
+                          let optClass = 'bg-white dark:bg-[#0B3026] border-[#171717]/40 text-[#171717] dark:text-[#F8F3E8]';
                           if (isTarget) {
-                            optClass = 'bg-emerald-100 dark:bg-emerald-950/80 border-emerald-400 dark:border-emerald-600 text-emerald-900 dark:text-emerald-200 font-semibold shadow-xs';
+                            optClass = 'bg-[#D9AC45]/25 dark:bg-[#D9AC45]/20 border-[#171717] dark:border-[#D9AC45] text-[#171717] dark:text-[#F8F3E8] font-extrabold';
                           } else if (isChosen && !isTarget) {
-                            optClass = 'bg-rose-100 dark:bg-rose-950/80 border-rose-400 dark:border-rose-600 text-rose-900 dark:text-rose-200 font-semibold line-through opacity-80';
+                            optClass = 'bg-[#F04438]/15 border-[#F04438] text-[#F04438] font-bold line-through';
                           }
 
                           return (
-                            <div key={oIdx} className={`p-3 rounded-xl border flex items-center justify-between transition-colors ${optClass}`}>
+                            <div key={oIdx} className={`p-3 rounded-md border-2 flex items-center justify-between ${optClass}`}>
                               <span>{opt}</span>
-                              {isTarget && <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />}
-                              {isChosen && !isTarget && <XCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />}
+                              {isTarget && <CheckCircle2 className="w-4 h-4 text-[#06251D] dark:text-[#D9AC45] shrink-0" />}
+                              {isChosen && !isTarget && <XCircle className="w-4 h-4 text-[#F04438] shrink-0" />}
                             </div>
                           );
                         })}
                       </div>
 
                       {q.explanation && (
-                        <div className="p-3 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl text-xs text-stone-700 dark:text-stone-300">
-                          <strong className="text-amber-700 dark:text-amber-400">Pembahasan:</strong> {q.explanation}
+                        <div className="p-3 bg-white dark:bg-[#0B3026] border-2 border-[#171717] dark:border-[#D9AC45]/50 rounded-md text-xs text-[#171717] dark:text-[#F8F3E8]">
+                          <strong className="text-[#06251D] dark:text-[#D9AC45]">Pembahasan:</strong> {q.explanation}
                         </div>
                       )}
                     </div>
@@ -379,53 +374,53 @@ export const QuizView: React.FC<QuizViewProps> = ({
         </div>
       ) : (
         /* Examination Interface (Taking the quiz) */
-        <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-6 sm:p-8 shadow-sm dark:shadow-2xl space-y-6 transition-colors duration-250">
+        <div className="nb-card p-6 sm:p-8 space-y-6 bg-white dark:bg-[#0B3026]">
           {/* Header info */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-stone-200 dark:border-stone-800">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b-2 border-[#171717] dark:border-[#D9AC45]/50">
             <div>
-              <span className="text-xs text-emerald-700 dark:text-emerald-400 font-semibold uppercase tracking-wider">
+              <span className="text-xs text-[#06251D] dark:text-[#D9AC45] font-extrabold uppercase tracking-wider">
                 {course.title}
               </span>
-              <h2 className="text-xl sm:text-2xl font-bold text-stone-900 dark:text-white font-sans">
+              <h2 className="text-xl sm:text-2xl font-extrabold text-[#171717] dark:text-[#F8F3E8] font-serif-brand">
                 {quiz.title}
               </h2>
             </div>
 
-            <div className="flex items-center gap-2 text-xs text-stone-500 dark:text-stone-400">
-              <HelpCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            <div className="nb-badge bg-[#F8F3E8] dark:bg-[#06251D] text-[#171717] dark:text-[#F8F3E8]">
+              <HelpCircle className="w-4 h-4 text-[#06251D] dark:text-[#D9AC45]" />
               <span>Pertanyaan {currentQuestionIndex + 1} dari {questions.length}</span>
             </div>
           </div>
 
           {/* Progress Bar of Questions */}
-          <div className="w-full bg-stone-100 dark:bg-stone-800 h-2 rounded-full overflow-hidden">
+          <div className="w-full bg-[#F8F3E8] dark:bg-[#06251D] h-3 rounded-sm border-2 border-[#171717] overflow-hidden">
             <div
-              className="bg-emerald-500 h-2 rounded-full transition-all duration-500 ease-out"
+              className="bg-[#D9AC45] h-full transition-all duration-300 ease-out"
               style={{ width: `${((currentQuestionIndex + 1) / questions.length) * 100}%` }}
             />
           </div>
 
-          {/* Active Question Box with smooth slide-in transition */}
+          {/* Active Question Box */}
           {currentQuestion && (
-            <div key={currentQuestion.id} className="space-y-6 py-2 animate-question-slide">
+            <div key={currentQuestion.id} className="space-y-6 py-2">
               <div className="space-y-2">
-                <span className="inline-block px-2.5 py-0.5 bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 text-xs font-semibold rounded-md border border-stone-200 dark:border-stone-700">
+                <span className="nb-badge bg-[#06251D] text-[#D9AC45]">
                   Bobot: {currentQuestion.points || 10} Poin
                 </span>
 
-                <h3 className="text-base sm:text-xl font-bold text-stone-900 dark:text-white font-sans leading-snug">
+                <h3 className="text-base sm:text-xl font-extrabold text-[#171717] dark:text-[#F8F3E8] font-sans leading-snug pt-1">
                   {currentQuestion.questionText}
                 </h3>
 
                 {currentQuestion.questionTextAr && (
-                  <p className="font-amiri text-2xl font-bold text-emerald-700 dark:text-emerald-400 leading-relaxed mt-2" dir="rtl">
+                  <p className="font-amiri text-2xl font-bold text-[#06251D] dark:text-[#D9AC45] leading-relaxed mt-2" dir="rtl">
                     {currentQuestion.questionTextAr}
                   </p>
                 )}
               </div>
 
               {/* Options */}
-              <div className="space-y-2.5">
+              <div className="space-y-3">
                 {currentQuestion.options.map((option, optIdx) => {
                   const isSelected = answers[currentQuestion.id] === optIdx;
                   return (
@@ -433,17 +428,17 @@ export const QuizView: React.FC<QuizViewProps> = ({
                       key={optIdx}
                       type="button"
                       onClick={() => handleSelectOption(currentQuestion.id, optIdx)}
-                      className={`w-full text-left p-4 rounded-2xl border text-sm sm:text-base font-medium transition-all duration-200 flex items-center justify-between cursor-pointer active:scale-[0.99] ${
+                      className={`w-full text-left p-4 rounded-md border-2 text-sm sm:text-base font-bold transition-all duration-150 flex items-center justify-between cursor-pointer ${
                         isSelected
-                          ? 'bg-emerald-50 dark:bg-emerald-950/90 border-emerald-500 text-emerald-900 dark:text-emerald-200 shadow-sm ring-2 ring-emerald-500/30 translate-x-1'
-                          : 'bg-stone-50 dark:bg-stone-950/70 hover:bg-stone-100 dark:hover:bg-stone-800/90 border-stone-200 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-700 text-stone-800 dark:text-stone-200'
+                          ? 'bg-[#D9AC45] border-[#171717] text-[#171717] shadow-[4px_4px_0px_#171717] -translate-y-0.5'
+                          : 'bg-[#F8F3E8] dark:bg-[#06251D] hover:bg-[#D9AC45]/20 border-[#171717] dark:border-[#D9AC45]/60 text-[#171717] dark:text-[#F8F3E8]'
                       }`}
                     >
                       <span className="leading-snug">{option}</span>
-                      <div className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 transition-all duration-200 ${
-                        isSelected ? 'border-emerald-500 bg-emerald-500 text-white scale-110 shadow' : 'border-stone-300 dark:border-stone-600'
+                      <div className={`w-5 h-5 rounded-sm border-2 border-[#171717] flex items-center justify-center shrink-0 ${
+                        isSelected ? 'bg-[#06251D] text-[#D9AC45]' : 'bg-white dark:bg-[#0B3026]'
                       }`}>
-                        {isSelected && <span className="w-2 h-2 rounded-full bg-white dark:bg-stone-950" />}
+                        {isSelected && <span className="w-2.5 h-2.5 bg-[#D9AC45] rounded-xs" />}
                       </div>
                     </button>
                   );
@@ -453,12 +448,12 @@ export const QuizView: React.FC<QuizViewProps> = ({
           )}
 
           {/* Question Navigation Buttons */}
-          <div className="flex items-center justify-between pt-6 border-t border-stone-200 dark:border-stone-800">
+          <div className="flex items-center justify-between pt-6 border-t-2 border-[#171717] dark:border-[#D9AC45]/50">
             <button
               type="button"
               disabled={currentQuestionIndex === 0}
               onClick={() => setCurrentQuestionIndex(prev => prev - 1)}
-              className="px-4 py-2 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 active:scale-95 text-stone-700 dark:text-stone-300 border border-stone-200 dark:border-stone-700 rounded-xl text-xs sm:text-sm font-medium transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1.5"
+              className="nb-btn nb-btn-secondary px-4 py-2.5 text-xs sm:text-sm disabled:opacity-40"
             >
               <ChevronLeft className="w-4 h-4" />
               <span>Sebelumnya</span>
@@ -468,7 +463,7 @@ export const QuizView: React.FC<QuizViewProps> = ({
               <button
                 type="button"
                 onClick={() => setCurrentQuestionIndex(prev => prev + 1)}
-                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 flex items-center gap-1.5 shadow hover:shadow-emerald-950/50 cursor-pointer"
+                className="nb-btn nb-btn-primary px-5 py-2.5 text-xs sm:text-sm"
               >
                 <span>Pertanyaan Berikutnya</span>
                 <ChevronRight className="w-4 h-4" />
@@ -478,11 +473,11 @@ export const QuizView: React.FC<QuizViewProps> = ({
                 type="button"
                 disabled={submitting || Object.keys(answers).length === 0}
                 onClick={calculateAndSaveScore}
-                className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 shadow-lg shadow-emerald-950/50 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                className="nb-btn nb-btn-gold px-6 py-2.5 text-xs sm:text-sm disabled:opacity-50"
               >
                 {submitting ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                    <div className="w-4 h-4 border-2 border-[#171717]/40 border-t-[#171717] rounded-full animate-spin" />
                     <span>Mengoreksi...</span>
                   </>
                 ) : (

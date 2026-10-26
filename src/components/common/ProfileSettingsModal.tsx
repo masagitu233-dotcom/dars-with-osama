@@ -2,20 +2,16 @@ import React, { useState, useEffect } from 'react';
 import {
   X,
   User,
-  Mail,
   Phone,
   MapPin,
-  BookOpen,
   Camera,
   Upload,
   Key,
   Shield,
-  Award,
   Check,
   AlertCircle,
   Save,
-  Copy,
-  Sparkles
+  Copy
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { uploadFileToStorage } from '../../firebase/services';
@@ -42,7 +38,7 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
   const [phoneNumber, setPhoneNumber] = useState('');
   const [location, setLocation] = useState('');
   const [photoURL, setPhotoURL] = useState('');
-  
+
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [saving, setSaving] = useState(false);
@@ -147,7 +143,6 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate format: JPG, JPEG, PNG, WebP
     const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
     if (!file.type || !allowedTypes.includes(file.type.toLowerCase())) {
       showStatus('error', 'Format berkas tidak didukung. Harap pilih gambar berformat JPG, JPEG, PNG, atau WebP.');
@@ -155,7 +150,6 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
       return;
     }
 
-    // Validate size: max 10MB
     const maxSizeBytes = 10 * 1024 * 1024;
     if (file.size > maxSizeBytes) {
       showStatus('error', 'Ukuran berkas terlalu besar. Maksimal ukuran gambar adalah 10MB.');
@@ -163,7 +157,6 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
       return;
     }
 
-    // Instant local preview before save
     const tempPreview = URL.createObjectURL(file);
     const oldPhotoURL = photoURL;
     setPhotoURL(tempPreview);
@@ -173,20 +166,16 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
     setStatusMessage(null);
 
     try {
-      // Compress image first to ensure lightweight upload and stay well within Firestore 1MB doc limits
       const compressedFile = await compressImageFile(file, 400, 400, 0.82);
       const url = await uploadFileToStorage(compressedFile, 'avatars', (pct) => {
         setUploadProgress(pct);
       });
 
       setPhotoURL(url);
-
-      // Auto save photoURL directly to profile so changes are saved immediately in Firestore & Firebase Auth
       await updateUserProfile({ photoURL: url });
       showStatus('success', 'Foto profil dari komputer Anda berhasil diunggah dan disimpan!');
     } catch (err: any) {
       console.error('Avatar upload error:', err);
-      // Revert preview to old photo on failure
       setPhotoURL(oldPhotoURL);
       showStatus('error', 'Gagal mengunggah foto profil: ' + (err.message || String(err)));
     } finally {
@@ -213,51 +202,51 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-5 bg-black/70 dark:bg-black/85 backdrop-blur-md animate-fade-in overflow-y-auto">
-      <div className="relative w-full max-w-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl shadow-2xl my-auto text-stone-900 dark:text-stone-100 overflow-hidden animate-modal-in flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-5 bg-black/75 animate-fade-in overflow-y-auto">
+      <div className="relative w-full max-w-2xl bg-[#F8F3E8] dark:bg-[#0B3026] border-2 border-[#171717] dark:border-[#D9AC45] rounded-lg shadow-[6px_6px_0px_#171717] dark:shadow-[6px_6px_0px_#000000] my-auto text-[#171717] dark:text-[#F8F3E8] overflow-hidden animate-modal-in flex flex-col max-h-[92vh]">
         {/* Header Banner */}
-        <div className="relative p-6 bg-gradient-to-r from-stone-50 via-stone-100 to-stone-50 dark:from-stone-900 dark:via-stone-850 dark:to-stone-900 border-b border-stone-200 dark:border-stone-800">
+        <div className="relative p-5 sm:p-6 bg-[#06251D] text-white border-b-2 border-[#171717] dark:border-[#D9AC45]/60">
           <button
             onClick={onClose}
-            className="absolute top-5 right-5 p-2 text-stone-500 hover:text-stone-900 hover:bg-stone-200 dark:text-stone-400 dark:hover:text-white dark:hover:bg-stone-800 rounded-full transition cursor-pointer"
+            className="absolute top-5 right-5 p-2 bg-[#0B3026] text-[#F8F3E8] hover:bg-[#D9AC45] hover:text-[#171717] border-2 border-[#D9AC45]/60 rounded-md transition cursor-pointer"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
 
           <div className="flex items-center gap-4">
-            <div className="relative group">
-              <div className="w-16 h-16 rounded-2xl bg-emerald-700 dark:bg-emerald-800 border-2 border-emerald-500/50 flex items-center justify-center font-bold text-2xl text-white uppercase overflow-hidden shadow-lg">
-                {photoURL ? (
-                  <img src={photoURL} alt={displayName} className="w-full h-full object-cover" />
-                ) : (
-                  (displayName || user.email || 'P')[0]
-                )}
-              </div>
+            <div className="w-16 h-16 rounded-md bg-[#0B3026] border-2 border-[#D9AC45] flex items-center justify-center font-bold text-2xl text-[#D9AC45] uppercase overflow-hidden shadow-[3px_3px_0px_#000000]">
+              {photoURL ? (
+                <img src={photoURL} alt={displayName} className="w-full h-full object-cover" />
+              ) : (
+                (displayName || user.email || 'P')[0]
+              )}
             </div>
 
             <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-xl font-bold text-stone-900 dark:text-white">{displayName || 'Penuntut Ilmu'}</h2>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                  isAdmin ? 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-800' : 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800'
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-lg sm:text-xl font-bold font-serif text-white">{displayName || 'Penuntut Ilmu'}</h2>
+                <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${
+                  isAdmin
+                    ? 'bg-[#D9AC45] text-[#171717] border-[#171717]'
+                    : 'bg-[#0B3026] text-[#D9AC45] border-[#D9AC45]'
                 }`}>
                   {isAdmin ? 'Administrator' : 'Peserta Tholabul Ilmi'}
                 </span>
               </div>
-              <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">{user.email}</p>
-              {kunyah && <p className="text-xs text-emerald-600 dark:text-emerald-400 font-amiri mt-0.5">{kunyah}</p>}
+              <p className="text-xs text-[#F8F3E8]/80 mt-0.5">{user.email}</p>
+              {kunyah && <p className="text-xs text-[#D9AC45] font-amiri mt-0.5">{kunyah}</p>}
             </div>
           </div>
         </div>
 
         {/* Tab Selection */}
-        <div className="flex border-b border-stone-200 dark:border-stone-800 bg-stone-50/80 dark:bg-stone-950/50 px-6 pt-2 gap-2">
+        <div className="flex border-b-2 border-[#171717] dark:border-[#D9AC45]/50 bg-white dark:bg-[#06251D] px-4 sm:px-6 pt-2 gap-2 overflow-x-auto">
           <button
             onClick={() => setActiveTab('profile')}
-            className={`px-4 py-2.5 text-xs sm:text-sm font-semibold transition-all duration-200 border-b-2 -mb-[2px] flex items-center gap-2 cursor-pointer ${
+            className={`px-4 py-2.5 text-xs sm:text-sm font-bold transition-all border-b-4 -mb-[2px] flex items-center gap-2 cursor-pointer whitespace-nowrap ${
               activeTab === 'profile'
-                ? 'border-emerald-600 text-emerald-700 dark:border-emerald-500 dark:text-emerald-400'
-                : 'border-transparent text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200'
+                ? 'border-[#06251D] dark:border-[#D9AC45] text-[#06251D] dark:text-[#D9AC45]'
+                : 'border-transparent text-[#171717]/60 dark:text-[#F8F3E8]/60 hover:text-[#171717] dark:hover:text-white'
             }`}
           >
             <User className="w-4 h-4" />
@@ -266,10 +255,10 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
 
           <button
             onClick={() => setActiveTab('avatar')}
-            className={`px-4 py-2.5 text-xs sm:text-sm font-semibold transition-all duration-200 border-b-2 -mb-[2px] flex items-center gap-2 cursor-pointer ${
+            className={`px-4 py-2.5 text-xs sm:text-sm font-bold transition-all border-b-4 -mb-[2px] flex items-center gap-2 cursor-pointer whitespace-nowrap ${
               activeTab === 'avatar'
-                ? 'border-emerald-600 text-emerald-700 dark:border-emerald-500 dark:text-emerald-400'
-                : 'border-transparent text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200'
+                ? 'border-[#06251D] dark:border-[#D9AC45] text-[#06251D] dark:text-[#D9AC45]'
+                : 'border-transparent text-[#171717]/60 dark:text-[#F8F3E8]/60 hover:text-[#171717] dark:hover:text-white'
             }`}
           >
             <Camera className="w-4 h-4" />
@@ -278,10 +267,10 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
 
           <button
             onClick={() => setActiveTab('security')}
-            className={`px-4 py-2.5 text-xs sm:text-sm font-semibold transition-all duration-200 border-b-2 -mb-[2px] flex items-center gap-2 cursor-pointer ${
+            className={`px-4 py-2.5 text-xs sm:text-sm font-bold transition-all border-b-4 -mb-[2px] flex items-center gap-2 cursor-pointer whitespace-nowrap ${
               activeTab === 'security'
-                ? 'border-emerald-600 text-emerald-700 dark:border-emerald-500 dark:text-emerald-400'
-                : 'border-transparent text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200'
+                ? 'border-[#06251D] dark:border-[#D9AC45] text-[#06251D] dark:text-[#D9AC45]'
+                : 'border-transparent text-[#171717]/60 dark:text-[#F8F3E8]/60 hover:text-[#171717] dark:hover:text-white'
             }`}
           >
             <Shield className="w-4 h-4" />
@@ -291,89 +280,91 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
 
         {/* Status Alert */}
         {statusMessage && (
-          <div className="mx-6 mt-4 p-3.5 rounded-xl border text-xs flex items-center gap-2.5 animate-fade-in-up shadow">
+          <div className={`mx-6 mt-4 p-3.5 rounded-md border-2 text-xs font-bold flex items-center gap-2.5 shadow-[3px_3px_0px_#171717] ${
+            statusMessage.type === 'success'
+              ? 'bg-[#06251D] text-[#F8F3E8] border-[#D9AC45]'
+              : 'bg-[#F04438]/15 text-[#171717] dark:text-white border-[#F04438]'
+          }`}>
             {statusMessage.type === 'success' ? (
-              <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <Check className="w-4 h-4 text-[#D9AC45] shrink-0" />
             ) : (
-              <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+              <AlertCircle className="w-4 h-4 text-[#F04438] shrink-0" />
             )}
-            <span className={statusMessage.type === 'success' ? 'text-emerald-800 dark:text-emerald-200' : 'text-rose-800 dark:text-rose-200'}>
-              {statusMessage.text}
-            </span>
+            <span>{statusMessage.text}</span>
           </div>
         )}
 
         {/* Modal Body */}
-        <div className="p-6 overflow-y-auto flex-1 space-y-6">
+        <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-6">
           {/* TAB 1: PROFILE INFO */}
           {activeTab === 'profile' && (
             <form onSubmit={handleSaveProfile} className="space-y-4 text-xs sm:text-sm">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">Nama Lengkap *</label>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-[#171717] dark:text-[#D9AC45] mb-1.5">Nama Lengkap *</label>
                   <div className="relative">
-                    <User className="w-4 h-4 absolute left-3 top-3 text-stone-400 dark:text-stone-500" />
+                    <User className="w-4 h-4 absolute left-3 top-3 text-[#171717]/60 dark:text-[#D9AC45]" />
                     <input
                       type="text"
                       required
                       value={displayName}
                       onChange={(e) => setDisplayName(e.target.value)}
                       placeholder="Contoh: Abdullah bin Ahmad"
-                      className="w-full pl-9 pr-4 py-2.5 bg-stone-50 dark:bg-stone-950 border border-stone-300 dark:border-stone-700 rounded-xl text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs sm:text-sm focus:outline-none focus:border-emerald-500"
+                      className="nb-input pl-9 pr-4 py-2.5"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">Kunyah / Nama Gelaran Arab</label>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-[#171717] dark:text-[#D9AC45] mb-1.5">Kunyah / Nama Gelaran Arab</label>
                   <input
                     type="text"
                     value={kunyah}
                     onChange={(e) => setKunyah(e.target.value)}
                     placeholder="Contoh: أبو عبد الله (Abu Abdillah)"
-                    className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-950 border border-stone-300 dark:border-stone-700 rounded-xl text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs sm:text-sm focus:outline-none focus:border-emerald-500 font-amiri"
+                    className="nb-input px-3.5 py-2.5 font-amiri"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">Nomor WhatsApp / Telepon</label>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-[#171717] dark:text-[#D9AC45] mb-1.5">Nomor WhatsApp / Telepon</label>
                   <div className="relative">
-                    <Phone className="w-4 h-4 absolute left-3 top-3 text-stone-400 dark:text-stone-500" />
+                    <Phone className="w-4 h-4 absolute left-3 top-3 text-[#171717]/60 dark:text-[#D9AC45]" />
                     <input
                       type="text"
                       value={phoneNumber}
                       onChange={(e) => setPhoneNumber(e.target.value)}
                       placeholder="081234567890"
-                      className="w-full pl-9 pr-4 py-2.5 bg-stone-50 dark:bg-stone-950 border border-stone-300 dark:border-stone-700 rounded-xl text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs sm:text-sm focus:outline-none focus:border-emerald-500 font-mono"
+                      className="nb-input pl-9 pr-4 py-2.5 font-mono"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">Kota / Domisili</label>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-[#171717] dark:text-[#D9AC45] mb-1.5">Kota / Domisili</label>
                   <div className="relative">
-                    <MapPin className="w-4 h-4 absolute left-3 top-3 text-stone-400 dark:text-stone-500" />
+                    <MapPin className="w-4 h-4 absolute left-3 top-3 text-[#171717]/60 dark:text-[#D9AC45]" />
                     <input
                       type="text"
                       value={location}
                       onChange={(e) => setLocation(e.target.value)}
                       placeholder="Contoh: Jakarta / Madinah"
-                      className="w-full pl-9 pr-4 py-2.5 bg-stone-50 dark:bg-stone-950 border border-stone-300 dark:border-stone-700 rounded-xl text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs sm:text-sm focus:outline-none focus:border-emerald-500"
+                      className="nb-input pl-9 pr-4 py-2.5"
                     />
                   </div>
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">Catatan Pembelajaran / Bio Singkat</label>
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#171717] dark:text-[#D9AC45] mb-1.5">Catatan Pembelajaran / Bio Singkat</label>
                 <textarea
                   rows={3}
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
                   placeholder="Tuliskan motivasi belajar atau fokus kajian ilmu syar'i Anda..."
-                  className="w-full p-3 bg-stone-50 dark:bg-stone-950 border border-stone-300 dark:border-stone-700 rounded-xl text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs sm:text-sm focus:outline-none focus:border-emerald-500"
+                  className="nb-input p-3"
                 />
               </div>
 
@@ -381,7 +372,7 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
                 <button
                   type="submit"
                   disabled={saving}
-                  className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl text-xs sm:text-sm flex items-center gap-2 shadow-lg transition active:scale-95 disabled:opacity-50 cursor-pointer"
+                  className="nb-btn nb-btn-gold px-6 py-2.5 text-xs sm:text-sm"
                 >
                   <Save className="w-4 h-4" />
                   <span>{saving ? 'Menyimpan...' : 'Simpan Perubahan'}</span>
@@ -394,9 +385,9 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
           {activeTab === 'avatar' && (
             <div className="space-y-6">
               <div>
-                <h4 className="text-xs font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-3">Unggah Foto Profil Khusus</h4>
-                <div className="flex flex-col sm:flex-row items-center gap-4 bg-stone-50 dark:bg-stone-950 p-4 rounded-2xl border border-stone-200 dark:border-stone-800">
-                  <div className="w-20 h-20 rounded-2xl bg-stone-200 dark:bg-stone-800 border-2 border-emerald-500/40 overflow-hidden shrink-0 flex items-center justify-center font-bold text-2xl text-emerald-600 dark:text-emerald-400">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-[#171717] dark:text-[#D9AC45] mb-3">Unggah Foto Profil Khusus</h4>
+                <div className="flex flex-col sm:flex-row items-center gap-4 bg-white dark:bg-[#06251D] p-4 rounded-md border-2 border-[#171717] dark:border-[#D9AC45]/60 shadow-[3px_3px_0px_#171717]">
+                  <div className="w-20 h-20 rounded-md bg-[#0B3026] border-2 border-[#171717] dark:border-[#D9AC45] overflow-hidden shrink-0 flex items-center justify-center font-bold text-2xl text-[#D9AC45]">
                     {photoURL ? (
                       <img src={photoURL} alt="Preview" className="w-full h-full object-cover" />
                     ) : (
@@ -404,10 +395,10 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
                     )}
                   </div>
                   <div className="space-y-2 text-center sm:text-left flex-1">
-                    <p className="text-xs text-stone-600 dark:text-stone-300">Pilih berkas foto (JPG, JPEG, PNG, WebP, maks 10MB) dari perangkat Anda.</p>
+                    <p className="text-xs text-[#171717]/80 dark:text-[#F8F3E8]/80">Pilih berkas foto (JPG, JPEG, PNG, WebP, maks 10MB) dari perangkat Anda.</p>
                     <div className="flex flex-col sm:flex-row items-center gap-3">
-                      <label className={`inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-stone-800 hover:bg-stone-100 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 rounded-xl text-xs font-semibold cursor-pointer border border-stone-300 dark:border-stone-700 transition ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
-                        <Upload className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                      <label className={`nb-btn nb-btn-secondary px-4 py-2 text-xs cursor-pointer ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
+                        <Upload className="w-4 h-4 text-[#06251D] dark:text-[#D9AC45]" />
                         <span>{uploading ? `Mengunggah... ${uploadProgress}%` : 'Pilih Berkas Foto'}</span>
                         <input
                           type="file"
@@ -418,9 +409,9 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
                         />
                       </label>
                       {uploading && (
-                        <div className="w-full sm:w-36 bg-stone-200 dark:bg-stone-800 rounded-full h-2 overflow-hidden border border-stone-300 dark:border-stone-700">
+                        <div className="w-full sm:w-36 bg-[#F8F3E8] dark:bg-[#0B3026] rounded h-2.5 overflow-hidden border border-[#171717]">
                           <div
-                            className="bg-emerald-500 h-full transition-all duration-300"
+                            className="bg-[#D9AC45] h-full transition-all duration-300"
                             style={{ width: `${uploadProgress}%` }}
                           />
                         </div>
@@ -431,7 +422,7 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
               </div>
 
               <div>
-                <h4 className="text-xs font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-3">Atau Pilih Avatar Pembelajaran Islami</h4>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-[#171717] dark:text-[#D9AC45] mb-3">Atau Pilih Avatar Pembelajaran Islami</h4>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {PRESET_AVATARS.map((item) => (
                     <button
@@ -446,14 +437,14 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
                           showStatus('error', 'Gagal menyimpan avatar: ' + (err.message || String(err)));
                         }
                       }}
-                      className={`p-3 rounded-2xl border transition-all flex flex-col items-center gap-2 cursor-pointer ${
+                      className={`p-3 rounded-md border-2 transition-all flex flex-col items-center gap-2 cursor-pointer ${
                         photoURL === item.url
-                          ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-500 shadow-md ring-1 ring-emerald-500'
-                          : 'bg-stone-50 dark:bg-stone-950 border-stone-200 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-700'
+                          ? 'bg-[#D9AC45]/20 border-[#171717] dark:border-[#D9AC45] shadow-[3px_3px_0px_#171717]'
+                          : 'bg-white dark:bg-[#06251D] border-[#171717]/40 dark:border-[#D9AC45]/40 hover:border-[#171717]'
                       }`}
                     >
-                      <img src={item.url} alt={item.label} className="w-14 h-14 rounded-xl object-cover" />
-                      <span className="text-[11px] font-medium text-stone-700 dark:text-stone-300">{item.label}</span>
+                      <img src={item.url} alt={item.label} className="w-14 h-14 rounded-md object-cover border border-[#171717]" />
+                      <span className="text-[11px] font-bold text-[#171717] dark:text-[#F8F3E8]">{item.label}</span>
                     </button>
                   ))}
                 </div>
@@ -463,7 +454,7 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
                 <button
                   onClick={handleSaveProfile}
                   disabled={saving}
-                  className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl text-xs sm:text-sm flex items-center gap-2 shadow-lg transition active:scale-95 disabled:opacity-50 cursor-pointer"
+                  className="nb-btn nb-btn-gold px-6 py-2.5 text-xs sm:text-sm"
                 >
                   <Save className="w-4 h-4" />
                   <span>{saving ? 'Menyimpan...' : 'Simpan Foto Profil'}</span>
@@ -475,50 +466,50 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
           {/* TAB 3: AKUN & KEAMANAN */}
           {activeTab === 'security' && (
             <div className="space-y-6 text-xs sm:text-sm">
-              <div className="bg-stone-50 dark:bg-stone-950 p-4 rounded-2xl border border-stone-200 dark:border-stone-800 space-y-3">
-                <h4 className="text-xs font-bold text-stone-700 dark:text-stone-300 uppercase tracking-wider">Detail Akun Firebase</h4>
+              <div className="bg-white dark:bg-[#06251D] p-4 rounded-md border-2 border-[#171717] dark:border-[#D9AC45]/60 shadow-[3px_3px_0px_#171717] space-y-3">
+                <h4 className="text-xs font-bold text-[#06251D] dark:text-[#D9AC45] uppercase tracking-wider">Detail Akun Firebase</h4>
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between py-1 border-b border-stone-200 dark:border-stone-900">
-                    <span className="text-stone-500 dark:text-stone-400">Email Terdaftar</span>
-                    <span className="font-semibold text-stone-900 dark:text-white">{user.email}</span>
+                  <div className="flex items-center justify-between py-1.5 border-b border-[#171717]/15 dark:border-[#D9AC45]/20">
+                    <span className="text-[#171717]/70 dark:text-[#F8F3E8]/70">Email Terdaftar</span>
+                    <span className="font-bold text-[#171717] dark:text-white">{user.email}</span>
                   </div>
-                  <div className="flex items-center justify-between py-1 border-b border-stone-200 dark:border-stone-900">
-                    <span className="text-stone-500 dark:text-stone-400">User ID (UID)</span>
+                  <div className="flex items-center justify-between py-1.5 border-b border-[#171717]/15 dark:border-[#D9AC45]/20">
+                    <span className="text-[#171717]/70 dark:text-[#F8F3E8]/70">User ID (UID)</span>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-[11px] text-stone-700 dark:text-stone-300 max-w-[140px] truncate">{user.uid}</span>
+                      <span className="font-mono text-[11px] font-bold text-[#171717] dark:text-[#D9AC45] max-w-[140px] truncate">{user.uid}</span>
                       <button
                         onClick={copyUidToClipboard}
-                        className="p-1 hover:bg-stone-200 dark:hover:bg-stone-800 rounded text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white transition"
+                        className="p-1 bg-[#F8F3E8] dark:bg-[#0B3026] border border-[#171717] dark:border-[#D9AC45] rounded text-[#171717] dark:text-[#D9AC45] cursor-pointer"
                         title="Salin UID"
                       >
-                        {copiedUid ? <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                        {copiedUid ? <Check className="w-3.5 h-3.5 text-[#06251D] dark:text-[#D9AC45]" /> : <Copy className="w-3.5 h-3.5" />}
                       </button>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between py-1 border-b border-stone-200 dark:border-stone-900">
-                    <span className="text-stone-500 dark:text-stone-400">Peran Sistem</span>
-                    <span className="font-bold text-emerald-600 dark:text-emerald-400">{isAdmin ? 'Administrator' : 'Peserta'}</span>
+                  <div className="flex items-center justify-between py-1.5 border-b border-[#171717]/15 dark:border-[#D9AC45]/20">
+                    <span className="text-[#171717]/70 dark:text-[#F8F3E8]/70">Peran Sistem</span>
+                    <span className="font-bold text-[#06251D] dark:text-[#D9AC45]">{isAdmin ? 'Administrator' : 'Peserta'}</span>
                   </div>
-                  <div className="flex items-center justify-between py-1">
-                    <span className="text-stone-500 dark:text-stone-400">Terdaftar Sejak</span>
-                    <span className="text-stone-700 dark:text-stone-300">
+                  <div className="flex items-center justify-between py-1.5">
+                    <span className="text-[#171717]/70 dark:text-[#F8F3E8]/70">Terdaftar Sejak</span>
+                    <span className="font-medium text-[#171717] dark:text-[#F8F3E8]">
                       {userProfile?.createdAt ? new Date(userProfile.createdAt).toLocaleDateString('id-ID') : 'Baru saja'}
                     </span>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-stone-50 dark:bg-stone-950 p-4 rounded-2xl border border-stone-200 dark:border-stone-800 space-y-3">
-                <h4 className="text-xs font-bold text-stone-700 dark:text-stone-300 uppercase tracking-wider">Kata Sandi & Keamanan</h4>
-                <p className="text-stone-500 dark:text-stone-400 text-xs">
+              <div className="bg-white dark:bg-[#06251D] p-4 rounded-md border-2 border-[#171717] dark:border-[#D9AC45]/60 shadow-[3px_3px_0px_#171717] space-y-3">
+                <h4 className="text-xs font-bold text-[#06251D] dark:text-[#D9AC45] uppercase tracking-wider">Kata Sandi & Keamanan</h4>
+                <p className="text-[#171717]/80 dark:text-[#F8F3E8]/80 text-xs leading-relaxed">
                   Aplikasi menggunakan autentikasi terenkripsi Firebase Auth. Klik tombol di bawah ini untuk menerima tautan pemulihan kata sandi ke alamat email Anda.
                 </p>
                 <button
                   type="button"
                   onClick={handleSendResetEmail}
-                  className="px-4 py-2 bg-white dark:bg-stone-800 hover:bg-stone-100 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 rounded-xl text-xs font-semibold flex items-center gap-2 border border-stone-300 dark:border-stone-700 transition"
+                  className="nb-btn nb-btn-secondary px-4 py-2.5 text-xs"
                 >
-                  <Key className="w-4 h-4 text-amber-500 dark:text-amber-400" />
+                  <Key className="w-4 h-4 text-[#D9AC45]" />
                   <span>Kirim Tautan Riset Kata Sandi ke Email</span>
                 </button>
               </div>

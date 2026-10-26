@@ -1,33 +1,30 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import {
-  BookOpen,
   Home,
-  Layers,
+  BookOpen,
+  FileText,
   GraduationCap,
-  User,
   ShieldAlert,
   LogOut,
-  LogIn,
-  UserPlus,
+  Settings,
+  User as UserIcon,
   Sun,
   Moon,
-  X,
-  Settings,
-  FileText,
-  PanelLeftClose,
-  PanelLeftOpen,
   Sparkles,
+  X,
+  HelpCircle,
   MessageSquare,
-  HelpCircle
+  UserCheck,
+  Info
 } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
-import { Logo } from './Logo';
+import { useAuth } from '../../context/AuthContext';
+import { LogoSymbol } from './Logo';
 
 interface AppSidebarProps {
   currentView: string;
-  setCurrentView: (view: string) => void;
+  setCurrentView: (view: any) => void;
   mobileOpen: boolean;
   setMobileOpen: (open: boolean) => void;
   onOpenWelcomeModal?: () => void;
@@ -41,368 +38,440 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   mobileOpen,
   setMobileOpen,
   onOpenWelcomeModal,
-  isCollapsed: externalIsCollapsed,
-  setIsCollapsed: externalSetIsCollapsed
+  isCollapsed = false,
+  setIsCollapsed
 }) => {
-  const { user, userProfile, isAdmin, openAuthModal, openProfileModal, openLogoutConfirmModal } = useAuth();
   const { t } = useLanguage();
-  const { effectiveTheme, setTheme } = useTheme();
+  const { theme, toggleTheme } = useTheme();
+  const {
+    user,
+    userProfile,
+    isAdmin,
+    openAuthModal,
+    openLogoutConfirmModal,
+    openProfileModal
+  } = useAuth();
 
-  // Desktop collapse state (internal or controlled via props)
-  const [internalIsCollapsed, setInternalIsCollapsed] = useState<boolean>(false);
-  const isCollapsed = externalIsCollapsed !== undefined ? externalIsCollapsed : internalIsCollapsed;
-  const setIsCollapsed = externalSetIsCollapsed || setInternalIsCollapsed;
+  const effectiveCollapsed = isCollapsed && !mobileOpen;
 
-  const avatarURL = userProfile?.photoURL || user?.photoURL || '';
-  const [imgError, setImgError] = useState(false);
+  const isCoursesActive =
+    currentView === 'courses' ||
+    currentView === 'course-detail' ||
+    currentView === 'session-view' ||
+    currentView === 'quiz-view';
 
-  useEffect(() => {
-    setImgError(false);
-  }, [avatarURL]);
+  const isBlogActive = currentView === 'blog' || currentView === 'blog-detail';
+  const isStudentDashboardActive = currentView === 'student-dashboard';
+  const isAdminDashboardActive = currentView === 'admin-dashboard';
 
-  // Keyboard Escape listener to close drawer on mobile/tablet
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && mobileOpen) {
-        setMobileOpen(false);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [mobileOpen, setMobileOpen]);
+  const navItems = [
+    {
+      id: 'home',
+      label: t('nav.home') || 'Beranda',
+      sublabel: 'Ringkasan & Sorotan',
+      icon: Home,
+      active: currentView === 'home'
+    },
+    {
+      id: 'blog',
+      label: t('nav.blog') || 'Artikel & Catatan',
+      sublabel: 'Kajian & Faedah Ilmiah',
+      icon: FileText,
+      active: isBlogActive
+    },
+    {
+      id: 'public-qa',
+      label: 'Tanya Jawab (Q&A)',
+      sublabel: 'Arsip Jawaban Ilmiah',
+      icon: HelpCircle,
+      active: currentView === 'public-qa'
+    },
+    {
+      id: 'courses',
+      label: t('nav.courses') || 'Katalog Pembelajaran',
+      sublabel: 'Kitab, Video & Kuis',
+      icon: BookOpen,
+      active: isCoursesActive
+    },
+    {
+      id: 'instructor-profile',
+      label: 'Profil Pengajar',
+      sublabel: 'Biografi & Sanad Keilmuan',
+      icon: UserCheck,
+      active: currentView === 'instructor-profile'
+    },
+    {
+      id: 'consultation',
+      label: 'Ruang Konsultasi',
+      sublabel: 'Tanya Ustaz & Privat',
+      icon: MessageSquare,
+      active: currentView === 'consultation'
+    }
+  ];
 
-  // Window resize listener: automatically close mobile drawer when switching to desktop screen size
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth >= 1024) {
-        setMobileOpen(false);
-      }
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [setMobileOpen]);
-
-  const navigate = (view: string) => {
+  const handleNavClick = (view: string) => {
     setCurrentView(view);
     setMobileOpen(false);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const isCoursesActive = currentView === 'courses' || currentView === 'course-detail' || currentView === 'session-view' || currentView === 'quiz-view';
+  const handleToggleCollapse = () => {
+    if (setIsCollapsed) {
+      setIsCollapsed(!isCollapsed);
+    }
+  };
 
   return (
     <>
-      {/* Mobile Drawer Overlay Backdrop - ONLY rendered when drawer is open */}
+      {/* Mobile Backdrop */}
       {mobileOpen && (
         <div
           onClick={() => setMobileOpen(false)}
-          className="fixed inset-0 z-40 bg-[#071B16]/70 backdrop-blur-xs lg:hidden transition-opacity duration-300 cursor-pointer"
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-xs lg:hidden animate-fade-in cursor-pointer"
           aria-hidden="true"
         />
       )}
 
-      {/* Main Left Sidebar (Fixed to Viewport on Desktop & Mobile Drawer) */}
+      {/* Main Sidebar Panel */}
       <aside
-        className={`fixed top-0 left-0 z-40 h-screen h-[100dvh] bg-[#F7F6EF] dark:bg-[#071B16] border-r border-[#073B2E]/10 dark:border-[#C9A34E]/20 flex flex-col justify-between transition-all duration-300 ease-in-out shrink-0 ${
-          isCollapsed ? 'w-20' : 'w-64'
+        aria-label="Navigasi Utama Dars with Osama"
+        className={`fixed top-0 left-0 bottom-0 z-50 flex flex-col bg-[#FFFDF7] dark:bg-[#082A21] text-[#171717] dark:text-[#F8F3E8] border-r-2 border-[#171717] dark:border-[#D9AC45]/40 transition-all duration-300 select-none ${
+          effectiveCollapsed ? 'lg:w-20' : 'lg:w-64'
         } ${
-          mobileOpen ? 'translate-x-0 shadow-2xl z-50' : '-translate-x-full lg:translate-x-0 shadow-none'
+          mobileOpen
+            ? 'translate-x-0 w-[280px] sm:w-[320px] max-w-[85vw] shadow-[8px_0px_0px_#171717]'
+            : '-translate-x-full lg:translate-x-0'
         }`}
       >
-        {/* Top Header & Brand */}
-        <div className={`p-4 border-b border-[#073B2E]/10 dark:border-[#C9A34E]/20 flex items-center shrink-0 ${isCollapsed ? 'lg:justify-center' : 'justify-between'}`}>
-          <div
-            onClick={() => navigate('home')}
-            className="flex items-center cursor-pointer group select-none overflow-hidden"
-            title="Dars with Osama - Beranda Utama"
-          >
-            {isCollapsed ? (
-              <Logo variant="icon" size="sm" />
-            ) : (
-              <Logo variant="horizontal" size="sm" />
-            )}
-          </div>
+        {/* Top Brand Section — Logo serves as the interactive sidebar toggle */}
+        <div
+          className={`h-16 px-4 flex items-center border-b-2 border-[#171717] dark:border-[#D9AC45]/40 bg-white dark:bg-[#06251D] shrink-0 ${
+            effectiveCollapsed ? 'justify-center' : 'justify-between'
+          }`}
+        >
+          {effectiveCollapsed ? (
+            <button
+              type="button"
+              onClick={handleToggleCollapse}
+              aria-label="Buka / Perluas sidebar"
+              title="Buka / Perluas sidebar"
+              className="p-1 rounded-md border-2 border-transparent hover:border-[#171717] dark:hover:border-[#D9AC45] hover:bg-[#F5EFE2] dark:hover:bg-[#0B3026] transition-transform duration-150 hover:scale-105 active:scale-95 cursor-pointer group"
+            >
+              <div className="rounded-md border-2 border-[#171717] dark:border-[#D9AC45] shadow-[2px_2px_0px_#171717] bg-[#06251D] p-0.5">
+                <LogoSymbol className="w-9 h-9" />
+              </div>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                if (setIsCollapsed && window.innerWidth >= 1024) {
+                  setIsCollapsed(true);
+                } else {
+                  setMobileOpen(false);
+                }
+              }}
+              aria-label="Tutup / Ciutkan sidebar"
+              title="Tutup / Ciutkan sidebar"
+              className="flex items-center gap-3 cursor-pointer group text-left p-1 -ml-1 rounded-md border-2 border-transparent hover:border-[#171717]/40 dark:hover:border-[#D9AC45]/60 hover:bg-[#F5EFE2] dark:hover:bg-[#0B3026] transition"
+            >
+              <div className="rounded-md border-2 border-[#171717] dark:border-[#D9AC45] shadow-[2px_2px_0px_#171717] bg-[#06251D] p-0.5 transition-transform duration-150 group-hover:scale-105">
+                <LogoSymbol className="w-9 h-9 shrink-0" />
+              </div>
+              <div className="flex flex-col">
+                <span className="font-serif-brand font-extrabold text-base tracking-tight leading-none text-[#171717] dark:text-[#F8F3E8] group-hover:text-[#0B6B50] dark:group-hover:text-[#D9AC45] transition-colors">
+                  Dars <span className="font-normal italic text-[#D9AC45]">with</span> Osama
+                </span>
+                <span className="text-[9px] font-sans font-extrabold tracking-[0.2em] uppercase text-[#0B6B50] dark:text-[#D9AC45] mt-1">
+                  ILMU • KAJIAN • KITAB
+                </span>
+              </div>
+            </button>
+          )}
 
-          {/* Desktop Collapse Toggle Button */}
+          {/* Mobile Close Button with explicit text & icon */}
           <button
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            className="hidden lg:flex p-1.5 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 rounded-xl hover:bg-stone-100 dark:hover:bg-stone-800 transition cursor-pointer"
-            title={isCollapsed ? 'Perluas Sidebar' : 'Kecilkan Sidebar'}
-          >
-            {isCollapsed ? <PanelLeftOpen className="w-5 h-5 text-emerald-600 dark:text-emerald-400" /> : <PanelLeftClose className="w-5 h-5" />}
-          </button>
-
-          {/* Close drawer button on mobile */}
-          <button
+            type="button"
             onClick={() => setMobileOpen(false)}
-            className="lg:hidden p-1.5 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 rounded-xl hover:bg-stone-100 dark:hover:bg-stone-800 transition cursor-pointer"
-            aria-label="Tutup Drawer Navigasi"
+            className="lg:hidden flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border-2 border-[#171717] dark:border-[#D9AC45] bg-[#F5EFE2] dark:bg-[#0B3026] text-[#171717] dark:text-[#F8F3E8] hover:bg-[#D9AC45] hover:text-[#171717] transition cursor-pointer text-xs font-bold"
+            aria-label="Tutup menu"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
+            <span className="text-[11px]">Tutup</span>
           </button>
         </div>
 
         {/* Navigation Links Area */}
-        <div className={`flex-1 overflow-y-auto py-5 space-y-6 ${isCollapsed ? 'px-2' : 'px-4'}`}>
-          {/* Section Label */}
-          <div>
-            {!isCollapsed && (
-              <p className="px-3 text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-wider mb-2 truncate">
-                {user ? 'MENU SISWA' : 'MENU NAVIGASI'}
+        <div className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
+          {/* Primary Public & Learning Navigation */}
+          <div className="space-y-1.5">
+            {!effectiveCollapsed && (
+              <p className="px-2 text-[10px] font-extrabold uppercase tracking-[0.18em] text-[#0B6B50] dark:text-[#D9AC45] mb-2">
+                Menu Utama
               </p>
             )}
 
-            <nav className="space-y-1.5">
-              {/* Beranda */}
-              <button
-                onClick={() => navigate('home')}
-                title="Beranda Utama"
-                className={`w-full flex items-center ${isCollapsed ? 'justify-center px-0 py-3' : 'gap-3.5 px-3.5 py-3'} rounded-2xl text-xs font-semibold transition-all duration-200 cursor-pointer active:scale-95 ${
-                  currentView === 'home'
-                    ? 'bg-emerald-50 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border-l-4 border-emerald-600 dark:border-emerald-500 shadow-xs'
-                    : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800/60 hover:text-stone-900 dark:hover:text-stone-100'
-                }`}
-              >
-                <Home className={`w-4 h-4 shrink-0 ${currentView === 'home' ? 'text-emerald-600 dark:text-emerald-400' : ''}`} />
-                {!isCollapsed && <span className="truncate">{t('home')}</span>}
-              </button>
-
-              {/* Katalog Kursus / Mata Pelajaran */}
-              <button
-                onClick={() => navigate('courses')}
-                title="Katalog Kursus & Matan"
-                className={`w-full flex items-center ${isCollapsed ? 'justify-center px-0 py-3' : 'gap-3.5 px-3.5 py-3'} rounded-2xl text-xs font-semibold transition-all duration-200 cursor-pointer active:scale-95 ${
-                  isCoursesActive
-                    ? 'bg-emerald-50 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border-l-4 border-emerald-600 dark:border-emerald-500 shadow-xs'
-                    : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800/60 hover:text-stone-900 dark:hover:text-stone-100'
-                }`}
-              >
-                <Layers className={`w-4 h-4 shrink-0 ${isCoursesActive ? 'text-emerald-600 dark:text-emerald-400' : ''}`} />
-                {!isCollapsed && <span className="truncate">{t('courses')}</span>}
-              </button>
-
-              {/* Blog Artikel */}
-              <button
-                onClick={() => navigate('blog')}
-                title="Blog & Artikel Public"
-                className={`w-full flex items-center ${isCollapsed ? 'justify-center px-0 py-3' : 'gap-3.5 px-3.5 py-3'} rounded-2xl text-xs font-semibold transition-all duration-200 cursor-pointer active:scale-95 ${
-                  currentView === 'blog' || currentView === 'blog-detail'
-                    ? 'bg-emerald-50 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border-l-4 border-emerald-600 dark:border-emerald-500 shadow-xs'
-                    : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800/60 hover:text-stone-900 dark:hover:text-stone-100'
-                }`}
-              >
-                <FileText className={`w-4 h-4 shrink-0 ${currentView === 'blog' || currentView === 'blog-detail' ? 'text-[#073B2E] dark:text-[#C9A34E]' : ''}`} />
-                {!isCollapsed && <span className="truncate">Blog & Artikel</span>}
-              </button>
-
-              {/* Ruang Konsultasi Siswa */}
-              <button
-                onClick={() => navigate('consultation')}
-                title="Ruang Konsultasi Siswa & Tanya Jawab"
-                className={`w-full flex items-center ${isCollapsed ? 'justify-center px-0 py-3' : 'gap-3.5 px-3.5 py-3'} rounded-2xl text-xs font-semibold transition-all duration-200 cursor-pointer active:scale-95 ${
-                  currentView === 'consultation'
-                    ? 'bg-emerald-50 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border-l-4 border-emerald-600 dark:border-emerald-500 shadow-xs'
-                    : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800/60 hover:text-stone-900 dark:hover:text-stone-100'
-                }`}
-              >
-                <MessageSquare className={`w-4 h-4 shrink-0 ${currentView === 'consultation' ? 'text-[#073B2E] dark:text-[#C9A34E]' : ''}`} />
-                {!isCollapsed && <span className="truncate">Ruang Konsultasi</span>}
-              </button>
-
-              {/* Tanya Jawab Publik */}
-              <button
-                onClick={() => navigate('public-qa')}
-                title="Arsip Tanya Jawab Pembelajaran Publik"
-                className={`w-full flex items-center ${isCollapsed ? 'justify-center px-0 py-3' : 'gap-3.5 px-3.5 py-3'} rounded-2xl text-xs font-semibold transition-all duration-200 cursor-pointer active:scale-95 ${
-                  currentView === 'public-qa'
-                    ? 'bg-emerald-50 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border-l-4 border-emerald-600 dark:border-emerald-500 shadow-xs'
-                    : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800/60 hover:text-stone-900 dark:hover:text-stone-100'
-                }`}
-              >
-                <HelpCircle className={`w-4 h-4 shrink-0 ${currentView === 'public-qa' ? 'text-[#073B2E] dark:text-[#C9A34E]' : ''}`} />
-                {!isCollapsed && <span className="truncate">Tanya Jawab Publik</span>}
-              </button>
-
-              {/* Profil Pengajar */}
-              <button
-                onClick={() => navigate('instructor-profile')}
-                data-testid="nav-instructor-profile"
-                title="Profil Pembuat & Pengajar Dars with Osama"
-                className={`w-full flex items-center ${isCollapsed ? 'justify-center px-0 py-3' : 'gap-3.5 px-3.5 py-3'} rounded-2xl text-xs font-semibold transition-all duration-200 cursor-pointer active:scale-95 ${
-                  currentView === 'instructor-profile'
-                    ? 'bg-emerald-50 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border-l-4 border-emerald-600 dark:border-emerald-500 shadow-xs'
-                    : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800/60 hover:text-stone-900 dark:hover:text-stone-100'
-                }`}
-              >
-                <User className={`w-4 h-4 shrink-0 ${currentView === 'instructor-profile' ? 'text-[#073B2E] dark:text-[#C9A34E]' : ''}`} />
-                {!isCollapsed && <span className="truncate">Profil Pengajar</span>}
-              </button>
-
-              {/* Sambutan & Perkenalan Trigger Button */}
-              {onOpenWelcomeModal && (
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              return (
                 <button
-                  onClick={() => {
-                    onOpenWelcomeModal();
-                    setMobileOpen(false);
-                  }}
-                  title="Sambutan & Perkenalan Dars with Osama"
-                  className={`w-full flex items-center ${isCollapsed ? 'justify-center px-0 py-3' : 'gap-3.5 px-3.5 py-3'} rounded-2xl text-xs font-semibold text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800/60 hover:text-stone-900 dark:hover:text-stone-100 transition-all duration-200 cursor-pointer active:scale-95`}
-                >
-                  <Sparkles className="w-4 h-4 shrink-0 text-[#C9A34E]" />
-                  {!isCollapsed && <span className="truncate">Sambutan & Perkenalan</span>}
-                </button>
-              )}
-
-              {/* Logged in student specific items */}
-              {user && (
-                <button
-                  onClick={() => navigate('student-dashboard')}
-                  title="Pembelajaran Saya & Progress"
-                  className={`w-full flex items-center ${isCollapsed ? 'justify-center px-0 py-3' : 'gap-3.5 px-3.5 py-3'} rounded-2xl text-xs font-semibold transition-all duration-200 cursor-pointer active:scale-95 ${
-                    currentView === 'student-dashboard'
-                      ? 'bg-emerald-50 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border-l-4 border-emerald-600 dark:border-emerald-500 shadow-xs'
-                      : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800/60 hover:text-stone-900 dark:hover:text-stone-100'
+                  key={item.id}
+                  type="button"
+                  data-testid={`nav-${item.id}`}
+                  onClick={() => handleNavClick(item.id)}
+                  title={effectiveCollapsed ? item.label : undefined}
+                  className={`w-full flex items-center ${
+                    effectiveCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2.5'
+                  } rounded-md text-left transition-all duration-150 cursor-pointer group relative border-2 ${
+                    item.active
+                      ? 'bg-[#D9AC45] text-[#171717] font-extrabold border-[#171717] shadow-[3px_3px_0px_#171717]'
+                      : 'bg-transparent hover:bg-[#F5EFE2] dark:hover:bg-[#0B3026] text-[#171717] dark:text-[#F8F3E8] border-transparent hover:border-[#171717]/40 dark:hover:border-[#D9AC45]/70'
                   }`}
                 >
-                  <GraduationCap className={`w-4 h-4 shrink-0 ${currentView === 'student-dashboard' ? 'text-emerald-600 dark:text-emerald-400' : ''}`} />
-                  {!isCollapsed && <span className="truncate">{t('myLearning')}</span>}
-                </button>
-              )}
+                  <div
+                    className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 transition-colors border ${
+                      item.active
+                        ? 'bg-[#06251D] text-[#D9AC45] border-[#171717]'
+                        : 'bg-[#F5EFE2] dark:bg-[#06251D] text-[#0B6B50] dark:text-[#D9AC45] border-[#171717]/20 dark:border-[#D9AC45]/40 group-hover:border-[#171717] dark:group-hover:border-[#D9AC45]'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                  </div>
 
-              {/* Admin Panel button if user is Admin */}
-              {isAdmin && (
-                <button
-                  onClick={() => navigate('admin-dashboard')}
-                  title="Portal Administrasi"
-                  className={`w-full flex items-center ${isCollapsed ? 'justify-center px-0 py-3' : 'gap-3.5 px-3.5 py-3'} rounded-2xl text-xs font-semibold transition-all duration-200 cursor-pointer active:scale-95 ${
-                    currentView === 'admin-dashboard'
-                      ? 'bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-300 border-l-4 border-amber-500 shadow-xs'
-                      : 'text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40'
-                  }`}
-                >
-                  <ShieldAlert className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
-                  {!isCollapsed && <span className="truncate">{t('adminPortal')}</span>}
+                  {!effectiveCollapsed && (
+                    <div className="overflow-hidden flex-1">
+                      <p className="text-xs font-extrabold truncate leading-tight">
+                        {item.label}
+                      </p>
+                      <p
+                        className={`text-[10px] truncate mt-0.5 font-semibold ${
+                          item.active
+                            ? 'text-[#171717]/80'
+                            : 'text-[#57534E] dark:text-[#A7B5AE]'
+                        }`}
+                      >
+                        {item.sublabel}
+                      </p>
+                    </div>
+                  )}
                 </button>
-              )}
-            </nav>
+              );
+            })}
           </div>
 
-          {/* Guest Specific Authentication Buttons */}
-          {!user && (
-            <div className="pt-2 space-y-2 border-t border-stone-200 dark:border-stone-800">
-              {!isCollapsed && (
-                <p className="px-3 text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-wider mb-2">
-                  AKUN SAYA
+          {/* Personal & Admin Area */}
+          {(user || isAdmin) && (
+            <div className="space-y-1.5 pt-3 border-t-2 border-[#171717]/15 dark:border-[#D9AC45]/30">
+              {!effectiveCollapsed && (
+                <p className="px-2 text-[10px] font-extrabold uppercase tracking-[0.18em] text-[#0B6B50] dark:text-[#D9AC45] mb-2">
+                  Ruang Pengguna
                 </p>
               )}
-              <button
-                onClick={() => {
-                  setMobileOpen(false);
-                  openAuthModal('login');
-                }}
-                title="Masuk / Login Akun"
-                className={`w-full flex items-center ${isCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'} rounded-2xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white shadow-md transition cursor-pointer active:scale-95`}
-              >
-                <LogIn className="w-4 h-4 shrink-0" />
-                {!isCollapsed && <span className="truncate">Masuk / Login</span>}
-              </button>
 
-              <button
-                onClick={() => {
-                  setMobileOpen(false);
-                  openAuthModal('register');
-                }}
-                title="Daftar Akun Baru"
-                className={`w-full flex items-center ${isCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'} rounded-2xl text-xs font-semibold bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 border border-stone-200 dark:border-stone-700 transition cursor-pointer active:scale-95`}
-              >
-                <UserPlus className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                {!isCollapsed && <span className="truncate">Daftar Akun Baru</span>}
-              </button>
+              {user && (
+                <button
+                  type="button"
+                  onClick={() => handleNavClick('student-dashboard')}
+                  title={effectiveCollapsed ? t('nav.dashboard') : undefined}
+                  className={`w-full flex items-center ${
+                    effectiveCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2.5'
+                  } rounded-md text-left transition-all duration-150 cursor-pointer group border-2 ${
+                    isStudentDashboardActive
+                      ? 'bg-[#D9AC45] text-[#171717] font-extrabold border-[#171717] shadow-[3px_3px_0px_#171717]'
+                      : 'bg-transparent hover:bg-[#F5EFE2] dark:hover:bg-[#0B3026] text-[#171717] dark:text-[#F8F3E8] border-transparent hover:border-[#171717]/40 dark:hover:border-[#D9AC45]/70'
+                  }`}
+                >
+                  <div
+                    className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 border ${
+                      isStudentDashboardActive
+                        ? 'bg-[#06251D] text-[#D9AC45] border-[#171717]'
+                        : 'bg-[#F5EFE2] dark:bg-[#06251D] text-[#0B6B50] dark:text-[#D9AC45] border-[#171717]/20 dark:border-[#D9AC45]/40'
+                    }`}
+                  >
+                    <GraduationCap className="w-4 h-4" />
+                  </div>
+                  {!effectiveCollapsed && (
+                    <div className="overflow-hidden flex-1">
+                      <p className="text-xs font-extrabold truncate leading-tight">
+                        {t('nav.dashboard')}
+                      </p>
+                      <p
+                        className={`text-[10px] truncate mt-0.5 font-semibold ${
+                          isStudentDashboardActive
+                            ? 'text-[#171717]/80'
+                            : 'text-[#57534E] dark:text-[#A7B5AE]'
+                        }`}
+                      >
+                        Progres, Nilai &amp; Sertifikat
+                      </p>
+                    </div>
+                  )}
+                </button>
+              )}
+
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => handleNavClick('admin-dashboard')}
+                  title={effectiveCollapsed ? t('nav.admin') : undefined}
+                  className={`w-full flex items-center ${
+                    effectiveCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2.5'
+                  } rounded-md text-left transition-all duration-150 cursor-pointer group border-2 ${
+                    isAdminDashboardActive
+                      ? 'bg-[#D9AC45] text-[#171717] font-extrabold border-[#171717] shadow-[3px_3px_0px_#171717]'
+                      : 'bg-transparent hover:bg-[#F5EFE2] dark:hover:bg-[#0B3026] text-[#0B6B50] dark:text-[#D9AC45] border-transparent hover:border-[#171717]/40 dark:hover:border-[#D9AC45]'
+                  }`}
+                >
+                  <div
+                    className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 border ${
+                      isAdminDashboardActive
+                        ? 'bg-[#06251D] text-[#D9AC45] border-[#171717]'
+                        : 'bg-[#F5EFE2] dark:bg-[#06251D] text-[#0B6B50] dark:text-[#D9AC45] border-[#171717]/20 dark:border-[#D9AC45]/50'
+                    }`}
+                  >
+                    <ShieldAlert className="w-4 h-4" />
+                  </div>
+                  {!effectiveCollapsed && (
+                    <div className="overflow-hidden flex-1">
+                      <p className="text-xs font-extrabold truncate leading-tight">
+                        {t('nav.admin')}
+                      </p>
+                      <p
+                        className={`text-[10px] truncate mt-0.5 font-semibold ${
+                          isAdminDashboardActive
+                            ? 'text-[#171717]/80'
+                            : 'text-[#57534E] dark:text-[#A7B5AE]'
+                        }`}
+                      >
+                        Kelola Materi &amp; Artikel
+                      </p>
+                    </div>
+                  )}
+                </button>
+              )}
             </div>
           )}
 
-          {/* Theme Switcher Toggle */}
-          <div className="pt-4 border-t border-stone-200 dark:border-stone-800 space-y-2">
-            {!isCollapsed && (
-              <p className="px-3 text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-wider">
-                PENGATURAN TAMPILAN
-              </p>
-            )}
-
-            <button
-              onClick={() => setTheme(effectiveTheme === 'dark' ? 'light' : 'dark')}
-              title={`Ubah Tampilan (${effectiveTheme === 'dark' ? 'Mode Terang' : 'Mode Gelap'})`}
-              className={`w-full flex items-center ${isCollapsed ? 'justify-center py-2.5 px-0' : 'justify-between py-2.5 px-3.5'} rounded-2xl bg-stone-50 hover:bg-stone-100 dark:bg-stone-800/60 dark:hover:bg-stone-800 border border-stone-200 dark:border-stone-700/60 text-stone-700 dark:text-stone-300 text-xs font-semibold transition cursor-pointer active:scale-95`}
-            >
-              <div className="flex items-center gap-2.5">
-                {effectiveTheme === 'dark' ? (
-                  <Sun className="w-4 h-4 text-amber-400 shrink-0" />
-                ) : (
-                  <Moon className="w-4 h-4 text-emerald-600 shrink-0" />
+          {/* Callout Quote Card & Welcome Info when Expanded */}
+          {!effectiveCollapsed && (
+            <div className="mt-3 p-3 rounded-md bg-[#F5EFE2] dark:bg-[#0B3026] border-2 border-[#171717] dark:border-[#D9AC45] shadow-[3px_3px_0px_#171717] space-y-1.5 text-[#171717] dark:text-[#F8F3E8]">
+              <div className="flex items-center justify-between text-[#0B6B50] dark:text-[#D9AC45] text-[10px] font-extrabold uppercase tracking-wider">
+                <span className="flex items-center gap-1">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Majelis Ilmu</span>
+                </span>
+                {onOpenWelcomeModal && (
+                  <button
+                    type="button"
+                    onClick={onOpenWelcomeModal}
+                    className="hover:underline flex items-center gap-0.5 cursor-pointer text-[#0B6B50] dark:text-[#D9AC45]"
+                    title="Tentang Platform"
+                  >
+                    <Info className="w-3 h-3" />
+                    <span>Info</span>
+                  </button>
                 )}
-                {!isCollapsed && <span>{effectiveTheme === 'dark' ? 'Mode Terang' : 'Mode Gelap'}</span>}
               </div>
-              {!isCollapsed && <span className="text-[10px] text-stone-400 capitalize">{effectiveTheme}</span>}
-            </button>
-          </div>
+              <p className="font-amiri text-base text-[#171717] dark:text-[#F8F3E8] leading-relaxed text-right" dir="rtl">
+                مَنْ سَلَكَ طَرِيقًا يَلْتَمِسُ فِيهِ عِلْمًا
+              </p>
+              <p className="text-[11px] text-[#57534E] dark:text-[#A7B5AE] leading-snug font-medium">
+                Pelajari matan ilmiah, simak video syarah, dan uji pemahaman secara bertahap.
+              </p>
+            </div>
+          )}
         </div>
 
-        {/* Bottom User Card / Logout Section */}
-        {user && (
-          <div className={`p-3.5 border-t border-stone-200 dark:border-stone-800 bg-stone-50/80 dark:bg-stone-900/80 shrink-0 space-y-3 ${isCollapsed ? 'px-2' : 'px-4'}`}>
-            <div
-              onClick={() => {
-                setMobileOpen(false);
-                openProfileModal();
-              }}
-              title={`Pengaturan Profil (${userProfile?.displayName || 'Santri'})`}
-              className={`flex items-center ${isCollapsed ? 'justify-center p-1' : 'justify-between p-2'} rounded-2xl hover:bg-stone-200/60 dark:hover:bg-stone-800/80 transition cursor-pointer group`}
-            >
-              <div className="flex items-center gap-3 overflow-hidden">
-                <div className="w-9 h-9 rounded-full bg-emerald-600 text-white font-bold text-xs flex items-center justify-center shrink-0 border border-emerald-500/30 overflow-hidden">
-                  {avatarURL && !imgError ? (
-                    <img
-                      src={avatarURL}
-                      alt={userProfile?.displayName || 'Profil'}
-                      onError={() => setImgError(true)}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <span>{userProfile?.displayName ? userProfile.displayName.charAt(0).toUpperCase() : 'S'}</span>
-                  )}
-                </div>
-                {!isCollapsed && (
-                  <div className="overflow-hidden text-xs">
-                    <p className="font-semibold text-stone-900 dark:text-stone-100 truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition">
-                      {userProfile?.displayName || 'Santri'}
-                    </p>
-                    <p className="text-stone-500 dark:text-stone-400 truncate text-[10px]">
-                      {user.email}
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {!isCollapsed && (
-                <Settings className="w-4 h-4 text-stone-400 group-hover:text-stone-600 dark:group-hover:text-stone-200 transition shrink-0" />
+        {/* Bottom Controls: Theme Toggle & User Account */}
+        <div className="p-3 border-t-2 border-[#171717] dark:border-[#D9AC45]/40 bg-[#F5EFE2] dark:bg-[#041A14] space-y-2.5 shrink-0">
+          {/* Quick Theme Switcher */}
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className={`w-full flex items-center ${
+              effectiveCollapsed ? 'justify-center py-2.5' : 'justify-between px-3 py-2'
+            } rounded-md bg-white dark:bg-[#06251D] hover:bg-[#D9AC45] dark:hover:bg-[#D9AC45] text-[#171717] dark:text-[#F8F3E8] hover:text-[#171717] dark:hover:text-[#171717] border-2 border-[#171717] dark:border-[#D9AC45]/60 text-xs font-extrabold transition cursor-pointer group shadow-[2px_2px_0px_#171717] dark:shadow-none`}
+            title={theme === 'dark' ? 'Beralih ke Mode Terang' : 'Beralih ke Mode Gelap'}
+          >
+            <div className="flex items-center gap-2.5">
+              {theme === 'dark' ? (
+                <Sun className="w-4 h-4 text-[#D9AC45] group-hover:text-[#171717]" />
+              ) : (
+                <Moon className="w-4 h-4 text-[#0B6B50] group-hover:text-[#171717]" />
+              )}
+              {!effectiveCollapsed && (
+                <span>{theme === 'dark' ? 'Mode Terang' : 'Mode Gelap'}</span>
               )}
             </div>
+            {!effectiveCollapsed && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded-sm bg-[#D9AC45] text-[#171717] font-extrabold uppercase border border-[#171717]">
+                {theme === 'dark' ? 'Dark' : 'Light'}
+              </span>
+            )}
+          </button>
 
+          {/* User Profile or Login Button */}
+          {user ? (
+            <div className="space-y-2">
+              <div
+                onClick={openProfileModal}
+                title="Pengaturan Profil"
+                className={`flex items-center ${
+                  effectiveCollapsed ? 'justify-center' : 'justify-between gap-2'
+                } p-2 rounded-md bg-white dark:bg-[#06251D] hover:bg-neutral-100 dark:hover:bg-[#06251D]/80 border-2 border-[#171717] dark:border-[#D9AC45]/50 cursor-pointer transition shadow-[2px_2px_0px_#171717] dark:shadow-none`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-sm bg-[#D9AC45] text-[#171717] font-extrabold text-xs flex items-center justify-center uppercase shrink-0 overflow-hidden border border-[#171717]">
+                    {userProfile?.photoURL || user.photoURL ? (
+                      <img
+                        src={userProfile?.photoURL || user.photoURL || ''}
+                        alt={userProfile?.displayName || 'User'}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      (userProfile?.displayName || user.displayName || user.email || 'U')[0]
+                    )}
+                  </div>
+                  {!effectiveCollapsed && (
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-extrabold text-[#171717] dark:text-[#F8F3E8] truncate">
+                        {userProfile?.displayName || user.displayName || 'Penuntut Ilmu'}
+                      </p>
+                      <p className="text-[10px] text-[#57534E] dark:text-[#D9AC45] truncate font-medium">
+                        {user.email}
+                      </p>
+                    </div>
+                  )}
+                </div>
+                {!effectiveCollapsed && <Settings className="w-3.5 h-3.5 text-[#57534E] dark:text-[#D9AC45] shrink-0" />}
+              </div>
+
+              <button
+                type="button"
+                onClick={openLogoutConfirmModal}
+                title={t('nav.logout')}
+                className={`w-full flex items-center justify-center ${
+                  effectiveCollapsed ? 'py-2' : 'gap-2 py-2 px-3'
+                } rounded-md bg-[#F04438] hover:bg-[#d9382d] text-white border-2 border-[#171717] shadow-[2px_2px_0px_#171717] text-xs font-extrabold transition cursor-pointer`}
+              >
+                <LogOut className="w-3.5 h-3.5 shrink-0" />
+                {!effectiveCollapsed && <span>{t('nav.logout')}</span>}
+              </button>
+            </div>
+          ) : (
             <button
-              onClick={() => {
-                setMobileOpen(false);
-                openLogoutConfirmModal();
-              }}
-              title="Keluar / Logout Akun"
-              className={`w-full flex items-center justify-center ${isCollapsed ? 'px-0 py-2.5' : 'gap-2 py-2 px-3'} rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-950/70 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 text-xs font-semibold transition cursor-pointer active:scale-95`}
+              type="button"
+              onClick={() => openAuthModal('login')}
+              title={t('nav.login')}
+              className={`w-full flex items-center justify-center ${
+                effectiveCollapsed ? 'py-2.5' : 'gap-2 py-2.5 px-4'
+              } rounded-md bg-[#D9AC45] hover:bg-[#e5ba54] text-[#171717] font-extrabold text-xs border-2 border-[#171717] shadow-[3px_3px_0px_#171717] transition cursor-pointer active:translate-x-[1px] active:translate-y-[1px] active:shadow-none`}
             >
-              <LogOut className="w-3.5 h-3.5 shrink-0" />
-              {!isCollapsed && <span>Keluar / Logout</span>}
+              <UserIcon className="w-4 h-4 shrink-0" />
+              {!effectiveCollapsed && <span>{t('nav.login')}</span>}
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </aside>
     </>
   );
 };
-

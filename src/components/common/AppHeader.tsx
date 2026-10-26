@@ -1,27 +1,27 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React from 'react';
 import {
-  Menu,
-  BookOpen,
-  Search,
   Sun,
   Moon,
-  User,
-  LogIn,
-  GraduationCap,
-  ShieldAlert,
-  ChevronRight,
-  Sparkles
+  User as UserIcon,
+  Settings,
+  LogOut,
+  Search,
+  X
 } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useAuth } from '../../context/AuthContext';
+import { LogoSymbol } from './Logo';
 
 interface AppHeaderProps {
   currentView: string;
-  setCurrentView: (view: string) => void;
+  setCurrentView: (view: any) => void;
   mobileOpen: boolean;
   setMobileOpen: (open: boolean) => void;
+  isCollapsed?: boolean;
+  setIsCollapsed?: (collapsed: boolean) => void;
   searchQuery?: string;
-  setSearchQuery?: (q: string) => void;
+  setSearchQuery?: (query: string) => void;
   onOpenWelcomeModal?: () => void;
 }
 
@@ -30,176 +30,173 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   setCurrentView,
   mobileOpen,
   setMobileOpen,
+  isCollapsed = false,
+  setIsCollapsed,
   searchQuery = '',
-  setSearchQuery,
-  onOpenWelcomeModal
+  setSearchQuery
 }) => {
-  const { user, userProfile, isAdmin, openAuthModal, openProfileModal } = useAuth();
-  const { effectiveTheme, setTheme } = useTheme();
-  const headerRef = useRef<HTMLElement | null>(null);
-
-  const avatarURL = userProfile?.photoURL || user?.photoURL || '';
-  const [imgError, setImgError] = useState(false);
-
-  useEffect(() => {
-    setImgError(false);
-  }, [avatarURL]);
-
-  // Dynamically measure actual header height and expose as --app-header-height for sticky elements below
-  useEffect(() => {
-    const el = headerRef.current;
-    if (!el || typeof document === 'undefined') return;
-
-    const updateHeight = () => {
-      const h = Math.round(el.getBoundingClientRect().height || el.offsetHeight || 57);
-      if (h > 0) {
-        document.documentElement.style.setProperty('--app-header-height', `${h}px`);
-      }
-    };
-
-    updateHeight();
-
-    let observer: ResizeObserver | null = null;
-    if (typeof ResizeObserver !== 'undefined') {
-      observer = new ResizeObserver(updateHeight);
-      observer.observe(el);
-    }
-    window.addEventListener('resize', updateHeight);
-
-    return () => {
-      if (observer) observer.disconnect();
-      window.removeEventListener('resize', updateHeight);
-    };
-  }, []);
-
-  // Compute readable page title / breadcrumb based on currentView
-  const getPageTitle = () => {
-    switch (currentView) {
-      case 'home':
-        return 'Beranda Utama';
-      case 'courses':
-        return 'Katalog Kursus & Matan';
-      case 'course-detail':
-        return 'Detail Kursus & Kurikulum';
-      case 'session-view':
-        return 'Ruang Pembelajaran Sesi';
-      case 'quiz-view':
-        return 'Kuis Evaluasi Sesi';
-      case 'student-dashboard':
-        return 'Pembelajaran Saya & Progress';
-      case 'blog':
-      case 'blog-detail':
-        return 'Blog & Artikel Scientific';
-      case 'consultation':
-        return 'Ruang Konsultasi Siswa';
-      case 'public-qa':
-        return 'Arsip Tanya Jawab Publik';
-      case 'instructor-profile':
-        return 'Profil Pengajar';
-      case 'admin-dashboard':
-        return 'Dashboard Administrasi';
-      default:
-        return 'Pembelajaran';
-    }
-  };
+  const { t } = useLanguage();
+  const { theme, toggleTheme } = useTheme();
+  const {
+    user,
+    userProfile,
+    openAuthModal,
+    openLogoutConfirmModal,
+    openProfileModal
+  } = useAuth();
 
   return (
     <header
-      ref={headerRef}
       data-testid="app-header"
-      className="sticky top-0 z-30 w-full bg-[#F7F6EF]/95 dark:bg-[#071B16]/95 backdrop-blur-md border-b border-[#073B2E]/10 dark:border-[#C9A34E]/20 text-[#073B2E] dark:text-[#F7F6EF] px-4 sm:px-6 py-3 flex items-center justify-between gap-4 transition-colors"
+      className="sticky top-0 z-30 w-full bg-white dark:bg-[#06251D] border-b-2 border-[#171717] dark:border-[#D9AC45]/40 transition-colors duration-200"
     >
-      {/* Left: Hamburger Toggle Button (Mobile) & Breadcrumb Page Title */}
-      <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
-        <button
-          onClick={() => setMobileOpen(!mobileOpen)}
-          className="lg:hidden p-2 rounded-xl text-[#073B2E] dark:text-[#F7F6EF] hover:bg-[#073B2E]/10 dark:hover:bg-[#C9A34E]/20 transition cursor-pointer shrink-0"
-          title="Buka Navigasi Menu"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
-
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="text-xs font-serif-brand font-bold uppercase tracking-wider text-[#C9A34E] hidden sm:inline shrink-0">
-            Dars with Osama
-          </span>
-          <ChevronRight className="w-3.5 h-3.5 text-[#073B2E]/30 dark:text-[#C9A34E]/40 hidden sm:inline shrink-0" />
-          <h1 className="text-sm sm:text-base font-bold text-[#073B2E] dark:text-[#F7F6EF] font-sans tracking-tight truncate">
-            {getPageTitle()}
-          </h1>
-        </div>
-      </div>
-
-      {/* Center: Quick Search Input if on catalog view or handler passed */}
-      {setSearchQuery && (currentView === 'courses' || currentView === 'home') && (
-        <div className="hidden md:flex items-center flex-1 max-w-xs relative">
-          <Search className="w-3.5 h-3.5 absolute left-3 text-[#6B7C7A]" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Cari matan / kursus..."
-            className="w-full pl-9 pr-3 py-1.5 bg-white dark:bg-[#0c2b23] border border-[#073B2E]/20 dark:border-[#143e33] rounded-xl text-xs text-[#073B2E] dark:text-[#F7F6EF] focus:outline-hidden focus:ring-2 focus:ring-[#C9A34E]/50"
-          />
-        </div>
-      )}
-
-      {/* Right Controls: Video Intro, Theme Toggle, User Avatar / Login CTA */}
-      <div className="flex items-center gap-2 shrink-0">
-        {onOpenWelcomeModal && (
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2 sm:gap-3">
+        
+        {/* Left: Interactive Logo as Sidebar Toggle & Desktop Search */}
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0 shrink">
+          {/* Mobile: Logo acts as the unified interactive sidebar toggle button */}
           <button
-            onClick={onOpenWelcomeModal}
-            className="px-2.5 py-1.5 rounded-xl bg-[#073B2E]/5 hover:bg-[#073B2E]/10 dark:bg-[#0c2b23] dark:hover:bg-[#143e33] border border-[#073B2E]/10 dark:border-[#143e33] text-[#073B2E] dark:text-[#F7F6EF] transition text-xs font-semibold flex items-center gap-1.5 cursor-pointer active:scale-95"
-            title="Sambutan & Perkenalan Dars with Osama"
+            type="button"
+            onClick={() => setMobileOpen(!mobileOpen)}
+            aria-label={mobileOpen ? "Tutup sidebar" : "Buka sidebar"}
+            title={mobileOpen ? "Tutup sidebar" : "Buka sidebar"}
+            className="lg:hidden flex items-center gap-2 p-1 -ml-1 rounded-md border-2 border-transparent hover:border-[#171717] dark:hover:border-[#D9AC45] hover:bg-[#F5EFE2] dark:hover:bg-[#0B3026] active:translate-x-[1px] active:translate-y-[1px] transition cursor-pointer group text-left"
           >
-            <Sparkles className="w-3.5 h-3.5 text-[#C9A34E]" />
-            <span className="hidden xl:inline">Info Perkenalan</span>
-          </button>
-        )}
-
-        <button
-          onClick={() => setTheme(effectiveTheme === 'dark' ? 'light' : 'dark')}
-          className="p-2 rounded-xl bg-[#073B2E]/5 hover:bg-[#073B2E]/10 dark:bg-[#0c2b23] dark:hover:bg-[#143e33] border border-[#073B2E]/10 dark:border-[#143e33] text-[#073B2E] dark:text-[#F7F6EF] transition cursor-pointer active:scale-95"
-          title="Toggle Mode Terang/Gelap"
-        >
-          {effectiveTheme === 'dark' ? (
-            <Sun className="w-4 h-4 text-[#C9A34E]" />
-          ) : (
-            <Moon className="w-4 h-4 text-[#073B2E]" />
-          )}
-        </button>
-
-        {user ? (
-          <button
-            onClick={openProfileModal}
-            className="flex items-center gap-2 p-1.5 pl-2.5 rounded-xl bg-[#073B2E]/5 hover:bg-[#073B2E]/10 dark:bg-[#0c2b23] dark:hover:bg-[#143e33] border border-[#073B2E]/10 dark:border-[#143e33] text-[#073B2E] dark:text-[#F7F6EF] transition text-xs font-semibold cursor-pointer active:scale-95"
-          >
-            <span className="hidden sm:inline font-semibold max-w-[100px] truncate">
-              {userProfile?.displayName?.split(' ')[0] || 'Santri'}
-            </span>
-            <div className="w-6.5 h-6.5 rounded-full bg-[#073B2E] text-[#F7F6EF] font-bold text-[10px] flex items-center justify-center shrink-0 border border-[#C9A34E]/40 overflow-hidden">
-              {avatarURL && !imgError ? (
-                <img
-                  src={avatarURL}
-                  alt={userProfile?.displayName || 'Profil'}
-                  onError={() => setImgError(true)}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <span>{userProfile?.displayName ? userProfile.displayName.charAt(0).toUpperCase() : 'S'}</span>
-              )}
+            <div className="w-9 h-9 rounded-md border-2 border-[#171717] dark:border-[#D9AC45] shadow-[2px_2px_0px_#171717] bg-[#06251D] flex items-center justify-center transition-transform group-hover:scale-105 shrink-0">
+              <LogoSymbol className="w-8 h-8" />
+            </div>
+            <div className="flex flex-col">
+              <span className="font-serif-brand font-extrabold text-sm tracking-tight leading-none text-[#171717] dark:text-[#F8F3E8]">
+                Dars <span className="font-normal italic text-[#D9AC45]">with</span> Osama
+              </span>
+              <span className="text-[8px] font-sans font-extrabold tracking-[0.16em] uppercase text-[#0B6B50] dark:text-[#D9AC45] mt-1">
+                {mobileOpen ? 'TUTUP SIDEBAR' : 'BUKA SIDEBAR'}
+              </span>
             </div>
           </button>
-        ) : (
-          <div className="flex items-center gap-1.5">
+
+          {/* Desktop: Header Logo also toggles sidebar collapse/expansion */}
+          {setIsCollapsed && (
             <button
-              onClick={() => openAuthModal('login')}
-              className="px-3.5 py-1.5 bg-[#073B2E] hover:bg-[#0a4d3c] text-white rounded-xl text-xs font-semibold shadow transition cursor-pointer active:scale-95"
+              type="button"
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              aria-label={isCollapsed ? "Buka sidebar" : "Tutup sidebar"}
+              title={isCollapsed ? "Buka sidebar" : "Tutup sidebar"}
+              className="hidden lg:flex items-center gap-2 px-2 py-1 rounded-md border-2 border-transparent hover:border-[#171717]/40 dark:hover:border-[#D9AC45]/60 hover:bg-[#F5EFE2] dark:hover:bg-[#0B3026] transition cursor-pointer group text-left"
             >
-              Masuk
+              <div className="w-8 h-8 rounded-md border-2 border-[#171717] dark:border-[#D9AC45] shadow-[2px_2px_0px_#171717] bg-[#06251D] flex items-center justify-center transition-transform group-hover:scale-105 shrink-0">
+                <LogoSymbol className="w-7 h-7" />
+              </div>
+              <div className="flex flex-col">
+                <span className="font-serif-brand font-extrabold text-xs tracking-tight leading-none text-[#171717] dark:text-[#F8F3E8]">
+                  Dars <span className="font-normal italic text-[#D9AC45]">with</span> Osama
+                </span>
+                <span className="text-[8px] font-sans font-extrabold tracking-[0.14em] uppercase text-[#0B6B50] dark:text-[#D9AC45] mt-0.5">
+                  {isCollapsed ? 'BUKA SIDEBAR' : 'CIUTKAN'}
+                </span>
+              </div>
             </button>
+          )}
+
+          {/* Desktop Quick Search & Context Pill */}
+          <div className="hidden lg:flex items-center gap-3">
+            <span className="px-2.5 py-1 rounded-md bg-[#0B6B50] dark:bg-[#0B3026] text-[#F8F3E8] dark:text-[#D9AC45] border-2 border-[#171717] dark:border-[#D9AC45] text-xs uppercase tracking-wider font-extrabold shadow-[2px_2px_0px_#171717] shrink-0">
+              Dars Online
+            </span>
+            {setSearchQuery && (
+              <div className="relative w-64 xl:w-80">
+                <Search className="w-3.5 h-3.5 text-[#57534E] dark:text-[#D9AC45] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    if (currentView !== 'courses') {
+                      setCurrentView('courses');
+                    }
+                  }}
+                  placeholder="Cari kitab, kursus, atau materi..."
+                  className="w-full pl-8 pr-7 py-1.5 rounded-md bg-[#F5EFE2] dark:bg-[#06251D] border-2 border-[#171717] dark:border-[#D9AC45]/60 text-xs font-bold text-[#171717] dark:text-[#F8F3E8] placeholder-[#57534E]/70 dark:placeholder-[#F8F3E8]/50 focus:outline-none focus:border-[#0B6B50] dark:focus:border-[#D9AC45] focus:shadow-[2px_2px_0px_#0B6B50]"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-[#57534E] dark:text-[#F8F3E8]/60 hover:text-[#F04438] cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            )}
           </div>
-        )}
+        </div>
+
+        {/* Right Controls: Theme Toggle & User Auth / Profile */}
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          
+          {/* Theme Toggle (Light / Dark) */}
+          <button
+            type="button"
+            onClick={toggleTheme}
+            aria-label={theme === 'dark' ? 'Beralih ke Mode Terang' : 'Beralih ke Mode Gelap'}
+            title={theme === 'dark' ? 'Mode Terang' : 'Mode Gelap'}
+            className="p-2 rounded-md border-2 border-[#171717] dark:border-[#D9AC45] bg-[#F5EFE2] dark:bg-[#06251D] text-[#171717] dark:text-[#D9AC45] shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#000000] hover:-translate-y-0.5 active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition cursor-pointer"
+          >
+            {theme === 'dark' ? (
+              <Sun className="w-4 h-4 text-[#D9AC45]" />
+            ) : (
+              <Moon className="w-4 h-4 text-[#0B6B50]" />
+            )}
+          </button>
+
+          {/* User Profile or Login CTA */}
+          {user ? (
+            <div className="flex items-center gap-1.5 pl-1.5 sm:pl-2 border-l-2 border-[#171717]/20 dark:border-[#D9AC45]/30">
+              <button
+                type="button"
+                onClick={openProfileModal}
+                title="Pengaturan Profil & Akun"
+                className="flex items-center gap-1.5 sm:gap-2 py-1 px-1.5 sm:px-2 rounded-md border-2 border-[#171717] dark:border-[#D9AC45]/60 bg-white dark:bg-[#06251D] hover:bg-[#F5EFE2] dark:hover:bg-[#0B3026] transition cursor-pointer shadow-[2px_2px_0px_#171717]"
+              >
+                <div className="w-6 h-6 rounded-sm bg-[#D9AC45] text-[#171717] flex items-center justify-center font-extrabold text-xs uppercase border border-[#171717] overflow-hidden shrink-0">
+                  {userProfile?.photoURL || user.photoURL ? (
+                    <img
+                      src={userProfile?.photoURL || user.photoURL || ''}
+                      alt={userProfile?.displayName || 'User'}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    (userProfile?.displayName || user.displayName || user.email || 'U')[0]
+                  )}
+                </div>
+                <span className="text-xs font-extrabold text-[#171717] dark:text-[#F8F3E8] max-w-[100px] truncate hidden md:block">
+                  {userProfile?.displayName || user.displayName || user.email?.split('@')[0]}
+                </span>
+                <Settings className="w-3.5 h-3.5 text-[#57534E] dark:text-[#D9AC45] hidden sm:block" />
+              </button>
+
+              <button
+                type="button"
+                onClick={openLogoutConfirmModal}
+                className="hidden sm:flex p-2 text-[#171717] dark:text-[#F8F3E8] hover:text-white hover:bg-[#F04438] rounded-md border-2 border-[#171717] dark:border-[#F04438] bg-white dark:bg-[#06251D] shadow-[2px_2px_0px_#171717] transition cursor-pointer"
+                title={t('nav.logout')}
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => openAuthModal('login')}
+              className="flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-[#0B6B50] dark:bg-[#D9AC45] hover:bg-[#08553F] dark:hover:bg-[#e5ba54] text-white dark:text-[#171717] rounded-md text-xs font-extrabold transition border-2 border-[#171717] shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#000000] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none cursor-pointer shrink-0"
+            >
+              <UserIcon className="w-3.5 h-3.5 text-[#D9AC45] dark:text-[#171717]" />
+              <span className="whitespace-nowrap">{t('nav.login')}</span>
+            </button>
+          )}
+        </div>
+
       </div>
     </header>
   );

@@ -11,15 +11,16 @@ import {
   AlertCircle,
   ChevronRight,
   ShieldCheck,
-  User,
-  ArrowRight
+  Share2,
+  Image as ImageIcon,
+  Copy,
+  Check
 } from 'lucide-react';
 import { Consultation } from '../../types';
 import { createConsultation, getStudentConsultations } from '../../firebase/services';
 import { getWhatsAppConsultationUrl } from '../../config/whatsappConfig';
 import { autoWrapArabicText } from '../../utils/arabicFontHelper';
 import { ShareQAModal } from './ShareQAModal';
-import { Share2, Image as ImageIcon, Copy, Check } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 interface StudentConsultationViewProps {
@@ -37,12 +38,10 @@ export const StudentConsultationView: React.FC<StudentConsultationViewProps> = (
   const [successMsg, setSuccessMsg] = useState<string>('');
   const [errorMsg, setErrorMsg] = useState<string>('');
 
-  // Form State
   const [title, setTitle] = useState<string>('');
   const [content, setContent] = useState<string>('');
   const [category, setCategory] = useState<'learning' | 'private'>('learning');
 
-  // Sharing Modal State
   const [shareModalOpen, setShareModalOpen] = useState<boolean>(false);
   const [shareItem, setShareItem] = useState<Consultation | null>(null);
   const [shareTab, setShareTab] = useState<'share' | 'card'>('share');
@@ -118,26 +117,20 @@ export const StudentConsultationView: React.FC<StudentConsultationViewProps> = (
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-8 animate-fade-in font-sans">
-      
+    <div className="max-w-5xl mx-auto px-2.5 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8 animate-fade-in font-sans">
       {/* HEADER BANNER */}
-      <div
-        data-aos="fade-up"
-        className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#073B2E] via-[#071B16] to-[#123B6D] text-[#F7F6EF] p-6 sm:p-10 border border-[#073B2E]/30 shadow-xl"
-      >
-        <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-[#C9A34E]/10 blur-3xl pointer-events-none" />
-        
-        <div className="relative z-10 max-w-2xl space-y-3">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#C9A34E]/20 border border-[#C9A34E]/30 text-[#F4B942] text-xs font-semibold backdrop-blur-xs">
-            <Sparkles className="w-3.5 h-3.5 text-[#F4B942]" />
+      <div className="relative overflow-hidden rounded-lg bg-[#06251D] text-[#F8F3E8] p-6 sm:p-10 border-2 border-[#171717] dark:border-[#D9AC45] shadow-[6px_6px_0px_#171717] dark:shadow-[6px_6px_0px_#000000]">
+        <div className="relative z-10 max-w-2xl space-y-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#D9AC45] border-2 border-[#171717] text-[#171717] text-xs font-extrabold uppercase tracking-wider">
+            <Sparkles className="w-3.5 h-3.5 text-[#171717]" />
             <span>Ruang Bimbingan & Konsultasi Syar'i</span>
           </div>
 
-          <h1 className="text-2xl sm:text-4xl font-bold font-serif-brand text-[#F7F6EF] leading-tight">
+          <h1 className="text-2xl sm:text-4xl font-bold font-serif text-white leading-tight">
             Konsultasi & Tanya Jawab Pembelajaran
           </h1>
 
-          <p className="text-xs sm:text-sm text-[#F7F6EF]/80 leading-relaxed font-sans">
+          <p className="text-xs sm:text-sm text-[#F8F3E8]/85 leading-relaxed font-sans">
             Ajukan pertanyaan seputar materi pelajaran, pemahaman kitab, maupun pertanyaan pribadi secara tertutup dan aman bersama Ustaz & Pembimbing.
           </p>
 
@@ -145,7 +138,7 @@ export const StudentConsultationView: React.FC<StudentConsultationViewProps> = (
             <div className="pt-2">
               <button
                 onClick={onNavigateToPublicQA}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-[#C9A34E]/20 hover:bg-[#C9A34E]/30 text-[#F4B942] rounded-xl text-xs font-semibold border border-[#C9A34E]/40 transition cursor-pointer"
+                className="nb-btn nb-btn-gold px-4 py-2.5 text-xs"
               >
                 <BookOpen className="w-4 h-4" />
                 <span>Lihat Arsip Tanya Jawab Publik (Q&A)</span>
@@ -158,33 +151,33 @@ export const StudentConsultationView: React.FC<StudentConsultationViewProps> = (
 
       {authLoading ? (
         <div className="max-w-3xl mx-auto px-4 py-16 text-center space-y-4">
-          <div className="w-10 h-10 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-sm text-stone-600 dark:text-stone-400 font-medium">Memeriksa status akun siswa...</p>
+          <div className="w-10 h-10 border-3 border-[#06251D] dark:border-[#D9AC45] border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-sm text-[#171717] dark:text-[#F8F3E8] font-bold">Memeriksa status akun siswa...</p>
         </div>
       ) : !user ? (
         /* NON-LOGGED IN STATE NOTICE */
-        <div className="p-8 text-center bg-white dark:bg-[#071B16] border border-[#073B2E]/15 dark:border-[#C9A34E]/25 rounded-3xl shadow-md space-y-4">
-          <div className="w-14 h-14 rounded-2xl bg-[#073B2E]/10 dark:bg-[#C9A34E]/20 text-[#073B2E] dark:text-[#F4B942] flex items-center justify-center mx-auto">
+        <div className="p-8 text-center nb-card space-y-4">
+          <div className="w-14 h-14 rounded-md bg-[#06251D] border-2 border-[#171717] dark:border-[#D9AC45] text-[#D9AC45] flex items-center justify-center mx-auto shadow-[3px_3px_0px_#171717]">
             <Lock className="w-7 h-7" />
           </div>
-          <div className="space-y-1 max-w-md mx-auto">
-            <h3 className="text-lg font-bold font-serif-brand text-[#073B2E] dark:text-[#F7F6EF]">
+          <div className="space-y-1.5 max-w-md mx-auto">
+            <h3 className="text-lg font-bold font-serif text-[#171717] dark:text-[#F8F3E8]">
               Silakan Masuk ke Akun Dars with Osama
             </h3>
-            <p className="text-xs text-[#6B7C7A] dark:text-[#8C9E9B] leading-relaxed">
+            <p className="text-xs text-[#171717]/75 dark:text-[#F8F3E8]/75 leading-relaxed">
               Silakan masuk ke akun Dars with Osama untuk mengajukan pertanyaan konsultasi baru dan menerima balasan resmi dari admin/ustaz.
             </p>
           </div>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
             <button
               onClick={() => openAuthModal('login')}
-              className="px-6 py-2.5 bg-[#073B2E] dark:bg-[#123B6D] hover:bg-[#0a4d3c] dark:hover:bg-[#0EA5A4] text-white font-bold text-xs sm:text-sm rounded-xl transition shadow cursor-pointer active:scale-95"
+              className="nb-btn nb-btn-gold px-6 py-2.5 text-xs sm:text-sm"
             >
               Masuk
             </button>
             <button
               onClick={() => openAuthModal('register')}
-              className="px-6 py-2.5 bg-white dark:bg-[#0c2b23] hover:bg-stone-100 dark:hover:bg-[#143e33] text-[#073B2E] dark:text-[#F7F6EF] font-bold text-xs sm:text-sm rounded-xl border border-[#073B2E]/20 dark:border-[#C9A34E]/30 transition cursor-pointer active:scale-95"
+              className="nb-btn nb-btn-secondary px-6 py-2.5 text-xs sm:text-sm"
             >
               Daftar Akun Baru
             </button>
@@ -193,76 +186,74 @@ export const StudentConsultationView: React.FC<StudentConsultationViewProps> = (
       ) : (
         /* LOGGED IN STUDENT CONSULTATION INTERFACE */
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          
-          {/* LEFT: FORM KONSULTASI BARU (COL 5, STICKY ON DESKTOP) */}
+          {/* LEFT: FORM KONSULTASI BARU */}
           <div className="lg:col-span-5 space-y-6 relative">
-            <div className="bg-white dark:bg-[#071B16] border border-[#073B2E]/15 dark:border-[#C9A34E]/25 rounded-3xl p-6 shadow-md space-y-5 lg:sticky lg:top-20">
-              <div className="flex items-center gap-2 border-b border-[#073B2E]/10 dark:border-[#C9A34E]/20 pb-3">
-                <MessageSquare className="w-5 h-5 text-[#C9A34E]" />
-                <h3 className="font-bold text-base font-serif-brand text-[#073B2E] dark:text-[#F7F6EF]">
+            <div className="nb-card p-6 space-y-5 lg:sticky lg:top-20">
+              <div className="flex items-center gap-2 border-b-2 border-[#171717]/15 dark:border-[#D9AC45]/25 pb-3">
+                <MessageSquare className="w-5 h-5 text-[#06251D] dark:text-[#D9AC45]" />
+                <h3 className="font-bold text-base font-serif text-[#171717] dark:text-[#F8F3E8]">
                   Kirim Pertanyaan Baru
                 </h3>
               </div>
 
               {successMsg && (
-                <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs rounded-xl flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
+                <div className="p-3.5 bg-[#06251D] border-2 border-[#D9AC45] text-[#F8F3E8] text-xs font-bold rounded-md flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 shrink-0 text-[#D9AC45] mt-0.5" />
                   <span>{successMsg}</span>
                 </div>
               )}
 
               {errorMsg && (
-                <div className="p-3.5 bg-rose-50 dark:bg-rose-950/60 border border-rose-300 dark:border-rose-800 text-rose-800 dark:text-rose-300 text-xs rounded-xl flex items-start gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400 mt-0.5" />
+                <div className="p-3.5 bg-[#F04438]/15 border-2 border-[#F04438] text-[#171717] dark:text-white text-xs font-bold rounded-md flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-[#F04438] mt-0.5" />
                   <span>{errorMsg}</span>
                 </div>
               )}
 
               <form onSubmit={handleSubmit} className="space-y-4">
-                
                 {/* Category Radio / Selector */}
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-[#073B2E] dark:text-[#F7F6EF]">
+                  <label className="text-xs font-extrabold uppercase tracking-wider text-[#171717] dark:text-[#D9AC45]">
                     Kategori Konsultasi
                   </label>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-2.5">
                     <button
                       type="button"
                       onClick={() => setCategory('learning')}
-                      className={`p-3 rounded-xl border text-xs font-semibold flex flex-col items-start gap-1 transition cursor-pointer text-left ${
+                      className={`p-3 rounded-md border-2 text-xs font-bold flex flex-col items-start gap-1 transition cursor-pointer text-left ${
                         category === 'learning'
-                          ? 'bg-[#073B2E]/10 dark:bg-[#C9A34E]/20 border-[#073B2E] dark:border-[#C9A34E] text-[#073B2E] dark:text-[#F4B942]'
-                          : 'bg-white dark:bg-[#0c2b23] border-[#073B2E]/15 dark:border-[#143e33] text-[#6B7C7A] dark:text-[#8C9E9B]'
+                          ? 'bg-[#06251D] text-[#D9AC45] border-[#171717] dark:border-[#D9AC45] shadow-[3px_3px_0px_#171717]'
+                          : 'bg-[#F8F3E8] dark:bg-[#06251D] border-[#171717]/40 dark:border-[#D9AC45]/40 text-[#171717] dark:text-[#F8F3E8]'
                       }`}
                     >
-                      <span className="font-bold flex items-center gap-1">
+                      <span className="font-extrabold flex items-center gap-1">
                         <BookOpen className="w-3.5 h-3.5" />
                         <span>Materi & Pelajaran</span>
                       </span>
-                      <span className="text-[10px] opacity-80">Dapat dipublikasikan di Q&A jika disetujui</span>
+                      <span className="text-[10px] opacity-85">Dapat dipublikasikan di Q&A jika disetujui</span>
                     </button>
 
                     <button
                       type="button"
                       onClick={() => setCategory('private')}
-                      className={`p-3 rounded-xl border text-xs font-semibold flex flex-col items-start gap-1 transition cursor-pointer text-left ${
+                      className={`p-3 rounded-md border-2 text-xs font-bold flex flex-col items-start gap-1 transition cursor-pointer text-left ${
                         category === 'private'
-                          ? 'bg-[#073B2E]/10 dark:bg-[#C9A34E]/20 border-[#073B2E] dark:border-[#C9A34E] text-[#073B2E] dark:text-[#F4B942]'
-                          : 'bg-white dark:bg-[#0c2b23] border-[#073B2E]/15 dark:border-[#143e33] text-[#6B7C7A] dark:text-[#8C9E9B]'
+                          ? 'bg-[#06251D] text-[#D9AC45] border-[#171717] dark:border-[#D9AC45] shadow-[3px_3px_0px_#171717]'
+                          : 'bg-[#F8F3E8] dark:bg-[#06251D] border-[#171717]/40 dark:border-[#D9AC45]/40 text-[#171717] dark:text-[#F8F3E8]'
                       }`}
                     >
-                      <span className="font-bold flex items-center gap-1">
+                      <span className="font-extrabold flex items-center gap-1">
                         <Lock className="w-3.5 h-3.5" />
                         <span>Konsultasi Pribadi</span>
                       </span>
-                      <span className="text-[10px] opacity-80">Privat 100% dan TIDAK AKAN dipublikasi</span>
+                      <span className="text-[10px] opacity-85">Privat 100% dan TIDAK AKAN dipublikasi</span>
                     </button>
                   </div>
                 </div>
 
                 {/* Title Input */}
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-[#073B2E] dark:text-[#F7F6EF]">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-extrabold uppercase tracking-wider text-[#171717] dark:text-[#D9AC45] block">
                     Judul Pertanyaan / Topik
                   </label>
                   <input
@@ -272,13 +263,13 @@ export const StudentConsultationView: React.FC<StudentConsultationViewProps> = (
                     placeholder="Contoh: Hukum Fiqih seputar Masalah X..."
                     maxLength={200}
                     required
-                    className="w-full px-3.5 py-2.5 bg-[#F7F6EF]/60 dark:bg-[#0c2b23] border border-[#073B2E]/20 dark:border-[#143e33] rounded-xl text-xs text-[#073B2E] dark:text-[#F7F6EF] focus:outline-hidden focus:ring-2 focus:ring-[#C9A34E]"
+                    className="nb-input px-3.5 py-2.5 text-xs"
                   />
                 </div>
 
                 {/* Content Input */}
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-[#073B2E] dark:text-[#F7F6EF]">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-extrabold uppercase tracking-wider text-[#171717] dark:text-[#D9AC45] block">
                     Isi Pertanyaan / Penjelasan Detail
                   </label>
                   <textarea
@@ -288,7 +279,7 @@ export const StudentConsultationView: React.FC<StudentConsultationViewProps> = (
                     rows={5}
                     maxLength={5000}
                     required
-                    className="w-full px-3.5 py-2.5 bg-[#F7F6EF]/60 dark:bg-[#0c2b23] border border-[#073B2E]/20 dark:border-[#143e33] rounded-xl text-xs text-[#073B2E] dark:text-[#F7F6EF] focus:outline-hidden focus:ring-2 focus:ring-[#C9A34E] resize-none"
+                    className="nb-input px-3.5 py-2.5 text-xs resize-none"
                   />
                 </div>
 
@@ -296,42 +287,41 @@ export const StudentConsultationView: React.FC<StudentConsultationViewProps> = (
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="w-full py-3 bg-[#073B2E] dark:bg-[#123B6D] hover:bg-[#0a4d3c] dark:hover:bg-[#0EA5A4] active:scale-[0.98] text-[#F7F6EF] font-bold text-xs sm:text-sm rounded-xl transition shadow flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  className="w-full nb-btn nb-btn-gold py-3 text-xs sm:text-sm"
                 >
-                  <Send className="w-4 h-4 text-[#F4B942]" />
+                  <Send className="w-4 h-4" />
                   <span>{submitting ? 'Mengirim...' : 'Kirim Pertanyaan Konsultasi'}</span>
                 </button>
-
               </form>
             </div>
           </div>
 
-          {/* RIGHT: RIWAYAT KONSULTASI SISWA (COL 7) */}
-          <div className="lg:col-span-7 space-y-6" data-aos="fade-left">
-            <div className="bg-white dark:bg-[#071B16] border border-[#073B2E]/15 dark:border-[#C9A34E]/25 rounded-3xl p-6 shadow-md space-y-5">
-              <div className="flex items-center justify-between border-b border-[#073B2E]/10 dark:border-[#C9A34E]/20 pb-3">
+          {/* RIGHT: RIWAYAT KONSULTASI SISWA */}
+          <div className="lg:col-span-7 space-y-6">
+            <div className="nb-card p-6 space-y-5">
+              <div className="flex items-center justify-between border-b-2 border-[#171717]/15 dark:border-[#D9AC45]/25 pb-3">
                 <div className="flex items-center gap-2">
-                  <Clock className="w-5 h-5 text-[#0EA5A4]" />
-                  <h3 className="font-bold text-base font-serif-brand text-[#073B2E] dark:text-[#F7F6EF]">
+                  <Clock className="w-5 h-5 text-[#3478F6]" />
+                  <h3 className="font-bold text-base font-serif text-[#171717] dark:text-[#F8F3E8]">
                     Riwayat Konsultasi Saya
                   </h3>
                 </div>
-                <span className="text-xs font-semibold text-[#6B7C7A] dark:text-[#8C9E9B]">
+                <span className="text-xs font-extrabold text-[#06251D] dark:text-[#D9AC45]">
                   {consultations.length} Pertanyaan
                 </span>
               </div>
 
               {loading ? (
-                <div className="py-12 text-center text-xs text-[#6B7C7A] dark:text-[#8C9E9B]">
+                <div className="py-12 text-center text-xs font-bold text-[#171717]/70 dark:text-[#F8F3E8]/70">
                   Memuat riwayat konsultasi Anda...
                 </div>
               ) : consultations.length === 0 ? (
-                <div className="py-12 text-center space-y-2 border border-dashed border-[#073B2E]/20 dark:border-[#C9A34E]/30 rounded-2xl p-6">
-                  <MessageSquare className="w-8 h-8 text-[#C9A34E] mx-auto opacity-70" />
-                  <p className="text-xs font-bold text-[#073B2E] dark:text-[#F7F6EF]">
+                <div className="py-12 text-center space-y-2 border-2 border-dashed border-[#171717]/30 dark:border-[#D9AC45]/40 rounded-md p-6">
+                  <MessageSquare className="w-8 h-8 text-[#06251D] dark:text-[#D9AC45] mx-auto" />
+                  <p className="text-xs font-bold font-serif text-[#171717] dark:text-[#F8F3E8]">
                     Belum Ada Pertanyaan Konsultasi
                   </p>
-                  <p className="text-[11px] text-[#6B7C7A] dark:text-[#8C9E9B]">
+                  <p className="text-[11px] text-[#171717]/75 dark:text-[#F8F3E8]/75">
                     Gunakan formulir di samping untuk mengajukan pertanyaan pertama Anda.
                   </p>
                 </div>
@@ -340,28 +330,28 @@ export const StudentConsultationView: React.FC<StudentConsultationViewProps> = (
                   {consultations.map((item) => (
                     <div
                       key={item.id}
-                      className="p-4 sm:p-5 bg-[#F7F6EF]/60 dark:bg-[#0c2b23] border border-[#073B2E]/10 dark:border-[#143e33] rounded-2xl space-y-3 transition-colors"
+                      className="p-3.5 sm:p-5 bg-[#F8F3E8] dark:bg-[#06251D] border-0 sm:border-2 border-[#171717] dark:border-[#D9AC45]/60 rounded-md space-y-3 shadow-none sm:shadow-[3px_3px_0px_#171717] border-b sm:border-b-2 border-b-[#171717]/15"
                     >
                       {/* Header Row: Status Badge & Category Tag */}
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
                           <span
-                            className={`px-2.5 py-0.5 text-[10px] font-bold rounded-full border ${
+                            className={`px-2.5 py-0.5 text-[10px] font-extrabold uppercase rounded border ${
                               item.category === 'private'
-                                ? 'bg-purple-100 dark:bg-purple-950/80 text-purple-800 dark:text-purple-300 border-purple-300/80'
-                                : 'bg-[#073B2E]/10 dark:bg-[#C9A34E]/20 text-[#073B2E] dark:text-[#F4B942] border-[#C9A34E]/40'
+                                ? 'bg-[#171717] text-[#D9AC45] border-[#D9AC45]'
+                                : 'bg-[#06251D] text-[#D9AC45] border-[#171717] dark:border-[#D9AC45]'
                             }`}
                           >
                             {item.category === 'private' ? '🔒 Konsultasi Pribadi' : '📖 Materi & Pembelajaran'}
                           </span>
 
                           <span
-                            className={`px-2.5 py-0.5 text-[10px] font-bold rounded-full border ${
+                            className={`px-2.5 py-0.5 text-[10px] font-extrabold uppercase rounded border ${
                               item.status === 'answered'
-                                ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border-emerald-300/80'
+                                ? 'bg-[#D9AC45] text-[#171717] border-[#171717]'
                                 : item.status === 'closed'
-                                ? 'bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border-stone-300'
-                                : 'bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border-amber-300/80 animate-pulse'
+                                ? 'bg-white text-[#171717] border-[#171717]'
+                                : 'bg-[#3478F6] text-white border-[#171717]'
                             }`}
                           >
                             {item.status === 'answered'
@@ -372,7 +362,7 @@ export const StudentConsultationView: React.FC<StudentConsultationViewProps> = (
                           </span>
                         </div>
 
-                        <span className="text-[10px] text-[#6B7C7A] dark:text-[#8C9E9B]">
+                        <span className="text-[11px] font-bold text-[#171717]/70 dark:text-[#F8F3E8]/70">
                           {new Date(item.createdAt).toLocaleDateString('id-ID', {
                             day: 'numeric',
                             month: 'short',
@@ -383,20 +373,20 @@ export const StudentConsultationView: React.FC<StudentConsultationViewProps> = (
 
                       {/* Question Title & Content */}
                       <div className="space-y-1">
-                        <h4 className="font-bold text-sm text-[#073B2E] dark:text-[#F7F6EF] font-serif-brand">
+                        <h4 className="font-bold text-sm text-[#171717] dark:text-[#F8F3E8] font-serif">
                           {item.title}
                         </h4>
-                        <p className="text-xs text-[#073B2E]/80 dark:text-[#F7F6EF]/80 leading-relaxed font-sans whitespace-pre-line">
+                        <p className="text-xs text-[#171717]/85 dark:text-[#F8F3E8]/85 leading-relaxed font-sans whitespace-pre-line">
                           {item.content}
                         </p>
                       </div>
 
                       {/* Admin Reply Box if Answered */}
                       {item.replyContent && (
-                        <div className="p-4 bg-emerald-50/80 dark:bg-emerald-950/50 border-l-4 border-[#0EA5A4] dark:border-[#F4B942] rounded-r-2xl space-y-1.5 mt-2">
-                          <div className="flex items-center justify-between text-[11px] font-bold text-[#073B2E] dark:text-[#F4B942]">
+                        <div className="p-3 sm:p-4 bg-white dark:bg-[#0B3026] border-0 sm:border-2 border-t-2 sm:border-t-2 border-[#D9AC45] sm:border-[#171717] sm:border-l-8 sm:border-l-[#D9AC45] dark:border-[#D9AC45] dark:sm:border-[#D9AC45] rounded-md space-y-2 mt-2">
+                          <div className="flex items-center justify-between text-[11px] font-bold text-[#06251D] dark:text-[#D9AC45]">
                             <span className="flex items-center gap-1">
-                              <ShieldCheck className="w-3.5 h-3.5 text-[#C9A34E]" />
+                              <ShieldCheck className="w-3.5 h-3.5 text-[#D9AC45]" />
                               <span>Balasan {item.repliedBy || 'Ustaz / Admin'}:</span>
                             </span>
                             {item.repliedAt && (
@@ -410,7 +400,7 @@ export const StudentConsultationView: React.FC<StudentConsultationViewProps> = (
                             )}
                           </div>
                           <div
-                            className="prose dark:prose-invert max-w-none text-xs text-[#073B2E] dark:text-[#F7F6EF] leading-relaxed space-y-2 font-sans blog-content"
+                            className="prose dark:prose-invert max-w-none text-xs text-[#171717] dark:text-[#F8F3E8] leading-relaxed space-y-2 font-sans blog-content"
                             dangerouslySetInnerHTML={{ __html: autoWrapArabicText(item.replyContent) }}
                           />
                         </div>
@@ -418,9 +408,9 @@ export const StudentConsultationView: React.FC<StudentConsultationViewProps> = (
 
                       {/* Sharing actions if approved learning QA */}
                       {item.category === 'learning' && item.isPublished && item.replyContent && (
-                        <div className="pt-2 border-t border-[#073B2E]/10 dark:border-[#143e33] flex flex-wrap items-center justify-between gap-2">
-                          <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold flex items-center gap-1">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                        <div className="pt-2 border-t border-[#171717]/15 dark:border-[#D9AC45]/25 flex flex-wrap items-center justify-between gap-2">
+                          <span className="text-[10px] text-[#06251D] dark:text-[#D9AC45] font-bold flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3" />
                             <span>Dipublikasikan ke Tanya Jawab Publik</span>
                           </span>
 
@@ -432,10 +422,9 @@ export const StudentConsultationView: React.FC<StudentConsultationViewProps> = (
                                 setShareTab('share');
                                 setShareModalOpen(true);
                               }}
-                              className="px-2.5 py-1 bg-[#073B2E] text-white hover:bg-[#0a4d3c] rounded-lg text-[10px] font-bold transition flex items-center gap-1 cursor-pointer active:scale-95"
-                              title="Bagikan jawaban ke media sosial"
+                              className="px-2.5 py-1 bg-[#06251D] text-[#D9AC45] border border-[#171717] rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer"
                             >
-                              <Share2 className="w-3 h-3 text-[#F4B942]" />
+                              <Share2 className="w-3 h-3" />
                               <span>Bagikan Jawaban</span>
                             </button>
 
@@ -446,8 +435,7 @@ export const StudentConsultationView: React.FC<StudentConsultationViewProps> = (
                                 setShareTab('card');
                                 setShareModalOpen(true);
                               }}
-                              className="px-2.5 py-1 bg-amber-500 text-stone-900 hover:bg-amber-400 rounded-lg text-[10px] font-bold transition flex items-center gap-1 cursor-pointer active:scale-95"
-                              title="Buat gambar kartu dakwah"
+                              className="px-2.5 py-1 bg-[#D9AC45] text-[#171717] border border-[#171717] rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer"
                             >
                               <ImageIcon className="w-3 h-3" />
                               <span>Buat Gambar</span>
@@ -456,17 +444,16 @@ export const StudentConsultationView: React.FC<StudentConsultationViewProps> = (
                             <button
                               type="button"
                               onClick={() => handleCopyDirectLink(item)}
-                              className="px-2 py-1 bg-white dark:bg-[#0c2b23] border border-[#073B2E]/20 dark:border-[#C9A34E]/30 text-[#073B2E] dark:text-[#F7F6EF] rounded-lg text-[10px] font-semibold hover:bg-stone-50 dark:hover:bg-[#143e33] transition flex items-center gap-1 cursor-pointer active:scale-95"
-                              title="Salin tautan langsung jawaban ini"
+                              className="px-2 py-1 bg-white dark:bg-[#0B3026] border border-[#171717] dark:border-[#D9AC45] text-[#171717] dark:text-[#F8F3E8] rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer"
                             >
                               {copiedId === item.id ? (
                                 <>
-                                  <Check className="w-3 h-3 text-emerald-600" />
+                                  <Check className="w-3 h-3 text-[#06251D] dark:text-[#D9AC45]" />
                                   <span>Tersalin</span>
                                 </>
                               ) : (
                                 <>
-                                  <Copy className="w-3 h-3 text-[#C9A34E]" />
+                                  <Copy className="w-3 h-3 text-[#D9AC45]" />
                                   <span>Salin Tautan</span>
                                 </>
                               )}
@@ -476,8 +463,8 @@ export const StudentConsultationView: React.FC<StudentConsultationViewProps> = (
                       )}
 
                       {/* WhatsApp Escalation Action */}
-                      <div className="pt-2 border-t border-[#073B2E]/10 dark:border-[#143e33] flex items-center justify-between">
-                        <span className="text-[10px] text-[#6B7C7A] dark:text-[#8C9E9B]">
+                      <div className="pt-2 border-t border-[#171717]/15 dark:border-[#D9AC45]/25 flex items-center justify-between">
+                        <span className="text-[10px] font-bold text-[#171717]/70 dark:text-[#F8F3E8]/70">
                           Ingin respon langsung di WhatsApp?
                         </span>
                         <a
@@ -489,21 +476,18 @@ export const StudentConsultationView: React.FC<StudentConsultationViewProps> = (
                           })}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[11px] font-bold transition shadow-xs cursor-pointer active:scale-95"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#06251D] text-[#D9AC45] border border-[#171717] dark:border-[#D9AC45] rounded text-[11px] font-extrabold transition cursor-pointer"
                         >
-                          <MessageCircle className="w-3.5 h-3.5 text-amber-300" />
+                          <MessageCircle className="w-3.5 h-3.5 text-[#D9AC45]" />
                           <span>Lanjut ke WhatsApp Admin</span>
                         </a>
                       </div>
-
                     </div>
                   ))}
                 </div>
               )}
-
             </div>
           </div>
-
         </div>
       )}
 
@@ -514,7 +498,6 @@ export const StudentConsultationView: React.FC<StudentConsultationViewProps> = (
         consultation={shareItem}
         initialTab={shareTab}
       />
-
     </div>
   );
 };

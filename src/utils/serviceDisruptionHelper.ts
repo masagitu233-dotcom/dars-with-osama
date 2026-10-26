@@ -92,6 +92,16 @@ export function formatDisruptionMessage(
     };
   }
 
+  if (normCat === 'unauthenticated' || normCode.includes('unauthenticated') || normCode.includes('token')) {
+    return {
+      title: 'Layanan Autentikasi / Token Belum Aktif',
+      message:
+        'Layanan Google Cloud Secure Token Service (securetoken.googleapis.com) pada project belum diaktifkan atau sesi autentikasi kedaluwarsa. Konten publik seperti daftar kurikulum, silabus materi, dan artikel tetap dapat dibaca dengan lancar.',
+      isQuota: false,
+      category: 'unauthenticated'
+    };
+  }
+
   if (normCat === 'permission-denied' || normCode.includes('permission-denied')) {
     return {
       title: 'Izin Akses Terbatas',

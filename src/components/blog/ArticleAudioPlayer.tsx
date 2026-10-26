@@ -9,7 +9,8 @@ import {
   Info,
   AlertCircle,
   Loader2,
-  RefreshCw
+  RefreshCw,
+  X
 } from 'lucide-react';
 import { BlogPost } from '../../types';
 import {
@@ -31,19 +32,23 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
   post,
   className = ''
 }) => {
-  // If audio reading is disabled or not configured, do not render player
-  if (!post.audioConfig?.enabled) {
+  const isCustomMode = post.audioConfig?.mode === 'custom';
+  const customAudioUrl = (post.audioConfig?.customAudioUrl || '').trim();
+  const hasConfiguredAudio =
+    Boolean(post.audioConfig?.enabled) &&
+    (isCustomMode ? Boolean(customAudioUrl) : post.audioConfig?.mode === 'speech');
+
+  if (!hasConfiguredAudio) {
     return null;
   }
-
-  const isCustomMode = post.audioConfig?.mode === 'custom' && Boolean(post.audioConfig?.customAudioUrl);
-  const customAudioUrl = post.audioConfig?.customAudioUrl || '';
 
   const resolvedSource = useMemo(
     () => resolveAudioSourceCandidates(customAudioUrl),
     [customAudioUrl]
   );
 
+  // Dynamic open/close player state (initially collapsed to a clean button)
+  const [isPlayerOpen, setIsPlayerOpen] = useState<boolean>(false);
   const [isSupported, setIsSupported] = useState<boolean>(true);
   const [status, setStatus] = useState<'idle' | 'playing' | 'paused' | 'ended'>('idle');
   const [playbackRate, setPlaybackRate] = useState<number>(post.audioConfig?.speechRate || 1.0);
@@ -80,7 +85,6 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
   statusRef.current = status;
   rateRef.current = playbackRate;
 
-  // Initialize playback rate from post audioConfig if configured
   useEffect(() => {
     if (post.audioConfig?.speechRate) {
       setPlaybackRate(post.audioConfig.speechRate);
@@ -88,7 +92,6 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
     }
   }, [post.audioConfig?.speechRate]);
 
-  // Clean up blob object URL when unmounting or changing
   useEffect(() => {
     return () => {
       if (blobAudioUrl) {
@@ -97,9 +100,7 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
     };
   }, [blobAudioUrl]);
 
-  // Setup for Custom Audio Mode vs Web Speech Mode
   useEffect(() => {
-    // Stop any ongoing audio immediately when article or source changes
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
     }
@@ -123,7 +124,6 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
       setIsSupported(true);
       setTotalEstimatedSeconds(0);
 
-      // Validate if Google Drive link has a valid file ID
       if (resolvedSource.isGoogleDrive && !resolvedSource.fileId) {
         setIsLoadingAudio(false);
         setAudioError(
@@ -143,7 +143,6 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
       return;
     }
 
-    // In Web Speech API mode:
     setAudioError(null);
     setIsLoadingAudio(false);
 
@@ -198,7 +197,6 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
     };
   }, [post.id, isCustomMode, customAudioUrl, resolvedSource]);
 
-  // Speech mode: Recalculate duration when rate changes
   useEffect(() => {
     if (!isCustomMode) {
       const script = extractArticleSpeechScript(post);
@@ -206,7 +204,6 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
     }
   }, [playbackRate, post, isCustomMode]);
 
-  // Speech mode timer for elapsed seconds
   useEffect(() => {
     if (!isCustomMode) {
       if (status === 'playing') {
@@ -227,7 +224,6 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
     }
   }, [status, isCustomMode]);
 
-  // Speak sequential chunk for Speech API
   const speakChunk = useCallback((index: number) => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
     const currentChunks = chunksRef.current;
@@ -277,7 +273,6 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
     window.speechSynthesis.speak(utterance);
   }, [post.audioConfig?.speechVoiceName]);
 
-  // Active candidate for custom audio
   const activeCandidate =
     isCustomMode && resolvedSource.candidates.length > 0
       ? resolvedSource.candidates[Math.min(candidateIndex, resolvedSource.candidates.length - 1)]
@@ -290,7 +285,6 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
     ? 'anonymous'
     : undefined;
 
-  // Attempt CORS fetch -> Blob URL fallback for Google Drive if direct <audio> candidates fail
   const attemptGoogleDriveBlobFallback = useCallback(async (): Promise<boolean> => {
     if (!resolvedSource.isGoogleDrive || !resolvedSource.directCorsUrl || triedBlobFallbackRef.current) {
       return false;
@@ -328,24 +322,20 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
     }
   }, [resolvedSource]);
 
-  // Handle HTML5 <audio> load error and advance through fallback candidates
   const handleCustomAudioError = useCallback(async () => {
     const audioEl = customAudioRef.current;
     const mediaErrCode = audioEl?.error?.code ?? null;
 
-    // 1. Try next candidate in list if available
     if (!blobAudioUrl && candidateIndex + 1 < resolvedSource.candidates.length) {
       setCandidateIndex(prev => prev + 1);
       return;
     }
 
-    // 2. Try CORS fetch -> Blob URL fallback for Google Drive
     const recoveredViaBlob = await attemptGoogleDriveBlobFallback();
     if (recoveredViaBlob) {
       return;
     }
 
-    // 3. Inspect proxy response if Google Drive to surface exact server error reason
     let serverErrorMsg: string | null = null;
     if (resolvedSource.isGoogleDrive && resolvedSource.fileId) {
       try {
@@ -357,7 +347,7 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
             'Berkas audio di Google Drive tidak dapat diakses atau belum dibagikan secara publik. Pastikan akses umum berkas di Google Drive diatur ke "Siapa saja yang memiliki link" (Anyone with the link) dan berkas berformat audio (.mp3, .m4a, .wav).';
         }
       } catch {
-        // Ignore network error during diagnostic probe
+        // Ignore network error
       }
     }
 
@@ -375,7 +365,6 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
     );
   }, [blobAudioUrl, candidateIndex, resolvedSource, attemptGoogleDriveBlobFallback]);
 
-  // Retry loading audio from the first candidate
   const handleRetryAudio = () => {
     setAudioError(null);
     setIsLoadingAudio(true);
@@ -387,7 +376,6 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
     }
   };
 
-  // Play handler (supports both custom audio and speech mode)
   const handlePlay = () => {
     if (isCustomMode) {
       if (audioError) {
@@ -407,7 +395,6 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
         setAudioError(null);
         setStatus('playing');
       }).catch(() => {
-        // If browser is still switching candidate or loading metadata, onCanPlay will resume
         if (audio.error) {
           handleCustomAudioError();
         }
@@ -415,7 +402,6 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
       return;
     }
 
-    // Web Speech API mode
     if (chunks.length === 0) return;
 
     if (status === 'paused') {
@@ -432,7 +418,6 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
     }
   };
 
-  // Pause handler
   const handlePause = () => {
     pendingAutoPlayRef.current = false;
     if (isCustomMode) {
@@ -450,7 +435,6 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
     setStatus('paused');
   };
 
-  // Stop / Reset handler
   const handleStop = () => {
     pendingAutoPlayRef.current = false;
     if (isCustomMode) {
@@ -472,7 +456,6 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
     setElapsedSeconds(0);
   };
 
-  // Rate change handler
   const handleRateChange = (newRate: number) => {
     setPlaybackRate(newRate);
     rateRef.current = newRate;
@@ -489,7 +472,6 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
     }
   };
 
-  // Volume & Mute handlers for HTML5 Audio
   const handleToggleMute = () => {
     const nextMuted = !isMuted;
     setIsMuted(nextMuted);
@@ -509,7 +491,6 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
     }
   };
 
-  // Custom audio element event listeners
   const onCustomLoadedMetadata = () => {
     setIsLoadingAudio(false);
     setAudioError(null);
@@ -560,7 +541,6 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
     setStatus('ended');
   };
 
-  // Seek bar click / range input for custom audio
   const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!isCustomMode || !customAudioRef.current || totalEstimatedSeconds <= 0) return;
     const rect = e.currentTarget.getBoundingClientRect();
@@ -578,7 +558,6 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
     setElapsedSeconds(Math.floor(newTime));
   };
 
-  // Progress percentage calculation
   const progressPercent = isCustomMode
     ? totalEstimatedSeconds > 0
       ? Math.min(100, Math.round((elapsedSeconds / totalEstimatedSeconds) * 100))
@@ -589,22 +568,90 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
 
   if (!isSupported) {
     return (
-      <div className={`p-4 rounded-2xl bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-400 text-xs flex items-center gap-2.5 ${className}`}>
-        <Info className="w-4 h-4 text-amber-600 shrink-0" />
+      <div className={`p-4 rounded-md bg-[#F8F3E8] dark:bg-[#06251D] border-2 border-[#171717] dark:border-[#D9AC45] text-[#171717] dark:text-[#F8F3E8] text-xs flex items-center gap-2.5 ${className}`}>
+        <Info className="w-4 h-4 text-[#D9AC45] shrink-0" />
         <span>Fitur Audio Reading tidak didukung pada peramban ini. Anda tetap dapat membaca naskah artikel lengkap di bawah.</span>
       </div>
     );
   }
 
+  // When player is collapsed (default initial state), only show the clean "Dengarkan Artikel" headphone button
+  if (!isPlayerOpen) {
+    return (
+      <div className={`my-4 ${className}`}>
+        <button
+          type="button"
+          onClick={() => setIsPlayerOpen(true)}
+          data-testid="article-audio-toggle-btn"
+          aria-expanded={false}
+          aria-label="Dengarkan Artikel"
+          title="Buka pemutar audio artikel"
+          className="inline-flex items-center gap-2.5 px-4 py-2.5 rounded-md bg-[#F5EFE2] dark:bg-[#06251D] hover:bg-[#D9AC45] dark:hover:bg-[#D9AC45] text-[#06251D] dark:text-[#F8F3E8] hover:text-[#171717] dark:hover:text-[#171717] border-2 border-[#171717] dark:border-[#D9AC45] shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#000000] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all duration-150 font-extrabold text-xs sm:text-sm cursor-pointer group"
+        >
+          <div className="w-7 h-7 rounded-sm bg-[#06251D] dark:bg-[#D9AC45] text-[#D9AC45] dark:text-[#06251D] group-hover:bg-[#171717] group-hover:text-[#D9AC45] flex items-center justify-center transition-colors shadow-xs">
+            <Headphones className="w-4 h-4" />
+          </div>
+          <span className="font-serif tracking-wide font-bold">Dengarkan Artikel</span>
+          {status === 'playing' ? (
+            <span className="text-[10px] px-2 py-0.5 rounded-xs bg-[#0B6B50] text-white dark:bg-[#0B3026] dark:text-[#D9AC45] font-extrabold uppercase animate-pulse border border-[#171717]/30">
+              Sedang Diputar
+            </span>
+          ) : status === 'paused' ? (
+            <span className="text-[10px] px-2 py-0.5 rounded-xs bg-[#D9AC45] text-[#171717] font-extrabold uppercase border border-[#171717]">
+              Dijeda
+            </span>
+          ) : (
+            <span className="text-[10px] px-2 py-0.5 rounded-xs bg-[#D9AC45]/20 dark:bg-[#D9AC45]/15 text-[#171717] dark:text-[#D9AC45] font-extrabold uppercase border border-[#171717]/20 dark:border-[#D9AC45]/30">
+              {isCustomMode ? 'Rekaman' : 'Otomatis'}
+            </span>
+          )}
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <div
-      data-testid="article-audio-player"
-      className={`bg-gradient-to-r from-emerald-50/80 via-white to-amber-50/40 dark:from-stone-900 dark:via-stone-900 dark:to-emerald-950/30 border border-emerald-200/90 dark:border-emerald-800/60 rounded-2xl p-4 sm:p-5 shadow-xs transition-all ${className}`}
-    >
-      {/* Integrated HTML5 Audio Element for custom audio / Google Drive stream */}
+    <div className={`my-4 space-y-2.5 animate-fade-in ${className}`}>
+      {/* Dynamic Player Header Bar with Active Toggle and Close Button */}
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <button
+          type="button"
+          onClick={() => setIsPlayerOpen(false)}
+          data-testid="article-audio-toggle-btn"
+          aria-expanded={true}
+          aria-label="Tutup pemutar audio artikel"
+          title="Sembunyikan pemutar audio"
+          className="inline-flex items-center gap-2.5 px-3.5 py-2 rounded-md bg-[#D9AC45] text-[#171717] border-2 border-[#171717] shadow-[2px_2px_0px_#171717] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all duration-150 font-extrabold text-xs sm:text-sm cursor-pointer group"
+        >
+          <div className="w-6 h-6 rounded-sm bg-[#06251D] text-[#D9AC45] flex items-center justify-center">
+            <Headphones className="w-3.5 h-3.5" />
+          </div>
+          <span className="font-serif tracking-wide font-bold">Dengarkan Artikel</span>
+          <span className="text-[10px] px-1.5 py-0.5 rounded-xs bg-[#06251D] text-[#D9AC45] font-extrabold uppercase">
+            Terbuka
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setIsPlayerOpen(false)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border-2 border-[#171717] dark:border-[#D9AC45]/60 bg-[#F5EFE2] dark:bg-[#0B3026] text-[#171717] dark:text-[#F8F3E8] hover:bg-[#F04438] hover:text-white dark:hover:bg-[#F04438] dark:hover:text-white transition text-xs font-bold cursor-pointer shadow-[2px_2px_0px_#171717]"
+          title="Sembunyikan pemutar audio"
+          aria-label="Sembunyikan pemutar audio"
+        >
+          <X className="w-3.5 h-3.5" />
+          <span>Tutup Pemutar</span>
+        </button>
+      </div>
+
+      <div
+        data-testid="article-audio-player"
+        className="bg-[#F8F3E8] dark:bg-[#06251D] border-2 border-[#171717] dark:border-[#D9AC45] rounded-md p-4 sm:p-5 shadow-[4px_4px_0px_#171717] dark:shadow-[4px_4px_0px_#000000] transition-all"
+      >
+      {/* Integrated HTML5 Audio Element */}
       {isCustomMode && effectiveAudioSrc && (
         <audio
-          key={`${effectiveAudioSrc}_${ effectiveCrossOrigin || 'nocors' }`}
+          key={`${effectiveAudioSrc}_${effectiveCrossOrigin || 'nocors'}`}
           ref={customAudioRef}
           src={effectiveAudioSrc}
           crossOrigin={effectiveCrossOrigin}
@@ -628,21 +675,21 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
         />
       )}
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-emerald-100 dark:border-stone-800">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-emerald-600 dark:bg-emerald-700 text-white flex items-center justify-center shadow-xs shrink-0">
-            <Headphones className="w-4 h-4" />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b-2 border-[#171717]/15 dark:border-[#D9AC45]/25">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-md bg-[#06251D] dark:bg-[#0B3026] border-2 border-[#171717] dark:border-[#D9AC45] text-[#D9AC45] flex items-center justify-center shrink-0">
+            <Headphones className="w-5 h-5" />
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h4 className="font-bold text-stone-900 dark:text-white text-xs sm:text-sm font-sans">
+              <h4 className="font-bold text-[#171717] dark:text-white text-xs sm:text-sm font-serif">
                 {isCustomMode ? 'Rekaman Audio Artikel' : 'Audio Reading Artikel'}
               </h4>
               <span
-                className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+                className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider border ${
                   audioError
-                    ? 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300 border-rose-300/60 dark:border-rose-800'
-                    : 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border-emerald-300/60 dark:border-emerald-800'
+                    ? 'bg-[#F04438] text-white border-[#171717]'
+                    : 'bg-[#D9AC45] text-[#171717] border-[#171717]'
                 }`}
               >
                 {audioError
@@ -660,7 +707,7 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
                   : 'Suara Otomatis'}
               </span>
             </div>
-            <p className="text-[11px] text-stone-500 dark:text-stone-400">
+            <p className="text-[11px] text-[#171717]/75 dark:text-[#F8F3E8]/75 mt-0.5">
               {isCustomMode
                 ? 'Dengarkan rekaman audio kajian sambil membaca naskah artikel di bawah ini.'
                 : activeVoiceName
@@ -672,7 +719,7 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
 
         {/* Playback Rate Selector */}
         <div className="flex items-center gap-1.5 self-end sm:self-center shrink-0">
-          <span className="text-[11px] text-stone-500 dark:text-stone-400 font-medium mr-1">
+          <span className="text-[11px] text-[#171717]/75 dark:text-[#F8F3E8]/75 font-bold mr-1">
             Kecepatan:
           </span>
           {[0.75, 1.0, 1.25, 1.5].map((rate) => (
@@ -680,10 +727,10 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
               key={rate}
               type="button"
               onClick={() => handleRateChange(rate)}
-              className={`px-2 py-1 rounded-lg text-xs font-semibold transition cursor-pointer active:scale-95 ${
+              className={`px-2 py-1 rounded text-xs font-extrabold border transition cursor-pointer ${
                 playbackRate === rate
-                  ? 'bg-emerald-700 text-white shadow-xs'
-                  : 'bg-white dark:bg-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 border border-stone-200 dark:border-stone-700'
+                  ? 'bg-[#06251D] text-[#D9AC45] border-[#171717] dark:bg-[#D9AC45] dark:text-[#171717]'
+                  : 'bg-white dark:bg-[#0B3026] text-[#171717] dark:text-[#F8F3E8] border-[#171717]/50 dark:border-[#D9AC45]/50'
               }`}
             >
               {rate}×
@@ -697,16 +744,16 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
         <div
           role="alert"
           data-testid="article-audio-error"
-          className="mt-3 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/70 text-rose-800 dark:text-rose-200 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5"
+          className="mt-3 p-3 rounded-md bg-[#F04438]/15 border-2 border-[#F04438] text-[#171717] dark:text-white text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5"
         >
           <div className="flex items-start gap-2">
-            <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
-            <span className="leading-relaxed">{audioError}</span>
+            <AlertCircle className="w-4 h-4 text-[#F04438] shrink-0 mt-0.5" />
+            <span className="leading-relaxed font-medium">{audioError}</span>
           </div>
           <button
             type="button"
             onClick={handleRetryAudio}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white dark:bg-stone-800 border border-rose-300 dark:border-rose-700 text-rose-700 dark:text-rose-300 text-[11px] font-bold hover:bg-rose-100/60 transition cursor-pointer shrink-0 self-start sm:self-center"
+            className="nb-btn nb-btn-secondary px-3 py-1.5 text-[11px] shrink-0 self-start sm:self-center"
           >
             <RefreshCw className="w-3.5 h-3.5" />
             <span>Muat Ulang Audio</span>
@@ -723,7 +770,7 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
               <button
                 type="button"
                 onClick={handlePause}
-                className="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer active:scale-95"
+                className="nb-btn nb-btn-gold px-4 py-2 text-xs"
                 title="Jeda pemutaran audio"
               >
                 <Pause className="w-3.5 h-3.5 fill-current" />
@@ -734,13 +781,13 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
                 type="button"
                 onClick={handlePlay}
                 disabled={isCustomMode && Boolean(audioError) && !resolvedSource.fileId && resolvedSource.isGoogleDrive}
-                className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer active:scale-95"
+                className="nb-btn nb-btn-primary px-4 py-2 text-xs"
                 title="Putar audio artikel"
               >
                 {isCustomMode && isLoadingAudio && pendingAutoPlayRef.current ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 ) : (
-                  <Play className="w-3.5 h-3.5 fill-current" />
+                  <Play className="w-3.5 h-3.5 fill-current text-[#D9AC45]" />
                 )}
                 <span>
                   {status === 'paused'
@@ -758,7 +805,7 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
               <button
                 type="button"
                 onClick={handleStop}
-                className="inline-flex items-center gap-1 px-3 py-2 bg-white dark:bg-stone-800 hover:bg-stone-100 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 border border-stone-200 dark:border-stone-700 rounded-xl text-xs font-medium transition cursor-pointer active:scale-95"
+                className="nb-btn nb-btn-secondary px-3 py-2 text-xs"
                 title="Hentikan dan mulai dari awal"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
@@ -767,21 +814,21 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
             )}
           </div>
 
-          {/* Right side: Volume Control (for HTML5 Custom Audio) + Duration Display */}
+          {/* Right side: Volume Control + Duration Display */}
           <div className="flex items-center gap-3 ml-auto">
             {isCustomMode && (
-              <div className="flex items-center gap-1.5 bg-white/80 dark:bg-stone-800/80 px-2.5 py-1.5 rounded-xl border border-stone-200/80 dark:border-stone-700/80">
+              <div className="flex items-center gap-1.5 bg-white dark:bg-[#0B3026] px-2.5 py-1.5 rounded border-2 border-[#171717] dark:border-[#D9AC45]/60">
                 <button
                   type="button"
                   onClick={handleToggleMute}
                   aria-label={isMuted ? 'Aktifkan suara audio' : 'Bisukan suara audio'}
                   title={isMuted ? 'Aktifkan suara' : 'Bisukan suara'}
-                  className="text-stone-600 dark:text-stone-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition cursor-pointer"
+                  className="text-[#171717] dark:text-[#D9AC45] cursor-pointer"
                 >
                   {isMuted || volume === 0 ? (
-                    <VolumeX className="w-4 h-4 text-rose-500" />
+                    <VolumeX className="w-4 h-4 text-[#F04438]" />
                   ) : (
-                    <Volume2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    <Volume2 className="w-4 h-4 text-[#06251D] dark:text-[#D9AC45]" />
                   )}
                 </button>
                 <input
@@ -792,20 +839,19 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
                   value={isMuted ? 0 : volume}
                   onChange={handleVolumeChange}
                   aria-label="Volume audio"
-                  className="w-16 sm:w-20 h-1.5 accent-emerald-600 cursor-pointer"
+                  className="w-16 sm:w-20 h-1.5 accent-[#06251D] dark:accent-[#D9AC45] cursor-pointer"
                 />
               </div>
             )}
 
-            {/* Time & Progress Indicator */}
             <div className="text-right">
               <span
                 data-testid="article-audio-time"
-                className="font-mono text-xs font-semibold text-stone-800 dark:text-stone-200"
+                className="font-mono text-xs font-bold text-[#171717] dark:text-[#F8F3E8]"
               >
                 {formatSpeechTime(elapsedSeconds)} / {formatSpeechTime(totalEstimatedSeconds)}
               </span>
-              <span className="text-[10px] text-stone-400 block">
+              <span className="text-[10px] font-bold text-[#06251D] dark:text-[#D9AC45] block">
                 {progressPercent}% selesai
               </span>
             </div>
@@ -816,13 +862,13 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
         <div className="relative flex items-center">
           <div
             onClick={handleSeek}
-            className={`w-full bg-stone-200/80 dark:bg-stone-800 h-2.5 rounded-full overflow-hidden shadow-inner ${
+            className={`w-full bg-white dark:bg-[#0B3026] h-3 rounded-sm overflow-hidden border-2 border-[#171717] dark:border-[#D9AC45]/60 ${
               isCustomMode && totalEstimatedSeconds > 0 ? 'cursor-pointer' : ''
             }`}
             title={isCustomMode ? 'Klik atau geser untuk melompat ke detik tertentu' : undefined}
           >
             <div
-              className="bg-gradient-to-r from-emerald-600 to-amber-500 h-full rounded-full transition-all duration-200 ease-out"
+              className="bg-[#D9AC45] h-full transition-all duration-200 ease-out"
               style={{ width: `${progressPercent}%` }}
             />
           </div>
@@ -840,6 +886,7 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
           )}
         </div>
       </div>
+    </div>
     </div>
   );
 };

@@ -1,157 +1,174 @@
 import React from 'react';
 
-interface LogoProps {
-  variant?: 'horizontal' | 'vertical' | 'icon';
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+interface LogoSymbolProps {
   className?: string;
-  showTagline?: boolean;
 }
 
-export const LogoSymbol: React.FC<{ className?: string; isDarkTheme?: boolean }> = ({ className = 'w-10 h-10' }) => {
+/**
+ * Pure Vector SVG Symbol of the Dars with Osama Logo:
+ * - Modern Neo-Brutalist framing with Forest Green (#06251D) & Gold (#D9AC45)
+ * - Open Book (Kitab), Crescent Moon (Hilal), and 8-Pointed Star (Rub el Hizb)
+ */
+export const LogoSymbol: React.FC<LogoSymbolProps> = ({ className = 'w-10 h-10' }) => {
   return (
     <svg
-      viewBox="0 0 200 200"
+      viewBox="0 0 120 120"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      className={`${className} shrink-0`}
+      className={className}
+      aria-label="Logo Dars with Osama"
     >
-      {/* Fountain Pen Nib (Antique Gold #C9A34E) */}
-      <g id="pen-nib">
-        {/* Outer Nib Flame / Petal Silhouette */}
-        <path
-          d="M100 22 C125 58 142 85 142 118 C142 136 128 152 100 152 C72 152 58 136 58 118 C58 85 75 58 100 22 Z"
-          fill="url(#goldGradient)"
-        />
-        {/* Inner Nib Cutout Line & Breather Hole */}
-        <path
-          d="M100 26 L100 96"
-          stroke="#073B2E"
-          strokeWidth="3.5"
-          strokeLinecap="round"
-          className="dark:stroke-[#071B16]"
-        />
-        <circle
-          cx="100"
-          cy="98"
-          r="5"
-          fill="#073B2E"
-          className="dark:fill-[#071B16]"
-        />
-      </g>
-
-      {/* Open Book Pages / Wings */}
-      <g id="open-book">
-        {/* Left Page Wing (Emerald Green in light mode, Gold/Ivory accent) */}
-        <path
-          d="M96 156 C68 140 38 142 16 154 C24 132 54 126 96 142 Z"
-          fill="#073B2E"
-          className="dark:fill-[#C9A34E]"
-        />
-        <path
-          d="M96 168 C68 152 38 154 12 168 C22 144 54 138 96 154 Z"
-          fill="#0A4D3C"
-          className="dark:fill-[#B8923D]"
-        />
-        
-        {/* Right Page Wing */}
-        <path
-          d="M104 156 C132 140 162 142 184 154 C176 132 146 126 104 142 Z"
-          fill="#073B2E"
-          className="dark:fill-[#C9A34E]"
-        />
-        <path
-          d="M104 168 C132 152 162 154 188 168 C178 144 146 138 104 154 Z"
-          fill="#0A4D3C"
-          className="dark:fill-[#B8923D]"
-        />
-      </g>
-
-      {/* Gradient Definitions */}
       <defs>
-        <linearGradient id="goldGradient" x1="58" y1="22" x2="142" y2="152" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#E5C778" />
-          <stop offset="50%" stopColor="#C9A34E" />
-          <stop offset="100%" stopColor="#9E7B2F" />
+        <linearGradient id="darsGreenGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#0B3026" />
+          <stop offset="100%" stopColor="#06251D" />
+        </linearGradient>
+        <linearGradient id="darsGoldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#EBC35E" />
+          <stop offset="50%" stopColor="#D9AC45" />
+          <stop offset="100%" stopColor="#B88B28" />
         </linearGradient>
       </defs>
+
+      {/* Outer Neo-Brutalist Medallion Frame */}
+      <rect
+        x="8"
+        y="8"
+        width="104"
+        height="104"
+        rx="18"
+        fill="url(#darsGreenGrad)"
+        stroke="#D9AC45"
+        strokeWidth="4"
+      />
+
+      {/* Inner Frame Line */}
+      <rect
+        x="15"
+        y="15"
+        width="90"
+        height="90"
+        rx="12"
+        stroke="#D9AC45"
+        strokeWidth="1.5"
+        strokeDasharray="4 3"
+        opacity="0.65"
+      />
+
+      {/* Top Islamic 8-Pointed Star (Rub el Hizb) */}
+      <g transform="translate(60, 28)">
+        <rect
+          x="-6"
+          y="-6"
+          width="12"
+          height="12"
+          fill="url(#darsGoldGrad)"
+        />
+        <rect
+          x="-6"
+          y="-6"
+          width="12"
+          height="12"
+          transform="rotate(45)"
+          fill="url(#darsGoldGrad)"
+        />
+        <circle cx="0" cy="0" r="2.5" fill="#06251D" />
+      </g>
+
+      {/* Crescent Moon (Hilal) Embracing the Book */}
+      <path
+        d="M36 44C36 60 46.7452 72 60 72C73.2548 72 84 60 84 44C81 53 71.5 60 60 60C48.5 60 39 53 36 44Z"
+        fill="url(#darsGoldGrad)"
+      />
+
+      {/* Open Kitab / Book Pages */}
+      <path
+        d="M60 54C50 54 39 50 30 45V80C39 85 50 89 60 89C70 89 81 85 90 80V45C81 50 70 54 60 54Z"
+        fill="#F8F3E8"
+        stroke="url(#darsGoldGrad)"
+        strokeWidth="2.5"
+        strokeLinejoin="round"
+      />
+
+      {/* Center Book Spine */}
+      <line
+        x1="60"
+        y1="54"
+        x2="60"
+        y2="89"
+        stroke="#06251D"
+        strokeWidth="3"
+        strokeLinecap="round"
+      />
+
+      {/* Left & Right Page Calligraphy Lines */}
+      <path
+        d="M37 57C43 60 50 62 55 62M37 66C43 69 50 71 55 71M37 75C43 78 50 80 55 80"
+        stroke="#06251D"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+      />
+      <path
+        d="M83 57C77 60 70 62 65 62M83 66C77 69 70 71 65 71M83 75C77 78 70 80 65 80"
+        stroke="#06251D"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+      />
+
+      {/* Book Base / Rehal Support */}
+      <path
+        d="M26 86L60 96L94 86"
+        stroke="url(#darsGoldGrad)"
+        strokeWidth="3.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 };
 
-export const Logo: React.FC<LogoProps> = ({
-  variant = 'horizontal',
+interface LogoFullProps {
+  onClick?: () => void;
+  size?: 'sm' | 'md' | 'lg';
+  showTagline?: boolean;
+  variant?: 'light' | 'dark' | string;
+}
+
+export const LogoFull: React.FC<LogoFullProps> = ({
+  onClick,
   size = 'md',
-  className = '',
   showTagline = true,
+  variant
 }) => {
-  // Dimensions mapping
-  const symbolSizeMap = {
-    sm: 'w-8 h-8',
-    md: 'w-10 h-10 md:w-11 md:h-11',
-    lg: 'w-14 h-14',
-    xl: 'w-20 h-20',
+  const iconSizes = {
+    sm: 'w-9 h-9',
+    md: 'w-11 h-11',
+    lg: 'w-14 h-14'
   };
 
-  const titleSizeMap = {
-    sm: 'text-sm font-bold tracking-tight',
-    md: 'text-base md:text-lg font-bold tracking-tight',
-    lg: 'text-xl md:text-2xl font-bold tracking-wide',
-    xl: 'text-2xl md:text-3xl font-extrabold tracking-wider',
+  const titleSizes = {
+    sm: 'text-base sm:text-lg',
+    md: 'text-lg sm:text-xl',
+    lg: 'text-2xl sm:text-3xl'
   };
 
-  const taglineSizeMap = {
-    sm: 'text-[9px] tracking-widest',
-    md: 'text-[10px] md:text-[11px] tracking-widest',
-    lg: 'text-xs tracking-[0.2em]',
-    xl: 'text-sm tracking-[0.25em]',
-  };
-
-  if (variant === 'icon') {
-    return (
-      <div className={`inline-flex items-center justify-center ${className}`}>
-        <LogoSymbol className={symbolSizeMap[size]} />
-      </div>
-    );
-  }
-
-  if (variant === 'vertical') {
-    return (
-      <div className={`flex flex-col items-center text-center select-none ${className}`}>
-        <LogoSymbol className={symbolSizeMap[size]} />
-        <div className="mt-2.5">
-          <h1
-            className={`font-serif-brand uppercase text-[#073B2E] dark:text-[#F7F6EF] ${titleSizeMap[size]} leading-tight`}
-          >
-            DARS WITH OSAMA
-          </h1>
-          {showTagline && (
-            <div className="flex items-center justify-center gap-2 mt-1">
-              <span className="h-[1px] w-6 bg-[#C9A34E]" />
-              <span className={`font-sans font-semibold text-[#C9A34E] uppercase ${taglineSizeMap[size]}`}>
-                ILMU <span className="text-[#073B2E] dark:text-[#C9A34E] mx-1">•</span> KAJIAN <span className="text-[#073B2E] dark:text-[#C9A34E] mx-1">•</span> KITAB
-              </span>
-              <span className="h-[1px] w-6 bg-[#C9A34E]" />
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // Default: Horizontal
   return (
-    <div className={`inline-flex items-center gap-3 select-none ${className}`}>
-      <LogoSymbol className={symbolSizeMap[size]} />
-      <div className="flex flex-col justify-center text-left">
+    <div
+      onClick={onClick}
+      className={`inline-flex items-center gap-3 select-none ${onClick ? 'cursor-pointer group' : ''}`}
+    >
+      <div className="relative flex items-center justify-center rounded-md border-2 border-[#171717] dark:border-[#D9AC45] shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#D9AC45] bg-[#06251D] transition-transform duration-150 group-hover:-translate-y-0.5">
+        <LogoSymbol className={`${iconSizes[size]}`} />
+      </div>
+
+      <div className="flex flex-col text-left shrink-0 whitespace-nowrap">
         <span
-          className={`font-serif-brand font-bold text-[#073B2E] dark:text-[#F7F6EF] ${titleSizeMap[size]} leading-none`}
+          className={`font-serif-brand font-extrabold tracking-tight leading-none text-[#06251D] dark:text-[#F8F3E8] transition-colors whitespace-nowrap ${titleSizes[size]}`}
         >
-          DARS WITH OSAMA
+          Dars <span className="font-normal italic text-[#B88B28] dark:text-[#D9AC45]">with</span> Osama
         </span>
         {showTagline && (
-          <span
-            className={`font-sans font-semibold text-[#C9A34E] uppercase ${taglineSizeMap[size]} mt-1 leading-none`}
-          >
+          <span className="text-[10px] font-sans font-extrabold tracking-[0.2em] uppercase text-[#171717] dark:text-[#D9AC45] mt-1 whitespace-nowrap">
             ILMU • KAJIAN • KITAB
           </span>
         )}
@@ -159,3 +176,6 @@ export const Logo: React.FC<LogoProps> = ({
     </div>
   );
 };
+
+export const Logo = LogoFull;
+export default LogoFull;

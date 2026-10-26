@@ -211,12 +211,19 @@ export function classifyFirestoreError(error: unknown): {
   let category: FirestoreDiagnosticCategory = 'unknown-error';
   let summary = 'Terjadi kendala pada komunikasi Cloud Firestore.';
 
-  if (code.includes('permission-denied') || rawMsg.includes('Missing or insufficient permissions')) {
+  if (
+    code.includes('unauthenticated') ||
+    rawMsg.includes('unauthenticated') ||
+    rawMsg.includes('token-service-api') ||
+    rawMsg.includes('securetoken.googleapis.com') ||
+    rawMsg.includes('Fetching auth token failed')
+  ) {
+    category = 'unauthenticated';
+    summary =
+      'Sesi autentikasi belum siap atau Secure Token Service API di Google Cloud Project belum diaktifkan. Mode baca publik tetap dapat berjalan.';
+  } else if (code.includes('permission-denied') || rawMsg.includes('Missing or insufficient permissions')) {
     category = 'permission-denied';
     summary = 'Izin akses Firestore ditolak oleh Security Rules atau peran pengguna tidak memadai.';
-  } else if (code.includes('unauthenticated') || rawMsg.includes('unauthenticated')) {
-    category = 'unauthenticated';
-    summary = 'Sesi autentikasi belum siap atau token kadaluarsa.';
   } else if (code.includes('not-found') || rawMsg.includes('NOT_FOUND')) {
     category = 'database-not-found';
     summary = `Database "${targetDatabaseId}" atau dokumen yang diminta tidak ditemukan di server.`;

@@ -35,10 +35,9 @@ import {
   Check,
   Play,
   Clock,
-  Menu,
   GraduationCap,
-  PanelLeftClose,
-  PanelLeftOpen
+  FolderOpen,
+  FileQuestion
 } from 'lucide-react';
 import { Category, Course, Session, Quiz, Question, UserProfile, QuizAttempt, BlogPost } from '../../types';
 import {
@@ -782,114 +781,111 @@ export const AdminDashboard: React.FC<{
   };
 
   return (
-    <div className="min-h-screen bg-stone-100 dark:bg-stone-950 text-stone-900 dark:text-stone-100 flex flex-col lg:flex-row font-sans transition-colors duration-200">
+    <div className="min-h-screen bg-[#F8F3E8] dark:bg-[#06251D] text-[#171717] dark:text-[#F8F3E8] flex flex-col lg:flex-row font-sans transition-colors duration-200">
       {/* ========================================================= */}
-      {/* MOBILE TOP BAR (Hamburger & Brand Title on Small Screens) */}
+      {/* MOBILE TOP BAR (Logo acts as Sidebar Toggle) */}
       {/* ========================================================= */}
-      <div className="lg:hidden sticky top-0 z-30 bg-[#F7F6EF]/95 dark:bg-[#071B16]/95 backdrop-blur-md border-b border-[#073B2E]/10 dark:border-[#C9A34E]/20 px-4 py-3 flex items-center justify-between gap-3 shadow-xs">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="p-2 rounded-xl text-[#073B2E] dark:text-[#F7F6EF] hover:bg-[#073B2E]/10 dark:hover:bg-[#C9A34E]/10 transition cursor-pointer"
-            aria-label="Buka Sidebar Admin"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
-          <div className="flex items-center gap-2.5">
-            <LogoSymbol className="w-8 h-8 shrink-0" />
-            <div className="flex flex-col">
-              <span className="font-serif-brand font-bold text-sm tracking-tight text-[#073B2E] dark:text-[#F7F6EF]">
-                Dars with Osama
-              </span>
-              <span className="text-[10px] text-[#C9A34E] font-semibold tracking-wider uppercase">
-                Admin Panel
-              </span>
-            </div>
+      <div className="lg:hidden sticky top-0 z-30 bg-white dark:bg-[#06251D] text-[#171717] dark:text-[#F8F3E8] border-b-2 border-[#171717] dark:border-[#D9AC45]/60 px-4 py-3 flex items-center justify-between gap-3 shadow-[0_3px_0_#171717]">
+        <button
+          type="button"
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          aria-label={sidebarOpen ? "Tutup Sidebar Admin" : "Buka Sidebar Admin"}
+          title={sidebarOpen ? "Tutup Sidebar Admin" : "Buka Sidebar Admin"}
+          className="flex items-center gap-2.5 p-1 -ml-1 rounded-md border-2 border-transparent hover:border-[#171717] dark:hover:border-[#D9AC45]/60 hover:bg-[#F5EFE2] dark:hover:bg-[#06251D] active:translate-x-[1px] active:translate-y-[1px] transition cursor-pointer text-left group"
+        >
+          <div className="w-8 h-8 rounded-md border-2 border-[#171717] dark:border-[#D9AC45] shadow-[2px_2px_0px_#171717] bg-[#06251D] flex items-center justify-center transition-transform group-hover:scale-105 shrink-0">
+            <LogoSymbol className="w-7 h-7" />
           </div>
-        </div>
+          <div className="flex flex-col">
+            <span className="font-serif-brand font-bold text-sm tracking-tight text-[#171717] dark:text-[#F8F3E8] group-hover:text-[#0B6B50] dark:group-hover:text-[#D9AC45] transition-colors">
+              Dars with Osama
+            </span>
+            <span className="text-[9px] text-[#0B6B50] dark:text-[#D9AC45] font-extrabold tracking-wider uppercase">
+              Admin Panel {sidebarOpen ? '• Tutup' : '• Menu'}
+            </span>
+          </div>
+        </button>
 
         <button
           onClick={() => setTheme(effectiveTheme === 'dark' ? 'light' : 'dark')}
-          className="p-2 text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-xl transition cursor-pointer"
+          className="p-2 bg-[#F5EFE2] dark:bg-[#06251D] text-[#0B6B50] dark:text-[#D9AC45] border-2 border-[#171717] dark:border-[#D9AC45]/60 rounded-md hover:bg-[#D9AC45] hover:text-[#171717] transition cursor-pointer"
           title="Toggle Dark Mode"
         >
-          {effectiveTheme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-stone-600" />}
+          {effectiveTheme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
         </button>
       </div>
 
       {/* ========================================================= */}
       {/* CENTRALIZED LEFT SIDEBAR NAV (FIXED VIEWPORT & MOBILE DRAWER) */}
       {/* ========================================================= */}
-      <aside className={`fixed top-0 left-0 z-40 h-screen h-[100dvh] bg-[#F7F6EF] dark:bg-[#071B16] border-r border-[#073B2E]/10 dark:border-[#C9A34E]/20 flex flex-col justify-between shrink-0 transition-all duration-300 ease-in-out ${
+      <aside className={`fixed top-0 left-0 z-40 h-screen h-[100dvh] bg-[#FFFDF7] dark:bg-[#082A21] text-[#171717] dark:text-[#F8F3E8] border-r-2 border-[#171717] dark:border-[#D9AC45]/50 flex flex-col justify-between shrink-0 transition-all duration-300 ease-in-out ${
         sidebarCollapsed ? 'w-20' : 'w-72'
       } ${
-        sidebarOpen ? 'translate-x-0 shadow-2xl z-50' : '-translate-x-full lg:translate-x-0 shadow-none'
+        sidebarOpen ? 'translate-x-0 shadow-[6px_0_0_#171717] z-50' : '-translate-x-full lg:translate-x-0 shadow-none'
       }`}>
         <div className="flex flex-col h-full overflow-hidden">
-          {/* BRAND HEADER */}
-          <div className={`p-4 border-b border-[#073B2E]/10 dark:border-[#C9A34E]/20 flex items-center shrink-0 ${sidebarCollapsed ? 'lg:justify-center' : 'justify-between'} bg-[#073B2E]/5 dark:bg-[#073B2E]/30`}>
-            <div className="flex items-center gap-3 overflow-hidden">
-              <LogoSymbol className="w-10 h-10 shrink-0" />
+          {/* BRAND HEADER & LOGO SIDEBAR TOGGLE */}
+          <div className={`p-4 border-b-2 border-[#171717] dark:border-[#D9AC45]/40 flex items-center shrink-0 ${sidebarCollapsed ? 'lg:justify-center' : 'justify-between'} bg-white dark:bg-[#06251D]`}>
+            <button
+              type="button"
+              onClick={() => {
+                if (window.innerWidth >= 1024) {
+                  setSidebarCollapsed(!sidebarCollapsed);
+                } else {
+                  setSidebarOpen(false);
+                }
+              }}
+              aria-label={sidebarCollapsed ? "Buka Sidebar Admin" : "Tutup Sidebar Admin"}
+              title={sidebarCollapsed ? "Buka / Perluas Sidebar Admin" : "Tutup / Kecilkan Sidebar Admin"}
+              className={`flex items-center gap-3 overflow-hidden text-left p-1 -ml-1 rounded-md border-2 border-transparent hover:border-[#171717]/30 dark:hover:border-[#D9AC45]/50 hover:bg-[#F5EFE2] dark:hover:bg-[#082A21] transition cursor-pointer group ${
+                sidebarCollapsed ? 'lg:justify-center lg:m-0' : ''
+              }`}
+            >
+              <div className="w-10 h-10 rounded-md border-2 border-[#171717] dark:border-[#D9AC45] shadow-[2px_2px_0px_#171717] bg-[#06251D] flex items-center justify-center transition-transform group-hover:scale-105 shrink-0">
+                <LogoSymbol className="w-9 h-9 shrink-0" />
+              </div>
               {!sidebarCollapsed && (
-                <div className="hidden lg:block truncate">
+                <div className="truncate">
                   <div className="flex items-center gap-1.5">
-                    <span className="font-serif-brand font-bold text-base text-[#073B2E] dark:text-[#F7F6EF] tracking-tight truncate">
+                    <span className="font-serif-brand font-bold text-base text-[#171717] dark:text-[#F8F3E8] tracking-tight truncate group-hover:text-[#0B6B50] dark:group-hover:text-[#D9AC45] transition-colors">
                       Dars with Osama
                     </span>
                   </div>
-                  <span className="inline-block text-[10px] px-2 py-0.5 rounded-md bg-[#C9A34E]/15 text-[#073B2E] dark:text-[#C9A34E] border border-[#C9A34E]/30 font-semibold truncate">
+                  <span className="inline-block text-[10px] px-2 py-0.5 rounded-sm bg-[#D9AC45] text-[#171717] border border-[#171717] font-extrabold uppercase tracking-wider truncate">
                     Admin Dashboard
                   </span>
                 </div>
               )}
-              <div className="lg:hidden truncate">
-                <div className="flex items-center gap-1.5">
-                  <span className="font-serif-brand font-bold text-base text-[#073B2E] dark:text-[#F7F6EF] tracking-tight truncate">
-                    Dars with Osama
-                  </span>
-                </div>
-                <span className="inline-block text-[10px] px-2 py-0.5 rounded-md bg-[#C9A34E]/15 text-[#073B2E] dark:text-[#C9A34E] border border-[#C9A34E]/30 font-semibold truncate">
-                  Admin Dashboard
-                </span>
-              </div>
-            </div>
-
-            {/* Desktop Collapse Toggle Button */}
-            <button
-              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className="hidden lg:flex p-1.5 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 rounded-xl hover:bg-stone-100 dark:hover:bg-stone-800 transition cursor-pointer shrink-0"
-              title={sidebarCollapsed ? 'Perluas Sidebar' : 'Kecilkan Sidebar'}
-            >
-              {sidebarCollapsed ? <PanelLeftOpen className="w-5 h-5 text-emerald-600 dark:text-emerald-400" /> : <PanelLeftClose className="w-5 h-5" />}
             </button>
 
             {/* Close drawer button on mobile */}
             <button
               onClick={() => setSidebarOpen(false)}
-              className="lg:hidden p-1.5 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 rounded-lg transition cursor-pointer shrink-0"
+              className="lg:hidden p-1.5 text-[#171717] dark:text-[#F8F3E8]/80 hover:text-[#171717] hover:bg-[#D9AC45] rounded-md border border-[#171717]/40 dark:border-[#D9AC45]/40 transition cursor-pointer shrink-0"
               aria-label="Tutup Sidebar Admin"
+              title="Tutup Sidebar"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
           {/* QUICK SEARCH BAR IN SIDEBAR */}
-          <div className="p-3.5 border-b border-stone-100 dark:border-stone-800/80">
+          <div className="p-3.5 border-b-2 border-[#171717] dark:border-[#D9AC45]/30 bg-[#F5EFE2] dark:bg-[#06251D]/60">
             <div className={`relative flex items-center ${sidebarCollapsed ? 'lg:justify-center' : ''}`}>
-              <Search className={`w-3.5 h-3.5 text-stone-400 ${sidebarCollapsed ? 'lg:static' : 'absolute left-3'}`} />
+              <Search className={`w-3.5 h-3.5 text-[#0B6B50] dark:text-[#D9AC45] ${sidebarCollapsed ? 'lg:static' : 'absolute left-3'}`} />
               {!sidebarCollapsed && (
                 <input
                   type="text"
                   value={quickSearch}
                   onChange={(e) => setQuickSearch(e.target.value)}
                   placeholder="Pencarian cepat data..."
-                  className="w-full pl-9 pr-7 py-2 bg-stone-100 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 rounded-xl text-xs focus:outline-hidden focus:ring-2 focus:ring-emerald-500 text-stone-900 dark:text-white"
+                  className="w-full pl-9 pr-7 py-2 bg-white dark:bg-[#06251D] border-2 border-[#171717]/30 dark:border-[#D9AC45]/40 rounded-md text-xs focus:outline-hidden focus:border-[#0B6B50] dark:focus:border-[#D9AC45] text-[#171717] dark:text-[#F8F3E8] placeholder:text-[#57534E]/70 dark:placeholder:text-[#F8F3E8]/50 font-semibold"
                 />
               )}
               {!sidebarCollapsed && quickSearch && (
                 <button
                   onClick={() => setQuickSearch('')}
-                  className="absolute right-2.5 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200"
+                  className="absolute right-2.5 text-[#57534E] dark:text-[#F8F3E8]/60 hover:text-[#0B6B50] dark:hover:text-[#D9AC45]"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -900,48 +896,52 @@ export const AdminDashboard: React.FC<{
           {/* SCROLLABLE MENU ITEMS AREA */}
           <div className={`py-4 space-y-6 overflow-y-auto flex-1 ${sidebarCollapsed ? 'px-2' : 'px-4'}`}>
             {/* GROUP 1: UTAMA */}
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               {!sidebarCollapsed && (
-                <p className="px-3 text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-wider truncate">
+                <p className="px-3 text-[10px] font-extrabold text-[#0B6B50] dark:text-[#D9AC45] uppercase tracking-wider truncate">
                   UTAMA
                 </p>
               )}
               <button
                 onClick={() => { setActiveTab('dashboard'); setSidebarOpen(false); }}
                 title="Dashboard Overview"
-                className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'} rounded-xl text-xs font-semibold transition cursor-pointer ${
+                className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'} rounded-md text-xs font-extrabold transition cursor-pointer ${
                   activeTab === 'dashboard'
-                    ? 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60 shadow-xs'
-                    : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800/60'
+                    ? 'bg-[#D9AC45] text-[#171717] border-2 border-[#171717] shadow-[3px_3px_0px_#171717]'
+                    : 'text-[#171717] dark:text-[#F8F3E8]/85 hover:bg-[#F5EFE2] dark:hover:bg-[#06251D] border-2 border-transparent hover:border-[#171717]/30 dark:hover:border-[#D9AC45]/40'
                 }`}
               >
-                <BarChart2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <BarChart2 className={`w-4 h-4 shrink-0 ${activeTab === 'dashboard' ? 'text-[#171717]' : 'text-[#0B6B50] dark:text-[#D9AC45]'}`} />
                 {!sidebarCollapsed && <span className="truncate">Dashboard Overview</span>}
               </button>
             </div>
 
             {/* GROUP 2: KONTEN PEMBELAJARAN */}
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               {!sidebarCollapsed && (
-                <p className="px-3 text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-wider truncate">
+                <p className="px-3 text-[10px] font-extrabold text-[#0B6B50] dark:text-[#D9AC45] uppercase tracking-wider truncate">
                   KONTEN PEMBELAJARAN
                 </p>
               )}
               <button
                 onClick={() => { setActiveTab('courses'); setSidebarOpen(false); }}
                 title={`Mata Pelajaran (${courses.length})`}
-                className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3.5 py-2.5'} rounded-xl text-xs font-semibold transition cursor-pointer ${
+                className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3.5 py-2.5'} rounded-md text-xs font-extrabold transition cursor-pointer ${
                   activeTab === 'courses'
-                    ? 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60 shadow-xs'
-                    : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800/60'
+                    ? 'bg-[#D9AC45] text-[#171717] border-2 border-[#171717] shadow-[3px_3px_0px_#171717]'
+                    : 'text-[#171717] dark:text-[#F8F3E8]/85 hover:bg-[#F5EFE2] dark:hover:bg-[#06251D] border-2 border-transparent hover:border-[#171717]/30 dark:hover:border-[#D9AC45]/40'
                 }`}
               >
                 <div className="flex items-center gap-3 truncate">
-                  <BookOpen className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <BookOpen className={`w-4 h-4 shrink-0 ${activeTab === 'courses' ? 'text-[#171717]' : 'text-[#0B6B50] dark:text-[#D9AC45]'}`} />
                   {!sidebarCollapsed && <span className="truncate">Mata Pelajaran</span>}
                 </div>
                 {!sidebarCollapsed && (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-500 font-bold shrink-0">
+                  <span className={`text-[10px] px-2 py-0.5 rounded-sm font-extrabold shrink-0 border ${
+                    activeTab === 'courses'
+                      ? 'bg-[#171717] text-[#D9AC45] border-[#171717]'
+                      : 'bg-[#F5EFE2] dark:bg-[#06251D] text-[#171717] dark:text-[#F8F3E8] border-[#171717]/30 dark:border-[#D9AC45]/40'
+                  }`}>
                     {courses.length}
                   </span>
                 )}
@@ -950,18 +950,22 @@ export const AdminDashboard: React.FC<{
               <button
                 onClick={() => { setActiveTab('categories'); setSidebarOpen(false); }}
                 title={`Bab / Modul (${categories.length})`}
-                className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3.5 py-2.5'} rounded-xl text-xs font-semibold transition cursor-pointer ${
+                className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3.5 py-2.5'} rounded-md text-xs font-extrabold transition cursor-pointer ${
                   activeTab === 'categories'
-                    ? 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60 shadow-xs'
-                    : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800/60'
+                    ? 'bg-[#D9AC45] text-[#171717] border-2 border-[#171717] shadow-[3px_3px_0px_#171717]'
+                    : 'text-[#171717] dark:text-[#F8F3E8]/85 hover:bg-[#F5EFE2] dark:hover:bg-[#06251D] border-2 border-transparent hover:border-[#171717]/30 dark:hover:border-[#D9AC45]/40'
                 }`}
               >
                 <div className="flex items-center gap-3 truncate">
-                  <Layers className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <Layers className={`w-4 h-4 shrink-0 ${activeTab === 'categories' ? 'text-[#171717]' : 'text-[#0B6B50] dark:text-[#D9AC45]'}`} />
                   {!sidebarCollapsed && <span className="truncate">Bab / Modul</span>}
                 </div>
                 {!sidebarCollapsed && (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-500 font-bold shrink-0">
+                  <span className={`text-[10px] px-2 py-0.5 rounded-sm font-extrabold shrink-0 border ${
+                    activeTab === 'categories'
+                      ? 'bg-[#171717] text-[#D9AC45] border-[#171717]'
+                      : 'bg-[#F5EFE2] dark:bg-[#06251D] text-[#171717] dark:text-[#F8F3E8] border-[#171717]/30 dark:border-[#D9AC45]/40'
+                  }`}>
                     {categories.length}
                   </span>
                 )}
@@ -970,18 +974,22 @@ export const AdminDashboard: React.FC<{
               <button
                 onClick={() => { setActiveTab('sessions'); setSidebarOpen(false); }}
                 title={`Sesi Pembelajaran (${totalSessionsCount})`}
-                className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3.5 py-2.5'} rounded-xl text-xs font-semibold transition cursor-pointer ${
+                className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3.5 py-2.5'} rounded-md text-xs font-extrabold transition cursor-pointer ${
                   activeTab === 'sessions'
-                    ? 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60 shadow-xs'
-                    : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800/60'
+                    ? 'bg-[#D9AC45] text-[#171717] border-2 border-[#171717] shadow-[3px_3px_0px_#171717]'
+                    : 'text-[#171717] dark:text-[#F8F3E8]/85 hover:bg-[#F5EFE2] dark:hover:bg-[#06251D] border-2 border-transparent hover:border-[#171717]/30 dark:hover:border-[#D9AC45]/40'
                 }`}
               >
                 <div className="flex items-center gap-3 truncate">
-                  <Video className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <Video className={`w-4 h-4 shrink-0 ${activeTab === 'sessions' ? 'text-[#171717]' : 'text-[#0B6B50] dark:text-[#D9AC45]'}`} />
                   {!sidebarCollapsed && <span className="truncate">Sesi Pembelajaran</span>}
                 </div>
                 {!sidebarCollapsed && (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-500 font-bold shrink-0">
+                  <span className={`text-[10px] px-2 py-0.5 rounded-sm font-extrabold shrink-0 border ${
+                    activeTab === 'sessions'
+                      ? 'bg-[#171717] text-[#D9AC45] border-[#171717]'
+                      : 'bg-[#F5EFE2] dark:bg-[#06251D] text-[#171717] dark:text-[#F8F3E8] border-[#171717]/30 dark:border-[#D9AC45]/40'
+                  }`}>
                     {totalSessionsCount}
                   </span>
                 )}
@@ -990,18 +998,22 @@ export const AdminDashboard: React.FC<{
               <button
                 onClick={() => { setActiveTab('quizzes'); setSidebarOpen(false); }}
                 title={`Kuis Evaluasi (${quizzes.length})`}
-                className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3.5 py-2.5'} rounded-xl text-xs font-semibold transition cursor-pointer ${
+                className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3.5 py-2.5'} rounded-md text-xs font-extrabold transition cursor-pointer ${
                   activeTab === 'quizzes'
-                    ? 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60 shadow-xs'
-                    : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800/60'
+                    ? 'bg-[#D9AC45] text-[#171717] border-2 border-[#171717] shadow-[3px_3px_0px_#171717]'
+                    : 'text-[#171717] dark:text-[#F8F3E8]/85 hover:bg-[#F5EFE2] dark:hover:bg-[#06251D] border-2 border-transparent hover:border-[#171717]/30 dark:hover:border-[#D9AC45]/40'
                 }`}
               >
                 <div className="flex items-center gap-3 truncate">
-                  <HelpCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <HelpCircle className={`w-4 h-4 shrink-0 ${activeTab === 'quizzes' ? 'text-[#171717]' : 'text-[#0B6B50] dark:text-[#D9AC45]'}`} />
                   {!sidebarCollapsed && <span className="truncate">Kuis Evaluasi</span>}
                 </div>
                 {!sidebarCollapsed && (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-500 font-bold shrink-0">
+                  <span className={`text-[10px] px-2 py-0.5 rounded-sm font-extrabold shrink-0 border ${
+                    activeTab === 'quizzes'
+                      ? 'bg-[#171717] text-[#D9AC45] border-[#171717]'
+                      : 'bg-[#F5EFE2] dark:bg-[#06251D] text-[#171717] dark:text-[#F8F3E8] border-[#171717]/30 dark:border-[#D9AC45]/40'
+                  }`}>
                     {quizzes.length}
                   </span>
                 )}
@@ -1010,18 +1022,22 @@ export const AdminDashboard: React.FC<{
               <button
                 onClick={() => { setActiveTab('blog'); setSidebarOpen(false); }}
                 title={`Blog & Artikel (${blogPosts.length})`}
-                className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3.5 py-2.5'} rounded-xl text-xs font-semibold transition cursor-pointer ${
+                className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3.5 py-2.5'} rounded-md text-xs font-extrabold transition cursor-pointer ${
                   activeTab === 'blog'
-                    ? 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60 shadow-xs'
-                    : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800/60'
+                    ? 'bg-[#D9AC45] text-[#171717] border-2 border-[#171717] shadow-[3px_3px_0px_#171717]'
+                    : 'text-[#171717] dark:text-[#F8F3E8]/85 hover:bg-[#F5EFE2] dark:hover:bg-[#06251D] border-2 border-transparent hover:border-[#171717]/30 dark:hover:border-[#D9AC45]/40'
                 }`}
               >
                 <div className="flex items-center gap-3 truncate">
-                  <FileText className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <FileText className={`w-4 h-4 shrink-0 ${activeTab === 'blog' ? 'text-[#171717]' : 'text-[#0B6B50] dark:text-[#D9AC45]'}`} />
                   {!sidebarCollapsed && <span className="truncate">Blog & Artikel</span>}
                 </div>
                 {!sidebarCollapsed && (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-500 font-bold shrink-0">
+                  <span className={`text-[10px] px-2 py-0.5 rounded-sm font-extrabold shrink-0 border ${
+                    activeTab === 'blog'
+                      ? 'bg-[#171717] text-[#D9AC45] border-[#171717]'
+                      : 'bg-[#F5EFE2] dark:bg-[#06251D] text-[#171717] dark:text-[#F8F3E8] border-[#171717]/30 dark:border-[#D9AC45]/40'
+                  }`}>
                     {blogPosts.length}
                   </span>
                 )}
@@ -1030,22 +1046,26 @@ export const AdminDashboard: React.FC<{
               <button
                 onClick={() => { setActiveTab('comments'); setSidebarOpen(false); }}
                 title={`Komentar Pembaca Artikel (${commentsCount})`}
-                className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3.5 py-2.5'} rounded-xl text-xs font-semibold transition cursor-pointer ${
+                className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3.5 py-2.5'} rounded-md text-xs font-extrabold transition cursor-pointer ${
                   activeTab === 'comments'
-                    ? 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60 shadow-xs'
-                    : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800/60'
+                    ? 'bg-[#D9AC45] text-[#171717] border-2 border-[#171717] shadow-[3px_3px_0px_#171717]'
+                    : 'text-[#171717] dark:text-[#F8F3E8]/85 hover:bg-[#F5EFE2] dark:hover:bg-[#06251D] border-2 border-transparent hover:border-[#171717]/30 dark:hover:border-[#D9AC45]/40'
                 }`}
               >
                 <div className="flex items-center gap-3 truncate">
-                  <MessageSquare className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <MessageSquare className={`w-4 h-4 shrink-0 ${activeTab === 'comments' ? 'text-[#171717]' : 'text-[#0B6B50] dark:text-[#D9AC45]'}`} />
                   {!sidebarCollapsed && <span className="truncate">Komentar Artikel</span>}
                 </div>
                 {!sidebarCollapsed && pendingCommentsCount > 0 ? (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-bold shrink-0 animate-pulse">
+                  <span className="text-[10px] px-2 py-0.5 rounded-sm bg-[#F04438] text-white border border-[#171717] font-extrabold shrink-0 animate-pulse">
                     {pendingCommentsCount} baru
                   </span>
                 ) : !sidebarCollapsed && commentsCount > 0 ? (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-500 font-bold shrink-0">
+                  <span className={`text-[10px] px-2 py-0.5 rounded-sm font-extrabold shrink-0 border ${
+                    activeTab === 'comments'
+                      ? 'bg-[#171717] text-[#D9AC45] border-[#171717]'
+                      : 'bg-[#F5EFE2] dark:bg-[#06251D] text-[#171717] dark:text-[#F8F3E8] border-[#171717]/30 dark:border-[#D9AC45]/40'
+                  }`}>
                     {commentsCount}
                   </span>
                 ) : null}
@@ -1054,14 +1074,14 @@ export const AdminDashboard: React.FC<{
               <button
                 onClick={() => { setActiveTab('consultation'); setSidebarOpen(false); }}
                 title="Konsultasi & Q&A Siswa"
-                className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3.5 py-2.5'} rounded-xl text-xs font-semibold transition cursor-pointer ${
+                className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3.5 py-2.5'} rounded-md text-xs font-extrabold transition cursor-pointer ${
                   activeTab === 'consultation'
-                    ? 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60 shadow-xs'
-                    : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800/60'
+                    ? 'bg-[#D9AC45] text-[#171717] border-2 border-[#171717] shadow-[3px_3px_0px_#171717]'
+                    : 'text-[#171717] dark:text-[#F8F3E8]/85 hover:bg-[#F5EFE2] dark:hover:bg-[#06251D] border-2 border-transparent hover:border-[#171717]/30 dark:hover:border-[#D9AC45]/40'
                 }`}
               >
                 <div className="flex items-center gap-3 truncate">
-                  <MessageSquare className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <MessageSquare className={`w-4 h-4 shrink-0 ${activeTab === 'consultation' ? 'text-[#171717]' : 'text-[#0B6B50] dark:text-[#D9AC45]'}`} />
                   {!sidebarCollapsed && <span className="truncate">Konsultasi & Q&A</span>}
                 </div>
               </button>
@@ -1070,41 +1090,45 @@ export const AdminDashboard: React.FC<{
                 onClick={() => { setActiveTab('instructor-profile'); setSidebarOpen(false); }}
                 data-testid="admin-tab-instructor-profile"
                 title="Kelola Halaman Profil Pengajar"
-                className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3.5 py-2.5'} rounded-xl text-xs font-semibold transition cursor-pointer ${
+                className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3.5 py-2.5'} rounded-md text-xs font-extrabold transition cursor-pointer ${
                   activeTab === 'instructor-profile'
-                    ? 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60 shadow-xs'
-                    : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800/60'
+                    ? 'bg-[#D9AC45] text-[#171717] border-2 border-[#171717] shadow-[3px_3px_0px_#171717]'
+                    : 'text-[#171717] dark:text-[#F8F3E8]/85 hover:bg-[#F5EFE2] dark:hover:bg-[#06251D] border-2 border-transparent hover:border-[#171717]/30 dark:hover:border-[#D9AC45]/40'
                 }`}
               >
                 <div className="flex items-center gap-3 truncate">
-                  <UserCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <UserCheck className={`w-4 h-4 shrink-0 ${activeTab === 'instructor-profile' ? 'text-[#171717]' : 'text-[#0B6B50] dark:text-[#D9AC45]'}`} />
                   {!sidebarCollapsed && <span className="truncate">Profil Pengajar</span>}
                 </div>
               </button>
             </div>
 
             {/* GROUP 3: PENGGUNA & MONITORING */}
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               {!sidebarCollapsed && (
-                <p className="px-3 text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-wider truncate">
+                <p className="px-3 text-[10px] font-extrabold text-[#0B6B50] dark:text-[#D9AC45] uppercase tracking-wider truncate">
                   PENGGUNA & MONITORING
                 </p>
               )}
               <button
                 onClick={() => { setActiveTab('users'); setSidebarOpen(false); }}
                 title={`Pengguna Terdaftar (${users.length})`}
-                className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3.5 py-2.5'} rounded-xl text-xs font-semibold transition cursor-pointer ${
+                className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3.5 py-2.5'} rounded-md text-xs font-extrabold transition cursor-pointer ${
                   activeTab === 'users'
-                    ? 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60 shadow-xs'
-                    : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800/60'
+                    ? 'bg-[#D9AC45] text-[#171717] border-2 border-[#171717] shadow-[3px_3px_0px_#171717]'
+                    : 'text-[#171717] dark:text-[#F8F3E8]/85 hover:bg-[#F5EFE2] dark:hover:bg-[#06251D] border-2 border-transparent hover:border-[#171717]/30 dark:hover:border-[#D9AC45]/40'
                 }`}
               >
                 <div className="flex items-center gap-3 truncate">
-                  <Users className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <Users className={`w-4 h-4 shrink-0 ${activeTab === 'users' ? 'text-[#171717]' : 'text-[#0B6B50] dark:text-[#D9AC45]'}`} />
                   {!sidebarCollapsed && <span className="truncate">Pengguna Terdaftar</span>}
                 </div>
                 {!sidebarCollapsed && (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-500 font-bold shrink-0">
+                  <span className={`text-[10px] px-2 py-0.5 rounded-sm font-extrabold shrink-0 border ${
+                    activeTab === 'users'
+                      ? 'bg-[#171717] text-[#D9AC45] border-[#171717]'
+                      : 'bg-[#F5EFE2] dark:bg-[#06251D] text-[#171717] dark:text-[#F8F3E8] border-[#171717]/30 dark:border-[#D9AC45]/40'
+                  }`}>
                     {users.length}
                   </span>
                 )}
@@ -1113,18 +1137,22 @@ export const AdminDashboard: React.FC<{
               <button
                 onClick={() => { setActiveTab('attempts'); setSidebarOpen(false); }}
                 title={`Hasil Kuis & Nilai (${attempts.length})`}
-                className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3.5 py-2.5'} rounded-xl text-xs font-semibold transition cursor-pointer ${
+                className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3.5 py-2.5'} rounded-md text-xs font-extrabold transition cursor-pointer ${
                   activeTab === 'attempts'
-                    ? 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60 shadow-xs'
-                    : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800/60'
+                    ? 'bg-[#D9AC45] text-[#171717] border-2 border-[#171717] shadow-[3px_3px_0px_#171717]'
+                    : 'text-[#171717] dark:text-[#F8F3E8]/85 hover:bg-[#F5EFE2] dark:hover:bg-[#06251D] border-2 border-transparent hover:border-[#171717]/30 dark:hover:border-[#D9AC45]/40'
                 }`}
               >
                 <div className="flex items-center gap-3 truncate">
-                  <Award className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <Award className={`w-4 h-4 shrink-0 ${activeTab === 'attempts' ? 'text-[#171717]' : 'text-[#0B6B50] dark:text-[#D9AC45]'}`} />
                   {!sidebarCollapsed && <span className="truncate">Hasil Kuis & Nilai</span>}
                 </div>
                 {!sidebarCollapsed && (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-500 font-bold shrink-0">
+                  <span className={`text-[10px] px-2 py-0.5 rounded-sm font-extrabold shrink-0 border ${
+                    activeTab === 'attempts'
+                      ? 'bg-[#171717] text-[#D9AC45] border-[#171717]'
+                      : 'bg-[#F5EFE2] dark:bg-[#06251D] text-[#171717] dark:text-[#F8F3E8] border-[#171717]/30 dark:border-[#D9AC45]/40'
+                  }`}>
                     {attempts.length}
                   </span>
                 )}
@@ -1132,9 +1160,9 @@ export const AdminDashboard: React.FC<{
             </div>
 
             {/* GROUP 4: AKSI & NAVIGASI ADMIN */}
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               {!sidebarCollapsed && (
-                <p className="px-3 text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-wider truncate">
+                <p className="px-3 text-[10px] font-extrabold text-[#0B6B50] dark:text-[#D9AC45] uppercase tracking-wider truncate">
                   AKSI & NAVIGASI
                 </p>
               )}
@@ -1142,9 +1170,9 @@ export const AdminDashboard: React.FC<{
                 <button
                   onClick={() => { onNavigateToSiswa(); setSidebarOpen(false); }}
                   title="Lihat Web Siswa"
-                  className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'} rounded-xl text-xs font-semibold text-stone-700 dark:text-stone-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 hover:text-emerald-700 dark:hover:text-emerald-400 transition cursor-pointer`}
+                  className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'} rounded-md text-xs font-extrabold text-[#171717] dark:text-[#F8F3E8]/85 hover:bg-[#F5EFE2] dark:hover:bg-[#06251D] border-2 border-transparent hover:border-[#171717]/30 dark:hover:border-[#D9AC45]/40 transition cursor-pointer`}
                 >
-                  <ExternalLink className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <ExternalLink className="w-4 h-4 text-[#0B6B50] dark:text-[#D9AC45] shrink-0" />
                   {!sidebarCollapsed && <span className="truncate">Lihat Web Siswa</span>}
                 </button>
               )}
@@ -1152,23 +1180,23 @@ export const AdminDashboard: React.FC<{
               <button
                 onClick={handleExportReport}
                 title="Ekspor Laporan (CSV)"
-                className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'} rounded-xl text-xs font-semibold text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800/60 transition cursor-pointer`}
+                className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'} rounded-md text-xs font-extrabold text-[#171717] dark:text-[#F8F3E8]/85 hover:bg-[#F5EFE2] dark:hover:bg-[#06251D] border-2 border-transparent hover:border-[#171717]/30 dark:hover:border-[#D9AC45]/40 transition cursor-pointer`}
               >
-                <Download className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <Download className="w-4 h-4 text-[#0B6B50] dark:text-[#D9AC45] shrink-0" />
                 {!sidebarCollapsed && <span className="truncate">Ekspor Laporan (CSV)</span>}
               </button>
 
               <button
                 onClick={() => setTheme(effectiveTheme === 'dark' ? 'light' : 'dark')}
                 title={`Mode Tampilan (${effectiveTheme === 'dark' ? 'Gelap' : 'Terang'})`}
-                className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3.5 py-2.5'} rounded-xl text-xs font-semibold text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800/60 transition cursor-pointer`}
+                className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3.5 py-2.5'} rounded-md text-xs font-extrabold text-[#171717] dark:text-[#F8F3E8]/85 hover:bg-[#F5EFE2] dark:hover:bg-[#06251D] border-2 border-transparent hover:border-[#171717]/30 dark:hover:border-[#D9AC45]/40 transition cursor-pointer`}
               >
                 <div className="flex items-center gap-3 truncate">
-                  {effectiveTheme === 'dark' ? <Sun className="w-4 h-4 text-amber-400 shrink-0" /> : <Moon className="w-4 h-4 text-stone-600 shrink-0" />}
+                  {effectiveTheme === 'dark' ? <Sun className="w-4 h-4 text-[#D9AC45] shrink-0" /> : <Moon className="w-4 h-4 text-[#0B6B50] shrink-0" />}
                   {!sidebarCollapsed && <span className="truncate">Mode Tampilan</span>}
                 </div>
                 {!sidebarCollapsed && (
-                  <span className="text-[10px] font-bold uppercase text-stone-500 shrink-0">
+                  <span className="text-[10px] font-extrabold uppercase text-[#0B6B50] dark:text-[#D9AC45] shrink-0">
                     {effectiveTheme === 'dark' ? 'Gelap' : 'Terang'}
                   </span>
                 )}
@@ -1176,32 +1204,32 @@ export const AdminDashboard: React.FC<{
             </div>
 
             {/* GROUP 5: PENGATURAN */}
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               {!sidebarCollapsed && (
-                <p className="px-3 text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-wider truncate">
+                <p className="px-3 text-[10px] font-extrabold text-[#0B6B50] dark:text-[#D9AC45] uppercase tracking-wider truncate">
                   PENGATURAN
                 </p>
               )}
               <button
                 onClick={() => { setActiveTab('firebase'); setSidebarOpen(false); }}
                 title="Status Firebase & Data"
-                className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'} rounded-xl text-xs font-semibold transition cursor-pointer ${
+                className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'} rounded-md text-xs font-extrabold transition cursor-pointer ${
                   activeTab === 'firebase'
-                    ? 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60 shadow-xs'
-                    : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800/60'
+                    ? 'bg-[#D9AC45] text-[#171717] border-2 border-[#171717] shadow-[3px_3px_0px_#171717]'
+                    : 'text-[#171717] dark:text-[#F8F3E8]/85 hover:bg-[#F5EFE2] dark:hover:bg-[#06251D] border-2 border-transparent hover:border-[#171717]/30 dark:hover:border-[#D9AC45]/40'
                 }`}
               >
-                <Database className="w-4 h-4 text-amber-500 shrink-0" />
+                <Database className={`w-4 h-4 shrink-0 ${activeTab === 'firebase' ? 'text-[#171717]' : 'text-[#0B6B50] dark:text-[#D9AC45]'}`} />
                 {!sidebarCollapsed && <span className="truncate">Status Firebase & Data</span>}
               </button>
             </div>
           </div>
 
           {/* BOTTOM PROFILE & LOGOUT */}
-          <div className={`p-3.5 border-t border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-900/60 space-y-3 ${sidebarCollapsed ? 'px-2' : 'px-3.5'}`}>
+          <div className={`p-3.5 border-t-2 border-[#171717] dark:border-[#D9AC45]/40 bg-[#F5EFE2] dark:bg-[#06251D] space-y-3 ${sidebarCollapsed ? 'px-2' : 'px-3.5'}`}>
             <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between gap-2'}`}>
               <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-9 h-9 rounded-full bg-emerald-600 text-white font-bold text-xs flex items-center justify-center shrink-0 overflow-hidden border border-emerald-500/30 shadow-xs">
+                <div className="w-9 h-9 rounded-md bg-[#D9AC45] text-[#171717] font-extrabold text-xs flex items-center justify-center shrink-0 overflow-hidden border-2 border-[#171717] shadow-[2px_2px_0px_#171717]">
                   {(userProfile?.photoURL || user?.photoURL) ? (
                     <img
                       src={userProfile?.photoURL || user?.photoURL || ''}
@@ -1214,10 +1242,10 @@ export const AdminDashboard: React.FC<{
                 </div>
                 {!sidebarCollapsed && (
                   <div className="overflow-hidden text-xs">
-                    <p className="font-semibold text-stone-900 dark:text-stone-100 truncate">
+                    <p className="font-bold text-[#171717] dark:text-[#F8F3E8] truncate">
                       {userProfile?.displayName || user?.displayName || 'Admin Dars with Osama'}
                     </p>
-                    <p className="text-stone-500 dark:text-stone-400 truncate text-[10px]">
+                    <p className="text-[#57534E] dark:text-[#F8F3E8]/70 truncate text-[10px]">
                       {user?.email}
                     </p>
                   </div>
@@ -1225,7 +1253,7 @@ export const AdminDashboard: React.FC<{
               </div>
 
               {!sidebarCollapsed && (
-                <span className="shrink-0 text-[10px] px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-400 font-bold border border-emerald-300 dark:border-emerald-800">
+                <span className="shrink-0 text-[10px] px-2 py-0.5 rounded-sm bg-[#D9AC45] text-[#171717] font-extrabold border border-[#171717] uppercase">
                   Admin
                 </span>
               )}
@@ -1234,7 +1262,7 @@ export const AdminDashboard: React.FC<{
             <button
               onClick={openLogoutConfirmModal}
               title="Keluar / Logout Admin"
-              className={`w-full flex items-center justify-center ${sidebarCollapsed ? 'px-0 py-2.5' : 'gap-2 py-2 px-3'} bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 rounded-xl text-xs font-semibold transition cursor-pointer active:scale-95`}
+              className={`w-full flex items-center justify-center ${sidebarCollapsed ? 'px-0 py-2.5' : 'gap-2 py-2 px-3'} nb-btn nb-btn-danger text-xs`}
             >
               <LogOut className="w-3.5 h-3.5 shrink-0" />
               {!sidebarCollapsed && <span>Keluar / Logout</span>}
@@ -1247,7 +1275,7 @@ export const AdminDashboard: React.FC<{
       {sidebarOpen && (
         <div
           onClick={() => setSidebarOpen(false)}
-          className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs z-40 lg:hidden cursor-pointer"
+          className="fixed inset-0 bg-[#171717]/75 z-40 lg:hidden cursor-pointer"
           aria-hidden="true"
         />
       )}
@@ -1256,39 +1284,39 @@ export const AdminDashboard: React.FC<{
         <div className={`flex-1 flex flex-col min-w-0 min-h-screen transition-all duration-300 ${
           sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-72'
         }`}>
-          <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6">
+          <main className="flex-1 p-3 sm:p-6 lg:p-8 space-y-6 min-w-0">
           {/* Status Alert Notification */}
           {statusMessage && (
-            <div className={`p-4 rounded-2xl border text-xs sm:text-sm flex items-center gap-3 animate-fade-in-up shadow-lg ${
+            <div className={`p-4 rounded-md border-2 border-[#171717] shadow-[4px_4px_0px_#171717] text-xs sm:text-sm font-bold flex items-center gap-3 animate-fade-in-up ${
               statusMessage.type === 'success'
-                ? 'bg-emerald-50 dark:bg-emerald-950/80 border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200'
-                : 'bg-rose-50 dark:bg-rose-950/80 border-rose-300 dark:border-rose-700 text-rose-800 dark:text-rose-200'
+                ? 'bg-[#06251D] text-[#F8F3E8]'
+                : 'bg-[#F04438] text-white'
             }`}>
-              {statusMessage.type === 'success' ? <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" /> : <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />}
+              {statusMessage.type === 'success' ? <CheckCircle className="w-5 h-5 text-[#D9AC45] shrink-0" /> : <AlertCircle className="w-5 h-5 text-white shrink-0" />}
               <span>{statusMessage.text}</span>
             </div>
           )}
 
           {/* HEADER SECTION WITH BREADCRUMB & QUICK ACTION BUTTONS */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-stone-200 dark:border-stone-800">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b-2 border-[#171717] dark:border-[#D9AC45]/40">
             <div>
-              <div className="flex items-center gap-2 text-xs text-stone-500 dark:text-stone-400 font-medium mb-1">
+              <div className="flex items-center gap-2 text-xs text-stone-600 dark:text-[#F8F3E8]/70 font-bold uppercase tracking-wider mb-1">
                 <span>Admin</span>
-                <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
-                <span className="text-emerald-700 dark:text-emerald-400 font-semibold capitalize">
+                <ChevronRight className="w-3.5 h-3.5 text-[#D9AC45]" />
+                <span className="text-[#06251D] dark:text-[#D9AC45] font-extrabold capitalize">
                   {activeTab === 'dashboard' ? 'Dashboard Overview' : activeTab}
                 </span>
               </div>
-              <h1 className="text-xl sm:text-2xl font-bold text-stone-900 dark:text-white font-sans tracking-tight">
+              <h1 className="text-xl sm:text-2xl font-bold text-[#171717] dark:text-[#F8F3E8] font-serif-brand tracking-tight">
                 Dashboard Administrasi Dars with Osama
               </h1>
-              <p className="text-stone-500 dark:text-stone-400 text-xs sm:text-sm mt-0.5">
+              <p className="text-stone-600 dark:text-[#F8F3E8]/75 text-xs sm:text-sm mt-0.5 font-medium">
                 Kelola kurikulum ilmu, sesi pembelajaran, kuis evaluasi, dan pemantauan santri.
               </p>
             </div>
 
             {/* Quick Action Buttons */}
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2.5">
               <button
                 onClick={() => setEditingCourse({
                   title: '',
@@ -1307,9 +1335,9 @@ export const AdminDashboard: React.FC<{
                   totalDuration: '5 Sesi',
                   order: courses.length + 1
                 })}
-                className="px-3.5 py-2 bg-white dark:bg-stone-800 hover:bg-stone-50 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 border border-stone-200 dark:border-stone-700 rounded-xl text-xs font-semibold shadow-xs transition flex items-center gap-1.5 cursor-pointer active:scale-95"
+                className="px-3.5 py-2 nb-btn nb-btn-secondary text-xs flex items-center gap-1.5"
               >
-                <Plus className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                <Plus className="w-3.5 h-3.5 text-[#06251D] dark:text-[#D9AC45]" />
                 <span>+ Mata Pelajaran</span>
               </button>
 
@@ -1321,17 +1349,17 @@ export const AdminDashboard: React.FC<{
                   description: '',
                   order: categories.length + 1
                 })}
-                className="px-3.5 py-2 bg-white dark:bg-stone-800 hover:bg-stone-50 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 border border-stone-200 dark:border-stone-700 rounded-xl text-xs font-semibold shadow-xs transition flex items-center gap-1.5 cursor-pointer active:scale-95"
+                className="px-3.5 py-2 nb-btn nb-btn-secondary text-xs flex items-center gap-1.5"
               >
-                <Plus className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                <Plus className="w-3.5 h-3.5 text-[#06251D] dark:text-[#D9AC45]" />
                 <span>+ Bab / Modul</span>
               </button>
 
               <button
                 onClick={() => handleOpenAddSessionModal()}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow-md transition flex items-center gap-1.5 cursor-pointer active:scale-95"
+                className="px-4 py-2 nb-btn nb-btn-primary text-xs flex items-center gap-1.5"
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-4 h-4 text-[#D9AC45]" />
                 <span>+ Sesi Baru</span>
               </button>
             </div>
@@ -1346,90 +1374,90 @@ export const AdminDashboard: React.FC<{
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
                 <div
                   onClick={() => setActiveTab('courses')}
-                  className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 p-4 rounded-2xl shadow-xs hover:border-emerald-500/50 transition cursor-pointer group"
+                  className="nb-card p-4 hover:-translate-y-1 hover:shadow-[6px_6px_0px_#171717] transition-all cursor-pointer group"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-stone-500 dark:text-stone-400">Mata Pelajaran</span>
-                    <div className="p-2 bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 rounded-xl group-hover:scale-110 transition">
+                    <span className="text-xs font-bold text-stone-600 dark:text-[#F8F3E8]/70 uppercase tracking-wider">Mata Pelajaran</span>
+                    <div className="p-2 bg-[#D9AC45] text-[#171717] border-2 border-[#171717] rounded-sm group-hover:scale-110 transition">
                       <BookOpen className="w-4 h-4" />
                     </div>
                   </div>
-                  <p className="text-2xl font-bold text-stone-900 dark:text-white mt-2 font-sans">
+                  <p className="text-2xl font-extrabold text-[#171717] dark:text-[#F8F3E8] mt-2 font-serif-brand">
                     {courses.length}
                   </p>
-                  <p className="text-[10px] text-stone-500 dark:text-stone-400 mt-0.5">
+                  <p className="text-[10px] text-stone-600 dark:text-[#F8F3E8]/60 mt-0.5 font-bold">
                     {courses.filter(c => c.isPublished).length} Terpublikasi
                   </p>
                 </div>
 
                 <div
                   onClick={() => setActiveTab('categories')}
-                  className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 p-4 rounded-2xl shadow-xs hover:border-emerald-500/50 transition cursor-pointer group"
+                  className="nb-card p-4 hover:-translate-y-1 hover:shadow-[6px_6px_0px_#171717] transition-all cursor-pointer group"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-stone-500 dark:text-stone-400">Bab / Modul</span>
-                    <div className="p-2 bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-400 rounded-xl group-hover:scale-110 transition">
+                    <span className="text-xs font-bold text-stone-600 dark:text-[#F8F3E8]/70 uppercase tracking-wider">Bab / Modul</span>
+                    <div className="p-2 bg-[#D9AC45] text-[#171717] border-2 border-[#171717] rounded-sm group-hover:scale-110 transition">
                       <Layers className="w-4 h-4" />
                     </div>
                   </div>
-                  <p className="text-2xl font-bold text-stone-900 dark:text-white mt-2 font-sans">
+                  <p className="text-2xl font-extrabold text-[#171717] dark:text-[#F8F3E8] mt-2 font-serif-brand">
                     {categories.length}
                   </p>
-                  <p className="text-[10px] text-stone-500 dark:text-stone-400 mt-0.5">
+                  <p className="text-[10px] text-stone-600 dark:text-[#F8F3E8]/60 mt-0.5 font-bold">
                     Kategori Matan & Ilmu
                   </p>
                 </div>
 
                 <div
                   onClick={() => setActiveTab('sessions')}
-                  className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 p-4 rounded-2xl shadow-xs hover:border-emerald-500/50 transition cursor-pointer group"
+                  className="nb-card p-4 hover:-translate-y-1 hover:shadow-[6px_6px_0px_#171717] transition-all cursor-pointer group"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-stone-500 dark:text-stone-400">Sesi Pembelajaran</span>
-                    <div className="p-2 bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-400 rounded-xl group-hover:scale-110 transition">
+                    <span className="text-xs font-bold text-stone-600 dark:text-[#F8F3E8]/70 uppercase tracking-wider">Sesi Belajar</span>
+                    <div className="p-2 bg-[#3478F6] text-white border-2 border-[#171717] rounded-sm group-hover:scale-110 transition">
                       <Video className="w-4 h-4" />
                     </div>
                   </div>
-                  <p className="text-2xl font-bold text-stone-900 dark:text-white mt-2 font-sans">
+                  <p className="text-2xl font-extrabold text-[#171717] dark:text-[#F8F3E8] mt-2 font-serif-brand">
                     {totalSessionsCount}
                   </p>
-                  <p className="text-[10px] text-stone-500 dark:text-stone-400 mt-0.5">
+                  <p className="text-[10px] text-stone-600 dark:text-[#F8F3E8]/60 mt-0.5 font-bold">
                     Total video & materi
                   </p>
                 </div>
 
                 <div
                   onClick={() => setActiveTab('users')}
-                  className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 p-4 rounded-2xl shadow-xs hover:border-emerald-500/50 transition cursor-pointer group"
+                  className="nb-card p-4 hover:-translate-y-1 hover:shadow-[6px_6px_0px_#171717] transition-all cursor-pointer group"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-stone-500 dark:text-stone-400">Pengguna Terdaftar</span>
-                    <div className="p-2 bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-400 rounded-xl group-hover:scale-110 transition">
+                    <span className="text-xs font-bold text-stone-600 dark:text-[#F8F3E8]/70 uppercase tracking-wider">Pengguna</span>
+                    <div className="p-2 bg-[#06251D] text-[#D9AC45] border-2 border-[#171717] rounded-sm group-hover:scale-110 transition">
                       <Users className="w-4 h-4" />
                     </div>
                   </div>
-                  <p className="text-2xl font-bold text-stone-900 dark:text-white mt-2 font-sans">
+                  <p className="text-2xl font-extrabold text-[#171717] dark:text-[#F8F3E8] mt-2 font-serif-brand">
                     {users.length}
                   </p>
-                  <p className="text-[10px] text-stone-500 dark:text-stone-400 mt-0.5">
-                    Santri & Siswa aktif
+                  <p className="text-[10px] text-stone-600 dark:text-[#F8F3E8]/60 mt-0.5 font-bold">
+                    Santri terdaftar
                   </p>
                 </div>
 
                 <div
                   onClick={() => setActiveTab('quizzes')}
-                  className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 p-4 rounded-2xl shadow-xs hover:border-emerald-500/50 transition cursor-pointer group"
+                  className="nb-card p-4 hover:-translate-y-1 hover:shadow-[6px_6px_0px_#171717] transition-all cursor-pointer group"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-stone-500 dark:text-stone-400">Kuis Evaluasi</span>
-                    <div className="p-2 bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-400 rounded-xl group-hover:scale-110 transition">
+                    <span className="text-xs font-bold text-stone-600 dark:text-[#F8F3E8]/70 uppercase tracking-wider">Kuis</span>
+                    <div className="p-2 bg-[#F04438] text-white border-2 border-[#171717] rounded-sm group-hover:scale-110 transition">
                       <HelpCircle className="w-4 h-4" />
                     </div>
                   </div>
-                  <p className="text-2xl font-bold text-stone-900 dark:text-white mt-2 font-sans">
+                  <p className="text-2xl font-extrabold text-[#171717] dark:text-[#F8F3E8] mt-2 font-serif-brand">
                     {quizzes.length}
                   </p>
-                  <p className="text-[10px] text-stone-500 dark:text-stone-400 mt-0.5">
+                  <p className="text-[10px] text-stone-600 dark:text-[#F8F3E8]/60 mt-0.5 font-bold">
                     Bank soal evaluasi
                   </p>
                 </div>
@@ -1437,43 +1465,43 @@ export const AdminDashboard: React.FC<{
 
               {/* BAGIAN STATISTIK TAMBAHAN */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 p-5 rounded-2xl flex items-center gap-4">
-                  <div className="p-3 bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 rounded-2xl shrink-0">
+                <div className="nb-card p-5 flex items-center gap-4">
+                  <div className="p-3 bg-[#D9AC45] text-[#171717] border-2 border-[#171717] rounded-md shrink-0 shadow-[2px_2px_0px_#171717]">
                     <Award className="w-6 h-6" />
                   </div>
                   <div>
-                    <p className="text-xs text-stone-500 dark:text-stone-400 font-medium">Rata-Rata Skor Kuis</p>
-                    <p className="text-xl font-bold text-stone-900 dark:text-white mt-0.5">{averageQuizScore}%</p>
+                    <p className="text-xs text-stone-600 dark:text-[#F8F3E8]/70 font-bold uppercase">Rata-Rata Skor Kuis</p>
+                    <p className="text-xl font-extrabold text-[#171717] dark:text-[#F8F3E8] mt-0.5">{averageQuizScore}%</p>
                   </div>
                 </div>
 
-                <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 p-5 rounded-2xl flex items-center gap-4">
-                  <div className="p-3 bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 rounded-2xl shrink-0">
+                <div className="nb-card p-5 flex items-center gap-4">
+                  <div className="p-3 bg-[#06251D] text-[#D9AC45] border-2 border-[#171717] dark:border-[#D9AC45] rounded-md shrink-0 shadow-[2px_2px_0px_#171717]">
                     <CheckCircle className="w-6 h-6" />
                   </div>
                   <div>
-                    <p className="text-xs text-stone-500 dark:text-stone-400 font-medium">Tingkat Kelulusan</p>
-                    <p className="text-xl font-bold text-stone-900 dark:text-white mt-0.5">{passRate}%</p>
+                    <p className="text-xs text-stone-600 dark:text-[#F8F3E8]/70 font-bold uppercase">Tingkat Kelulusan</p>
+                    <p className="text-xl font-extrabold text-[#171717] dark:text-[#F8F3E8] mt-0.5">{passRate}%</p>
                   </div>
                 </div>
 
-                <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 p-5 rounded-2xl flex items-center gap-4">
-                  <div className="p-3 bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-400 rounded-2xl shrink-0">
+                <div className="nb-card p-5 flex items-center gap-4">
+                  <div className="p-3 bg-[#3478F6] text-white border-2 border-[#171717] rounded-md shrink-0 shadow-[2px_2px_0px_#171717]">
                     <GraduationCap className="w-6 h-6" />
                   </div>
                   <div>
-                    <p className="text-xs text-stone-500 dark:text-stone-400 font-medium">Total Percobaan Kuis</p>
-                    <p className="text-xl font-bold text-stone-900 dark:text-white mt-0.5">{attempts.length}</p>
+                    <p className="text-xs text-stone-600 dark:text-[#F8F3E8]/70 font-bold uppercase">Percobaan Kuis</p>
+                    <p className="text-xl font-extrabold text-[#171717] dark:text-[#F8F3E8] mt-0.5">{attempts.length}</p>
                   </div>
                 </div>
 
-                <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 p-5 rounded-2xl flex items-center gap-4">
-                  <div className="p-3 bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-400 rounded-2xl shrink-0">
+                <div className="nb-card p-5 flex items-center gap-4">
+                  <div className="p-3 bg-[#D9AC45] text-[#171717] border-2 border-[#171717] rounded-md shrink-0 shadow-[2px_2px_0px_#171717]">
                     <FileText className="w-6 h-6" />
                   </div>
                   <div>
-                    <p className="text-xs text-stone-500 dark:text-stone-400 font-medium">Status Pembelajaran</p>
-                    <p className="text-xl font-bold text-stone-900 dark:text-white mt-0.5">
+                    <p className="text-xs text-stone-600 dark:text-[#F8F3E8]/70 font-bold uppercase">Status Pembelajaran</p>
+                    <p className="text-xl font-extrabold text-[#171717] dark:text-[#F8F3E8] mt-0.5">
                       {courses.filter(c => c.isPublished).length} / {courses.length} Pub
                     </p>
                   </div>
@@ -1481,22 +1509,22 @@ export const AdminDashboard: React.FC<{
               </div>
 
               {/* STRUKTUR KURIKULUM: MAPEL -> BAB -> SESI */}
-              <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl p-6 space-y-6 shadow-xs">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-200 dark:border-stone-800 pb-4">
+              <div className="nb-card p-6 space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 border-[#171717] dark:border-[#D9AC45]/30 pb-4">
                   <div>
-                    <h3 className="text-lg font-bold text-stone-900 dark:text-white font-sans flex items-center gap-2">
-                      <Layers className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                    <h3 className="text-lg font-bold text-[#171717] dark:text-[#F8F3E8] font-serif-brand flex items-center gap-2">
+                      <Layers className="w-5 h-5 text-[#D9AC45]" />
                       <span>Struktur Kurikulum: Mapel → Bab → Sesi Pembelajaran</span>
                     </h3>
-                    <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
+                    <p className="text-xs text-stone-600 dark:text-[#F8F3E8]/70 mt-0.5">
                       Hierarki pembelajaran lengkap dari Mata Pelajaran hingga Sesi & Kuis Evaluasi.
                     </p>
                   </div>
                   <button
                     onClick={() => handleOpenAddSessionModal()}
-                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow transition flex items-center gap-1.5 self-start sm:self-center cursor-pointer"
+                    className="px-4 py-2 nb-btn nb-btn-primary text-xs flex items-center gap-1.5 self-start sm:self-center cursor-pointer"
                   >
-                    <Plus className="w-4 h-4" />
+                    <Plus className="w-4 h-4 text-[#D9AC45]" />
                     <span>+ Tambah Sesi Saja</span>
                   </button>
                 </div>
@@ -1510,19 +1538,19 @@ export const AdminDashboard: React.FC<{
                       const sList = allSessionsMap[crs.id] || [];
 
                       return (
-                        <div key={crs.id} className="border border-stone-200 dark:border-stone-800 rounded-2xl p-4 bg-stone-50/50 dark:bg-stone-900/50 space-y-3">
-                          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-200 dark:border-stone-800/80 pb-3">
+                        <div key={crs.id} className="border-2 border-[#171717] dark:border-[#D9AC45]/40 rounded-md p-4 bg-white/70 dark:bg-[#06251D] shadow-[3px_3px_0px_#171717] space-y-3">
+                          <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-[#171717]/20 dark:border-[#D9AC45]/20 pb-3">
                             <div className="flex items-center gap-2.5">
-                              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
-                              <h4 className="font-bold text-stone-900 dark:text-white text-sm sm:text-base">
+                              <span className="w-3 h-3 rounded-xs bg-[#D9AC45] border border-[#171717] shrink-0" />
+                              <h4 className="font-bold text-[#171717] dark:text-[#F8F3E8] text-sm sm:text-base">
                                 {crs.title}
                               </h4>
                               {crs.titleAr && (
-                                <span className="font-amiri text-base text-emerald-700 dark:text-emerald-400 font-bold ml-1">
+                                <span className="font-amiri text-base text-[#D9AC45] font-bold ml-1">
                                   {crs.titleAr}
                                 </span>
                               )}
-                              <span className="text-[10px] px-2 py-0.5 rounded-md bg-stone-200 dark:bg-stone-800 text-stone-600 dark:text-stone-300 font-medium">
+                              <span className="text-[10px] px-2 py-0.5 rounded-sm bg-[#06251D] text-[#D9AC45] border border-[#171717] font-bold">
                                 Bab: {cat?.name || 'Umum'}
                               </span>
                             </div>
@@ -1530,14 +1558,14 @@ export const AdminDashboard: React.FC<{
                             <div className="flex items-center gap-2">
                               <button
                                 onClick={() => handleOpenAddSessionModal(crs.id)}
-                                className="text-xs text-emerald-700 dark:text-emerald-400 hover:underline font-semibold flex items-center gap-1 cursor-pointer"
+                                className="text-xs text-[#06251D] dark:text-[#D9AC45] hover:underline font-extrabold flex items-center gap-1 cursor-pointer"
                               >
                                 <Plus className="w-3.5 h-3.5" />
                                 <span>Tambah Sesi</span>
                               </button>
                               <button
                                 onClick={() => setEditingCourse(crs)}
-                                className="p-1.5 text-stone-500 hover:text-stone-900 dark:hover:text-white transition"
+                                className="p-1.5 text-stone-700 dark:text-[#F8F3E8] hover:text-[#D9AC45] transition"
                                 title="Edit Kursus"
                               >
                                 <Edit className="w-3.5 h-3.5" />
@@ -1548,20 +1576,20 @@ export const AdminDashboard: React.FC<{
                           {/* Sessions List in Course */}
                           <div className="pl-2 sm:pl-4 space-y-2">
                             {sList.length === 0 ? (
-                              <p className="text-xs text-stone-400 italic py-1">Belum ada sesi pada mata pelajaran ini.</p>
+                              <p className="text-xs text-stone-500 italic py-1">Belum ada sesi pada mata pelajaran ini.</p>
                             ) : (
                               sList.map(s => (
-                                <div key={s.id} className="flex flex-wrap items-center justify-between p-2.5 bg-white dark:bg-stone-800 rounded-xl border border-stone-200 dark:border-stone-700/60 text-xs gap-2 hover:border-emerald-400/50 transition">
+                                <div key={s.id} className="flex flex-wrap items-center justify-between p-2.5 bg-white dark:bg-[#0B3026] rounded-md border-2 border-[#171717] dark:border-[#D9AC45]/30 text-xs gap-2 shadow-[2px_2px_0px_#171717] hover:border-[#D9AC45] transition">
                                   <div className="flex items-center gap-2 overflow-hidden">
-                                    <span className="w-6 h-6 rounded-lg bg-stone-100 dark:bg-stone-700 text-stone-700 dark:text-stone-300 font-bold flex items-center justify-center shrink-0 text-[11px]">
+                                    <span className="w-6 h-6 rounded-sm bg-[#D9AC45] text-[#171717] border border-[#171717] font-extrabold flex items-center justify-center shrink-0 text-[11px]">
                                       {s.order}
                                     </span>
                                     <div className="truncate">
-                                      <p className="font-semibold text-stone-900 dark:text-stone-100 truncate">
+                                      <p className="font-bold text-[#171717] dark:text-[#F8F3E8] truncate">
                                         {s.title}
                                       </p>
                                       {s.titleAr && (
-                                        <p className="font-amiri text-xs text-emerald-600 dark:text-emerald-400 truncate">
+                                        <p className="font-amiri text-xs text-[#D9AC45] font-bold truncate">
                                           {s.titleAr}
                                         </p>
                                       )}
@@ -1570,36 +1598,36 @@ export const AdminDashboard: React.FC<{
 
                                   <div className="flex items-center gap-2 shrink-0">
                                     {s.youtubeUrl && (
-                                      <span className="px-2 py-0.5 rounded-md bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-400 text-[10px] font-medium flex items-center gap-1">
+                                      <span className="px-2 py-0.5 rounded-sm bg-[#F04438] text-white border border-[#171717] text-[10px] font-bold flex items-center gap-1">
                                         <Video className="w-3 h-3" /> YouTube
                                       </span>
                                     )}
                                     {s.pdfUrl && (
-                                      <span className="px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-400 text-[10px] font-medium flex items-center gap-1">
+                                      <span className="px-2 py-0.5 rounded-sm bg-[#D9AC45] text-[#171717] border border-[#171717] text-[10px] font-bold flex items-center gap-1">
                                         <FileText className="w-3 h-3" /> PDF
                                       </span>
                                     )}
                                     {s.googleDriveUrl && (
-                                      <span className="px-2 py-0.5 rounded-md bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-400 text-[10px] font-medium flex items-center gap-1">
+                                      <span className="px-2 py-0.5 rounded-sm bg-[#3478F6] text-white border border-[#171717] text-[10px] font-bold flex items-center gap-1">
                                         <ExternalLink className="w-3 h-3" /> Drive
                                       </span>
                                     )}
                                     {s.quizId && (
-                                      <span className="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold flex items-center gap-1">
+                                      <span className="px-2 py-0.5 rounded-sm bg-[#06251D] text-[#D9AC45] border border-[#171717] text-[10px] font-extrabold flex items-center gap-1">
                                         <HelpCircle className="w-3 h-3" /> Kuis Sesi
                                       </span>
                                     )}
 
                                     <button
                                       onClick={() => handleOpenEditSessionModal(s)}
-                                      className="p-1.5 text-stone-600 dark:text-stone-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition"
+                                      className="p-1.5 text-stone-700 dark:text-[#F8F3E8] hover:text-[#D9AC45] transition cursor-pointer"
                                       title="Edit Sesi & Kuis"
                                     >
                                       <Edit className="w-3.5 h-3.5" />
                                     </button>
                                     <button
                                       onClick={() => handleDeleteSession(s)}
-                                      className="p-1.5 text-stone-400 hover:text-rose-600 transition"
+                                      className="p-1.5 text-[#F04438] hover:opacity-80 transition cursor-pointer"
                                       title="Hapus Sesi"
                                     >
                                       <Trash2 className="w-3.5 h-3.5" />
@@ -1617,9 +1645,9 @@ export const AdminDashboard: React.FC<{
               </div>
 
               {/* AKTIVITAS TERBARU & ATTEMPTS */}
-              <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl p-6 space-y-4 shadow-xs">
-                <h3 className="text-base font-bold text-stone-900 dark:text-white font-sans flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <div className="nb-card p-6 space-y-4">
+                <h3 className="text-base font-bold text-[#171717] dark:text-[#F8F3E8] font-serif-brand flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-[#D9AC45]" />
                   <span>Aktivitas Hasil Kuis Santri Terbaru</span>
                 </h3>
 
@@ -1628,20 +1656,20 @@ export const AdminDashboard: React.FC<{
                 ) : (
                   <div className="space-y-2">
                     {attempts.slice(0, 5).map(att => (
-                      <div key={att.id} className="flex items-center justify-between p-3 bg-stone-50 dark:bg-stone-800/60 rounded-xl text-xs border border-stone-200/60 dark:border-stone-700/50">
+                      <div key={att.id} className="flex items-center justify-between p-3 bg-white dark:bg-[#0B3026] rounded-md text-xs border-2 border-[#171717] dark:border-[#D9AC45]/30 shadow-[2px_2px_0px_#171717]">
                         <div>
-                          <p className="font-semibold text-stone-900 dark:text-stone-100">
+                          <p className="font-bold text-[#171717] dark:text-[#F8F3E8]">
                             {att.userName || att.userEmail}
                           </p>
-                          <p className="text-[10px] text-stone-500 dark:text-stone-400">
+                          <p className="text-[10px] text-stone-500 dark:text-[#F8F3E8]/60 font-semibold">
                             Disubmit: {new Date(att.submittedAt).toLocaleString('id-ID')}
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
+                          <span className={`px-2.5 py-1 rounded-sm text-xs font-extrabold border-2 border-[#171717] shadow-[2px_2px_0px_#171717] ${
                             att.passed
-                              ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800'
-                              : 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-800'
+                              ? 'bg-[#06251D] text-[#D9AC45]'
+                              : 'bg-[#F04438] text-white'
                           }`}>
                             Skor: {att.score}% ({att.passed ? 'Lulus' : 'Belum Lulus'})
                           </span>
@@ -1660,7 +1688,7 @@ export const AdminDashboard: React.FC<{
           {activeTab === 'courses' && (
             <div className="space-y-6 animate-fade-in">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-bold text-stone-900 dark:text-white">
+                <h2 className="text-lg font-bold text-[#171717] dark:text-[#F8F3E8] font-serif-brand">
                   Daftar Mata Pelajaran ({courses.length})
                 </h2>
                 <button
@@ -1681,67 +1709,67 @@ export const AdminDashboard: React.FC<{
                     totalDuration: '5 Sesi',
                     order: courses.length + 1
                   })}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow transition flex items-center gap-1.5 cursor-pointer active:scale-95"
+                  className="px-4 py-2 nb-btn nb-btn-primary text-xs flex items-center gap-1.5 cursor-pointer"
                 >
-                  <Plus className="w-4 h-4" />
+                  <Plus className="w-4 h-4 text-[#D9AC45]" />
                   <span>+ Tambah Mata Pelajaran</span>
                 </button>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {displayedCourses.map(course => (
-                  <div key={course.id} className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl overflow-hidden shadow-xs hover:shadow-md transition flex flex-col justify-between">
+                  <div key={course.id} className="nb-card overflow-hidden flex flex-col justify-between">
                     <div className="p-5 space-y-3">
-                      <div className="aspect-video w-full rounded-xl bg-stone-100 dark:bg-stone-800 overflow-hidden relative border border-stone-200 dark:border-stone-700">
+                      <div className="aspect-video w-full rounded-xs bg-[#06251D] overflow-hidden relative border-2 border-[#171717]">
                         {course.coverImageUrl ? (
                           <img src={course.coverImageUrl} alt={course.title} className="w-full h-full object-cover" />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center text-stone-400">
+                          <div className="w-full h-full flex items-center justify-center text-[#D9AC45]">
                             <BookOpen className="w-8 h-8" />
                           </div>
                         )}
-                        <span className={`absolute top-2 right-2 text-[10px] font-bold px-2 py-0.5 rounded-md shadow ${
-                          course.isPublished ? 'bg-emerald-500 text-white' : 'bg-stone-600 text-white'
+                        <span className={`absolute top-2 right-2 text-[10px] font-extrabold px-2 py-0.5 rounded-sm border-2 border-[#171717] uppercase tracking-wider ${
+                          course.isPublished ? 'bg-[#D9AC45] text-[#171717]' : 'bg-[#171717] text-white'
                         }`}>
                           {course.isPublished ? 'Published' : 'Draft'}
                         </span>
                       </div>
 
                       <div>
-                        <h3 className="font-bold text-stone-900 dark:text-white text-base">
+                        <h3 className="font-bold text-[#171717] dark:text-[#F8F3E8] text-base font-serif-brand">
                           {course.title}
                         </h3>
                         {course.titleAr && (
-                          <p className="font-amiri text-lg text-emerald-600 dark:text-emerald-400 font-bold mt-1">
+                          <p className="font-amiri text-lg text-[#D9AC45] font-bold mt-1">
                             {course.titleAr}
                           </p>
                         )}
-                        <p className="text-xs text-stone-500 dark:text-stone-400 mt-1 line-clamp-2">
+                        <p className="text-xs text-stone-600 dark:text-[#F8F3E8]/70 mt-1 line-clamp-2 font-medium">
                           {course.description}
                         </p>
                       </div>
                     </div>
 
-                    <div className="p-4 border-t border-stone-100 dark:border-stone-800/80 bg-stone-50/50 dark:bg-stone-900/50 flex items-center justify-between">
-                      <span className="text-[11px] text-stone-500 font-medium">
+                    <div className="p-4 border-t-2 border-[#171717] dark:border-[#D9AC45]/30 bg-stone-100/60 dark:bg-[#06251D]/60 flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-stone-700 dark:text-[#F8F3E8]/80">
                         {allSessionsMap[course.id]?.length || 0} Sesi
                       </span>
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => handleOpenAddSessionModal(course.id)}
-                          className="px-2.5 py-1 bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 rounded-lg text-xs font-semibold hover:bg-emerald-200 transition cursor-pointer"
+                          className="px-2.5 py-1 nb-btn nb-btn-gold text-xs"
                         >
                           + Sesi
                         </button>
                         <button
                           onClick={() => setEditingCourse(course)}
-                          className="p-1.5 text-stone-600 dark:text-stone-300 hover:text-emerald-600 transition cursor-pointer"
+                          className="p-1.5 text-stone-700 dark:text-[#F8F3E8] hover:text-[#D9AC45] transition cursor-pointer"
                         >
                           <Edit className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleDeleteCourse(course)}
-                          className="p-1.5 text-rose-500 hover:text-rose-700 transition cursor-pointer"
+                          className="p-1.5 text-[#F04438] hover:opacity-80 transition cursor-pointer"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -1759,7 +1787,7 @@ export const AdminDashboard: React.FC<{
           {activeTab === 'categories' && (
             <div className="space-y-6 animate-fade-in">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-bold text-stone-900 dark:text-white">
+                <h2 className="text-lg font-bold text-[#171717] dark:text-[#F8F3E8] font-serif-brand">
                   Daftar Bab / Modul / Kategori ({categories.length})
                 </h2>
                 <button
@@ -1770,17 +1798,17 @@ export const AdminDashboard: React.FC<{
                     description: '',
                     order: categories.length + 1
                   })}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow transition flex items-center gap-1.5 cursor-pointer active:scale-95"
+                  className="px-4 py-2 nb-btn nb-btn-primary text-xs flex items-center gap-1.5 cursor-pointer"
                 >
-                  <Plus className="w-4 h-4" />
+                  <Plus className="w-4 h-4 text-[#D9AC45]" />
                   <span>+ Tambah Bab / Modul</span>
                 </button>
               </div>
 
-              <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl overflow-hidden shadow-xs">
+              <div className="nb-card overflow-hidden">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
-                    <tr className="bg-stone-50 dark:bg-stone-800/80 border-b border-stone-200 dark:border-stone-800 text-stone-500 font-semibold">
+                    <tr className="bg-[#06251D] text-[#D9AC45] border-b-2 border-[#171717] font-extrabold uppercase tracking-wider">
                       <th className="p-3.5">Urutan</th>
                       <th className="p-3.5">Nama Bab / Modul</th>
                       <th className="p-3.5">Nama Arab</th>
@@ -1789,25 +1817,25 @@ export const AdminDashboard: React.FC<{
                       <th className="p-3.5 text-right">Aksi</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-stone-200 dark:divide-stone-800">
+                  <tbody className="divide-y-2 divide-[#171717]/10 dark:divide-[#D9AC45]/20">
                     {displayedCategories.map(cat => (
-                      <tr key={cat.id} className="hover:bg-stone-50/50 dark:hover:bg-stone-800/50 transition">
-                        <td className="p-3.5 font-bold text-stone-700 dark:text-stone-300">{cat.order}</td>
-                        <td className="p-3.5 font-semibold text-stone-900 dark:text-white">{cat.name}</td>
-                        <td className="p-3.5 font-amiri text-base font-bold text-emerald-600 dark:text-emerald-400">{cat.nameAr}</td>
-                        <td className="p-3.5 text-stone-500">{cat.slug}</td>
-                        <td className="p-3.5 text-stone-500 max-w-xs truncate">{cat.description}</td>
+                      <tr key={cat.id} className="hover:bg-[#D9AC45]/10 transition">
+                        <td className="p-3.5 font-extrabold text-[#171717] dark:text-[#F8F3E8]">{cat.order}</td>
+                        <td className="p-3.5 font-bold text-[#171717] dark:text-[#F8F3E8]">{cat.name}</td>
+                        <td className="p-3.5 font-amiri text-base font-bold text-[#06251D] dark:text-[#D9AC45]">{cat.nameAr}</td>
+                        <td className="p-3.5 font-mono text-[11px] text-stone-600 dark:text-[#F8F3E8]/70">{cat.slug}</td>
+                        <td className="p-3.5 text-stone-600 dark:text-[#F8F3E8]/70 max-w-xs truncate">{cat.description}</td>
                         <td className="p-3.5 text-right">
                           <div className="flex items-center justify-end gap-2">
                             <button
                               onClick={() => setEditingCategory(cat)}
-                              className="p-1.5 text-stone-600 dark:text-stone-300 hover:text-emerald-600 transition cursor-pointer"
+                              className="p-1.5 text-stone-700 dark:text-[#F8F3E8] hover:text-[#D9AC45] transition cursor-pointer"
                             >
                               <Edit className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => handleDeleteCategory(cat)}
-                              className="p-1.5 text-rose-500 hover:text-rose-700 transition cursor-pointer"
+                              className="p-1.5 text-[#F04438] hover:opacity-80 transition cursor-pointer"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -1826,15 +1854,15 @@ export const AdminDashboard: React.FC<{
           {/* ========================================================= */}
           {activeTab === 'sessions' && (
             <div className="space-y-6 animate-fade-in">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-stone-900 p-4 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 nb-card p-4">
                 <div>
-                  <label className="text-xs font-semibold text-stone-500 dark:text-stone-400 block mb-1">
+                  <label className="text-xs font-bold text-stone-700 dark:text-[#F8F3E8]/80 block mb-1 uppercase tracking-wider">
                     Pilih Mata Pelajaran:
                   </label>
                   <select
                     value={selectedCourseId}
                     onChange={(e) => setSelectedCourseId(e.target.value)}
-                    className="px-3.5 py-2 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs font-semibold text-stone-900 dark:text-white"
+                    className="nb-input px-3.5 py-2 text-xs font-bold"
                   >
                     {courses.map(c => (
                       <option key={c.id} value={c.id}>{c.title}</option>
@@ -1844,18 +1872,18 @@ export const AdminDashboard: React.FC<{
 
                 <button
                   onClick={() => handleOpenAddSessionModal(selectedCourseId)}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow transition flex items-center gap-1.5 cursor-pointer active:scale-95 self-start sm:self-auto"
+                  className="px-4 py-2 nb-btn nb-btn-primary text-xs flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
                 >
-                  <Plus className="w-4 h-4" />
+                  <Plus className="w-4 h-4 text-[#D9AC45]" />
                   <span>+ Tambah Sesi Pembelajaran Baru</span>
                 </button>
               </div>
 
               {/* Sessions Table */}
-              <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl overflow-hidden shadow-xs">
+              <div className="nb-card overflow-hidden">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
-                    <tr className="bg-stone-50 dark:bg-stone-800/80 border-b border-stone-200 dark:border-stone-800 text-stone-500 font-semibold">
+                    <tr className="bg-[#06251D] text-[#D9AC45] border-b-2 border-[#171717] font-extrabold uppercase tracking-wider">
                       <th className="p-3.5">Urutan</th>
                       <th className="p-3.5">Judul Sesi</th>
                       <th className="p-3.5">Video YouTube</th>
@@ -1864,27 +1892,27 @@ export const AdminDashboard: React.FC<{
                       <th className="p-3.5 text-right">Aksi</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-stone-200 dark:divide-stone-800">
+                  <tbody className="divide-y-2 divide-[#171717]/10 dark:divide-[#D9AC45]/20">
                     {displayedCourseSessions.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="p-8 text-center text-stone-500">
+                        <td colSpan={6} className="p-8 text-center text-stone-500 font-semibold">
                           Belum ada sesi pembelajaran untuk mata pelajaran ini. Klik "+ Tambah Sesi Pembelajaran Baru".
                         </td>
                       </tr>
                     ) : (
                       displayedCourseSessions.map(s => (
-                        <tr key={s.id} className="hover:bg-stone-50/50 dark:hover:bg-stone-800/50 transition">
-                          <td className="p-3.5 font-bold text-stone-700 dark:text-stone-300">{s.order}</td>
+                        <tr key={s.id} className="hover:bg-[#D9AC45]/10 transition">
+                          <td className="p-3.5 font-extrabold text-[#171717] dark:text-[#F8F3E8]">{s.order}</td>
                           <td className="p-3.5">
-                            <p className="font-semibold text-stone-900 dark:text-white">{s.title}</p>
+                            <p className="font-bold text-[#171717] dark:text-[#F8F3E8]">{s.title}</p>
                             {s.titleAr && (
-                              <p className="font-amiri text-sm text-emerald-600 dark:text-emerald-400 font-bold">{s.titleAr}</p>
+                              <p className="font-amiri text-sm text-[#06251D] dark:text-[#D9AC45] font-bold">{s.titleAr}</p>
                             )}
                           </td>
                           <td className="p-3.5">
                             {s.youtubeUrl ? (
-                              <span className="text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
-                                <Check className="w-3.5 h-3.5" /> Ada Video
+                              <span className="text-[#06251D] dark:text-[#D9AC45] font-extrabold flex items-center gap-1">
+                                <Check className="w-3.5 h-3.5 text-[#D9AC45]" /> Ada Video
                               </span>
                             ) : (
                               <span className="text-stone-400">-</span>
@@ -1893,12 +1921,12 @@ export const AdminDashboard: React.FC<{
                           <td className="p-3.5">
                             <div className="space-y-0.5">
                               {s.pdfUrl && (
-                                <span className="text-amber-600 dark:text-amber-400 font-medium block">
+                                <span className="text-[#06251D] dark:text-[#D9AC45] font-bold block">
                                   • {s.pdfTitle || 'Naskah PDF'}
                                 </span>
                               )}
                               {s.googleDriveUrl && (
-                                <span className="text-blue-600 dark:text-blue-400 font-medium block">
+                                <span className="text-[#3478F6] font-bold block">
                                   • Drive PDF Link
                                 </span>
                               )}
@@ -1907,24 +1935,24 @@ export const AdminDashboard: React.FC<{
                           </td>
                           <td className="p-3.5">
                             {s.quizId ? (
-                              <span className="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-bold text-[10px]">
+                              <span className="px-2 py-0.5 rounded-sm bg-[#06251D] text-[#D9AC45] border border-[#171717] font-extrabold text-[10px]">
                                 Kuis Aktif
                               </span>
                             ) : (
-                              <span className="text-stone-400">Tidak ada kuis</span>
+                              <span className="text-stone-400 font-medium">Tidak ada kuis</span>
                             )}
                           </td>
                           <td className="p-3.5 text-right">
                             <div className="flex items-center justify-end gap-2">
                               <button
                                 onClick={() => handleOpenEditSessionModal(s)}
-                                className="px-2.5 py-1 bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 rounded-lg text-xs font-semibold hover:bg-emerald-200 transition cursor-pointer"
+                                className="px-2.5 py-1 nb-btn nb-btn-gold text-xs"
                               >
                                 Edit Sesi & Kuis
                               </button>
                               <button
                                 onClick={() => handleDeleteSession(s)}
-                                className="p-1.5 text-rose-500 hover:text-rose-700 transition cursor-pointer"
+                                className="p-1.5 text-[#F04438] hover:opacity-80 transition cursor-pointer"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
@@ -1945,7 +1973,7 @@ export const AdminDashboard: React.FC<{
           {activeTab === 'quizzes' && (
             <div className="space-y-6 animate-fade-in">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-bold text-stone-900 dark:text-white">
+                <h2 className="text-lg font-bold text-[#171717] dark:text-[#F8F3E8] font-serif-brand">
                   Bank Kuis Evaluasi ({quizzes.length})
                 </h2>
                 <button
@@ -1962,9 +1990,9 @@ export const AdminDashboard: React.FC<{
                     isPublished: true,
                     questions: []
                   })}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow transition flex items-center gap-1.5 cursor-pointer active:scale-95"
+                  className="px-4 py-2 nb-btn nb-btn-primary text-xs flex items-center gap-1.5 cursor-pointer"
                 >
-                  <Plus className="w-4 h-4" />
+                  <Plus className="w-4 h-4 text-[#D9AC45]" />
                   <span>+ Tambah Kuis Bebas</span>
                 </button>
               </div>
@@ -1974,38 +2002,38 @@ export const AdminDashboard: React.FC<{
                   const linkedCourse = courses.find(c => c.id === q.courseId);
 
                   return (
-                    <div key={q.id} className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl p-5 space-y-4 shadow-xs flex flex-col justify-between">
+                    <div key={q.id} className="nb-card p-5 space-y-4 flex flex-col justify-between">
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300">
+                          <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-sm bg-[#06251D] text-[#D9AC45] border border-[#171717]">
                             {linkedCourse?.title || 'Umum'}
                           </span>
-                          <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                          <span className="text-xs font-extrabold text-[#06251D] dark:text-[#D9AC45]">
                             Pass: {q.passingScore}%
                           </span>
                         </div>
 
-                        <h3 className="font-bold text-stone-900 dark:text-white text-base">
+                        <h3 className="font-bold text-[#171717] dark:text-[#F8F3E8] text-base font-serif-brand">
                           {q.title}
                         </h3>
 
-                        <p className="text-xs text-stone-500 dark:text-stone-400">
+                        <p className="text-xs text-stone-600 dark:text-[#F8F3E8]/70 font-semibold">
                           Jumlah Soal: <strong>{q.questions?.length || 0} Soal</strong>
                         </p>
                       </div>
 
-                      <div className="pt-3 border-t border-stone-100 dark:border-stone-800 flex items-center justify-between">
-                        <span className="text-[11px] text-stone-400">ID: {q.id}</span>
+                      <div className="pt-3 border-t-2 border-[#171717]/20 dark:border-[#D9AC45]/20 flex items-center justify-between">
+                        <span className="text-[11px] font-mono text-stone-500 dark:text-[#F8F3E8]/60">ID: {q.id}</span>
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => setEditingQuiz(q)}
-                            className="p-1.5 text-stone-600 dark:text-stone-300 hover:text-emerald-600 transition cursor-pointer"
+                            className="p-1.5 text-stone-700 dark:text-[#F8F3E8] hover:text-[#D9AC45] transition cursor-pointer"
                           >
                             <Edit className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleDeleteQuiz(q)}
-                            className="p-1.5 text-rose-500 hover:text-rose-700 transition cursor-pointer"
+                            className="p-1.5 text-[#F04438] hover:opacity-80 transition cursor-pointer"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -2063,37 +2091,51 @@ export const AdminDashboard: React.FC<{
           {/* ========================================================= */}
           {activeTab === 'users' && (
             <div className="space-y-6 animate-fade-in">
-              <h2 className="text-lg font-bold text-stone-900 dark:text-white">
-                Daftar Santri / Pengguna Terdaftar ({users.length})
-              </h2>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-black text-stone-900 dark:text-white tracking-tight">
+                    Daftar Santri / Pengguna Terdaftar ({users.length})
+                  </h2>
+                  <p className="text-xs text-stone-600 dark:text-stone-400 mt-1">
+                    Seluruh akun santri dan pengajar yang terdaftar di sistem.
+                  </p>
+                </div>
+                <span className="nb-badge bg-[#D9AC45]/20 text-[#06251D] dark:text-[#D9AC45] border-[#171717] dark:border-[#D9AC45]/50">
+                  {users.length} Akun
+                </span>
+              </div>
 
-              <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl overflow-hidden shadow-xs">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="bg-stone-50 dark:bg-stone-800/80 border-b border-stone-200 dark:border-stone-800 text-stone-500 font-semibold">
-                      <th className="p-3.5">Nama</th>
-                      <th className="p-3.5">Email</th>
-                      <th className="p-3.5">Role</th>
-                      <th className="p-3.5">Kunyah / Bio</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-stone-200 dark:divide-stone-800">
-                    {displayedUsers.map(u => (
-                      <tr key={u.id} className="hover:bg-stone-50/50 dark:hover:bg-stone-800/50 transition">
-                        <td className="p-3.5 font-semibold text-stone-900 dark:text-white">{u.displayName || 'Santri'}</td>
-                        <td className="p-3.5 text-stone-600 dark:text-stone-300">{u.email}</td>
-                        <td className="p-3.5">
-                          <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
-                            u.role === 'admin' ? 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                          }`}>
-                            {u.role || 'student'}
-                          </span>
-                        </td>
-                        <td className="p-3.5 text-stone-500">{u.kunyah || u.bio || '-'}</td>
+              <div className="nb-card overflow-hidden p-0">
+                <div className="overflow-x-auto w-full">
+                  <table className="w-full min-w-[550px] text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-stone-100 dark:bg-[#0B3026] border-b-2 border-[#171717] dark:border-[#D9AC45]/30 text-stone-700 dark:text-stone-300 font-black uppercase tracking-wider">
+                        <th className="p-3.5 whitespace-nowrap">Nama</th>
+                        <th className="p-3.5 whitespace-nowrap">Email</th>
+                        <th className="p-3.5 whitespace-nowrap">Peran (Role)</th>
+                        <th className="p-3.5 whitespace-nowrap">Kunyah / Bio</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y-2 divide-stone-200 dark:divide-stone-800">
+                      {displayedUsers.map(u => (
+                        <tr key={u.id} className="hover:bg-amber-50/50 dark:hover:bg-[#0B3026]/50 transition">
+                          <td className="p-3.5 font-bold text-stone-900 dark:text-white whitespace-nowrap">{u.displayName || 'Santri'}</td>
+                          <td className="p-3.5 font-mono text-stone-600 dark:text-stone-300 break-all">{u.email}</td>
+                          <td className="p-3.5 whitespace-nowrap">
+                            <span className={`inline-flex px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wide border-2 ${
+                              u.role === 'admin' 
+                                ? 'bg-purple-100 text-purple-900 border-[#171717] dark:bg-purple-950 dark:text-purple-200 dark:border-purple-400' 
+                                : 'bg-[#D9AC45]/20 text-[#06251D] border-[#171717] dark:bg-[#D9AC45]/10 dark:text-[#D9AC45] dark:border-[#D9AC45]/50'
+                            }`}>
+                              {u.role || 'student'}
+                            </span>
+                          </td>
+                          <td className="p-3.5 text-stone-500 dark:text-stone-400">{u.kunyah || u.bio || '-'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}
@@ -2103,39 +2145,53 @@ export const AdminDashboard: React.FC<{
           {/* ========================================================= */}
           {activeTab === 'attempts' && (
             <div className="space-y-6 animate-fade-in">
-              <h2 className="text-lg font-bold text-stone-900 dark:text-white">
-                Hasil & Rekapitulasi Nilai Kuis Santri ({attempts.length})
-              </h2>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-black text-stone-900 dark:text-white tracking-tight">
+                    Hasil & Rekapitulasi Nilai Kuis Santri ({attempts.length})
+                  </h2>
+                  <p className="text-xs text-stone-600 dark:text-stone-400 mt-1">
+                    Riwayat pengerjaan evaluasi dan evaluasi kelulusan santri secara real-time.
+                  </p>
+                </div>
+                <span className="nb-badge bg-white dark:bg-[#0B3026] text-stone-800 dark:text-stone-200 border-[#171717] dark:border-[#D9AC45]/50">
+                  {attempts.length} Pengerjaan
+                </span>
+              </div>
 
-              <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl overflow-hidden shadow-xs">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="bg-stone-50 dark:bg-stone-800/80 border-b border-stone-200 dark:border-stone-800 text-stone-500 font-semibold">
-                      <th className="p-3.5">Nama Santri</th>
-                      <th className="p-3.5">Email</th>
-                      <th className="p-3.5">Skor</th>
-                      <th className="p-3.5">Status</th>
-                      <th className="p-3.5">Waktu Submit</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-stone-200 dark:divide-stone-800">
-                    {displayedAttempts.map(att => (
-                      <tr key={att.id} className="hover:bg-stone-50/50 dark:hover:bg-stone-800/50 transition">
-                        <td className="p-3.5 font-semibold text-stone-900 dark:text-white">{att.userName || 'Santri'}</td>
-                        <td className="p-3.5 text-stone-600 dark:text-stone-300">{att.userEmail}</td>
-                        <td className="p-3.5 font-bold text-stone-900 dark:text-white">{att.score}%</td>
-                        <td className="p-3.5">
-                          <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
-                            att.passed ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
-                          }`}>
-                            {att.passed ? 'Lulus' : 'Belum Lulus'}
-                          </span>
-                        </td>
-                        <td className="p-3.5 text-stone-500">{new Date(att.submittedAt).toLocaleString('id-ID')}</td>
+              <div className="nb-card overflow-hidden p-0">
+                <div className="overflow-x-auto w-full">
+                  <table className="w-full min-w-[550px] text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-stone-100 dark:bg-[#0B3026] border-b-2 border-[#171717] dark:border-[#D9AC45]/30 text-stone-700 dark:text-stone-300 font-black uppercase tracking-wider">
+                        <th className="p-3.5 whitespace-nowrap">Nama Santri</th>
+                        <th className="p-3.5 whitespace-nowrap">Email</th>
+                        <th className="p-3.5 whitespace-nowrap">Skor</th>
+                        <th className="p-3.5 whitespace-nowrap">Status</th>
+                        <th className="p-3.5 whitespace-nowrap">Waktu Submit</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y-2 divide-stone-200 dark:divide-stone-800">
+                      {displayedAttempts.map(att => (
+                        <tr key={att.id} className="hover:bg-amber-50/50 dark:hover:bg-[#0B3026]/50 transition">
+                          <td className="p-3.5 font-bold text-stone-900 dark:text-white whitespace-nowrap">{att.userName || 'Santri'}</td>
+                          <td className="p-3.5 font-mono text-stone-600 dark:text-stone-300 break-all">{att.userEmail}</td>
+                          <td className="p-3.5 font-black text-stone-900 dark:text-white text-sm">{att.score}%</td>
+                          <td className="p-3.5 whitespace-nowrap">
+                            <span className={`inline-flex px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wide border-2 ${
+                              att.passed 
+                                ? 'bg-emerald-100 text-emerald-900 border-[#171717] dark:bg-emerald-950 dark:text-emerald-200 dark:border-emerald-400' 
+                                : 'bg-rose-100 text-rose-900 border-[#171717] dark:bg-rose-950 dark:text-rose-200 dark:border-rose-400'
+                            }`}>
+                              {att.passed ? 'Lulus' : 'Belum Lulus'}
+                            </span>
+                          </td>
+                          <td className="p-3.5 text-stone-500 dark:text-stone-400 whitespace-nowrap">{new Date(att.submittedAt).toLocaleString('id-ID')}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}
@@ -2185,34 +2241,44 @@ export const AdminDashboard: React.FC<{
 
             return (
               <div className="space-y-6 animate-fade-in">
-                <h2 className="text-lg font-bold text-stone-900 dark:text-white">
-                  Status Integrasi Cloud Firestore, Pencadangan & Audit Penyimpanan
-                </h2>
+                <div>
+                  <h2 className="text-xl font-black text-stone-900 dark:text-white tracking-tight">
+                    Status Integrasi Cloud Firestore & Pencadangan Data
+                  </h2>
+                  <p className="text-xs text-stone-600 dark:text-stone-400 mt-1">
+                    Pantau konektivitas basis data, pencadangan berkas JSON, dan audit penyimpanan lokal browser.
+                  </p>
+                </div>
 
-                <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl p-6 space-y-4 shadow-xs">
-                  <div className="flex items-center justify-between flex-wrap gap-3">
+                <div className="nb-card p-6 space-y-5">
+                  <div className="flex items-center justify-between flex-wrap gap-4 pb-4 border-b-2 border-stone-200 dark:border-stone-800">
                     <div className="flex items-center gap-3">
-                      <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
-                      <p className="font-semibold text-sm text-stone-900 dark:text-white">
-                        Cloud Firestore Terhubung Persisten (Sumber Data Utama Lintas Perangkat)
-                      </p>
+                      <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-[#171717] animate-pulse" />
+                      <div>
+                        <p className="font-black text-sm text-[#06251D] dark:text-white">
+                          Cloud Firestore Terhubung Persisten
+                        </p>
+                        <p className="text-xs text-stone-500 dark:text-stone-400">
+                          Sumber data utama lintas perangkat terverifikasi aktif
+                        </p>
+                      </div>
                     </div>
                     <button
                       type="button"
                       onClick={handleDownloadFullBackup}
-                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold transition shadow flex items-center gap-1.5 cursor-pointer"
+                      className="nb-btn nb-btn-gold text-xs flex items-center gap-1.5 cursor-pointer py-2 px-4"
                     >
-                      <Download className="w-3.5 h-3.5" />
+                      <Download className="w-4 h-4" />
                       <span>Unduh Cadangan Data (Backup JSON)</span>
                     </button>
                   </div>
 
-                  <div className="p-3.5 rounded-xl bg-stone-50 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 text-xs space-y-1.5">
+                  <div className="p-4 rounded-md bg-[#F8F3E8] dark:bg-[#0B3026] border-2 border-[#171717] dark:border-[#D9AC45]/40 text-xs space-y-2">
                     <div className="flex items-center justify-between flex-wrap gap-2">
-                      <span className="font-semibold text-stone-800 dark:text-stone-200">
-                        Target Named Database ID: <code className="px-1.5 py-0.5 bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 rounded-md font-mono text-[11px]">{firebaseConfig.firestoreDatabaseId}</code>
+                      <span className="font-bold text-[#06251D] dark:text-stone-200">
+                        Target Named Database ID: <code className="px-2 py-0.5 bg-white dark:bg-[#06251D] text-[#06251D] dark:text-[#D9AC45] border border-[#171717] dark:border-[#D9AC45]/50 rounded font-mono text-[11px] font-bold">{firebaseConfig.firestoreDatabaseId}</code>
                       </span>
-                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                      <span className="nb-badge bg-emerald-100 text-emerald-900 border-[#171717] dark:bg-emerald-950 dark:text-emerald-200 dark:border-emerald-400">
                         Named Database Terverifikasi
                       </span>
                     </div>
@@ -2220,52 +2286,52 @@ export const AdminDashboard: React.FC<{
                       const diag = getLatestFirestoreDiagnostic();
                       if (!diag) {
                         return (
-                          <p className="text-[11px] text-stone-500">
+                          <p className="text-[11px] text-stone-600 dark:text-stone-400">
                             Status kueri: Normal • Seluruh pembacaan database ditujukan langsung ke named database produksi.
                           </p>
                         );
                       }
                       return (
-                        <div className="text-[11px] text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 p-2 rounded-lg border border-amber-200 dark:border-amber-800/60 mt-1">
+                        <div className="text-[11px] text-amber-900 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/60 p-2.5 rounded-md border-2 border-[#171717] dark:border-amber-400/50 mt-1 font-medium">
                           <strong>Diagnostik Terakhir ({diag.category}):</strong> {diag.summary} (Kode: {diag.code})
                         </div>
                       );
                     })()}
                   </div>
 
-                  <p className="text-xs text-stone-500 leading-relaxed">
-                    Seluruh data artikel, tanya jawab konsultasi, video pembelajaran, kurikulum, kuis evaluasi, dan profil pengajar disimpan secara persisten di Cloud Firestore project ID: <strong>{firebaseConfig.projectId}</strong> (Database: <strong>{firebaseConfig.firestoreDatabaseId}</strong>). Penyimpanan lokal browser tidak pernah menimpa data server secara otomatis.
+                  <p className="text-xs text-stone-600 dark:text-stone-300 leading-relaxed font-medium">
+                    Seluruh data artikel, tanya jawab konsultasi, video pembelajaran, kurikulum, kuis evaluasi, dan profil pengajar disimpan secara persisten di Cloud Firestore project ID: <strong className="text-stone-900 dark:text-white font-mono">{firebaseConfig.projectId}</strong> (Database: <strong className="text-stone-900 dark:text-white font-mono">{firebaseConfig.firestoreDatabaseId}</strong>). Penyimpanan lokal browser tidak pernah menimpa data server secara otomatis.
                   </p>
 
                   {/* Live Server Data Summary */}
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-2">
-                    <div className="p-3 rounded-xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700">
-                      <div className="text-[11px] text-stone-500">Bab / Kategori</div>
-                      <div className="text-base font-bold text-stone-900 dark:text-white">{categories.length}</div>
+                    <div className="p-3.5 rounded-md bg-[#F8F3E8] dark:bg-[#0B3026] border-2 border-[#171717] dark:border-[#D9AC45]/40 shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#06251D]">
+                      <div className="text-[11px] font-bold text-stone-600 dark:text-stone-400 uppercase tracking-wider">Bab/Kategori</div>
+                      <div className="text-lg font-black text-stone-900 dark:text-white mt-1">{categories.length}</div>
                     </div>
-                    <div className="p-3 rounded-xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700">
-                      <div className="text-[11px] text-stone-500">Mata Pelajaran</div>
-                      <div className="text-base font-bold text-stone-900 dark:text-white">{courses.length}</div>
+                    <div className="p-3.5 rounded-md bg-[#F8F3E8] dark:bg-[#0B3026] border-2 border-[#171717] dark:border-[#D9AC45]/40 shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#06251D]">
+                      <div className="text-[11px] font-bold text-stone-600 dark:text-stone-400 uppercase tracking-wider">Mata Pelajaran</div>
+                      <div className="text-lg font-black text-stone-900 dark:text-white mt-1">{courses.length}</div>
                     </div>
-                    <div className="p-3 rounded-xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700">
-                      <div className="text-[11px] text-stone-500">Video / Sesi</div>
-                      <div className="text-base font-bold text-stone-900 dark:text-white">{totalSessionsCount}</div>
+                    <div className="p-3.5 rounded-md bg-[#F8F3E8] dark:bg-[#0B3026] border-2 border-[#171717] dark:border-[#D9AC45]/40 shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#06251D]">
+                      <div className="text-[11px] font-bold text-stone-600 dark:text-stone-400 uppercase tracking-wider">Video / Sesi</div>
+                      <div className="text-lg font-black text-stone-900 dark:text-white mt-1">{totalSessionsCount}</div>
                     </div>
-                    <div className="p-3 rounded-xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700">
-                      <div className="text-[11px] text-stone-500">Kuis Evaluasi</div>
-                      <div className="text-base font-bold text-stone-900 dark:text-white">{quizzes.length}</div>
+                    <div className="p-3.5 rounded-md bg-[#F8F3E8] dark:bg-[#0B3026] border-2 border-[#171717] dark:border-[#D9AC45]/40 shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#06251D]">
+                      <div className="text-[11px] font-bold text-stone-600 dark:text-stone-400 uppercase tracking-wider">Kuis Evaluasi</div>
+                      <div className="text-lg font-black text-stone-900 dark:text-white mt-1">{quizzes.length}</div>
                     </div>
-                    <div className="p-3 rounded-xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700">
-                      <div className="text-[11px] text-stone-500">Artikel Asli</div>
-                      <div className="text-base font-bold text-emerald-600 dark:text-emerald-400">{blogPosts.length}</div>
+                    <div className="p-3.5 rounded-md bg-[#F8F3E8] dark:bg-[#0B3026] border-2 border-[#171717] dark:border-[#D9AC45]/40 shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#06251D]">
+                      <div className="text-[11px] font-bold text-stone-600 dark:text-stone-400 uppercase tracking-wider">Artikel Asli</div>
+                      <div className="text-lg font-black text-[#D9AC45] mt-1">{blogPosts.length}</div>
                     </div>
-                    <div className="p-3 rounded-xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700">
-                      <div className="text-[11px] text-stone-500">Akun Terdaftar</div>
-                      <div className="text-base font-bold text-stone-900 dark:text-white">{users.length}</div>
+                    <div className="p-3.5 rounded-md bg-[#F8F3E8] dark:bg-[#0B3026] border-2 border-[#171717] dark:border-[#D9AC45]/40 shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#06251D]">
+                      <div className="text-[11px] font-bold text-stone-600 dark:text-stone-400 uppercase tracking-wider">Akun Santri</div>
+                      <div className="text-lg font-black text-stone-900 dark:text-white mt-1">{users.length}</div>
                     </div>
                   </div>
 
-                  <div className="pt-4 border-t border-stone-200 dark:border-stone-800 flex flex-wrap items-center gap-3">
+                  <div className="pt-4 border-t-2 border-stone-200 dark:border-stone-800 flex flex-wrap items-center gap-3">
                     <button
                       type="button"
                       onClick={() => {
@@ -2290,7 +2356,7 @@ export const AdminDashboard: React.FC<{
                           }
                         });
                       }}
-                      className="px-4 py-2 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 border border-stone-200 dark:border-stone-700 rounded-xl text-xs font-semibold transition cursor-pointer"
+                      className="nb-btn nb-btn-secondary text-xs cursor-pointer py-2 px-4"
                     >
                       Bersihkan Data Contoh (Dummy)
                     </button>
@@ -2303,7 +2369,7 @@ export const AdminDashboard: React.FC<{
                         onRefreshData();
                         showStatus('success', 'Data berhasil disinkronkan ulang dari Cloud Firestore.');
                       }}
-                      className="px-4 py-2 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 border border-stone-200 dark:border-stone-700 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer"
+                      className="nb-btn nb-btn-primary text-xs flex items-center gap-1.5 cursor-pointer py-2 px-4"
                     >
                       <RefreshCw className="w-3.5 h-3.5" />
                       <span>Sinkronkan Ulang dari Server</span>
@@ -2312,17 +2378,17 @@ export const AdminDashboard: React.FC<{
                 </div>
 
                 {/* Browser LocalStorage Audit Panel */}
-                <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl p-6 space-y-4 shadow-xs">
-                  <div className="flex items-center justify-between">
+                <div className="nb-card p-6 space-y-4">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
                     <div>
-                      <h3 className="font-bold text-sm text-stone-900 dark:text-white">
+                      <h3 className="font-black text-sm text-stone-900 dark:text-white">
                         Audit Penyimpanan Lokal Browser Ini (localStorage)
                       </h3>
-                      <p className="text-xs text-stone-500 mt-0.5">
+                      <p className="text-xs text-stone-600 dark:text-stone-400 mt-0.5">
                         Memeriksa apakah terdapat data lama yang tersimpan secara lokal di browser ini ({localAudit.totalKeys} kunci terdeteksi).
                       </p>
                     </div>
-                    <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                    <span className="nb-badge bg-emerald-100 text-emerald-900 border-[#171717] dark:bg-emerald-950 dark:text-emerald-200 dark:border-emerald-400">
                       Aman • Tidak Menimpa Server
                     </span>
                   </div>
@@ -2330,14 +2396,14 @@ export const AdminDashboard: React.FC<{
                   {localAudit.entries.length === 0 ? (
                     <p className="text-xs text-stone-500 italic">Tidak ada item localStorage pada browser ini.</p>
                   ) : (
-                    <div className="divide-y divide-stone-200 dark:divide-stone-800 border border-stone-200 dark:border-stone-800 rounded-xl overflow-hidden text-xs">
+                    <div className="divide-y-2 divide-stone-200 dark:divide-stone-800 border-2 border-[#171717] dark:border-[#D9AC45]/40 rounded-md overflow-hidden text-xs">
                       {localAudit.entries.map((entry) => (
-                        <div key={entry.key} className="p-3 flex items-center justify-between gap-4 bg-stone-50/40 dark:bg-stone-800/30">
+                        <div key={entry.key} className="p-3 flex items-center justify-between gap-4 bg-stone-50/60 dark:bg-[#0B3026]/40">
                           <div>
-                            <div className="font-mono font-semibold text-stone-800 dark:text-stone-200">{entry.key}</div>
-                            <div className="text-[11px] text-stone-500">{entry.summary}</div>
+                            <div className="font-mono font-bold text-[#06251D] dark:text-[#D9AC45]">{entry.key}</div>
+                            <div className="text-[11px] text-stone-500 dark:text-stone-400">{entry.summary}</div>
                           </div>
-                          <span className="text-[11px] text-stone-400 shrink-0">{entry.sizeBytes} B</span>
+                          <span className="text-[11px] font-mono text-stone-400 shrink-0">{entry.sizeBytes} B</span>
                         </div>
                       ))}
                     </div>
@@ -2372,48 +2438,49 @@ export const AdminDashboard: React.FC<{
       {/* 3. MULTI-STEP MODAL: FORM "TAMBAH / EDIT SESI PEMBELAJARAN BARU" */}
       {/* ========================================================= */}
       {editingSessionModalOpen && (
-        <div className="fixed inset-0 z-70 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
-          <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 w-full max-w-3xl rounded-3xl shadow-2xl overflow-hidden my-8 flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-70 bg-stone-900/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
+          <div className="bg-white dark:bg-[#06251D] border-3 border-[#171717] dark:border-[#D9AC45] w-full max-w-3xl rounded-md shadow-[8px_8px_0px_#171717] overflow-hidden my-8 flex flex-col max-h-[90vh]">
             {/* Modal Header */}
-            <div className="p-6 border-b border-stone-200 dark:border-stone-800 flex items-center justify-between bg-stone-50/50 dark:bg-stone-900/50 shrink-0">
+            <div className="p-6 border-b-2 border-[#171717] dark:border-[#D9AC45]/40 flex items-center justify-between bg-stone-100 dark:bg-[#0B3026] shrink-0">
               <div>
-                <h3 className="text-lg font-bold text-stone-900 dark:text-white font-sans flex items-center gap-2">
-                  <Video className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                <h3 className="text-lg font-black text-[#06251D] dark:text-white flex items-center gap-2">
+                  <Video className="w-5 h-5 text-[#D9AC45]" />
                   <span>{sessionFormData.id ? 'Edit Sesi Pembelajaran' : 'Tambah Sesi Pembelajaran Baru'}</span>
                 </h3>
-                <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
+                <p className="text-xs text-stone-600 dark:text-stone-300 mt-0.5">
                   Isi informasi sesi, video YouTube, PDF/Drive, materi teks, dan kuis evaluasi dalam SATU sesi ini.
                 </p>
               </div>
 
               <button
                 onClick={() => setEditingSessionModalOpen(false)}
-                className="p-2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 transition rounded-xl"
+                className="p-2 text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-white border-2 border-transparent hover:border-[#171717] rounded-md transition"
+                aria-label="Tutup modal"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* 4 Tabs Navigation Bar */}
-            <div className="flex border-b border-stone-200 dark:border-stone-800 bg-stone-100/70 dark:bg-stone-800/50 text-xs font-semibold shrink-0 overflow-x-auto">
+            <div className="flex border-b-2 border-[#171717] dark:border-[#D9AC45]/40 bg-stone-200/80 dark:bg-[#0B3026] text-xs font-black uppercase tracking-wider shrink-0 overflow-x-auto">
               <button
                 type="button"
                 onClick={() => setSessionFormTab(1)}
-                className={`flex-1 min-w-[120px] py-3 px-4 text-center border-b-2 transition cursor-pointer ${
+                className={`flex-1 min-w-[130px] py-3.5 px-4 text-center border-b-3 transition cursor-pointer ${
                   sessionFormTab === 1
-                    ? 'border-emerald-600 text-emerald-700 dark:border-emerald-400 dark:text-emerald-300 bg-white dark:bg-stone-900'
-                    : 'border-transparent text-stone-500 hover:text-stone-900 dark:text-stone-400'
+                    ? 'border-[#D9AC45] text-[#06251D] dark:text-[#D9AC45] bg-white dark:bg-[#06251D]'
+                    : 'border-transparent text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-200'
                 }`}
               >
-                1. Informasi Sesi
+                1. Info Sesi
               </button>
               <button
                 type="button"
                 onClick={() => setSessionFormTab(2)}
-                className={`flex-1 min-w-[120px] py-3 px-4 text-center border-b-2 transition cursor-pointer ${
+                className={`flex-1 min-w-[130px] py-3.5 px-4 text-center border-b-3 transition cursor-pointer ${
                   sessionFormTab === 2
-                    ? 'border-emerald-600 text-emerald-700 dark:border-emerald-400 dark:text-emerald-300 bg-white dark:bg-stone-900'
-                    : 'border-transparent text-stone-500 hover:text-stone-900 dark:text-stone-400'
+                    ? 'border-[#D9AC45] text-[#06251D] dark:text-[#D9AC45] bg-white dark:bg-[#06251D]'
+                    : 'border-transparent text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-200'
                 }`}
               >
                 2. Video & PDF
@@ -2421,21 +2488,21 @@ export const AdminDashboard: React.FC<{
               <button
                 type="button"
                 onClick={() => setSessionFormTab(3)}
-                className={`flex-1 min-w-[120px] py-3 px-4 text-center border-b-2 transition cursor-pointer ${
+                className={`flex-1 min-w-[130px] py-3.5 px-4 text-center border-b-3 transition cursor-pointer ${
                   sessionFormTab === 3
-                    ? 'border-emerald-600 text-emerald-700 dark:border-emerald-400 dark:text-emerald-300 bg-white dark:bg-stone-900'
-                    : 'border-transparent text-stone-500 hover:text-stone-900 dark:text-stone-400'
+                    ? 'border-[#D9AC45] text-[#06251D] dark:text-[#D9AC45] bg-white dark:bg-[#06251D]'
+                    : 'border-transparent text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-200'
                 }`}
               >
-                3. Materi Teks (ID/AR)
+                3. Materi Teks
               </button>
               <button
                 type="button"
                 onClick={() => setSessionFormTab(4)}
-                className={`flex-1 min-w-[120px] py-3 px-4 text-center border-b-2 transition cursor-pointer ${
+                className={`flex-1 min-w-[130px] py-3.5 px-4 text-center border-b-3 transition cursor-pointer ${
                   sessionFormTab === 4
-                    ? 'border-emerald-600 text-emerald-700 dark:border-emerald-400 dark:text-emerald-300 bg-white dark:bg-stone-900'
-                    : 'border-transparent text-stone-500 hover:text-stone-900 dark:text-stone-400'
+                    ? 'border-[#D9AC45] text-[#06251D] dark:text-[#D9AC45] bg-white dark:bg-[#06251D]'
+                    : 'border-transparent text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-200'
                 }`}
               >
                 4. Kuis ({sessionFormData.enableQuiz ? `${sessionFormData.questions.length} Soal` : 'Non-aktif'})
@@ -2445,12 +2512,12 @@ export const AdminDashboard: React.FC<{
             {/* Modal Form Content */}
             <form onSubmit={handleSaveMultiStepSession} className="p-6 space-y-6 overflow-y-auto flex-1">
               {statusMessage && (
-                <div className={`p-3.5 rounded-2xl border text-xs sm:text-sm flex items-center gap-3 animate-fade-in ${
+                <div className={`p-3.5 rounded-md border-2 border-[#171717] dark:border-[#D9AC45] text-xs sm:text-sm font-bold flex items-center gap-3 animate-fade-in ${
                   statusMessage.type === 'success'
-                    ? 'bg-emerald-50 dark:bg-emerald-950/80 border-emerald-300 text-emerald-800 dark:text-emerald-200'
-                    : 'bg-rose-50 dark:bg-rose-950/80 border-rose-300 text-rose-800 dark:text-rose-200'
+                    ? 'bg-emerald-100 text-emerald-950 dark:bg-emerald-950 dark:text-emerald-200'
+                    : 'bg-rose-100 text-rose-950 dark:bg-rose-950 dark:text-rose-200'
                 }`}>
-                  {statusMessage.type === 'success' ? <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" /> : <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />}
+                  {statusMessage.type === 'success' ? <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" /> : <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />}
                   <span>{statusMessage.text}</span>
                 </div>
               )}
@@ -2458,13 +2525,13 @@ export const AdminDashboard: React.FC<{
               {sessionFormTab === 1 && (
                 <div className="space-y-4 animate-fade-in">
                   <div>
-                    <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 block mb-1">
-                      Mata Pelajaran (Course) <span className="text-rose-500">*</span>
+                    <label className="text-xs font-black uppercase tracking-wider text-stone-700 dark:text-stone-300 block mb-1.5">
+                      Mata Pelajaran (Course) <span className="text-rose-600">*</span>
                     </label>
                     <select
                       value={sessionFormData.courseId}
                       onChange={(e) => setSessionFormData({ ...sessionFormData, courseId: e.target.value })}
-                      className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs font-semibold text-stone-900 dark:text-white"
+                      className="nb-input font-bold"
                       required
                     >
                       {courses.map(c => (
@@ -2475,21 +2542,21 @@ export const AdminDashboard: React.FC<{
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 block mb-1">
-                        Judul Sesi (Bahasa Indonesia) <span className="text-rose-500">*</span>
+                      <label className="text-xs font-black uppercase tracking-wider text-stone-700 dark:text-stone-300 block mb-1.5">
+                        Judul Sesi (Bahasa Indonesia) <span className="text-rose-600">*</span>
                       </label>
                       <input
                         type="text"
                         value={sessionFormData.title}
                         onChange={(e) => setSessionFormData({ ...sessionFormData, title: e.target.value })}
                         placeholder="Contoh: Sesi 1 - Pengantar Kitab"
-                        className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs font-semibold text-stone-900 dark:text-white"
+                        className="nb-input font-bold"
                         required
                       />
                     </div>
 
                     <div>
-                      <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 block mb-1">
+                      <label className="text-xs font-black uppercase tracking-wider text-stone-700 dark:text-stone-300 block mb-1.5">
                         Judul Sesi (Bahasa Arab / Matan)
                       </label>
                       <input
@@ -2498,13 +2565,13 @@ export const AdminDashboard: React.FC<{
                         onChange={(e) => setSessionFormData({ ...sessionFormData, titleAr: e.target.value })}
                         placeholder="المجلس الأول - مقدمة الكتاب"
                         dir="rtl"
-                        className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs font-bold text-emerald-700 dark:text-emerald-400 font-amiri"
+                        className="nb-input font-bold text-emerald-700 dark:text-emerald-400 font-amiri text-base"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 block mb-1">
+                    <label className="text-xs font-black uppercase tracking-wider text-stone-700 dark:text-stone-300 block mb-1.5">
                       Deskripsi Ringkas Sesi
                     </label>
                     <textarea
@@ -2512,13 +2579,13 @@ export const AdminDashboard: React.FC<{
                       value={sessionFormData.description}
                       onChange={(e) => setSessionFormData({ ...sessionFormData, description: e.target.value })}
                       placeholder="Penjelasan singkat pokok bahasan pada sesi ini..."
-                      className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs text-stone-900 dark:text-white"
+                      className="nb-input"
                     />
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
-                      <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 block mb-1">
+                      <label className="text-xs font-black uppercase tracking-wider text-stone-700 dark:text-stone-300 block mb-1.5">
                         Urutan Sesi (#)
                       </label>
                       <input
@@ -2526,12 +2593,12 @@ export const AdminDashboard: React.FC<{
                         min={1}
                         value={sessionFormData.order}
                         onChange={(e) => setSessionFormData({ ...sessionFormData, order: Number(e.target.value) || 1 })}
-                        className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs text-stone-900 dark:text-white font-semibold"
+                        className="nb-input font-black"
                       />
                     </div>
 
                     <div>
-                      <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 block mb-1">
+                      <label className="text-xs font-black uppercase tracking-wider text-stone-700 dark:text-stone-300 block mb-1.5">
                         Estimasi Durasi (Menit)
                       </label>
                       <input
@@ -2539,18 +2606,18 @@ export const AdminDashboard: React.FC<{
                         min={5}
                         value={sessionFormData.durationMinutes}
                         onChange={(e) => setSessionFormData({ ...sessionFormData, durationMinutes: Number(e.target.value) || 45 })}
-                        className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs text-stone-900 dark:text-white font-semibold"
+                        className="nb-input font-black"
                       />
                     </div>
 
                     <div>
-                      <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 block mb-1">
+                      <label className="text-xs font-black uppercase tracking-wider text-stone-700 dark:text-stone-300 block mb-1.5">
                         Status Publikasi
                       </label>
                       <select
                         value={sessionFormData.isPublished ? 'published' : 'draft'}
                         onChange={(e) => setSessionFormData({ ...sessionFormData, isPublished: e.target.value === 'published' })}
-                        className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs text-stone-900 dark:text-white font-semibold"
+                        className="nb-input font-bold"
                       >
                         <option value="published">Published (Aktif)</option>
                         <option value="draft">Draft (Tersembunyi)</option>
@@ -2564,14 +2631,14 @@ export const AdminDashboard: React.FC<{
               {sessionFormTab === 2 && (
                 <div className="space-y-6 animate-fade-in">
                   {/* YouTube Video Section */}
-                  <div className="space-y-3 bg-stone-50 dark:bg-stone-800/50 p-4 rounded-2xl border border-stone-200 dark:border-stone-700">
-                    <h4 className="font-bold text-xs text-stone-900 dark:text-white flex items-center gap-2">
-                      <Video className="w-4 h-4 text-rose-500" />
+                  <div className="space-y-3 bg-[#F8F3E8] dark:bg-[#0B3026] p-4 rounded-md border-2 border-[#171717] dark:border-[#D9AC45]/40 shadow-[2px_2px_0px_#171717]">
+                    <h4 className="font-black text-xs uppercase tracking-wider text-stone-900 dark:text-white flex items-center gap-2">
+                      <Video className="w-4 h-4 text-rose-600" />
                       <span>Video Rekaman Pembelajaran (YouTube Embed)</span>
                     </h4>
 
                     <div>
-                      <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 block mb-1">
+                      <label className="text-xs font-bold text-stone-700 dark:text-stone-300 block mb-1">
                         Tautan Video YouTube
                       </label>
                       <input
@@ -2579,28 +2646,28 @@ export const AdminDashboard: React.FC<{
                         value={sessionFormData.youtubeUrl}
                         onChange={(e) => setSessionFormData({ ...sessionFormData, youtubeUrl: e.target.value })}
                         placeholder="https://www.youtube.com/watch?v=... atau https://youtu.be/..."
-                        className="w-full px-3.5 py-2.5 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl text-xs text-stone-900 dark:text-white"
+                        className="nb-input"
                       />
                     </div>
 
                     {sessionFormData.youtubeUrl && (
                       <div className="mt-2 space-y-1">
-                        <p className="text-[10px] text-stone-500 font-semibold">Pratinjau Embedded Video Player:</p>
+                        <p className="text-[10px] text-stone-600 dark:text-stone-400 font-bold uppercase tracking-wider">Pratinjau Embedded Video Player:</p>
                         <YouTubeEmbed url={sessionFormData.youtubeUrl} title={sessionFormData.title} />
                       </div>
                     )}
                   </div>
 
                   {/* PDF & Google Drive Section */}
-                  <div className="space-y-4 bg-stone-50 dark:bg-stone-800/50 p-4 rounded-2xl border border-stone-200 dark:border-stone-700">
-                    <h4 className="font-bold text-xs text-stone-900 dark:text-white flex items-center gap-2">
-                      <FileText className="w-4 h-4 text-amber-500" />
+                  <div className="space-y-4 bg-[#F8F3E8] dark:bg-[#0B3026] p-4 rounded-md border-2 border-[#171717] dark:border-[#D9AC45]/40 shadow-[2px_2px_0px_#171717]">
+                    <h4 className="font-black text-xs uppercase tracking-wider text-stone-900 dark:text-white flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-[#D9AC45]" />
                       <span>Naskah Matan / Modul PDF & Tautan Google Drive</span>
                     </h4>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
-                        <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 block mb-1">
+                        <label className="text-xs font-bold text-stone-700 dark:text-stone-300 block mb-1">
                           Judul Berkas PDF
                         </label>
                         <input
@@ -2608,12 +2675,12 @@ export const AdminDashboard: React.FC<{
                           value={sessionFormData.pdfTitle}
                           onChange={(e) => setSessionFormData({ ...sessionFormData, pdfTitle: e.target.value })}
                           placeholder="Naskah Matan PDF Sesi 1"
-                          className="w-full px-3.5 py-2.5 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl text-xs text-stone-900 dark:text-white"
+                          className="nb-input"
                         />
                       </div>
 
                       <div>
-                        <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 block mb-1">
+                        <label className="text-xs font-bold text-stone-700 dark:text-stone-300 block mb-1">
                           Unggah Berkas PDF (Firebase Storage)
                         </label>
                         <input
@@ -2622,13 +2689,13 @@ export const AdminDashboard: React.FC<{
                           onChange={(e) => handleFileUpload(e, 'pdfs', (url) => {
                             setSessionFormData(prev => ({ ...prev, pdfUrl: url }));
                           })}
-                          className="w-full text-xs text-stone-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-600 file:text-white hover:file:bg-emerald-500"
+                          className="w-full text-xs text-stone-600 dark:text-stone-400 font-medium file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-2 file:border-[#171717] file:text-xs file:font-black file:bg-[#D9AC45] file:text-[#06251D] hover:file:bg-[#c99b35] file:cursor-pointer"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 block mb-1">
+                      <label className="text-xs font-bold text-stone-700 dark:text-stone-300 block mb-1">
                         URL Direct Link PDF (atau Hasil Upload)
                       </label>
                       <input
@@ -2636,12 +2703,12 @@ export const AdminDashboard: React.FC<{
                         value={sessionFormData.pdfUrl}
                         onChange={(e) => setSessionFormData({ ...sessionFormData, pdfUrl: e.target.value })}
                         placeholder="https://firebasestorage.googleapis.com/... atau URL PDF direct"
-                        className="w-full px-3.5 py-2.5 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl text-xs text-stone-900 dark:text-white"
+                        className="nb-input"
                       />
                     </div>
 
                     <div>
-                      <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 block mb-1">
+                      <label className="text-xs font-bold text-stone-700 dark:text-stone-300 block mb-1">
                         Link Google Drive PDF (Jika ada)
                       </label>
                       <input
@@ -2649,7 +2716,7 @@ export const AdminDashboard: React.FC<{
                         value={sessionFormData.googleDriveUrl}
                         onChange={(e) => setSessionFormData({ ...sessionFormData, googleDriveUrl: e.target.value })}
                         placeholder="https://drive.google.com/file/d/..."
-                        className="w-full px-3.5 py-2.5 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl text-xs text-stone-900 dark:text-white"
+                        className="nb-input"
                       />
                     </div>
                   </div>
@@ -2660,7 +2727,7 @@ export const AdminDashboard: React.FC<{
               {sessionFormTab === 3 && (
                 <div className="space-y-4 animate-fade-in">
                   <div>
-                    <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 block mb-1">
+                    <label className="text-xs font-black uppercase tracking-wider text-stone-700 dark:text-stone-300 block mb-1.5">
                       Materi Teks / Catatan Pembelajaran & Faedah Ilmiah (Format Teks Kaya / Markdown)
                     </label>
                     <RichTextEditor
@@ -2672,7 +2739,7 @@ export const AdminDashboard: React.FC<{
                   </div>
 
                   <div>
-                    <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 block mb-1">
+                    <label className="text-xs font-black uppercase tracking-wider text-stone-700 dark:text-stone-300 block mb-1.5">
                       Materi Teks / Matan Bahasa Arab
                     </label>
                     <textarea
@@ -2681,7 +2748,7 @@ export const AdminDashboard: React.FC<{
                       onChange={(e) => setSessionFormData({ ...sessionFormData, descriptionAr: e.target.value })}
                       placeholder="Naskah asli matan Bahasa Arab, syarah, atau terjemahan..."
                       dir="rtl"
-                      className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs font-bold text-emerald-700 dark:text-emerald-400 font-amiri leading-relaxed"
+                      className="nb-input font-bold text-emerald-800 dark:text-emerald-300 font-amiri text-base leading-relaxed"
                     />
                   </div>
                 </div>
@@ -2690,12 +2757,12 @@ export const AdminDashboard: React.FC<{
               {/* TAB 4: KUIS EVALUASI SESI */}
               {sessionFormTab === 4 && (
                 <div className="space-y-6 animate-fade-in">
-                  <div className="p-4 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 rounded-2xl flex items-center justify-between">
+                  <div className="p-4 bg-[#D9AC45]/20 dark:bg-[#0B3026] border-2 border-[#171717] dark:border-[#D9AC45]/50 rounded-md flex items-center justify-between shadow-[2px_2px_0px_#171717]">
                     <div>
-                      <h4 className="font-bold text-xs text-emerald-900 dark:text-emerald-200">
+                      <h4 className="font-black text-xs uppercase tracking-wider text-[#06251D] dark:text-[#D9AC45]">
                         Aktifkan Kuis Evaluasi untuk Sesi Ini
                       </h4>
-                      <p className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-0.5">
+                      <p className="text-[11px] text-stone-700 dark:text-stone-300 font-medium mt-0.5">
                         Santri akan mengerjakan kuis evaluasi setelah menyelesaikan materi sesi ini.
                       </p>
                     </div>
@@ -2704,7 +2771,7 @@ export const AdminDashboard: React.FC<{
                       type="checkbox"
                       checked={sessionFormData.enableQuiz}
                       onChange={(e) => setSessionFormData({ ...sessionFormData, enableQuiz: e.target.checked })}
-                      className="w-5 h-5 accent-emerald-600 rounded-md cursor-pointer"
+                      className="w-5 h-5 accent-[#06251D] border-2 border-[#171717] rounded cursor-pointer"
                     />
                   </div>
 
@@ -2712,7 +2779,7 @@ export const AdminDashboard: React.FC<{
                     <div className="space-y-6">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                          <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 block mb-1">
+                          <label className="text-xs font-black uppercase tracking-wider text-stone-700 dark:text-stone-300 block mb-1.5">
                             Judul Kuis Sesi
                           </label>
                           <input
@@ -2720,12 +2787,12 @@ export const AdminDashboard: React.FC<{
                             value={sessionFormData.quizTitle}
                             onChange={(e) => setSessionFormData({ ...sessionFormData, quizTitle: e.target.value })}
                             placeholder={`Kuis Evaluasi - ${sessionFormData.title || 'Sesi'}`}
-                            className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs font-semibold text-stone-900 dark:text-white"
+                            className="nb-input font-bold"
                           />
                         </div>
 
                         <div>
-                          <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 block mb-1">
+                          <label className="text-xs font-black uppercase tracking-wider text-stone-700 dark:text-stone-300 block mb-1.5">
                             Passing Grade (%)
                           </label>
                           <input
@@ -2734,7 +2801,7 @@ export const AdminDashboard: React.FC<{
                             max={100}
                             value={sessionFormData.passingScore}
                             onChange={(e) => setSessionFormData({ ...sessionFormData, passingScore: Number(e.target.value) || 75 })}
-                            className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs font-semibold text-stone-900 dark:text-white"
+                            className="nb-input font-black"
                           />
                         </div>
                       </div>
@@ -2742,14 +2809,14 @@ export const AdminDashboard: React.FC<{
                       {/* QUESTIONS EDITOR LIST */}
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
-                          <h4 className="font-bold text-xs text-stone-900 dark:text-white">
+                          <h4 className="font-black text-xs uppercase tracking-wider text-stone-900 dark:text-white">
                             Daftar Soal Pertanyaan ({sessionFormData.questions.length})
                           </h4>
 
                           <button
                             type="button"
                             onClick={handleAddQuestionToSessionForm}
-                            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow transition flex items-center gap-1 cursor-pointer"
+                            className="nb-btn nb-btn-gold text-xs py-1.5 px-3 flex items-center gap-1 cursor-pointer"
                           >
                             <Plus className="w-3.5 h-3.5" />
                             <span>+ Tambah Soal</span>
@@ -2757,27 +2824,27 @@ export const AdminDashboard: React.FC<{
                         </div>
 
                         {sessionFormData.questions.length === 0 ? (
-                          <p className="text-xs text-stone-500 py-4 italic text-center bg-stone-50 dark:bg-stone-800/40 rounded-xl border border-dashed border-stone-200 dark:border-stone-700">
+                          <p className="text-xs text-stone-600 dark:text-stone-400 py-4 italic text-center bg-stone-100 dark:bg-[#0B3026] rounded-md border-2 border-dashed border-[#171717] dark:border-[#D9AC45]/40 font-medium">
                             Belum ada soal ditambahkan. Klik "+ Tambah Soal".
                           </p>
                         ) : (
                           sessionFormData.questions.map((q, qIndex) => (
-                            <div key={q.id || qIndex} className="p-4 bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700 rounded-2xl space-y-3">
+                            <div key={q.id || qIndex} className="p-4 bg-[#F8F3E8] dark:bg-[#0B3026] border-2 border-[#171717] dark:border-[#D9AC45]/40 rounded-md space-y-3 shadow-[2px_2px_0px_#171717]">
                               <div className="flex items-center justify-between">
-                                <span className="font-bold text-xs text-emerald-800 dark:text-emerald-300">
+                                <span className="nb-badge bg-white dark:bg-[#06251D] text-[#06251D] dark:text-[#D9AC45] border-[#171717] dark:border-[#D9AC45]">
                                   Soal #{qIndex + 1}
                                 </span>
                                 <button
                                   type="button"
                                   onClick={() => handleRemoveQuestionFromSessionForm(qIndex)}
-                                  className="text-xs text-rose-500 hover:text-rose-700 font-semibold cursor-pointer"
+                                  className="text-xs text-rose-600 hover:text-rose-800 dark:text-rose-400 font-black uppercase tracking-wider cursor-pointer underline"
                                 >
                                   Hapus Soal
                                 </button>
                               </div>
 
                               <div>
-                                <label className="text-[11px] font-semibold text-stone-600 dark:text-stone-400 block mb-1">
+                                <label className="text-[11px] font-bold text-stone-700 dark:text-stone-300 block mb-1">
                                   Pertanyaan (Bahasa Indonesia)
                                 </label>
                                 <input
@@ -2788,13 +2855,13 @@ export const AdminDashboard: React.FC<{
                                     updated[qIndex].questionText = e.target.value;
                                     setSessionFormData({ ...sessionFormData, questions: updated });
                                   }}
-                                  className="w-full px-3 py-2 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl text-xs text-stone-900 dark:text-white"
+                                  className="nb-input font-bold"
                                 />
                               </div>
 
                               {/* Options */}
                               <div className="space-y-2 pt-1">
-                                <label className="text-[11px] font-semibold text-stone-600 dark:text-stone-400 block">
+                                <label className="text-[11px] font-bold text-stone-700 dark:text-stone-300 block">
                                   Pilihan Jawaban & Tentukan Jawaban Benar (Radio):
                                 </label>
 
@@ -2809,9 +2876,9 @@ export const AdminDashboard: React.FC<{
                                         updated[qIndex].correctAnswerIndex = optIdx;
                                         setSessionFormData({ ...sessionFormData, questions: updated });
                                       }}
-                                      className="accent-emerald-600 cursor-pointer"
+                                      className="w-4 h-4 accent-[#06251D] border-2 border-[#171717] cursor-pointer"
                                     />
-                                    <span className="text-xs font-bold text-stone-500 w-4">
+                                    <span className="text-xs font-black text-stone-700 dark:text-stone-300 w-5">
                                       {String.fromCharCode(65 + optIdx)}.
                                     </span>
                                     <input
@@ -2822,7 +2889,7 @@ export const AdminDashboard: React.FC<{
                                         updated[qIndex].options[optIdx] = e.target.value;
                                         setSessionFormData({ ...sessionFormData, questions: updated });
                                       }}
-                                      className="flex-1 px-3 py-1.5 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl text-xs text-stone-900 dark:text-white"
+                                      className="flex-1 nb-input py-1.5"
                                     />
                                   </div>
                                 ))}
@@ -2837,21 +2904,21 @@ export const AdminDashboard: React.FC<{
               )}
 
               {/* Modal Footer Actions */}
-              <div className="pt-4 border-t border-stone-200 dark:border-stone-800 flex items-center justify-between shrink-0">
+              <div className="pt-4 border-t-2 border-[#171717] dark:border-[#D9AC45]/30 flex items-center justify-between shrink-0">
                 <button
                   type="button"
                   onClick={() => setEditingSessionModalOpen(false)}
-                  className="px-4 py-2 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 rounded-xl text-xs font-semibold transition cursor-pointer"
+                  className="nb-btn nb-btn-secondary text-xs py-2 px-4 cursor-pointer"
                 >
                   Batal
                 </button>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                   {sessionFormTab < 4 && (
                     <button
                       type="button"
                       onClick={() => setSessionFormTab((sessionFormTab + 1) as any)}
-                      className="px-4 py-2 bg-stone-200 dark:bg-stone-700 hover:bg-stone-300 text-stone-900 dark:text-white rounded-xl text-xs font-semibold transition cursor-pointer"
+                      className="nb-btn nb-btn-secondary text-xs py-2 px-4 cursor-pointer"
                     >
                       Lanjut ({sessionFormTab + 1}/4)
                     </button>
@@ -2860,7 +2927,7 @@ export const AdminDashboard: React.FC<{
                   <button
                     type="submit"
                     disabled={savingSession}
-                    className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow-md transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95"
+                    className="nb-btn nb-btn-primary text-xs py-2 px-5 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                   >
                     {savingSession ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                     <span>Simpan Sesi {sessionFormData.enableQuiz ? '& Kuis' : ''}</span>
@@ -2874,44 +2941,49 @@ export const AdminDashboard: React.FC<{
 
       {/* MODAL EDIT CATEGORY */}
       {editingCategory && (
-        <div className="fixed inset-0 z-70 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
-          <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 w-full max-w-lg rounded-3xl p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-stone-200 dark:border-stone-800 pb-3">
-              <h3 className="font-bold text-stone-900 dark:text-white text-base">
-                {editingCategory.id ? 'Edit Bab / Modul' : 'Tambah Bab / Modul Baru'}
+        <div className="fixed inset-0 z-70 bg-stone-900/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
+          <div className="bg-white dark:bg-[#06251D] border-3 border-[#171717] dark:border-[#D9AC45] w-full max-w-lg rounded-md p-6 space-y-5 shadow-[8px_8px_0px_#171717]">
+            <div className="flex items-center justify-between border-b-2 border-[#171717] dark:border-[#D9AC45]/30 pb-3">
+              <h3 className="font-black text-[#06251D] dark:text-white text-base flex items-center gap-2">
+                <FolderOpen className="w-5 h-5 text-[#D9AC45]" />
+                <span>{editingCategory.id ? 'Edit Bab / Modul' : 'Tambah Bab / Modul Baru'}</span>
               </h3>
-              <button onClick={() => setEditingCategory(null)} className="text-stone-400 hover:text-stone-600">
+              <button 
+                onClick={() => setEditingCategory(null)} 
+                className="p-1 text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-white rounded-md border-2 border-transparent hover:border-[#171717] transition"
+                aria-label="Tutup modal"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <form onSubmit={handleSaveCategory} className="space-y-4">
               {statusMessage && (
-                <div className={`p-3.5 rounded-2xl border text-xs sm:text-sm flex items-center gap-3 animate-fade-in ${
+                <div className={`p-3.5 rounded-md border-2 border-[#171717] dark:border-[#D9AC45] text-xs sm:text-sm font-bold flex items-center gap-3 animate-fade-in ${
                   statusMessage.type === 'success'
-                    ? 'bg-emerald-50 dark:bg-emerald-950/80 border-emerald-300 text-emerald-800 dark:text-emerald-200'
-                    : 'bg-rose-50 dark:bg-rose-950/80 border-rose-300 text-rose-800 dark:text-rose-200'
+                    ? 'bg-emerald-100 text-emerald-950 dark:bg-emerald-950 dark:text-emerald-200'
+                    : 'bg-rose-100 text-rose-950 dark:bg-rose-950 dark:text-rose-200'
                 }`}>
-                  {statusMessage.type === 'success' ? <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" /> : <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />}
+                  {statusMessage.type === 'success' ? <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" /> : <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />}
                   <span>{statusMessage.text}</span>
                 </div>
               )}
               <div>
-                <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 block mb-1">
-                  Nama Bab / Modul (Bahasa Indonesia) <span className="text-rose-500">*</span>
+                <label className="text-xs font-black uppercase tracking-wider text-stone-700 dark:text-stone-300 block mb-1.5">
+                  Nama Bab / Modul (Bahasa Indonesia) <span className="text-rose-600">*</span>
                 </label>
                 <input
                   type="text"
                   value={editingCategory.name || ''}
                   onChange={(e) => setEditingCategory({ ...editingCategory, name: e.target.value })}
                   placeholder="Contoh: Fiqh Ibadah, Aqidah, Nahwu"
-                  className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs text-stone-900 dark:text-white"
+                  className="nb-input font-bold"
                   required
                 />
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 block mb-1">
+                <label className="text-xs font-black uppercase tracking-wider text-stone-700 dark:text-stone-300 block mb-1.5">
                   Nama Arab
                 </label>
                 <input
@@ -2920,33 +2992,33 @@ export const AdminDashboard: React.FC<{
                   onChange={(e) => setEditingCategory({ ...editingCategory, nameAr: e.target.value })}
                   placeholder="فقه العبادات"
                   dir="rtl"
-                  className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs font-bold text-emerald-600 font-amiri"
+                  className="nb-input font-bold text-emerald-700 dark:text-emerald-400 font-amiri text-base"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 block mb-1">
+                <label className="text-xs font-black uppercase tracking-wider text-stone-700 dark:text-stone-300 block mb-1.5">
                   Deskripsi
                 </label>
                 <textarea
                   rows={2}
                   value={editingCategory.description || ''}
                   onChange={(e) => setEditingCategory({ ...editingCategory, description: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs text-stone-900 dark:text-white"
+                  className="nb-input"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-200 dark:border-stone-800">
+              <div className="flex items-center justify-end gap-3 pt-3 border-t-2 border-[#171717] dark:border-[#D9AC45]/30">
                 <button
                   type="button"
                   onClick={() => setEditingCategory(null)}
-                  className="px-4 py-2 bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold"
+                  className="nb-btn nb-btn-secondary text-xs py-2 px-4"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow"
+                  className="nb-btn nb-btn-primary text-xs py-2 px-5"
                 >
                   Simpan Bab / Modul
                 </button>
@@ -2958,36 +3030,41 @@ export const AdminDashboard: React.FC<{
 
       {/* MODAL EDIT COURSE */}
       {editingCourse && (
-        <div className="fixed inset-0 z-70 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
-          <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 w-full max-w-2xl rounded-3xl p-6 space-y-4 shadow-2xl my-8">
-            <div className="flex items-center justify-between border-b border-stone-200 dark:border-stone-800 pb-3">
-              <h3 className="font-bold text-stone-900 dark:text-white text-base">
-                {editingCourse.id ? 'Edit Mata Pelajaran' : 'Tambah Mata Pelajaran Baru'}
+        <div className="fixed inset-0 z-70 bg-stone-900/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
+          <div className="bg-white dark:bg-[#06251D] border-3 border-[#171717] dark:border-[#D9AC45] w-full max-w-2xl rounded-md p-6 space-y-5 shadow-[8px_8px_0px_#171717] my-8">
+            <div className="flex items-center justify-between border-b-2 border-[#171717] dark:border-[#D9AC45]/30 pb-3">
+              <h3 className="font-black text-[#06251D] dark:text-white text-base flex items-center gap-2">
+                <BookOpen className="w-5 h-5 text-[#D9AC45]" />
+                <span>{editingCourse.id ? 'Edit Mata Pelajaran' : 'Tambah Mata Pelajaran Baru'}</span>
               </h3>
-              <button onClick={() => setEditingCourse(null)} className="text-stone-400 hover:text-stone-600">
+              <button 
+                onClick={() => setEditingCourse(null)} 
+                className="p-1 text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-white rounded-md border-2 border-transparent hover:border-[#171717] transition"
+                aria-label="Tutup modal"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <form onSubmit={handleSaveCourse} className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
               {statusMessage && (
-                <div className={`p-3.5 rounded-2xl border text-xs sm:text-sm flex items-center gap-3 animate-fade-in ${
+                <div className={`p-3.5 rounded-md border-2 border-[#171717] dark:border-[#D9AC45] text-xs sm:text-sm font-bold flex items-center gap-3 animate-fade-in ${
                   statusMessage.type === 'success'
-                    ? 'bg-emerald-50 dark:bg-emerald-950/80 border-emerald-300 text-emerald-800 dark:text-emerald-200'
-                    : 'bg-rose-50 dark:bg-rose-950/80 border-rose-300 text-rose-800 dark:text-rose-200'
+                    ? 'bg-emerald-100 text-emerald-950 dark:bg-emerald-950 dark:text-emerald-200'
+                    : 'bg-rose-100 text-rose-950 dark:bg-rose-950 dark:text-rose-200'
                 }`}>
-                  {statusMessage.type === 'success' ? <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" /> : <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />}
+                  {statusMessage.type === 'success' ? <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" /> : <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />}
                   <span>{statusMessage.text}</span>
                 </div>
               )}
               <div>
-                <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 block mb-1">
-                  Bab / Modul Kategori <span className="text-rose-500">*</span>
+                <label className="text-xs font-black uppercase tracking-wider text-stone-700 dark:text-stone-300 block mb-1.5">
+                  Bab / Modul Kategori <span className="text-rose-600">*</span>
                 </label>
                 <select
                   value={editingCourse.categoryId || ''}
                   onChange={(e) => setEditingCourse({ ...editingCourse, categoryId: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs font-semibold text-stone-900 dark:text-white"
+                  className="nb-input font-bold"
                   required
                 >
                   {categories.map(c => (
@@ -2998,21 +3075,21 @@ export const AdminDashboard: React.FC<{
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 block mb-1">
-                    Judul Mata Pelajaran <span className="text-rose-500">*</span>
+                  <label className="text-xs font-black uppercase tracking-wider text-stone-700 dark:text-stone-300 block mb-1.5">
+                    Judul Mata Pelajaran <span className="text-rose-600">*</span>
                   </label>
                   <input
                     type="text"
                     value={editingCourse.title || ''}
                     onChange={(e) => setEditingCourse({ ...editingCourse, title: e.target.value })}
                     placeholder="Syarah Matan Al-Ajurumiyah"
-                    className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs text-stone-900 dark:text-white"
+                    className="nb-input font-bold"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 block mb-1">
+                  <label className="text-xs font-black uppercase tracking-wider text-stone-700 dark:text-stone-300 block mb-1.5">
                     Judul Bahasa Arab
                   </label>
                   <input
@@ -3021,13 +3098,13 @@ export const AdminDashboard: React.FC<{
                     onChange={(e) => setEditingCourse({ ...editingCourse, titleAr: e.target.value })}
                     placeholder="شرح الآجرومية"
                     dir="rtl"
-                    className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs font-bold text-emerald-600 font-amiri"
+                    className="nb-input font-bold text-emerald-700 dark:text-emerald-400 font-amiri text-base"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 block mb-1">
+                <label className="text-xs font-black uppercase tracking-wider text-stone-700 dark:text-stone-300 block mb-1.5">
                   Pengajar / Pengampu
                 </label>
                 <input
@@ -3035,24 +3112,24 @@ export const AdminDashboard: React.FC<{
                   value={editingCourse.instructor || ''}
                   onChange={(e) => setEditingCourse({ ...editingCourse, instructor: e.target.value })}
                   placeholder="Ustadz Osama, Lc."
-                  className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs text-stone-900 dark:text-white"
+                  className="nb-input font-bold"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 block mb-1">
+                <label className="text-xs font-black uppercase tracking-wider text-stone-700 dark:text-stone-300 block mb-1.5">
                   Deskripsi Pembelajaran
                 </label>
                 <textarea
                   rows={3}
                   value={editingCourse.description || ''}
                   onChange={(e) => setEditingCourse({ ...editingCourse, description: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs text-stone-900 dark:text-white"
+                  className="nb-input"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 block mb-1">
+                <label className="text-xs font-black uppercase tracking-wider text-stone-700 dark:text-stone-300 block mb-1.5">
                   Gambar Thumbnail Cover (URL / Upload)
                 </label>
                 <div className="space-y-2">
@@ -3061,28 +3138,28 @@ export const AdminDashboard: React.FC<{
                     value={editingCourse.coverImageUrl || ''}
                     onChange={(e) => setEditingCourse({ ...editingCourse, coverImageUrl: e.target.value })}
                     placeholder="https://..."
-                    className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs text-stone-900 dark:text-white"
+                    className="nb-input"
                   />
                   <input
                     type="file"
                     accept="image/*"
                     onChange={(e) => handleFileUpload(e, 'covers', (url) => setEditingCourse({ ...editingCourse, coverImageUrl: url }))}
-                    className="w-full text-xs text-stone-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-600 file:text-white hover:file:bg-emerald-500"
+                    className="w-full text-xs text-stone-600 dark:text-stone-400 font-medium file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-2 file:border-[#171717] file:text-xs file:font-black file:bg-[#D9AC45] file:text-[#06251D] hover:file:bg-[#c99b35] file:cursor-pointer"
                   />
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-200 dark:border-stone-800">
+              <div className="flex items-center justify-end gap-3 pt-3 border-t-2 border-[#171717] dark:border-[#D9AC45]/30">
                 <button
                   type="button"
                   onClick={() => setEditingCourse(null)}
-                  className="px-4 py-2 bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold"
+                  className="nb-btn nb-btn-secondary text-xs py-2 px-4"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow"
+                  className="nb-btn nb-btn-primary text-xs py-2 px-5"
                 >
                   Simpan Mata Pelajaran
                 </button>
@@ -3094,41 +3171,46 @@ export const AdminDashboard: React.FC<{
 
       {/* MODAL EDIT INDEPENDENT QUIZ */}
       {editingQuiz && (
-        <div className="fixed inset-0 z-70 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
-          <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 w-full max-w-2xl rounded-3xl p-6 space-y-4 shadow-2xl my-8">
-            <div className="flex items-center justify-between border-b border-stone-200 dark:border-stone-800 pb-3">
-              <h3 className="font-bold text-stone-900 dark:text-white text-base">
-                {editingQuiz.id ? 'Edit Kuis Evaluasi' : 'Tambah Kuis Evaluasi Baru'}
+        <div className="fixed inset-0 z-70 bg-stone-900/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
+          <div className="bg-white dark:bg-[#06251D] border-3 border-[#171717] dark:border-[#D9AC45] w-full max-w-2xl rounded-md p-6 space-y-5 shadow-[8px_8px_0px_#171717] my-8">
+            <div className="flex items-center justify-between border-b-2 border-[#171717] dark:border-[#D9AC45]/30 pb-3">
+              <h3 className="font-black text-[#06251D] dark:text-white text-base flex items-center gap-2">
+                <FileQuestion className="w-5 h-5 text-[#D9AC45]" />
+                <span>{editingQuiz.id ? 'Edit Kuis Evaluasi' : 'Tambah Kuis Evaluasi Baru'}</span>
               </h3>
-              <button onClick={() => setEditingQuiz(null)} className="text-stone-400 hover:text-stone-600">
+              <button 
+                onClick={() => setEditingQuiz(null)} 
+                className="p-1 text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-white rounded-md border-2 border-transparent hover:border-[#171717] transition"
+                aria-label="Tutup modal"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <form onSubmit={handleSaveQuiz} className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
               <div>
-                <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 block mb-1">
-                  Judul Kuis Evaluasi <span className="text-rose-500">*</span>
+                <label className="text-xs font-black uppercase tracking-wider text-stone-700 dark:text-stone-300 block mb-1.5">
+                  Judul Kuis Evaluasi <span className="text-rose-600">*</span>
                 </label>
                 <input
                   type="text"
                   value={editingQuiz.title || ''}
                   onChange={(e) => setEditingQuiz({ ...editingQuiz, title: e.target.value })}
                   placeholder="Kuis Evaluasi Pemahaman"
-                  className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs text-stone-900 dark:text-white"
+                  className="nb-input font-bold"
                   required
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 block mb-1">
-                    Mata Pelajaran <span className="text-rose-500">*</span>
+                  <label className="text-xs font-black uppercase tracking-wider text-stone-700 dark:text-stone-300 block mb-1.5">
+                    Mata Pelajaran <span className="text-rose-600">*</span>
                   </label>
                   <select
                     value={editingQuiz.courseId || ''}
                     onChange={(e) => setEditingQuiz({ ...editingQuiz, courseId: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs text-stone-900 dark:text-white"
+                    className="nb-input font-bold"
                     required
                   >
                     {courses.map(c => (
@@ -3138,7 +3220,7 @@ export const AdminDashboard: React.FC<{
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 block mb-1">
+                  <label className="text-xs font-black uppercase tracking-wider text-stone-700 dark:text-stone-300 block mb-1.5">
                     Passing Grade (%)
                   </label>
                   <input
@@ -3147,22 +3229,22 @@ export const AdminDashboard: React.FC<{
                     max={100}
                     value={editingQuiz.passingScore ?? 75}
                     onChange={(e) => setEditingQuiz({ ...editingQuiz, passingScore: Number(e.target.value) || 75 })}
-                    className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs text-stone-900 dark:text-white"
+                    className="nb-input font-black"
                   />
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-200 dark:border-stone-800">
+              <div className="flex items-center justify-end gap-3 pt-3 border-t-2 border-[#171717] dark:border-[#D9AC45]/30">
                 <button
                   type="button"
                   onClick={() => setEditingQuiz(null)}
-                  className="px-4 py-2 bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold"
+                  className="nb-btn nb-btn-secondary text-xs py-2 px-4"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow"
+                  className="nb-btn nb-btn-primary text-xs py-2 px-5"
                 >
                   Simpan Kuis
                 </button>

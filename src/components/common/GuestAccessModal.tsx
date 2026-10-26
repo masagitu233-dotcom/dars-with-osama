@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Lock, X, LogIn, UserPlus, ArrowRight, BookOpen, GraduationCap } from 'lucide-react';
+import { Lock, X, LogIn, UserPlus } from 'lucide-react';
 import { Course } from '../../types';
 
 interface GuestAccessModalProps {
@@ -31,37 +31,33 @@ export const GuestAccessModal: React.FC<GuestAccessModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 dark:bg-black/85 backdrop-blur-md animate-fade-in"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75 animate-fade-in"
       onClick={(e) => {
         if (e.target === e.currentTarget) {
           onClose();
         }
       }}
     >
-      <div className="relative w-full max-w-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl shadow-2xl p-6 sm:p-8 text-stone-900 dark:text-stone-100 overflow-hidden animate-modal-in">
-        {/* Soft Ambient Floating Glow */}
-        <div className="absolute -top-16 -right-16 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none animate-pulse-glow" />
-        <div className="absolute -bottom-16 -left-16 w-48 h-48 bg-amber-500/5 rounded-full blur-3xl pointer-events-none" />
-
+      <div className="relative w-full max-w-lg bg-white dark:bg-[#0B3026] border-3 border-[#171717] dark:border-[#D9AC45] rounded-lg shadow-[6px_6px_0px_#171717] dark:shadow-[6px_6px_0px_#000000] p-6 sm:p-8 text-[#171717] dark:text-[#F8F3E8] overflow-hidden animate-modal-in">
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-5 right-5 p-2 text-stone-500 hover:text-stone-900 hover:bg-stone-100 dark:text-stone-400 dark:hover:text-white dark:hover:bg-stone-800 rounded-full transition cursor-pointer"
+          className="absolute top-4 right-4 p-1.5 text-[#171717] dark:text-[#F8F3E8] hover:bg-[#F8F3E8] dark:hover:bg-[#06251D] rounded-md border-2 border-[#171717] dark:border-[#D9AC45]/60 transition cursor-pointer"
         >
-          <X className="w-5 h-5" />
+          <X className="w-4 h-4" />
         </button>
 
         {/* Header Icon & Title */}
         <div className="text-center space-y-3">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-emerald-100 dark:bg-emerald-950/80 border border-emerald-300 dark:border-emerald-700/60 text-emerald-700 dark:text-emerald-400 shadow-inner">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-md bg-[#06251D] border-2 border-[#171717] dark:border-[#D9AC45] text-[#D9AC45] shadow-[3px_3px_0px_#171717]">
             <Lock className="w-7 h-7" />
           </div>
 
           <div className="space-y-1.5">
-            <h3 className="text-xl sm:text-2xl font-bold font-sans text-stone-900 dark:text-white">
+            <h3 className="text-xl sm:text-2xl font-extrabold font-serif-brand text-[#171717] dark:text-white">
               Silakan Masuk ke Akun Dars with Osama
             </h3>
-            <p className="text-xs sm:text-sm text-stone-600 dark:text-stone-300 leading-relaxed max-w-md mx-auto">
+            <p className="text-xs sm:text-sm text-[#171717]/80 dark:text-[#F8F3E8]/85 leading-relaxed max-w-md mx-auto font-medium">
               Silakan masuk ke akun Dars with Osama untuk mulai belajar, memutar video syarah lengkap, menyimak naskah kajian, dan mengikuti kuis evaluasi.
             </p>
           </div>
@@ -69,17 +65,23 @@ export const GuestAccessModal: React.FC<GuestAccessModalProps> = ({
 
         {/* Optional Course Card Preview */}
         {course && (
-          <div className="mt-5 p-3.5 bg-stone-50 dark:bg-stone-950/80 border border-stone-200 dark:border-stone-800 rounded-2xl flex items-center gap-3 text-left">
+          <div className="mt-5 p-3.5 bg-[#F8F3E8] dark:bg-[#06251D] border-2 border-[#171717] dark:border-[#D9AC45]/60 rounded-md flex items-center gap-3 text-left shadow-[3px_3px_0px_#171717]">
             <img
               src={course.coverImageUrl || 'https://images.unsplash.com/photo-1542816417-0983c9c9ad53?auto=format&fit=crop&w=400&q=80'}
               alt={course.title}
-              className="w-16 h-16 rounded-xl object-cover border border-stone-200 dark:border-stone-800 shrink-0"
+              className="w-16 h-16 rounded-md object-cover border-2 border-[#171717] shrink-0"
             />
             <div className="min-w-0 flex-1">
-              <span className="text-[10px] uppercase font-bold text-emerald-600 dark:text-emerald-400 tracking-wider">Materi Dikerjakan</span>
-              <h4 className="text-xs sm:text-sm font-bold text-stone-900 dark:text-white truncate font-sans">{course.title}</h4>
+              <span className="text-[10px] uppercase font-extrabold text-[#06251D] dark:text-[#D9AC45] tracking-wider">
+                Materi Dikerjakan
+              </span>
+              <h4 className="text-xs sm:text-sm font-extrabold text-[#171717] dark:text-white truncate font-sans">
+                {course.title}
+              </h4>
               {course.titleAr && (
-                <p className="text-xs text-amber-600 dark:text-amber-300 font-amiri truncate" dir="rtl">{course.titleAr}</p>
+                <p className="text-xs text-[#06251D] dark:text-[#D9AC45] font-amiri font-bold truncate" dir="rtl">
+                  {course.titleAr}
+                </p>
               )}
             </div>
           </div>
@@ -90,7 +92,7 @@ export const GuestAccessModal: React.FC<GuestAccessModalProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <button
               onClick={onLogin}
-              className="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-semibold text-xs sm:text-sm transition duration-200 cursor-pointer shadow-lg shadow-emerald-950/50 flex items-center justify-center gap-2 active:scale-95"
+              className="w-full py-3.5 px-4 nb-btn nb-btn-primary text-xs sm:text-sm"
             >
               <LogIn className="w-4 h-4" />
               <span>Masuk</span>
@@ -98,16 +100,16 @@ export const GuestAccessModal: React.FC<GuestAccessModalProps> = ({
 
             <button
               onClick={onRegister}
-              className="w-full py-3.5 px-4 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-100 border border-stone-300 dark:border-stone-700 rounded-xl font-semibold text-xs sm:text-sm transition duration-200 cursor-pointer flex items-center justify-center gap-2 active:scale-95"
+              className="w-full py-3.5 px-4 nb-btn nb-btn-gold text-xs sm:text-sm"
             >
-              <UserPlus className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <UserPlus className="w-4 h-4" />
               <span>Daftar Akun</span>
             </button>
           </div>
 
           <button
             onClick={onClose}
-            className="w-full py-2.5 text-xs text-stone-500 hover:text-stone-800 dark:text-stone-400 dark:hover:text-stone-200 font-medium transition cursor-pointer"
+            className="w-full py-2.5 text-xs font-extrabold text-[#171717]/75 hover:text-[#171717] dark:text-[#F8F3E8]/75 dark:hover:text-[#D9AC45] transition cursor-pointer"
           >
             Kembali ke Katalog Pembelajaran
           </button>
