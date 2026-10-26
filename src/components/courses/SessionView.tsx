@@ -15,18 +15,27 @@ import {
   Copy,
   Check,
   Share2,
-  X
+  X,
+  RotateCcw
 } from 'lucide-react';
-import { Course, Session, Quiz, Enrollment } from '../../types';
+import { Course, Session, Quiz, Enrollment, QuizAttempt } from '../../types';
 import { YouTubeEmbed } from '../common/YouTubeEmbed';
 import { PDFViewerModal } from '../common/PDFViewerModal';
 import { SessionShareModal } from './SessionShareModal';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
-import { markSessionCompleted } from '../../firebase/services';
+import { markSessionCompleted, getQuizById, getUserQuizAttempts } from '../../firebase/services';
 import { autoWrapArabicText, renderFormattedContentHtml } from '../../utils/arabicFontHelper';
 import { useSessionSEO } from '../../hooks/useSessionSEO';
 import { buildSessionShareData, canAccessSessionPublicly } from '../../utils/sessionShareHelper';
+import {
+  canCompleteSession,
+  canAdvanceToNextSession,
+  evaluateSessionQuizStatus,
+  findFirstUncompletedPrecedingQuizSession,
+  SessionQuizStatus
+} from '../../utils/quizFlowHelper';
+import { QuizRequiredModal } from './QuizRequiredModal';
 
 interface SessionViewProps {
   course: Course;
@@ -36,7 +45,7 @@ interface SessionViewProps {
   enrollment?: Enrollment | null;
   onBackToCourse: () => void;
   onSelectSession: (session: Session) => void;
-  onStartQuiz: (quiz: Quiz) => void;
+  onStartQuiz: (quiz: Quiz, session?: Session) => void;
   onOpenCertificate: (course: Course) => void;
   onRefreshEnrollment: () => void;
 }
@@ -52,13 +61,19 @@ export const SessionView: React.FC<SessionViewProps> = ({
   onStartQuiz,
   onRefreshEnrollment
 }) => {
-  const { user, isAdmin, loading: authLoading, openGuestModal, openAuthModal } = useAuth();
+  const { user, isAdmin, loading: authLoading, openGuestModal, openAuthModal, showToast } = useAuth();
   useLanguage();
   const [pdfModalOpen, setPdfModalOpen] = useState(false);
   const [markingDone, setMarkingDone] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [isPlaylistOpen, setIsPlaylistOpen] = useState(true);
+  const [userAttempts, setUserAttempts] = useState<QuizAttempt[]>([]);
+  const [quizzesMap, setQuizzesMap] = useState<Record<string, Quiz>>({});
+  const [quizWarningModalOpen, setQuizWarningModalOpen] = useState(false);
+  const [pendingBlockingSession, setPendingBlockingSession] = useState<Session | null>(null);
+  const [pendingBlockingQuiz, setPendingBlockingQuiz] = useState<Quiz | null>(null);
+  const [pendingQuizStatus, setPendingQuizStatus] = useState<SessionQuizStatus | null>(null);
 
   // Dynamically inject OpenGraph, Twitter Card, and Canonical URL metadata for this session
   useSessionSEO(session, course);
@@ -153,12 +168,72 @@ export const SessionView: React.FC<SessionViewProps> = ({
     );
   }
 
+  // Fetch user's quiz attempts whenever user or enrollment changes
+  useEffect(() => {
+    if (!user) {
+      setUserAttempts([]);
+      return;
+    }
+    getUserQuizAttempts(user.uid).then(attempts => {
+      setUserAttempts(attempts);
+    });
+  }, [user, enrollment]);
+
+  // Pre-load quiz data for any session with a linked quiz
+  useEffect(() => {
+    const quizIdsToFetch = allSessions
+      .map(s => s.quizId)
+      .filter((id): id is string => Boolean(id && id.trim().length > 0));
+
+    if (quizIdsToFetch.length === 0) return;
+
+    Promise.all(
+      quizIdsToFetch.map(async id => {
+        if (quiz && quiz.id === id) return quiz;
+        return getQuizById(id);
+      })
+    ).then(fetched => {
+      const map: Record<string, Quiz> = {};
+      fetched.forEach(q => {
+        if (q) map[q.id] = q;
+      });
+      setQuizzesMap(prev => ({ ...prev, ...map }));
+    });
+  }, [allSessions, quiz]);
+
   // Compute Prev / Next session
   const currentIndex = allSessions.findIndex(s => s.id === session.id);
   const prevSession = currentIndex > 0 ? allSessions[currentIndex - 1] : null;
   const nextSession = currentIndex >= 0 && currentIndex < allSessions.length - 1 ? allSessions[currentIndex + 1] : null;
 
   const isCompleted = enrollment?.completedSessionIds?.includes(session.id) || false;
+
+  const handleStartQuizForSession = async (targetSession: Session, preloadedQuiz?: Quiz | null) => {
+    const targetQuizId = targetSession.quizId;
+    if (!targetQuizId) return;
+
+    if (!user) {
+      openGuestModal(course, {
+        type: 'quiz',
+        courseId: course.id,
+        sessionId: targetSession.id,
+        quizId: targetQuizId,
+        onSuccess: async () => {
+          const q = preloadedQuiz || quizzesMap[targetQuizId] || (await getQuizById(targetQuizId));
+          if (q) onStartQuiz(q, targetSession);
+        }
+      });
+      return;
+    }
+
+    let q: Quiz | null = preloadedQuiz || quizzesMap[targetQuizId] || null;
+    if (!q || q.id !== targetQuizId) {
+      q = await getQuizById(targetQuizId);
+    }
+    if (q) {
+      onStartQuiz(q, targetSession);
+    }
+  };
 
   const handleToggleComplete = async () => {
     if (!user) {
@@ -173,35 +248,76 @@ export const SessionView: React.FC<SessionViewProps> = ({
       return;
     }
 
+    // 1. Mandatory quiz validation before marking session complete
+    const quizValidation = canCompleteSession(session, quiz, userAttempts);
+    if (!quizValidation.allowed) {
+      showToast(
+        quizValidation.reason ||
+          'Silakan kerjakan kuis sesi ini terlebih dahulu sebelum menyelesaikan pembelajaran.'
+      );
+      // Automatically redirect student to the session quiz
+      await handleStartQuizForSession(session, quiz);
+      return;
+    }
+
     try {
       setMarkingDone(true);
       await markSessionCompleted(user.uid, course.id, session.id, allSessions.length);
       onRefreshEnrollment();
-    } catch (err) {
-      console.error('Error marking session complete:', err);
+    } catch (err: any) {
+      if (err?.code === 'QUIZ_REQUIRED') {
+        showToast(
+          err.message ||
+            'Silakan kerjakan kuis sesi ini terlebih dahulu sebelum menyelesaikan pembelajaran.'
+        );
+        handleStartQuizForSession(session, quiz || err.quiz);
+      } else {
+        console.error('Error marking session complete:', err);
+      }
     } finally {
       setMarkingDone(false);
     }
   };
 
-  const handleStartQuizClick = () => {
-    if (!quiz) return;
-    if (!user) {
-      openGuestModal(course, {
-        type: 'quiz',
-        courseId: course.id,
-        sessionId: session.id,
-        quizId: quiz.id,
-        onSuccess: () => {
-          onStartQuiz(quiz);
-        }
-      });
+  const handleNextSessionClick = () => {
+    if (!nextSession) return;
+    const blockCheck = findFirstUncompletedPrecedingQuizSession(
+      allSessions,
+      nextSession,
+      userAttempts,
+      quizzesMap
+    );
+    if (blockCheck.hasBlockingQuiz && blockCheck.blockingSession) {
+      setPendingBlockingSession(blockCheck.blockingSession);
+      setPendingBlockingQuiz(blockCheck.blockingQuiz || null);
+      setPendingQuizStatus(blockCheck.status || null);
+      setQuizWarningModalOpen(true);
       return;
     }
-    onStartQuiz(quiz);
+    onSelectSession(nextSession);
+  };
+
+  const handlePlaylistSelectSession = (targetSession: Session) => {
+    if (targetSession.id === session.id) return;
+    // Check if any preceding session before targetSession has an uncompleted quiz
+    const blockCheck = findFirstUncompletedPrecedingQuizSession(
+      allSessions,
+      targetSession,
+      userAttempts,
+      quizzesMap
+    );
+    if (blockCheck.hasBlockingQuiz && blockCheck.blockingSession) {
+      setPendingBlockingSession(blockCheck.blockingSession);
+      setPendingBlockingQuiz(blockCheck.blockingQuiz || null);
+      setPendingQuizStatus(blockCheck.status || null);
+      setQuizWarningModalOpen(true);
+      return;
+    }
+    onSelectSession(targetSession);
   };
 
   const playlistMarginClass = isPlaylistOpen ? 'lg:mr-[340px] xl:mr-[400px]' : 'mr-0';
+
 
   return (
     <div className="max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8 py-3 sm:py-6 space-y-3.5 sm:space-y-6">
@@ -266,7 +382,7 @@ export const SessionView: React.FC<SessionViewProps> = ({
 
           {nextSession && (
             <button
-              onClick={() => onSelectSession(nextSession)}
+              onClick={handleNextSessionClick}
               className="nb-btn nb-btn-gold px-3 py-1.5 text-xs"
             >
               <span>Sesi Berikutnya</span>
@@ -542,33 +658,8 @@ export const SessionView: React.FC<SessionViewProps> = ({
               />
             </div>
           )}
-
-          {/* Quiz Evaluation Banner */}
-          {quiz && (
-            <div className="nb-card p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-5 bg-[#123D32] dark:bg-[#16263D] text-[#FAF7F0] dark:text-[#F1F4F8]">
-              <div className="space-y-1.5">
-                <div className="nb-badge bg-[#D6AD52] text-[#123D32]">
-                  <HelpCircle className="w-3.5 h-3.5" />
-                  <span>Ujian Evaluasi Pemahaman</span>
-                </div>
-                <h3 className="text-lg font-extrabold text-[#FAF7F0] dark:text-[#F1F4F8] font-serif-brand">
-                  {quiz.title}
-                </h3>
-                <p className="text-xs text-[#FAF7F0]/80 dark:text-[#B4C0D0]">
-                  {quiz.questions?.length || 0} Pertanyaan • Batas Kelulusan: {quiz.passingScore}% • Waktu: {quiz.timeLimitMinutes > 0 ? `${quiz.timeLimitMinutes} Menit` : 'Tanpa Batas'}
-                </p>
-              </div>
-
-              <button
-                onClick={handleStartQuizClick}
-                className="nb-btn nb-btn-gold px-6 py-3 text-sm shrink-0"
-              >
-                <span>Mulai Kuis Sekarang</span>
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          )}
         </div>
+
 
         {/* Right Sidebar: Sessions Playlist & Progress (Fixed to Viewport on Desktop & Responsive on Mobile) */}
         <aside className={`${isPlaylistOpen ? 'flex' : 'hidden'} lg:fixed lg:top-[72px] lg:right-4 xl:right-8 lg:w-[320px] xl:w-[380px] lg:h-[calc(100dvh-5.5rem)] lg:z-20 flex-col space-y-4 mt-8 lg:mt-0 animate-fade-in`}>
@@ -618,50 +709,114 @@ export const SessionView: React.FC<SessionViewProps> = ({
               </div>
             )}
 
-            <div ref={playlistScrollRef} className="p-2.5 space-y-2 flex-1 min-h-0 overflow-y-auto">
+            <div ref={playlistScrollRef} className="p-2.5 space-y-2.5 flex-1 min-h-0 overflow-y-auto">
               {allSessions.map((s, idx) => {
                 const isActive = s.id === session.id;
                 const isItemDone = enrollment?.completedSessionIds?.includes(s.id);
+                const sQuiz = s.quizId ? (quizzesMap[s.quizId] || (s.id === session.id ? quiz : null)) : null;
+                const quizStatus = evaluateSessionQuizStatus(s, sQuiz, userAttempts);
 
                 return (
-                  <button
+                  <div
                     key={s.id}
                     data-active-session={isActive ? 'true' : 'false'}
-                    onClick={() => onSelectSession(s)}
-                    className={`w-full text-left p-3 rounded-md text-xs transition-all duration-150 flex items-start gap-3 cursor-pointer border-2 ${
+                    className={`w-full rounded-md text-xs transition-all duration-150 border-2 overflow-hidden ${
                       isActive
                         ? 'bg-[#EFE5D2] dark:bg-[#243A56] border-[#292D2B] dark:border-[#34465D] text-[#292D2B] dark:text-[#F1F4F8] shadow-[3px_3px_0px_#292D2B] dark:shadow-[3px_3px_0px_#101B2D]'
-                        : 'text-[#292D2B] dark:text-[#F1F4F8] hover:bg-[#FAF7F0] dark:hover:bg-[#243A56]/70 border-transparent hover:border-[#292D2B]/30'
+                        : 'bg-white dark:bg-[#16263D] text-[#292D2B] dark:text-[#F1F4F8] hover:bg-[#FAF7F0] dark:hover:bg-[#243A56]/70 border-[#292D2B]/20 dark:border-[#34465D]/60'
                     }`}
                   >
-                    <div className={`w-6 h-6 rounded-md flex items-center justify-center font-extrabold text-[11px] shrink-0 border-2 border-[#292D2B] ${
-                      isItemDone
-                        ? 'bg-[#D6AD52] text-[#123D32]'
-                        : isActive
-                        ? 'bg-[#123D32] text-[#FAF7F0] dark:bg-[#243A56] dark:text-[#D6AD52]'
-                        : 'bg-[#FAF7F0] dark:bg-[#243A56] text-[#292D2B] dark:text-[#F1F4F8]'
-                    }`}>
-                      {isItemDone ? <CheckCircle2 className="w-3.5 h-3.5 text-[#123D32]" /> : idx + 1}
-                    </div>
+                    {/* Session Selection Item */}
+                    <button
+                      type="button"
+                      onClick={() => handlePlaylistSelectSession(s)}
+                      className="w-full text-left p-2.5 sm:p-3 flex items-start gap-2.5 cursor-pointer"
+                    >
+                      <div className={`w-6 h-6 rounded-md flex items-center justify-center font-extrabold text-[11px] shrink-0 border-2 border-[#292D2B] ${
+                        isItemDone
+                          ? 'bg-[#D6AD52] text-[#123D32]'
+                          : isActive
+                          ? 'bg-[#123D32] text-[#FAF7F0] dark:bg-[#243A56] dark:text-[#D6AD52]'
+                          : 'bg-[#FAF7F0] dark:bg-[#243A56] text-[#292D2B] dark:text-[#F1F4F8]'
+                      }`}>
+                        {isItemDone ? <CheckCircle2 className="w-3.5 h-3.5 text-[#123D32]" /> : idx + 1}
+                      </div>
 
-                    <div className="flex-1 truncate">
-                      <p className={`font-extrabold truncate ${isActive ? 'text-[#123D32] dark:text-[#D6AD52]' : 'text-[#292D2B] dark:text-[#F1F4F8]'}`}>
-                        {s.title}
-                      </p>
-                      {s.titleAr && (
-                        <p className="font-amiri text-xs text-[#123D32] dark:text-[#D6AD52] truncate text-right mt-0.5" dir="rtl">
-                          {s.titleAr}
+                      <div className="flex-1 min-w-0">
+                        <p className={`font-extrabold truncate ${isActive ? 'text-[#123D32] dark:text-[#D6AD52]' : 'text-[#292D2B] dark:text-[#F1F4F8]'}`}>
+                          {s.title}
                         </p>
-                      )}
-                    </div>
+                        {s.titleAr && (
+                          <p className="font-amiri text-xs text-[#123D32] dark:text-[#D6AD52] truncate text-right mt-0.5" dir="rtl">
+                            {s.titleAr}
+                          </p>
+                        )}
+                      </div>
 
-                    {isActive && (
-                      <span className="w-2.5 h-2.5 rounded-sm bg-[#D6AD52] border border-[#292D2B] ml-1 self-center shrink-0" />
+                      {isActive && (
+                        <span className="w-2.5 h-2.5 rounded-sm bg-[#D6AD52] border border-[#292D2B] ml-1 self-center shrink-0" />
+                      )}
+                    </button>
+
+                    {/* Dedicated Quiz Button/Status Directly Under This Session */}
+                    {s.quizId && (
+                      <div className="px-2.5 sm:px-3 pb-2.5 pt-0">
+                        {quizStatus.status === 'passed' ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleStartQuizForSession(s, sQuiz);
+                            }}
+                            className="w-full flex items-center justify-between px-2.5 py-1.5 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-900 dark:text-emerald-200 border border-emerald-400 dark:border-emerald-700 text-[11px] font-bold hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition cursor-pointer"
+                            title={`Kuis sesi ${s.title} telah selesai dan lulus dengan nilai ${quizStatus.bestScore}%. Klik untuk melihat hasil.`}
+                          >
+                            <span className="flex items-center gap-1.5 truncate">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                              <span className="truncate">Kuis Selesai ({quizStatus.bestScore}%)</span>
+                            </span>
+                            <span className="text-[10px] underline font-extrabold shrink-0 ml-1">Lihat Hasil</span>
+                          </button>
+                        ) : quizStatus.status === 'failed' ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleStartQuizForSession(s, sQuiz);
+                            }}
+                            className="w-full flex items-center justify-between px-2.5 py-1.5 rounded bg-amber-50 dark:bg-amber-950/60 text-amber-950 dark:text-amber-200 border border-amber-400 dark:border-amber-700 text-[11px] font-bold hover:bg-amber-100 dark:hover:bg-amber-900/50 transition cursor-pointer"
+                            title={`Nilai kuis antum (${quizStatus.bestScore}%) belum memenuhi batas kelulusan (${quizStatus.passingScore}%). Klik untuk mengulang kuis.`}
+                          >
+                            <span className="flex items-center gap-1.5 truncate">
+                              <RotateCcw className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400 shrink-0" />
+                              <span className="truncate">Ulangi Kuis ({quizStatus.bestScore}%)</span>
+                            </span>
+                            <span className="text-[10px] underline font-extrabold shrink-0 ml-1">Kerjakan Lagi</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleStartQuizForSession(s, sQuiz);
+                            }}
+                            className="w-full flex items-center justify-between px-2.5 py-1.5 rounded bg-[#FAF7F0] dark:bg-[#101B2D] text-[#123D32] dark:text-[#D6AD52] border border-[#292D2B]/35 dark:border-[#34465D] text-[11px] font-bold hover:bg-[#D6AD52]/20 dark:hover:bg-[#243A56] transition cursor-pointer"
+                            title={`Kerjakan kuis evaluasi pemahaman untuk sesi ${s.title}`}
+                          >
+                            <span className="flex items-center gap-1.5 truncate">
+                              <HelpCircle className="w-3.5 h-3.5 text-[#237A70] dark:text-[#D6AD52] shrink-0" />
+                              <span className="truncate">Kerjakan Kuis</span>
+                            </span>
+                            <ChevronRight className="w-3.5 h-3.5 opacity-70 shrink-0 ml-1" />
+                          </button>
+                        )}
+                      </div>
                     )}
-                  </button>
+                  </div>
                 );
               })}
             </div>
+
           </div>
         </aside>
       </div>
@@ -680,6 +835,31 @@ export const SessionView: React.FC<SessionViewProps> = ({
         onClose={() => setShareModalOpen(false)}
         session={session}
         course={course}
+      />
+
+      {/* Quiz Required Warning Modal */}
+      <QuizRequiredModal
+        isOpen={quizWarningModalOpen}
+        onClose={() => {
+          setQuizWarningModalOpen(false);
+          setPendingBlockingSession(null);
+          setPendingBlockingQuiz(null);
+          setPendingQuizStatus(null);
+        }}
+        onGoToQuiz={() => {
+          const targetS = pendingBlockingSession;
+          const targetQ = pendingBlockingQuiz;
+          setQuizWarningModalOpen(false);
+          setPendingBlockingSession(null);
+          setPendingBlockingQuiz(null);
+          setPendingQuizStatus(null);
+          if (targetS) {
+            handleStartQuizForSession(targetS, targetQ);
+          }
+        }}
+        blockingSession={pendingBlockingSession}
+        blockingQuiz={pendingBlockingQuiz}
+        quizStatus={pendingQuizStatus}
       />
     </div>
   );

@@ -668,18 +668,21 @@ function MainApp() {
     });
   };
 
-  const handleStartQuiz = (quiz: Quiz) => {
+  const handleStartQuiz = (quiz: Quiz, session?: Session) => {
+    const targetSession = session || selectedSession;
     if (!user) {
       openGuestModal(selectedCourse, {
         type: 'quiz',
-        courseId: selectedCourse?.id,
+        courseId: selectedCourse?.id || quiz.courseId,
+        sessionId: targetSession?.id || quiz.sessionId,
         quizId: quiz.id,
         onSuccess: () => {
           setSelectedQuiz(quiz);
+          if (targetSession) setSelectedSession(targetSession);
           navigateTo({
             view: 'quiz-view',
             courseId: selectedCourse?.id || quiz.courseId || null,
-            sessionId: selectedSession?.id || null,
+            sessionId: targetSession?.id || quiz.sessionId || null,
             quizId: quiz.id
           });
         }
@@ -687,10 +690,11 @@ function MainApp() {
       return;
     }
     setSelectedQuiz(quiz);
+    if (targetSession) setSelectedSession(targetSession);
     navigateTo({
       view: 'quiz-view',
       courseId: selectedCourse?.id || quiz.courseId || null,
-      sessionId: selectedSession?.id || null,
+      sessionId: targetSession?.id || quiz.sessionId || null,
       quizId: quiz.id
     });
   };
@@ -890,6 +894,7 @@ function MainApp() {
                           onSelectSession={handleSelectSession}
                           onOpenCertificate={handleOpenCertificate}
                           onRefreshEnrollment={loadUserEnrollments}
+                          onStartQuiz={handleStartQuiz}
                         />
                       </div>
                     ) : (

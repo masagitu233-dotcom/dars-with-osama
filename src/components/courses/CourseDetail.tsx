@@ -10,14 +10,22 @@ import {
   Share2,
   Sparkles,
   Copy,
-  Check
+  Check,
+  RotateCcw,
+  ChevronRight
 } from 'lucide-react';
-import { Course, Session, Category, Enrollment } from '../../types';
+import { Course, Session, Category, Enrollment, Quiz, QuizAttempt } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
-import { enrollUser } from '../../firebase/services';
+import { enrollUser, getQuizById, getUserQuizAttempts } from '../../firebase/services';
 import { SessionShareModal } from './SessionShareModal';
 import { buildSessionShareUrl } from '../../utils/sessionShareHelper';
+import {
+  evaluateSessionQuizStatus,
+  findFirstUncompletedPrecedingQuizSession,
+  SessionQuizStatus
+} from '../../utils/quizFlowHelper';
+import { QuizRequiredModal } from './QuizRequiredModal';
 
 interface CourseDetailProps {
   course: Course;
@@ -28,6 +36,7 @@ interface CourseDetailProps {
   onSelectSession: (session: Session) => void;
   onOpenCertificate: (course: Course) => void;
   onRefreshEnrollment: () => void;
+  onStartQuiz?: (quiz: Quiz, session?: Session) => void;
 }
 
 export const CourseDetail: React.FC<CourseDetailProps> = ({
@@ -37,13 +46,82 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
   enrollment,
   onBack,
   onSelectSession,
-  onRefreshEnrollment
+  onRefreshEnrollment,
+  onStartQuiz
 }) => {
   const { user, loading: authLoading, openGuestModal } = useAuth();
   useLanguage();
   const [enrolling, setEnrolling] = useState(false);
   const [copiedSessionId, setCopiedSessionId] = useState<string | null>(null);
   const [sharingSession, setSharingSession] = useState<Session | null>(null);
+  const [userAttempts, setUserAttempts] = useState<QuizAttempt[]>([]);
+  const [quizzesMap, setQuizzesMap] = useState<Record<string, Quiz>>({});
+  const [quizWarningModalOpen, setQuizWarningModalOpen] = useState(false);
+  const [blockingSessionForModal, setBlockingSessionForModal] = useState<Session | null>(null);
+  const [blockingQuizForModal, setBlockingQuizForModal] = useState<Quiz | null>(null);
+  const [blockingQuizStatusForModal, setBlockingQuizStatusForModal] = useState<SessionQuizStatus | null>(null);
+
+  React.useEffect(() => {
+    if (!user) {
+      setUserAttempts([]);
+      return;
+    }
+    getUserQuizAttempts(user.uid).then(attempts => {
+      setUserAttempts(attempts);
+    });
+  }, [user, enrollment]);
+
+  React.useEffect(() => {
+    const quizIds = sessions
+      .map(s => s.quizId)
+      .filter((id): id is string => Boolean(id && id.trim().length > 0));
+
+    if (quizIds.length === 0) return;
+
+    Promise.all(
+      quizIds.map(async id => getQuizById(id))
+    ).then(fetched => {
+      const map: Record<string, Quiz> = {};
+      fetched.forEach(q => {
+        if (q) map[q.id] = q;
+      });
+      setQuizzesMap(map);
+    });
+  }, [sessions]);
+
+  const handleStartQuizForSession = async (e: React.MouseEvent, targetSession: Session) => {
+    e.stopPropagation();
+    const qId = targetSession.quizId;
+    if (!qId) return;
+
+    if (!user) {
+      openGuestModal(course, {
+        type: 'quiz',
+        courseId: course.id,
+        sessionId: targetSession.id,
+        quizId: qId,
+        onSuccess: async () => {
+          const q = quizzesMap[qId] || (await getQuizById(qId));
+          if (q && onStartQuiz) {
+            onStartQuiz(q, targetSession);
+          } else {
+            onSelectSession(targetSession);
+          }
+        }
+      });
+      return;
+    }
+
+    let q: Quiz | null = quizzesMap[qId] || null;
+    if (!q) {
+      q = await getQuizById(qId);
+    }
+    if (q && onStartQuiz) {
+      onStartQuiz(q, targetSession);
+    } else {
+      onSelectSession(targetSession);
+    }
+  };
 
   const handleCopySessionUrl = (e: React.MouseEvent, session: Session) => {
     e.stopPropagation();
@@ -101,6 +179,58 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
     }
   };
 
+  const handleSessionItemClick = (targetSession: Session) => {
+    // If authenticated, verify preceding sessions in this course do not have uncompleted quizzes
+    if (user) {
+      const blockCheck = findFirstUncompletedPrecedingQuizSession(
+        sessions,
+        targetSession,
+        userAttempts,
+        quizzesMap
+      );
+      if (blockCheck.hasBlockingQuiz && blockCheck.blockingSession) {
+        setBlockingSessionForModal(blockCheck.blockingSession);
+        setBlockingQuizForModal(blockCheck.blockingQuiz || null);
+        setBlockingQuizStatusForModal(blockCheck.status || null);
+        setQuizWarningModalOpen(true);
+        return;
+      }
+    }
+    onSelectSession(targetSession);
+  };
+
+  const handleGoToBlockingQuiz = async () => {
+    const target = blockingSessionForModal;
+    const preQuiz = blockingQuizForModal;
+    setQuizWarningModalOpen(false);
+    setBlockingSessionForModal(null);
+    setBlockingQuizForModal(null);
+    setBlockingQuizStatusForModal(null);
+
+    if (!target) return;
+    const qId = target.quizId;
+    if (!qId) {
+      onSelectSession(target);
+      return;
+    }
+    let q: Quiz | null = preQuiz || (quizzesMap[qId] ?? null);
+    if (!q) {
+      q = await getQuizById(qId);
+    }
+    if (q && onStartQuiz) {
+      onStartQuiz(q, target);
+    } else {
+      onSelectSession(target);
+    }
+  };
+
+  const handleDismissQuizWarning = () => {
+    setQuizWarningModalOpen(false);
+    setBlockingSessionForModal(null);
+    setBlockingQuizForModal(null);
+    setBlockingQuizStatusForModal(null);
+  };
+
   const handleStartOrContinue = () => {
     if (authLoading) return;
     if (!user) {
@@ -109,7 +239,7 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
         courseId: course.id,
         onSuccess: () => {
           if (sessions.length > 0) {
-            onSelectSession(sessions[0]);
+            handleSessionItemClick(sessions[0]);
           }
         }
       });
@@ -119,11 +249,11 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
     if (enrollment?.lastSessionId) {
       const last = sessions.find(s => s.id === enrollment.lastSessionId);
       if (last) {
-        onSelectSession(last);
+        handleSessionItemClick(last);
         return;
       }
     }
-    onSelectSession(sessions[0]);
+    handleSessionItemClick(sessions[0]);
   };
 
   const completedIds = new Set(enrollment?.completedSessionIds || []);
@@ -277,10 +407,13 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
           <div className="space-y-3.5">
             {sessions.map((session, idx) => {
               const isSessionDone = completedIds.has(session.id);
+              const sQuiz = session.quizId ? quizzesMap[session.quizId] : null;
+              const quizStatus = evaluateSessionQuizStatus(session, sQuiz, userAttempts);
+
               return (
                 <div
                   key={session.id}
-                  onClick={() => onSelectSession(session)}
+                  onClick={() => handleSessionItemClick(session)}
                   className="group nb-card nb-card-interactive p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer bg-white dark:bg-[#16263D]"
                 >
                   <div className="flex items-start gap-4">
@@ -314,8 +447,49 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
                       <p className="text-xs text-[#626A66] dark:text-[#B4C0D0] line-clamp-1 max-w-2xl">
                         {session.description}
                       </p>
+
+                      {/* Dedicated Quiz Button directly beneath this session */}
+                      {session.quizId && (
+                        <div className="pt-2">
+                          {quizStatus.status === 'passed' ? (
+                            <button
+                              type="button"
+                              onClick={(e) => handleStartQuizForSession(e, session)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-900 dark:text-emerald-200 border border-emerald-400 dark:border-emerald-700 text-xs font-bold hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition cursor-pointer"
+                              title={`Kuis sesi ${session.title} telah selesai dan lulus (${quizStatus.bestScore}%). Klik untuk melihat hasil.`}
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                              <span>Kuis Selesai ({quizStatus.bestScore}%)</span>
+                              <span className="text-[10px] underline ml-1 font-extrabold">Lihat Hasil</span>
+                            </button>
+                          ) : quizStatus.status === 'failed' ? (
+                            <button
+                              type="button"
+                              onClick={(e) => handleStartQuizForSession(e, session)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-amber-50 dark:bg-amber-950/60 text-amber-950 dark:text-amber-200 border border-amber-400 dark:border-amber-700 text-xs font-bold hover:bg-amber-100 dark:hover:bg-amber-900/50 transition cursor-pointer"
+                              title={`Nilai kuis antum (${quizStatus.bestScore}%) belum memenuhi batas kelulusan (${quizStatus.passingScore}%). Klik untuk mengulang kuis.`}
+                            >
+                              <RotateCcw className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400 shrink-0" />
+                              <span>Ulangi Kuis ({quizStatus.bestScore}%)</span>
+                              <span className="text-[10px] underline ml-1 font-extrabold">Kerjakan Lagi</span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={(e) => handleStartQuizForSession(e, session)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#FAF7F0] dark:bg-[#101B2D] text-[#123D32] dark:text-[#D6AD52] border border-[#292D2B]/35 dark:border-[#34465D] text-xs font-bold hover:bg-[#D6AD52]/20 dark:hover:bg-[#243A56] transition cursor-pointer"
+                              title={`Kerjakan kuis evaluasi pemahaman untuk sesi ${session.title}`}
+                            >
+                              <HelpCircle className="w-3.5 h-3.5 text-[#237A70] dark:text-[#D6AD52] shrink-0" />
+                              <span>Kerjakan Kuis</span>
+                              <ChevronRight className="w-3.5 h-3.5 opacity-70" />
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
+
 
                   {/* Badges & Share Actions on Right */}
                   <div className="flex flex-wrap items-center gap-2 shrink-0 self-end sm:self-center">
@@ -393,6 +567,16 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
           course={course}
         />
       )}
+
+      {/* Quiz Required Warning Modal */}
+      <QuizRequiredModal
+        isOpen={quizWarningModalOpen}
+        onClose={handleDismissQuizWarning}
+        onGoToQuiz={handleGoToBlockingQuiz}
+        blockingSession={blockingSessionForModal}
+        blockingQuiz={blockingQuizForModal}
+        quizStatus={blockingQuizStatusForModal}
+      />
     </div>
   );
 };

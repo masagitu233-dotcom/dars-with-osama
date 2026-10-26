@@ -1562,3 +1562,396 @@ test('Case 41: getCategories, getCourses, getSessionsByCourse, getBlogPosts, get
   const { db } = await import('../firebase/config.js');
   await terminate(db).catch(() => {});
 });
+
+// Case 42: Alur Kuis - Sesi dengan kuis wajib dikerjakan dan tidak boleh selesai sebelum kuis dikerjakan
+test('Case 42: canCompleteSession menolak penyelesaian sesi jika kuis belum dikerjakan dan menyertakan pesan yang jelas', async () => {
+  const { canCompleteSession, evaluateSessionQuizStatus } = await import('./quizFlowHelper.js');
+
+  const sessionWithQuiz: import('../types/index.js').Session = {
+    id: 'session-tsalatsah-1',
+    courseId: 'course-tsalatsatil-ushul',
+    title: 'Sesi 1: Empat Perkara Wajib',
+    titleAr: '',
+    description: '',
+    order: 1,
+    isPublished: true,
+    quizId: 'quiz-tsalatsah-1'
+  };
+
+  const quiz: import('../types/index.js').Quiz = {
+    id: 'quiz-tsalatsah-1',
+    sessionId: 'session-tsalatsah-1',
+    courseId: 'course-tsalatsatil-ushul',
+    title: 'Evaluasi Kuis Sesi 1',
+    passingScore: 75,
+    timeLimitMinutes: 10,
+    maxAttempts: 3,
+    showAnswersAfterSubmit: true,
+    isPublished: true,
+    questions: []
+  };
+
+  // Tanpa riwayat attempt (belum dikerjakan)
+  const check = canCompleteSession(sessionWithQuiz, quiz, []);
+  assert.equal(check.allowed, false);
+  assert.equal(
+    check.reason,
+    'Silakan kerjakan kuis sesi ini terlebih dahulu sebelum menyelesaikan pembelajaran.'
+  );
+
+  const status = evaluateSessionQuizStatus(sessionWithQuiz, quiz, []);
+  assert.equal(status.hasQuiz, true);
+  assert.equal(status.status, 'not_attempted');
+  assert.equal(status.canCompleteSession, false);
+  assert.equal(status.actionLabel, 'Kerjakan Kuis');
+});
+
+// Case 43: Alur Kuis - Sesi tanpa kuis langsung boleh diselesaikan tanpa pengalihan
+test('Case 43: canCompleteSession mengizinkan penyelesaian langsung untuk sesi yang tidak memiliki kuis', async () => {
+  const { canCompleteSession, evaluateSessionQuizStatus } = await import('./quizFlowHelper.js');
+
+  const sessionNoQuiz: import('../types/index.js').Session = {
+    id: 'session-tsalatsah-3',
+    courseId: 'course-tsalatsatil-ushul',
+    title: 'Sesi 3: Ma\'rifatullah',
+    titleAr: '',
+    description: '',
+    order: 3,
+    isPublished: true
+  };
+
+  const check = canCompleteSession(sessionNoQuiz, null, []);
+  assert.equal(check.allowed, true);
+  assert.equal(check.reason, undefined);
+
+  const status = evaluateSessionQuizStatus(sessionNoQuiz, null, []);
+  assert.equal(status.hasQuiz, false);
+  assert.equal(status.status, 'no_quiz');
+  assert.equal(status.canCompleteSession, true);
+});
+
+// Case 44: Alur Kuis - Siswa yang belum mencapai nilai passingScore tidak dapat menyelesaikan sesi
+test('Case 44: canCompleteSession menolak penyelesaian jika nilai kuis di bawah batas kelulusan (passingScore)', async () => {
+  const { canCompleteSession, evaluateSessionQuizStatus } = await import('./quizFlowHelper.js');
+
+  const session: import('../types/index.js').Session = {
+    id: 'session-1',
+    courseId: 'course-1',
+    title: 'Sesi 1',
+    titleAr: '',
+    description: '',
+    order: 1,
+    isPublished: true,
+    quizId: 'quiz-1'
+  };
+
+  const quiz: import('../types/index.js').Quiz = {
+    id: 'quiz-1',
+    sessionId: 'session-1',
+    courseId: 'course-1',
+    title: 'Kuis Evaluasi',
+    passingScore: 75,
+    timeLimitMinutes: 10,
+    maxAttempts: 3,
+    showAnswersAfterSubmit: true,
+    isPublished: true,
+    questions: []
+  };
+
+  const failedAttempts: import('../types/index.js').QuizAttempt[] = [
+    {
+      id: 'att-1',
+      userId: 'user-123',
+      userName: 'Ahmad',
+      userEmail: 'ahmad@example.com',
+      quizId: 'quiz-1',
+      sessionId: 'session-1',
+      courseId: 'course-1',
+      score: 50,
+      passed: false,
+      totalPoints: 10,
+      maxPoints: 20,
+      answers: {},
+      submittedAt: '2026-10-25T10:00:00Z',
+      attemptNumber: 1
+    }
+  ];
+
+  const check = canCompleteSession(session, quiz, failedAttempts);
+  assert.equal(check.allowed, false);
+  assert.ok(check.reason?.includes('75%'));
+  assert.ok(check.reason?.includes('50%'));
+
+  const status = evaluateSessionQuizStatus(session, quiz, failedAttempts);
+  assert.equal(status.status, 'failed');
+  assert.equal(status.bestScore, 50);
+  assert.equal(status.canCompleteSession, false);
+  assert.equal(status.actionLabel, 'Ulangi Kuis (50%)');
+});
+
+// Case 45: Alur Kuis - Siswa yang memenuhi passingScore diizinkan menyelesaikan sesi dan lanjut ke sesi berikutnya
+test('Case 45: canCompleteSession dan canAdvanceToNextSession mengizinkan penyelesaian dan perpindahan ke sesi berikutnya setelah lulus kuis', async () => {
+  const { canCompleteSession, canAdvanceToNextSession, evaluateSessionQuizStatus } = await import('./quizFlowHelper.js');
+
+  const session: import('../types/index.js').Session = {
+    id: 'session-1',
+    courseId: 'course-1',
+    title: 'Sesi 1',
+    titleAr: '',
+    description: '',
+    order: 1,
+    isPublished: true,
+    quizId: 'quiz-1'
+  };
+
+  const quiz: import('../types/index.js').Quiz = {
+    id: 'quiz-1',
+    sessionId: 'session-1',
+    courseId: 'course-1',
+    title: 'Kuis Evaluasi',
+    passingScore: 75,
+    timeLimitMinutes: 10,
+    maxAttempts: 3,
+    showAnswersAfterSubmit: true,
+    isPublished: true,
+    questions: []
+  };
+
+  const passedAttempts: import('../types/index.js').QuizAttempt[] = [
+    {
+      id: 'att-1',
+      userId: 'user-123',
+      userName: 'Ahmad',
+      userEmail: 'ahmad@example.com',
+      quizId: 'quiz-1',
+      sessionId: 'session-1',
+      courseId: 'course-1',
+      score: 50,
+      passed: false,
+      totalPoints: 10,
+      maxPoints: 20,
+      answers: {},
+      submittedAt: '2026-10-25T10:00:00Z',
+      attemptNumber: 1
+    },
+    {
+      id: 'att-2',
+      userId: 'user-123',
+      userName: 'Ahmad',
+      userEmail: 'ahmad@example.com',
+      quizId: 'quiz-1',
+      sessionId: 'session-1',
+      courseId: 'course-1',
+      score: 100,
+      passed: true,
+      totalPoints: 20,
+      maxPoints: 20,
+      answers: {},
+      submittedAt: '2026-10-25T11:00:00Z',
+      attemptNumber: 2
+    }
+  ];
+
+  const checkComplete = canCompleteSession(session, quiz, passedAttempts);
+  assert.equal(checkComplete.allowed, true);
+
+  const checkAdvance = canAdvanceToNextSession(session, quiz, passedAttempts);
+  assert.equal(checkAdvance.allowed, true);
+
+  const status = evaluateSessionQuizStatus(session, quiz, passedAttempts);
+  assert.equal(status.status, 'passed');
+  assert.equal(status.bestScore, 100);
+  assert.equal(status.canCompleteSession, true);
+  assert.equal(status.actionLabel, 'Kuis Selesai (100%)');
+});
+
+// Case 46: Alur Kuis - Pemblokiran akses lompat ke sesi berikutnya jika kuis belum lulus
+test('Case 46: canAdvanceToNextSession memblokir navigasi ke sesi berikutnya dan menyertakan pesan pengalihan jika kuis belum selesai', async () => {
+  const { canAdvanceToNextSession } = await import('./quizFlowHelper.js');
+
+  const currentSession: import('../types/index.js').Session = {
+    id: 'session-tsalatsah-1',
+    courseId: 'course-tsalatsatil-ushul',
+    title: 'Sesi 1: Empat Perkara Wajib',
+    titleAr: '',
+    description: '',
+    order: 1,
+    isPublished: true,
+    quizId: 'quiz-tsalatsah-1'
+  };
+
+  const quiz: import('../types/index.js').Quiz = {
+    id: 'quiz-tsalatsah-1',
+    sessionId: 'session-tsalatsah-1',
+    courseId: 'course-tsalatsatil-ushul',
+    title: 'Evaluasi Kuis Sesi 1',
+    passingScore: 75,
+    timeLimitMinutes: 10,
+    maxAttempts: 3,
+    showAnswersAfterSubmit: true,
+    isPublished: true,
+    questions: []
+  };
+
+  // Belum dikerjakan -> diblokir
+  const check = canAdvanceToNextSession(currentSession, quiz, []);
+  assert.equal(check.allowed, false);
+  assert.equal(
+    check.reason,
+    'Silakan kerjakan kuis sesi ini terlebih dahulu sebelum melanjutkan ke sesi berikutnya.'
+  );
+});
+
+// Case 47: findFirstUncompletedPrecedingQuizSession memblokir lompat sesi jika ada kuis di sesi sebelumnya yang belum dikerjakan
+test('Case 47: findFirstUncompletedPrecedingQuizSession mendeteksi kuis belum selesai pada sesi sebelumnya dan mengembalikan pesan ramah', async () => {
+  const { findFirstUncompletedPrecedingQuizSession } = await import('./quizFlowHelper.js');
+
+  const s1: import('../types/index.js').Session = {
+    id: 's-1',
+    courseId: 'c-1',
+    title: 'Sesi 1: Muqaddimah',
+    titleAr: '',
+    description: '',
+    order: 1,
+    isPublished: true,
+    quizId: 'q-1'
+  };
+
+  const s2: import('../types/index.js').Session = {
+    id: 's-2',
+    courseId: 'c-1',
+    title: 'Sesi 2: Rukun Islam',
+    titleAr: '',
+    description: '',
+    order: 2,
+    isPublished: true,
+    quizId: 'q-2'
+  };
+
+  const s3: import('../types/index.js').Session = {
+    id: 's-3',
+    courseId: 'c-1',
+    title: 'Sesi 3: Ihsan',
+    titleAr: '',
+    description: '',
+    order: 3,
+    isPublished: true
+  };
+
+  const q1: import('../types/index.js').Quiz = {
+    id: 'q-1',
+    courseId: 'c-1',
+    title: 'Kuis Sesi 1',
+    passingScore: 70,
+    timeLimitMinutes: 0,
+    maxAttempts: 3,
+    showAnswersAfterSubmit: true,
+    isPublished: true,
+    questions: []
+  };
+
+  // Siswa belum mengerjakan kuis sesi 1, lalu mencoba klik sesi 2
+  const checkS2 = findFirstUncompletedPrecedingQuizSession([s1, s2, s3], s2, [], { 'q-1': q1 });
+  assert.equal(checkS2.hasBlockingQuiz, true);
+  assert.equal(checkS2.blockingSession?.id, 's-1');
+  assert.equal(
+    checkS2.message,
+    'Anda masih memiliki kuis yang belum dikerjakan pada sesi sebelumnya. Silakan kerjakan kuis tersebut terlebih dahulu agar dapat melanjutkan pembelajaran.'
+  );
+
+  // Siswa mencoba klik sesi 3 (melompati sesi 1 dan 2)
+  const checkS3 = findFirstUncompletedPrecedingQuizSession([s1, s2, s3], s3, [], { 'q-1': q1 });
+  assert.equal(checkS3.hasBlockingQuiz, true);
+  assert.equal(checkS3.blockingSession?.id, 's-1');
+});
+
+// Case 48: findFirstUncompletedPrecedingQuizSession tidak memblokir navigasi mundur ke sesi terdahulu
+test('Case 48: Navigasi mundur ke sesi awal (mengulang materi terdahulu) tidak diblokir oleh kuis sesi setelahnya', async () => {
+  const { findFirstUncompletedPrecedingQuizSession } = await import('./quizFlowHelper.js');
+
+  const s1: import('../types/index.js').Session = {
+    id: 's-1',
+    courseId: 'c-1',
+    title: 'Sesi 1',
+    titleAr: '',
+    description: '',
+    order: 1,
+    isPublished: true
+  };
+
+  const s2: import('../types/index.js').Session = {
+    id: 's-2',
+    courseId: 'c-1',
+    title: 'Sesi 2',
+    titleAr: '',
+    description: '',
+    order: 2,
+    isPublished: true,
+    quizId: 'q-2'
+  };
+
+  // Navigasi ke Sesi 1 (sesi pertama) tidak memiliki sesi pendahulu sehingga tidak pernah diblokir
+  const checkS1 = findFirstUncompletedPrecedingQuizSession([s1, s2], s1, [], {});
+  assert.equal(checkS1.hasBlockingQuiz, false);
+});
+
+// Case 49: findFirstUncompletedPrecedingQuizSession membuka blokir saat kuis sesi pendahulu telah lulus
+test('Case 49: findFirstUncompletedPrecedingQuizSession mengizinkan akses ke sesi berikutnya setelah kuis pendahulu lulus', async () => {
+  const { findFirstUncompletedPrecedingQuizSession } = await import('./quizFlowHelper.js');
+
+  const s1: import('../types/index.js').Session = {
+    id: 's-1',
+    courseId: 'c-1',
+    title: 'Sesi 1',
+    titleAr: '',
+    description: '',
+    order: 1,
+    isPublished: true,
+    quizId: 'q-1'
+  };
+
+  const s2: import('../types/index.js').Session = {
+    id: 's-2',
+    courseId: 'c-1',
+    title: 'Sesi 2',
+    titleAr: '',
+    description: '',
+    order: 2,
+    isPublished: true
+  };
+
+  const q1: import('../types/index.js').Quiz = {
+    id: 'q-1',
+    courseId: 'c-1',
+    title: 'Kuis Sesi 1',
+    passingScore: 70,
+    timeLimitMinutes: 0,
+    maxAttempts: 3,
+    showAnswersAfterSubmit: true,
+    isPublished: true,
+    questions: []
+  };
+
+  const passedAttempts: import('../types/index.js').QuizAttempt[] = [
+    {
+      id: 'att-1',
+      userId: 'u-1',
+      userName: 'Ahmad',
+      userEmail: 'ahmad@example.com',
+      quizId: 'q-1',
+      sessionId: 's-1',
+      courseId: 'c-1',
+      score: 80,
+      passed: true,
+      totalPoints: 16,
+      maxPoints: 20,
+      answers: {},
+      submittedAt: '2026-10-26T10:00:00Z',
+      attemptNumber: 1
+    }
+  ];
+
+  const check = findFirstUncompletedPrecedingQuizSession([s1, s2], s2, passedAttempts, { 'q-1': q1 });
+  assert.equal(check.hasBlockingQuiz, false);
+});
+

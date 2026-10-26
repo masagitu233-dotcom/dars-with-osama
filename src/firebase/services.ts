@@ -29,6 +29,7 @@ import {
   filterProductionBlogPosts,
   mergeCourseSessions
 } from '../utils/dataAuditHelper';
+import { canCompleteSession, evaluateSessionQuizStatus } from '../utils/quizFlowHelper';
 import {
   PRODUCTION_CATEGORIES,
   PRODUCTION_COURSES,
@@ -965,6 +966,35 @@ export async function enrollUser(userId: string, courseId: string): Promise<Enro
   }
 }
 
+export async function isSessionQuizSatisfied(
+  userId: string,
+  courseId: string,
+  sessionId: string
+): Promise<{ satisfied: boolean; reason?: string; quiz?: Quiz | null }> {
+  try {
+    const session = await getSessionById(sessionId, courseId);
+    if (!session || !session.quizId) {
+      return { satisfied: true };
+    }
+
+    const quiz = await getQuizById(session.quizId);
+    if (!quiz || quiz.isPublished === false) {
+      return { satisfied: true, quiz: quiz || null };
+    }
+
+    const attempts = await getUserQuizAttempts(userId);
+    const check = canCompleteSession(session, quiz, attempts);
+    return {
+      satisfied: check.allowed,
+      reason: check.reason,
+      quiz
+    };
+  } catch (err) {
+    console.warn('isSessionQuizSatisfied verification notice:', err);
+    return { satisfied: true };
+  }
+}
+
 export async function markSessionCompleted(
   userId: string,
   courseId: string,
@@ -973,6 +1003,16 @@ export async function markSessionCompleted(
 ): Promise<Enrollment> {
   const enrollmentId = `${userId}_${courseId}`;
   const path = `enrollments/${enrollmentId}`;
+
+  // Strict validation: Verify whether the session requires a quiz and whether the user has passed
+  const quizCheck = await isSessionQuizSatisfied(userId, courseId, sessionId);
+  if (!quizCheck.satisfied) {
+    const err = new Error(quizCheck.reason || 'Silakan kerjakan kuis sesi ini terlebih dahulu sebelum menyelesaikan pembelajaran.');
+    (err as any).code = 'QUIZ_REQUIRED';
+    (err as any).quiz = quizCheck.quiz;
+    throw err;
+  }
+
   try {
     const existing = await getEnrollment(userId, courseId);
     let completed = existing ? [...(existing.completedSessionIds || [])] : [];
@@ -1012,10 +1052,23 @@ export async function saveQuizAttempt(attempt: Omit<QuizAttempt, 'id'>): Promise
   const attemptId = `${attempt.userId}_${attempt.quizId}_${Date.now()}`;
   const path = `quizAttempts/${attemptId}`;
   try {
-    await setDoc(doc(db, 'quizAttempts', attemptId), {
+    const fullAttempt: QuizAttempt = {
       ...attempt,
       id: attemptId
-    });
+    };
+    await setDoc(doc(db, 'quizAttempts', attemptId), fullAttempt);
+
+    // Persist to local cache for instant UI availability & offline resilience
+    if (typeof window !== 'undefined' && window.localStorage) {
+      try {
+        const key = `dars_quiz_attempts_${attempt.userId}`;
+        const raw = localStorage.getItem(key);
+        const existingList: QuizAttempt[] = raw ? JSON.parse(raw) : [];
+        const deduped = [fullAttempt, ...existingList.filter(a => a.id !== attemptId)];
+        localStorage.setItem(key, JSON.stringify(deduped.slice(0, 100)));
+      } catch {}
+    }
+
     return attemptId;
   } catch (error) {
     handleFirestoreError(error, OperationType.CREATE, path);
@@ -1026,12 +1079,46 @@ export async function getUserQuizAttempts(userId: string): Promise<QuizAttempt[]
   try {
     const q = query(collection(db, 'quizAttempts'), where('userId', '==', userId));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as QuizAttempt));
+    const serverAttempts = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as QuizAttempt));
+
+    // Cache locally
+    if (typeof window !== 'undefined' && window.localStorage && serverAttempts.length > 0) {
+      try {
+        localStorage.setItem(`dars_quiz_attempts_${userId}`, JSON.stringify(serverAttempts));
+      } catch {}
+    }
+
+    // Merge with any freshly saved local attempts not yet synced
+    if (typeof window !== 'undefined' && window.localStorage) {
+      try {
+        const raw = localStorage.getItem(`dars_quiz_attempts_${userId}`);
+        if (raw) {
+          const localList: QuizAttempt[] = JSON.parse(raw);
+          const serverIds = new Set(serverAttempts.map(a => a.id));
+          for (const localAttempt of localList) {
+            if (!serverIds.has(localAttempt.id)) {
+              serverAttempts.push(localAttempt);
+            }
+          }
+        }
+      } catch {}
+    }
+
+    return serverAttempts;
   } catch (error) {
-    console.warn('Could not fetch user quiz attempts:', error);
+    console.warn('Could not fetch user quiz attempts from Firestore, using local cache:', error);
+    if (typeof window !== 'undefined' && window.localStorage) {
+      try {
+        const raw = localStorage.getItem(`dars_quiz_attempts_${userId}`);
+        if (raw) {
+          return JSON.parse(raw);
+        }
+      } catch {}
+    }
     return [];
   }
 }
+
 
 export async function getAllQuizAttempts(): Promise<QuizAttempt[]> {
   try {
