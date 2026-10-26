@@ -781,26 +781,26 @@ export const AdminDashboard: React.FC<{
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F3E8] dark:bg-[#06251D] text-[#171717] dark:text-[#F8F3E8] flex flex-col lg:flex-row font-sans transition-colors duration-200">
+    <div className="min-h-screen bg-[#FAF7F0] dark:bg-[#101B2D] text-charcoal dark:text-offwhite flex flex-col lg:flex-row font-sans transition-colors duration-200">
       {/* ========================================================= */}
       {/* MOBILE TOP BAR (Logo acts as Sidebar Toggle) */}
       {/* ========================================================= */}
-      <div className="lg:hidden sticky top-0 z-30 bg-white dark:bg-[#06251D] text-[#171717] dark:text-[#F8F3E8] border-b-2 border-[#171717] dark:border-[#D9AC45]/60 px-4 py-3 flex items-center justify-between gap-3 shadow-[0_3px_0_#171717]">
+      <div className="lg:hidden sticky top-0 z-30 bg-white dark:bg-[#16263D] text-charcoal dark:text-offwhite border-b-2 border-charcoal dark:border-[#D6AD52]/60 px-4 py-3 flex items-center justify-between gap-3 shadow-[0_3px_0_#292D2B]">
         <button
           type="button"
           onClick={() => setSidebarOpen(!sidebarOpen)}
           aria-label={sidebarOpen ? "Tutup Sidebar Admin" : "Buka Sidebar Admin"}
           title={sidebarOpen ? "Tutup Sidebar Admin" : "Buka Sidebar Admin"}
-          className="flex items-center gap-2.5 p-1 -ml-1 rounded-md border-2 border-transparent hover:border-[#171717] dark:hover:border-[#D9AC45]/60 hover:bg-[#F5EFE2] dark:hover:bg-[#06251D] active:translate-x-[1px] active:translate-y-[1px] transition cursor-pointer text-left group"
+          className="flex items-center gap-2.5 p-1 -ml-1 rounded-md border-2 border-transparent hover:border-charcoal dark:hover:border-[#D6AD52]/60 hover:bg-[#EFE5D2] dark:hover:bg-[#16263D] active:translate-x-[1px] active:translate-y-[1px] transition cursor-pointer text-left group"
         >
-          <div className="w-8 h-8 rounded-md border-2 border-[#171717] dark:border-[#D9AC45] shadow-[2px_2px_0px_#171717] bg-[#06251D] flex items-center justify-center transition-transform group-hover:scale-105 shrink-0">
+          <div className="w-8 h-8 rounded-md border-2 border-charcoal dark:border-[#D6AD52] shadow-[2px_2px_0px_#292D2B] bg-[#123D32] flex items-center justify-center transition-transform group-hover:scale-105 shrink-0">
             <LogoSymbol className="w-7 h-7" />
           </div>
           <div className="flex flex-col">
-            <span className="font-serif-brand font-bold text-sm tracking-tight text-[#171717] dark:text-[#F8F3E8] group-hover:text-[#0B6B50] dark:group-hover:text-[#D9AC45] transition-colors">
+            <span className="font-serif-brand font-bold text-sm tracking-tight text-charcoal dark:text-offwhite group-hover:text-[#237A70] dark:group-hover:text-[#D6AD52] transition-colors">
               Dars with Osama
             </span>
-            <span className="text-[9px] text-[#0B6B50] dark:text-[#D9AC45] font-extrabold tracking-wider uppercase">
+            <span className="text-[9px] text-[#237A70] dark:text-[#D6AD52] font-extrabold tracking-wider uppercase">
               Admin Panel {sidebarOpen ? '• Tutup' : '• Menu'}
             </span>
           </div>
@@ -808,7 +808,7 @@ export const AdminDashboard: React.FC<{
 
         <button
           onClick={() => setTheme(effectiveTheme === 'dark' ? 'light' : 'dark')}
-          className="p-2 bg-[#F5EFE2] dark:bg-[#06251D] text-[#0B6B50] dark:text-[#D9AC45] border-2 border-[#171717] dark:border-[#D9AC45]/60 rounded-md hover:bg-[#D9AC45] hover:text-[#171717] transition cursor-pointer"
+          className="p-2 bg-[#EFE5D2] dark:bg-[#16263D] text-[#237A70] dark:text-[#D6AD52] border-2 border-charcoal dark:border-[#D6AD52]/60 rounded-md hover:bg-[#D6AD52] hover:text-charcoal transition cursor-pointer"
           title="Toggle Dark Mode"
         >
           {effectiveTheme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}

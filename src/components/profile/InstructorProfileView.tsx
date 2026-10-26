@@ -139,7 +139,7 @@ export const InstructorProfileView: React.FC<InstructorProfileViewProps> = ({
               onClick={onBack}
               className="nb-btn nb-btn-secondary px-3.5 py-2 text-xs"
             >
-              <ArrowLeft className="w-4 h-4 text-[#06251D] dark:text-[#D9AC45]" />
+              <ArrowLeft className="w-4 h-4 text-[#123D32] dark:text-[#D6AD52]" />
               <span>Kembali</span>
             </button>
           ) : (
@@ -165,7 +165,7 @@ export const InstructorProfileView: React.FC<InstructorProfileViewProps> = ({
               className="nb-btn nb-btn-secondary px-3.5 py-2 text-xs"
               title="Salin tautan halaman Profil Pengajar"
             >
-              {copied ? <Check className="w-4 h-4 text-[#06251D] dark:text-[#D9AC45]" /> : <Copy className="w-4 h-4 text-[#D9AC45]" />}
+              {copied ? <Check className="w-4 h-4 text-[#123D32] dark:text-[#D6AD52]" /> : <Copy className="w-4 h-4 text-[#D6AD52]" />}
               <span>{copied ? 'Tautan Disalin!' : 'Salin Link'}</span>
             </button>
 
@@ -174,7 +174,7 @@ export const InstructorProfileView: React.FC<InstructorProfileViewProps> = ({
               onClick={handleShareProfile}
               className="nb-btn nb-btn-primary px-3.5 py-2 text-xs"
             >
-              <Share2 className="w-4 h-4 text-[#D9AC45]" />
+              <Share2 className="w-4 h-4 text-[#D6AD52]" />
               <span>Bagikan Profil</span>
             </button>
           </div>
@@ -182,11 +182,11 @@ export const InstructorProfileView: React.FC<InstructorProfileViewProps> = ({
       )}
 
       {/* HERO PROFILE HEADER CARD */}
-      <section className="relative overflow-hidden rounded-lg bg-[#06251D] text-[#F8F3E8] border-2 border-[#171717] dark:border-[#D9AC45] shadow-[6px_6px_0px_#171717] dark:shadow-[6px_6px_0px_#000000] p-6 sm:p-10">
+      <section className="relative overflow-hidden rounded-lg bg-[#123D32] dark:bg-[#16263D] text-[#FAF7F0] dark:text-[#F1F4F8] border-2 border-[#292D2B] dark:border-[#D6AD52] shadow-[6px_6px_0px_#292D2B] dark:shadow-[6px_6px_0px_#000000] p-6 sm:p-10">
         <div className="relative z-10 flex flex-col md:flex-row items-center md:items-start gap-6 sm:gap-8">
           {/* Instructor Portrait / Emblem */}
           <div className="shrink-0 flex flex-col items-center space-y-2.5">
-            <div className="w-36 h-36 sm:w-44 sm:h-44 rounded-md overflow-hidden border-2 border-[#D9AC45] bg-[#0B3026] shadow-[4px_4px_0px_#000000] flex items-center justify-center relative">
+            <div className="w-36 h-36 sm:w-44 sm:h-44 rounded-md overflow-hidden border-2 border-[#D6AD52] bg-[#243A56] shadow-[4px_4px_0px_#000000] flex items-center justify-center relative">
               {profile.photoUrl && !photoError ? (
                 <img
                   data-testid="instructor-profile-photo"
@@ -198,19 +198,19 @@ export const InstructorProfileView: React.FC<InstructorProfileViewProps> = ({
               ) : (
                 <div
                   data-testid="instructor-profile-monogram"
-                  className="w-full h-full flex flex-col items-center justify-center bg-[#0B3026] text-[#D9AC45] select-none"
+                  className="w-full h-full flex flex-col items-center justify-center bg-[#243A56] text-[#D6AD52] select-none"
                 >
                   <span className="font-serif text-4xl sm:text-5xl font-bold tracking-wider">
                     {initials}
                   </span>
-                  <span className="text-[10px] uppercase tracking-widest text-[#F8F3E8]/80 mt-1 font-extrabold">
+                  <span className="text-[10px] uppercase tracking-widest text-[#FAF7F0]/80 mt-1 font-extrabold">
                     Dars with Osama
                   </span>
                 </div>
               )}
             </div>
             {profile.photoCaption && (
-              <p className="text-[11px] text-[#D9AC45] text-center max-w-[200px] leading-snug italic">
+              <p className="text-[11px] text-[#D6AD52] text-center max-w-[200px] leading-snug italic">
                 {profile.photoCaption}
               </p>
             )}
@@ -218,7 +218,7 @@ export const InstructorProfileView: React.FC<InstructorProfileViewProps> = ({
 
           {/* Instructor Identity & Biography */}
           <div className="flex-1 text-center md:text-left space-y-4 min-w-0">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#D9AC45] border-2 border-[#171717] text-[#171717] text-xs font-extrabold uppercase tracking-wider">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#D6AD52] border-2 border-[#292D2B] text-[#292D2B] text-xs font-extrabold uppercase tracking-wider">
               <UserCheck className="w-3.5 h-3.5" />
               <span data-testid="instructor-profile-title">{profile.title || 'Profil Pengajar Dars with Osama'}</span>
             </div>
@@ -232,7 +232,7 @@ export const InstructorProfileView: React.FC<InstructorProfileViewProps> = ({
               </h1>
               <p
                 data-testid="instructor-profile-role"
-                className="text-sm sm:text-base font-bold text-[#D9AC45]"
+                className="text-sm sm:text-base font-bold text-[#D6AD52]"
               >
                 {profile.role}
               </p>
@@ -242,7 +242,7 @@ export const InstructorProfileView: React.FC<InstructorProfileViewProps> = ({
             {profile.biography && (
               <div
                 data-testid="instructor-profile-biography"
-                className="pt-2 text-sm sm:text-base text-[#F8F3E8]/90 leading-relaxed space-y-3 blog-content"
+                className="pt-2 text-sm sm:text-base text-[#FAF7F0]/90 dark:text-[#F1F4F8]/90 leading-relaxed space-y-3 blog-content"
                 dangerouslySetInnerHTML={{
                   __html: autoWrapArabicText(sanitizeRichTextHtml(profile.biography))
                 }}
@@ -263,17 +263,17 @@ export const InstructorProfileView: React.FC<InstructorProfileViewProps> = ({
                 <button
                   type="button"
                   onClick={() => onNavigate('blog')}
-                  className="px-4 py-2 rounded-md bg-[#0B3026] hover:bg-[#124638] text-[#F8F3E8] border-2 border-[#D9AC45] font-bold text-xs transition flex items-center gap-1.5 cursor-pointer shadow-[3px_3px_0px_#000000]"
+                  className="px-4 py-2 rounded-md bg-[#243A56] hover:bg-[#42658A] text-[#FAF7F0] border-2 border-[#D6AD52] font-bold text-xs transition flex items-center gap-1.5 cursor-pointer shadow-[3px_3px_0px_#000000]"
                 >
-                  <FileText className="w-3.5 h-3.5 text-[#D9AC45]" />
+                  <FileText className="w-3.5 h-3.5 text-[#D6AD52]" />
                   <span>Artikel & Naskah Ilmu</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => onNavigate('public-qa')}
-                  className="px-4 py-2 rounded-md bg-[#0B3026] hover:bg-[#124638] text-[#F8F3E8] border-2 border-[#D9AC45] font-bold text-xs transition flex items-center gap-1.5 cursor-pointer shadow-[3px_3px_0px_#000000]"
+                  className="px-4 py-2 rounded-md bg-[#243A56] hover:bg-[#42658A] text-[#FAF7F0] border-2 border-[#D6AD52] font-bold text-xs transition flex items-center gap-1.5 cursor-pointer shadow-[3px_3px_0px_#000000]"
                 >
-                  <HelpCircle className="w-3.5 h-3.5 text-[#D9AC45]" />
+                  <HelpCircle className="w-3.5 h-3.5 text-[#D6AD52]" />
                   <span>Arsip Tanya Jawab</span>
                 </button>
               </div>
@@ -284,7 +284,7 @@ export const InstructorProfileView: React.FC<InstructorProfileViewProps> = ({
 
       {/* LOADING INDICATOR */}
       {loading && (
-        <div className="nb-card p-8 text-center text-xs font-bold text-[#171717]/70 dark:text-[#F8F3E8]/70">
+        <div className="nb-card p-8 text-center text-xs font-bold text-[#292D2B]/70 dark:text-[#F1F4F8]/70">
           Memuat data Profil Pengajar...
         </div>
       )}
@@ -292,14 +292,14 @@ export const InstructorProfileView: React.FC<InstructorProfileViewProps> = ({
       {/* MAIN NARRATIVE CONTENT ("ISI TULISAN") */}
       {profile.mainContent && profile.mainContent.replace(/<[^>]*>/g, '').trim() !== '' && (
         <article className="nb-reading-surface p-6 sm:p-10 space-y-4">
-          <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-[#06251D] dark:text-[#D9AC45] border-b-2 border-[#171717]/15 dark:border-[#D9AC45]/25 pb-3">
-            <Sparkles className="w-4 h-4 text-[#D9AC45]" />
+          <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-[#123D32] dark:text-[#D6AD52] border-b-2 border-[#292D2B]/15 dark:border-[#D6AD52]/25 pb-3">
+            <Sparkles className="w-4 h-4 text-[#D6AD52]" />
             <span>Pengantar & Catatan Profil</span>
           </div>
 
           <div
             data-testid="instructor-profile-main-content"
-            className="prose dark:prose-invert max-w-none text-[#171717] dark:text-[#F8F3E8] text-sm sm:text-base leading-relaxed space-y-4 font-sans blog-content"
+            className="prose dark:prose-invert max-w-none text-[#292D2B] dark:text-[#F1F4F8] text-sm sm:text-base leading-relaxed space-y-4 font-sans blog-content"
             dangerouslySetInnerHTML={{
               __html: autoWrapArabicText(sanitizeRichTextHtml(profile.mainContent))
             }}
@@ -317,8 +317,8 @@ export const InstructorProfileView: React.FC<InstructorProfileViewProps> = ({
               className="nb-reading-surface p-6 sm:p-10 space-y-5"
             >
               {sec.title && (
-                <div className="border-b-2 border-[#171717]/15 dark:border-[#D9AC45]/25 pb-3">
-                  <h2 className="text-lg sm:text-2xl font-bold text-[#171717] dark:text-white font-serif">
+                <div className="border-b-2 border-[#292D2B]/15 dark:border-[#D6AD52]/25 pb-3">
+                  <h2 className="text-lg sm:text-2xl font-bold text-[#292D2B] dark:text-white font-serif">
                     {sec.title}
                   </h2>
                 </div>
@@ -326,7 +326,7 @@ export const InstructorProfileView: React.FC<InstructorProfileViewProps> = ({
 
               {sec.imageUrl && (
                 <figure className="space-y-2">
-                  <div className="rounded-md overflow-hidden bg-[#06251D] border-2 border-[#171717] dark:border-[#D9AC45]/60 max-h-[460px] flex items-center justify-center">
+                  <div className="rounded-md overflow-hidden bg-[#123D32] dark:bg-[#16263D] border-2 border-[#292D2B] dark:border-[#D6AD52]/60 max-h-[460px] flex items-center justify-center">
                     <img
                       src={sec.imageUrl}
                       alt={sec.imageCaption || sec.title || 'Gambar Bagian Profil'}
@@ -335,7 +335,7 @@ export const InstructorProfileView: React.FC<InstructorProfileViewProps> = ({
                     />
                   </div>
                   {sec.imageCaption && (
-                    <figcaption className="text-center text-xs text-[#171717]/70 dark:text-[#F8F3E8]/70 italic">
+                    <figcaption className="text-center text-xs text-[#292D2B]/70 dark:text-[#F1F4F8]/70 italic">
                       {sec.imageCaption}
                     </figcaption>
                   )}
@@ -344,7 +344,7 @@ export const InstructorProfileView: React.FC<InstructorProfileViewProps> = ({
 
               {sec.content && (
                 <div
-                  className="prose dark:prose-invert max-w-none text-[#171717] dark:text-[#F8F3E8] text-sm sm:text-base leading-relaxed space-y-4 font-sans blog-content"
+                  className="prose dark:prose-invert max-w-none text-[#292D2B] dark:text-[#F1F4F8] text-sm sm:text-base leading-relaxed space-y-4 font-sans blog-content"
                   dangerouslySetInnerHTML={{
                     __html: autoWrapArabicText(sanitizeRichTextHtml(sec.content))
                   }}
@@ -361,12 +361,12 @@ export const InstructorProfileView: React.FC<InstructorProfileViewProps> = ({
           data-testid="instructor-supporting-images"
           className="nb-card p-6 sm:p-10 space-y-5"
         >
-          <div className="flex items-center justify-between border-b-2 border-[#171717]/15 dark:border-[#D9AC45]/25 pb-3">
-            <h2 className="text-lg sm:text-xl font-bold text-[#171717] dark:text-white font-serif flex items-center gap-2">
-              <ImageIcon className="w-5 h-5 text-[#06251D] dark:text-[#D9AC45]" />
+          <div className="flex items-center justify-between border-b-2 border-[#292D2B]/15 dark:border-[#D6AD52]/25 pb-3">
+            <h2 className="text-lg sm:text-xl font-bold text-[#292D2B] dark:text-white font-serif flex items-center gap-2">
+              <ImageIcon className="w-5 h-5 text-[#123D32] dark:text-[#D6AD52]" />
               <span>Galeri & Dokumentasi Pendukung</span>
             </h2>
-            <span className="text-xs text-[#06251D] dark:text-[#D9AC45] font-extrabold">
+            <span className="text-xs text-[#123D32] dark:text-[#D6AD52] font-extrabold">
               {orderedImages.length} Gambar
             </span>
           </div>
@@ -378,7 +378,7 @@ export const InstructorProfileView: React.FC<InstructorProfileViewProps> = ({
                 onClick={() => setSelectedLightboxImage(img)}
                 className="group nb-card-interactive overflow-hidden flex flex-col justify-between cursor-pointer"
               >
-                <div className="aspect-video w-full overflow-hidden bg-[#06251D] border-b-2 border-[#171717] dark:border-[#D9AC45]/60">
+                <div className="aspect-video w-full overflow-hidden bg-[#123D32] dark:bg-[#16263D] border-b-2 border-[#292D2B] dark:border-[#D6AD52]/60">
                   <img
                     src={img.url}
                     alt={img.caption || profile.name}
@@ -387,7 +387,7 @@ export const InstructorProfileView: React.FC<InstructorProfileViewProps> = ({
                   />
                 </div>
                 {img.caption && (
-                  <figcaption className="p-3 text-xs text-[#171717] dark:text-[#F8F3E8] font-bold line-clamp-2">
+                  <figcaption className="p-3 text-xs text-[#292D2B] dark:text-[#F1F4F8] font-bold line-clamp-2">
                     {img.caption}
                   </figcaption>
                 )}
@@ -405,21 +405,21 @@ export const InstructorProfileView: React.FC<InstructorProfileViewProps> = ({
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-[#F8F3E8] dark:bg-[#0B3026] border-2 border-[#171717] dark:border-[#D9AC45] rounded-lg overflow-hidden max-w-3xl w-full shadow-[6px_6px_0px_#171717]"
+            className="bg-[#FAF7F0] dark:bg-[#243A56] border-2 border-[#292D2B] dark:border-[#D6AD52] rounded-lg overflow-hidden max-w-3xl w-full shadow-[6px_6px_0px_#292D2B]"
           >
-            <div className="p-4 bg-[#06251D] text-white border-b-2 border-[#171717] dark:border-[#D9AC45]/60 flex items-center justify-between">
-              <span className="text-xs font-bold text-[#D9AC45] truncate">
+            <div className="p-4 bg-[#123D32] dark:bg-[#16263D] text-white border-b-2 border-[#292D2B] dark:border-[#D6AD52]/60 flex items-center justify-between">
+              <span className="text-xs font-bold text-[#D6AD52] truncate">
                 {selectedLightboxImage.caption || profile.name}
               </span>
               <button
                 type="button"
                 onClick={() => setSelectedLightboxImage(null)}
-                className="p-1.5 rounded bg-[#0B3026] border border-[#D9AC45] text-[#F8F3E8] hover:bg-[#D9AC45] hover:text-[#171717] cursor-pointer"
+                className="p-1.5 rounded bg-[#243A56] border border-[#D6AD52] text-[#FAF7F0] hover:bg-[#D6AD52] hover:text-[#292D2B] cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <div className="bg-[#171717] flex items-center justify-center max-h-[75vh] overflow-hidden">
+            <div className="bg-[#292D2B] flex items-center justify-center max-h-[75vh] overflow-hidden">
               <img
                 src={selectedLightboxImage.url}
                 alt={selectedLightboxImage.caption || profile.name}
@@ -427,7 +427,7 @@ export const InstructorProfileView: React.FC<InstructorProfileViewProps> = ({
               />
             </div>
             {selectedLightboxImage.caption && (
-              <div className="p-4 text-center text-xs sm:text-sm font-bold text-[#171717] dark:text-[#F8F3E8]">
+              <div className="p-4 text-center text-xs sm:text-sm font-bold text-[#292D2B] dark:text-[#F1F4F8]">
                 {selectedLightboxImage.caption}
               </div>
             )}

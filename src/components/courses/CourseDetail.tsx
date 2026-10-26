@@ -140,7 +140,7 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
       </button>
 
       {/* Hero Header Card */}
-      <div className="nb-card overflow-hidden relative bg-white dark:bg-[#0B3026]">
+      <div className="nb-card overflow-hidden relative bg-white dark:bg-[#16263D]">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 relative">
           {/* Left Details */}
           <div className="lg:col-span-7 p-6 sm:p-8 md:p-10 flex flex-col justify-between space-y-6">
@@ -148,42 +148,42 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
               {/* Category & Level Badges */}
               <div className="flex flex-wrap items-center gap-2">
                 {category && (
-                  <span className="nb-badge bg-[#06251D] text-[#D9AC45] border-[#171717] dark:border-[#D9AC45]">
+                  <span className="nb-badge bg-[#123D32] text-[#D6AD52] border-[#292D2B] dark:border-[#34465D]">
                     {category.name}
                   </span>
                 )}
-                <span className="nb-badge bg-[#F8F3E8] dark:bg-[#06251D] text-[#171717] dark:text-[#F8F3E8] capitalize">
+                <span className="nb-badge bg-[#FAF7F0] dark:bg-[#243A56] text-[#292D2B] dark:text-[#F1F4F8] capitalize">
                   Level: {course.level}
                 </span>
               </div>
 
               {/* Course Titles */}
-              <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-[#171717] dark:text-[#F8F3E8] font-serif-brand leading-tight">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-[#292D2B] dark:text-[#F1F4F8] font-serif-brand leading-tight">
                 {course.title}
               </h1>
 
               {course.titleAr && (
-                <p className="font-amiri text-2xl sm:text-3xl font-bold text-[#06251D] dark:text-[#D9AC45] leading-relaxed" dir="rtl">
+                <p className="font-amiri text-2xl sm:text-3xl font-bold text-[#123D32] dark:text-[#D6AD52] leading-relaxed" dir="rtl">
                   {course.titleAr}
                 </p>
               )}
 
               {/* Description */}
-              <p className="text-[#171717]/80 dark:text-[#F8F3E8]/85 text-sm md:text-base leading-relaxed">
+              <p className="text-[#626A66] dark:text-[#B4C0D0] text-sm md:text-base leading-relaxed">
                 {course.description}
               </p>
 
               {/* Instructor Box */}
-              <div className="p-4 bg-[#F8F3E8] dark:bg-[#06251D] border-2 border-[#171717] dark:border-[#D9AC45]/60 rounded-lg flex items-center justify-between text-xs sm:text-sm">
+              <div className="p-4 bg-[#FAF7F0] dark:bg-[#243A56] border-2 border-[#292D2B] dark:border-[#34465D] rounded-lg flex items-center justify-between text-xs sm:text-sm">
                 <div>
-                  <p className="text-[#171717]/70 dark:text-[#F8F3E8]/70 text-xs font-bold uppercase tracking-wider">Pensyarah / Pengajar:</p>
-                  <p className="font-extrabold text-[#171717] dark:text-[#F8F3E8] text-sm md:text-base mt-0.5">{course.instructor}</p>
+                  <p className="text-[#626A66] dark:text-[#B4C0D0] text-xs font-bold uppercase tracking-wider">Pensyarah / Pengajar:</p>
+                  <p className="font-extrabold text-[#292D2B] dark:text-[#F1F4F8] text-sm md:text-base mt-0.5">{course.instructor}</p>
                   {course.instructorTitle && (
-                    <p className="text-[#171717]/70 dark:text-[#D9AC45] text-xs font-semibold">{course.instructorTitle}</p>
+                    <p className="text-[#626A66] dark:text-[#D6AD52] text-xs font-semibold">{course.instructorTitle}</p>
                   )}
                 </div>
                 {course.instructorAr && (
-                  <p className="font-amiri text-lg font-bold text-[#06251D] dark:text-[#D9AC45] text-right" dir="rtl">
+                  <p className="font-amiri text-lg font-bold text-[#123D32] dark:text-[#D6AD52] text-right" dir="rtl">
                     {course.instructorAr}
                   </p>
                 )}
@@ -191,7 +191,7 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
             </div>
 
             {/* Action Bar */}
-            <div className="pt-4 border-t-2 border-[#171717] dark:border-[#D9AC45]/40 flex flex-wrap items-center gap-4">
+            <div className="pt-4 border-t-2 border-[#292D2B] dark:border-[#34465D] flex flex-wrap items-center gap-4">
               {enrollment ? (
                 <button
                   onClick={handleStartOrContinue}
@@ -209,7 +209,7 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
                   {enrolling ? (
                     <div className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
                   ) : (
-                    <Sparkles className="w-5 h-5 text-[#D9AC45]" />
+                    <Sparkles className="w-5 h-5 text-[#D6AD52]" />
                   )}
                   <span>{enrolling ? 'Mendaftar...' : 'Mulai Belajar Kursus Ini'}</span>
                 </button>
@@ -218,8 +218,8 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
           </div>
 
           {/* Right Cover & Quick Info */}
-          <div className="lg:col-span-5 relative bg-[#F8F3E8] dark:bg-[#06251D] flex flex-col justify-between border-t-2 lg:border-t-0 lg:border-l-2 border-[#171717] dark:border-[#D9AC45]/60">
-            <div className="relative aspect-[16/10] lg:aspect-auto lg:h-64 w-full overflow-hidden border-b-2 border-[#171717] dark:border-[#D9AC45]/50">
+          <div className="lg:col-span-5 relative bg-[#FAF7F0] dark:bg-[#16263D] flex flex-col justify-between border-t-2 lg:border-t-0 lg:border-l-2 border-[#292D2B] dark:border-[#34465D]">
+            <div className="relative aspect-[16/10] lg:aspect-auto lg:h-64 w-full overflow-hidden border-b-2 border-[#292D2B] dark:border-[#34465D]">
               <img
                 src={course.coverImageUrl || 'https://images.unsplash.com/photo-1542816417-0983c9c9ad53?auto=format&fit=crop&w=1200&q=80'}
                 alt={course.title}
@@ -231,19 +231,19 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
             </div>
 
             <div className="p-6 space-y-4">
-              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#06251D] dark:text-[#D9AC45]">Rincian Program</h4>
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#123D32] dark:text-[#D6AD52]">Rincian Program</h4>
               <div className="space-y-3 text-xs md:text-sm">
-                <div className="flex items-center justify-between text-[#171717] dark:text-[#F8F3E8] py-1.5 border-b-2 border-[#171717]/20 dark:border-[#D9AC45]/30">
+                <div className="flex items-center justify-between text-[#292D2B] dark:text-[#F1F4F8] py-1.5 border-b-2 border-[#292D2B]/15 dark:border-[#34465D]">
                   <span className="flex items-center gap-2 font-semibold">
-                    <Clock className="w-4 h-4 text-[#06251D] dark:text-[#D9AC45]" />
+                    <Clock className="w-4 h-4 text-[#123D32] dark:text-[#D6AD52]" />
                     <span>Jumlah Sesi:</span>
                   </span>
                   <span className="font-extrabold">{sessions.length} Sesi Pembelajaran</span>
                 </div>
 
-                <div className="flex items-center justify-between text-[#171717] dark:text-[#F8F3E8] py-1.5 border-b-2 border-[#171717]/20 dark:border-[#D9AC45]/30">
+                <div className="flex items-center justify-between text-[#292D2B] dark:text-[#F1F4F8] py-1.5 border-b-2 border-[#292D2B]/15 dark:border-[#34465D]">
                   <span className="flex items-center gap-2 font-semibold">
-                    <CheckCircle2 className="w-4 h-4 text-[#06251D] dark:text-[#D9AC45]" />
+                    <CheckCircle2 className="w-4 h-4 text-[#123D32] dark:text-[#D6AD52]" />
                     <span>Batas Nilai Kelulusan:</span>
                   </span>
                   <span className="font-extrabold">{course.passingGrade}%</span>
@@ -251,9 +251,9 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
               </div>
 
               {/* Guest Information Notice */}
-              <div className="p-3.5 bg-white dark:bg-[#0B3026] border-2 border-[#171717] dark:border-[#D9AC45]/50 rounded-md text-[#171717] dark:text-[#F8F3E8] text-xs space-y-1">
-                <p className="font-extrabold text-[#06251D] dark:text-[#D9AC45]">Akses Terbuka untuk Kaum Muslimin:</p>
-                <p className="text-[#171717]/80 dark:text-[#F8F3E8]/80">Pengunjung bebas menonton rekaman dan membaca materi. Daftarkan akun untuk menyimpan riwayat nilai dan kemajuan belajar Anda.</p>
+              <div className="p-3.5 bg-white dark:bg-[#243A56] border-2 border-[#292D2B] dark:border-[#34465D] rounded-md text-[#292D2B] dark:text-[#F1F4F8] text-xs space-y-1">
+                <p className="font-extrabold text-[#123D32] dark:text-[#D6AD52]">Akses Terbuka untuk Kaum Muslimin:</p>
+                <p className="text-[#626A66] dark:text-[#B4C0D0]">Pengunjung bebas menonton rekaman dan membaca materi. Daftarkan akun untuk menyimpan riwayat nilai dan kemajuan belajar Anda.</p>
               </div>
             </div>
           </div>
@@ -264,10 +264,10 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="space-y-1">
-            <h2 className="text-xl sm:text-2xl font-extrabold text-[#171717] dark:text-[#F8F3E8] font-serif-brand">
+            <h2 className="text-xl sm:text-2xl font-extrabold text-[#292D2B] dark:text-[#F1F4F8] font-serif-brand">
               Daftar Sesi Pembelajaran ({sessions.length})
             </h2>
-            <p className="text-xs sm:text-sm text-[#171717]/75 dark:text-[#F8F3E8]/75">
+            <p className="text-xs sm:text-sm text-[#626A66] dark:text-[#B4C0D0]">
               Klik pada sesi untuk mulai menyimak materi video, naskah PDF, catatan kajian, dan evaluasi kuis.
             </p>
           </div>
@@ -281,37 +281,37 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
                 <div
                   key={session.id}
                   onClick={() => onSelectSession(session)}
-                  className="group nb-card nb-card-interactive p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer bg-white dark:bg-[#0B3026]"
+                  className="group nb-card nb-card-interactive p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer bg-white dark:bg-[#16263D]"
                 >
                   <div className="flex items-start gap-4">
                     {/* Index Box or Completion Checkmark */}
-                    <div className={`w-10 h-10 rounded-md flex items-center justify-center font-extrabold text-sm shrink-0 border-2 border-[#171717] transition ${
+                    <div className={`w-10 h-10 rounded-md flex items-center justify-center font-extrabold text-sm shrink-0 border-2 border-[#292D2B] transition ${
                       isSessionDone
-                        ? 'bg-[#D9AC45] text-[#171717]'
-                        : 'bg-[#F8F3E8] dark:bg-[#06251D] text-[#171717] dark:text-[#F8F3E8] group-hover:bg-[#06251D] group-hover:text-[#D9AC45]'
+                        ? 'bg-[#D6AD52] text-[#123D32]'
+                        : 'bg-[#FAF7F0] dark:bg-[#243A56] text-[#292D2B] dark:text-[#F1F4F8] group-hover:bg-[#123D32] group-hover:text-[#D6AD52]'
                     }`}>
-                      {isSessionDone ? <CheckCircle2 className="w-5 h-5 text-[#171717]" /> : idx + 1}
+                      {isSessionDone ? <CheckCircle2 className="w-5 h-5 text-[#123D32]" /> : idx + 1}
                     </div>
 
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h4 className="font-extrabold text-sm sm:text-base text-[#171717] dark:text-[#F8F3E8] group-hover:text-[#06251D] dark:group-hover:text-[#D9AC45] transition">
+                        <h4 className="font-extrabold text-sm sm:text-base text-[#292D2B] dark:text-[#F1F4F8] group-hover:text-[#123D32] dark:group-hover:text-[#D6AD52] transition">
                           {session.title}
                         </h4>
                         {isSessionDone && (
-                          <span className="nb-badge bg-[#D9AC45] text-[#171717] text-[10px]">
+                          <span className="nb-badge bg-[#D6AD52] text-[#123D32] text-[10px]">
                             Selesai
                           </span>
                         )}
                       </div>
 
                       {session.titleAr && (
-                        <p className="font-amiri text-base font-bold text-[#06251D] dark:text-[#D9AC45] leading-tight" dir="rtl">
+                        <p className="font-amiri text-base font-bold text-[#123D32] dark:text-[#D6AD52] leading-tight" dir="rtl">
                           {session.titleAr}
                         </p>
                       )}
 
-                      <p className="text-xs text-[#171717]/75 dark:text-[#F8F3E8]/75 line-clamp-1 max-w-2xl">
+                      <p className="text-xs text-[#626A66] dark:text-[#B4C0D0] line-clamp-1 max-w-2xl">
                         {session.description}
                       </p>
                     </div>
@@ -320,20 +320,20 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
                   {/* Badges & Share Actions on Right */}
                   <div className="flex flex-wrap items-center gap-2 shrink-0 self-end sm:self-center">
                     {session.youtubeUrl && (
-                      <span className="nb-badge bg-[#F8F3E8] dark:bg-[#06251D] text-[#171717] dark:text-[#F8F3E8]">
-                        <Video className="w-3.5 h-3.5 text-[#06251D] dark:text-[#D9AC45]" />
+                      <span className="nb-badge bg-[#FAF7F0] dark:bg-[#243A56] text-[#292D2B] dark:text-[#F1F4F8]">
+                        <Video className="w-3.5 h-3.5 text-[#123D32] dark:text-[#D6AD52]" />
                         <span>Video</span>
                       </span>
                     )}
                     {session.pdfUrl && (
-                      <span className="nb-badge bg-[#F8F3E8] dark:bg-[#06251D] text-[#171717] dark:text-[#F8F3E8]">
-                        <FileText className="w-3.5 h-3.5 text-[#D9AC45]" />
+                      <span className="nb-badge bg-[#FAF7F0] dark:bg-[#243A56] text-[#292D2B] dark:text-[#F1F4F8]">
+                        <FileText className="w-3.5 h-3.5 text-[#D6AD52]" />
                         <span>PDF</span>
                       </span>
                     )}
                     {session.quizId && (
-                      <span className="nb-badge bg-[#F8F3E8] dark:bg-[#06251D] text-[#171717] dark:text-[#F8F3E8]">
-                        <HelpCircle className="w-3.5 h-3.5 text-[#3478F6]" />
+                      <span className="nb-badge bg-[#FAF7F0] dark:bg-[#243A56] text-[#292D2B] dark:text-[#F1F4F8]">
+                        <HelpCircle className="w-3.5 h-3.5 text-[#237A70] dark:text-[#A9C5E8]" />
                         <span>Kuis</span>
                       </span>
                     )}
@@ -347,12 +347,12 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
                     >
                       {copiedSessionId === session.id ? (
                         <>
-                          <Check className="w-3.5 h-3.5 text-[#06251D] dark:text-[#D9AC45]" />
+                          <Check className="w-3.5 h-3.5 text-[#123D32] dark:text-[#D6AD52]" />
                           <span>Disalin</span>
                         </>
                       ) : (
                         <>
-                          <Copy className="w-3.5 h-3.5 text-[#D9AC45]" />
+                          <Copy className="w-3.5 h-3.5 text-[#D6AD52]" />
                           <span>Salin Link</span>
                         </>
                       )}
@@ -365,11 +365,11 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
                       className="nb-btn nb-btn-primary px-2.5 py-1.5 text-[11px]"
                       title={`Bagikan ${session.title}`}
                     >
-                      <Share2 className="w-3.5 h-3.5 text-[#D9AC45]" />
+                      <Share2 className="w-3.5 h-3.5 text-[#D6AD52]" />
                       <span>Bagikan</span>
                     </button>
 
-                    <span className="p-1.5 text-[#06251D] dark:text-[#D9AC45] group-hover:translate-x-1 transition-all">
+                    <span className="p-1.5 text-[#123D32] dark:text-[#D6AD52] group-hover:translate-x-1 transition-all">
                       <PlayCircle className="w-6 h-6" />
                     </span>
                   </div>
@@ -378,7 +378,7 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
             })}
           </div>
         ) : (
-          <div className="p-8 nb-card text-center text-[#171717]/75 dark:text-[#F8F3E8]/75 text-sm">
+          <div className="p-8 nb-card text-center text-[#626A66] dark:text-[#B4C0D0] text-sm">
             Belum ada sesi pembelajaran yang dipublikasikan untuk kursus ini.
           </div>
         )}

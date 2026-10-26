@@ -568,8 +568,8 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
 
   if (!isSupported) {
     return (
-      <div className={`p-4 rounded-md bg-[#F8F3E8] dark:bg-[#06251D] border-2 border-[#171717] dark:border-[#D9AC45] text-[#171717] dark:text-[#F8F3E8] text-xs flex items-center gap-2.5 ${className}`}>
-        <Info className="w-4 h-4 text-[#D9AC45] shrink-0" />
+      <div className={`p-4 rounded-md bg-[#FAF7F0] dark:bg-[#16263D] border-2 border-[#292D2B] dark:border-[#34465D] text-[#292D2B] dark:text-[#F1F4F8] text-xs flex items-center gap-2.5 ${className}`}>
+        <Info className="w-4 h-4 text-[#D6AD52] shrink-0" />
         <span>Fitur Audio Reading tidak didukung pada peramban ini. Anda tetap dapat membaca naskah artikel lengkap di bawah.</span>
       </div>
     );
@@ -586,22 +586,22 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
           aria-expanded={false}
           aria-label="Dengarkan Artikel"
           title="Buka pemutar audio artikel"
-          className="inline-flex items-center gap-2.5 px-4 py-2.5 rounded-md bg-[#F5EFE2] dark:bg-[#06251D] hover:bg-[#D9AC45] dark:hover:bg-[#D9AC45] text-[#06251D] dark:text-[#F8F3E8] hover:text-[#171717] dark:hover:text-[#171717] border-2 border-[#171717] dark:border-[#D9AC45] shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#000000] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all duration-150 font-extrabold text-xs sm:text-sm cursor-pointer group"
+          className="inline-flex items-center gap-2.5 px-4 py-2.5 rounded-md bg-[#FAF7F0] dark:bg-[#16263D] hover:bg-[#D6AD52] dark:hover:bg-[#D6AD52] text-[#123D32] dark:text-[#F1F4F8] hover:text-[#123D32] dark:hover:text-[#123D32] border-2 border-[#292D2B] dark:border-[#34465D] shadow-[3px_3px_0px_#292D2B] dark:shadow-[3px_3px_0px_#101B2D] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all duration-150 font-extrabold text-xs sm:text-sm cursor-pointer group"
         >
-          <div className="w-7 h-7 rounded-sm bg-[#06251D] dark:bg-[#D9AC45] text-[#D9AC45] dark:text-[#06251D] group-hover:bg-[#171717] group-hover:text-[#D9AC45] flex items-center justify-center transition-colors shadow-xs">
+          <div className="w-7 h-7 rounded-sm bg-[#123D32] dark:bg-[#D6AD52] text-[#D6AD52] dark:text-[#123D32] group-hover:bg-[#292D2B] group-hover:text-[#D6AD52] flex items-center justify-center transition-colors shadow-xs">
             <Headphones className="w-4 h-4" />
           </div>
           <span className="font-serif tracking-wide font-bold">Dengarkan Artikel</span>
           {status === 'playing' ? (
-            <span className="text-[10px] px-2 py-0.5 rounded-xs bg-[#0B6B50] text-white dark:bg-[#0B3026] dark:text-[#D9AC45] font-extrabold uppercase animate-pulse border border-[#171717]/30">
+            <span className="text-[10px] px-2 py-0.5 rounded-xs bg-[#237A70] text-white dark:bg-[#243A56] dark:text-[#D6AD52] font-extrabold uppercase animate-pulse border border-[#292D2B]/30">
               Sedang Diputar
             </span>
           ) : status === 'paused' ? (
-            <span className="text-[10px] px-2 py-0.5 rounded-xs bg-[#D9AC45] text-[#171717] font-extrabold uppercase border border-[#171717]">
+            <span className="text-[10px] px-2 py-0.5 rounded-xs bg-[#D6AD52] text-[#123D32] font-extrabold uppercase border border-[#292D2B]">
               Dijeda
             </span>
           ) : (
-            <span className="text-[10px] px-2 py-0.5 rounded-xs bg-[#D9AC45]/20 dark:bg-[#D9AC45]/15 text-[#171717] dark:text-[#D9AC45] font-extrabold uppercase border border-[#171717]/20 dark:border-[#D9AC45]/30">
+            <span className="text-[10px] px-2 py-0.5 rounded-xs bg-[#D6AD52]/20 dark:bg-[#D6AD52]/15 text-[#123D32] dark:text-[#D6AD52] font-extrabold uppercase border border-[#292D2B]/20 dark:border-[#D6AD52]/30">
               {isCustomMode ? 'Rekaman' : 'Otomatis'}
             </span>
           )}
@@ -621,13 +621,13 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
           aria-expanded={true}
           aria-label="Tutup pemutar audio artikel"
           title="Sembunyikan pemutar audio"
-          className="inline-flex items-center gap-2.5 px-3.5 py-2 rounded-md bg-[#D9AC45] text-[#171717] border-2 border-[#171717] shadow-[2px_2px_0px_#171717] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all duration-150 font-extrabold text-xs sm:text-sm cursor-pointer group"
+          className="inline-flex items-center gap-2.5 px-3.5 py-2 rounded-md bg-[#D6AD52] text-[#123D32] border-2 border-[#292D2B] shadow-[2px_2px_0px_#292D2B] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all duration-150 font-extrabold text-xs sm:text-sm cursor-pointer group"
         >
-          <div className="w-6 h-6 rounded-sm bg-[#06251D] text-[#D9AC45] flex items-center justify-center">
+          <div className="w-6 h-6 rounded-sm bg-[#123D32] text-[#D6AD52] flex items-center justify-center">
             <Headphones className="w-3.5 h-3.5" />
           </div>
           <span className="font-serif tracking-wide font-bold">Dengarkan Artikel</span>
-          <span className="text-[10px] px-1.5 py-0.5 rounded-xs bg-[#06251D] text-[#D9AC45] font-extrabold uppercase">
+          <span className="text-[10px] px-1.5 py-0.5 rounded-xs bg-[#123D32] text-[#D6AD52] font-extrabold uppercase">
             Terbuka
           </span>
         </button>
@@ -635,7 +635,7 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
         <button
           type="button"
           onClick={() => setIsPlayerOpen(false)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border-2 border-[#171717] dark:border-[#D9AC45]/60 bg-[#F5EFE2] dark:bg-[#0B3026] text-[#171717] dark:text-[#F8F3E8] hover:bg-[#F04438] hover:text-white dark:hover:bg-[#F04438] dark:hover:text-white transition text-xs font-bold cursor-pointer shadow-[2px_2px_0px_#171717]"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border-2 border-[#292D2B] dark:border-[#34465D] bg-[#FAF7F0] dark:bg-[#243A56] text-[#292D2B] dark:text-[#F1F4F8] hover:bg-[#F04438] hover:text-white dark:hover:bg-[#F04438] dark:hover:text-white transition text-xs font-bold cursor-pointer shadow-[2px_2px_0px_#292D2B]"
           title="Sembunyikan pemutar audio"
           aria-label="Sembunyikan pemutar audio"
         >
@@ -646,7 +646,7 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
 
       <div
         data-testid="article-audio-player"
-        className="bg-[#F8F3E8] dark:bg-[#06251D] border-2 border-[#171717] dark:border-[#D9AC45] rounded-md p-4 sm:p-5 shadow-[4px_4px_0px_#171717] dark:shadow-[4px_4px_0px_#000000] transition-all"
+        className="bg-[#FAF7F0] dark:bg-[#16263D] border-2 border-[#292D2B] dark:border-[#34465D] rounded-md p-4 sm:p-5 shadow-[4px_4px_0px_#292D2B] dark:shadow-[4px_4px_0px_#101B2D] transition-all"
       >
       {/* Integrated HTML5 Audio Element */}
       {isCustomMode && effectiveAudioSrc && (
@@ -675,21 +675,21 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
         />
       )}
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b-2 border-[#171717]/15 dark:border-[#D9AC45]/25">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b-2 border-[#292D2B]/15 dark:border-[#34465D]">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-md bg-[#06251D] dark:bg-[#0B3026] border-2 border-[#171717] dark:border-[#D9AC45] text-[#D9AC45] flex items-center justify-center shrink-0">
+          <div className="w-10 h-10 rounded-md bg-[#123D32] dark:bg-[#243A56] border-2 border-[#292D2B] dark:border-[#34465D] text-[#D6AD52] flex items-center justify-center shrink-0">
             <Headphones className="w-5 h-5" />
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h4 className="font-bold text-[#171717] dark:text-white text-xs sm:text-sm font-serif">
+              <h4 className="font-bold text-[#292D2B] dark:text-white text-xs sm:text-sm font-serif">
                 {isCustomMode ? 'Rekaman Audio Artikel' : 'Audio Reading Artikel'}
               </h4>
               <span
                 className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider border ${
                   audioError
-                    ? 'bg-[#F04438] text-white border-[#171717]'
-                    : 'bg-[#D9AC45] text-[#171717] border-[#171717]'
+                    ? 'bg-[#F04438] text-white border-[#292D2B]'
+                    : 'bg-[#D6AD52] text-[#123D32] border-[#292D2B]'
                 }`}
               >
                 {audioError
@@ -707,7 +707,7 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
                   : 'Suara Otomatis'}
               </span>
             </div>
-            <p className="text-[11px] text-[#171717]/75 dark:text-[#F8F3E8]/75 mt-0.5">
+            <p className="text-[11px] text-[#626A66] dark:text-[#B4C0D0] mt-0.5">
               {isCustomMode
                 ? 'Dengarkan rekaman audio kajian sambil membaca naskah artikel di bawah ini.'
                 : activeVoiceName
@@ -719,7 +719,7 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
 
         {/* Playback Rate Selector */}
         <div className="flex items-center gap-1.5 self-end sm:self-center shrink-0">
-          <span className="text-[11px] text-[#171717]/75 dark:text-[#F8F3E8]/75 font-bold mr-1">
+          <span className="text-[11px] text-[#626A66] dark:text-[#B4C0D0] font-bold mr-1">
             Kecepatan:
           </span>
           {[0.75, 1.0, 1.25, 1.5].map((rate) => (
@@ -729,8 +729,8 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
               onClick={() => handleRateChange(rate)}
               className={`px-2 py-1 rounded text-xs font-extrabold border transition cursor-pointer ${
                 playbackRate === rate
-                  ? 'bg-[#06251D] text-[#D9AC45] border-[#171717] dark:bg-[#D9AC45] dark:text-[#171717]'
-                  : 'bg-white dark:bg-[#0B3026] text-[#171717] dark:text-[#F8F3E8] border-[#171717]/50 dark:border-[#D9AC45]/50'
+                  ? 'bg-[#123D32] text-[#D6AD52] border-[#292D2B] dark:bg-[#D6AD52] dark:text-[#123D32]'
+                  : 'bg-white dark:bg-[#243A56] text-[#292D2B] dark:text-[#F1F4F8] border-[#292D2B]/50 dark:border-[#34465D]'
               }`}
             >
               {rate}×
@@ -744,7 +744,7 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
         <div
           role="alert"
           data-testid="article-audio-error"
-          className="mt-3 p-3 rounded-md bg-[#F04438]/15 border-2 border-[#F04438] text-[#171717] dark:text-white text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5"
+          className="mt-3 p-3 rounded-md bg-[#F04438]/15 border-2 border-[#F04438] text-[#292D2B] dark:text-white text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5"
         >
           <div className="flex items-start gap-2">
             <AlertCircle className="w-4 h-4 text-[#F04438] shrink-0 mt-0.5" />
@@ -787,7 +787,7 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
                 {isCustomMode && isLoadingAudio && pendingAutoPlayRef.current ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 ) : (
-                  <Play className="w-3.5 h-3.5 fill-current text-[#D9AC45]" />
+                  <Play className="w-3.5 h-3.5 fill-current text-[#D6AD52]" />
                 )}
                 <span>
                   {status === 'paused'
@@ -817,18 +817,18 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
           {/* Right side: Volume Control + Duration Display */}
           <div className="flex items-center gap-3 ml-auto">
             {isCustomMode && (
-              <div className="flex items-center gap-1.5 bg-white dark:bg-[#0B3026] px-2.5 py-1.5 rounded border-2 border-[#171717] dark:border-[#D9AC45]/60">
+              <div className="flex items-center gap-1.5 bg-white dark:bg-[#243A56] px-2.5 py-1.5 rounded border-2 border-[#292D2B] dark:border-[#34465D]">
                 <button
                   type="button"
                   onClick={handleToggleMute}
                   aria-label={isMuted ? 'Aktifkan suara audio' : 'Bisukan suara audio'}
                   title={isMuted ? 'Aktifkan suara' : 'Bisukan suara'}
-                  className="text-[#171717] dark:text-[#D9AC45] cursor-pointer"
+                  className="text-[#292D2B] dark:text-[#D6AD52] cursor-pointer"
                 >
                   {isMuted || volume === 0 ? (
                     <VolumeX className="w-4 h-4 text-[#F04438]" />
                   ) : (
-                    <Volume2 className="w-4 h-4 text-[#06251D] dark:text-[#D9AC45]" />
+                    <Volume2 className="w-4 h-4 text-[#123D32] dark:text-[#D6AD52]" />
                   )}
                 </button>
                 <input
@@ -839,7 +839,7 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
                   value={isMuted ? 0 : volume}
                   onChange={handleVolumeChange}
                   aria-label="Volume audio"
-                  className="w-16 sm:w-20 h-1.5 accent-[#06251D] dark:accent-[#D9AC45] cursor-pointer"
+                  className="w-16 sm:w-20 h-1.5 accent-[#123D32] dark:accent-[#D6AD52] cursor-pointer"
                 />
               </div>
             )}
@@ -847,11 +847,11 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
             <div className="text-right">
               <span
                 data-testid="article-audio-time"
-                className="font-mono text-xs font-bold text-[#171717] dark:text-[#F8F3E8]"
+                className="font-mono text-xs font-bold text-[#292D2B] dark:text-[#F1F4F8]"
               >
                 {formatSpeechTime(elapsedSeconds)} / {formatSpeechTime(totalEstimatedSeconds)}
               </span>
-              <span className="text-[10px] font-bold text-[#06251D] dark:text-[#D9AC45] block">
+              <span className="text-[10px] font-bold text-[#123D32] dark:text-[#D6AD52] block">
                 {progressPercent}% selesai
               </span>
             </div>
@@ -862,13 +862,13 @@ export const ArticleAudioPlayer: React.FC<ArticleAudioPlayerProps> = ({
         <div className="relative flex items-center">
           <div
             onClick={handleSeek}
-            className={`w-full bg-white dark:bg-[#0B3026] h-3 rounded-sm overflow-hidden border-2 border-[#171717] dark:border-[#D9AC45]/60 ${
+            className={`w-full bg-white dark:bg-[#243A56] h-3 rounded-sm overflow-hidden border-2 border-[#292D2B] dark:border-[#34465D] ${
               isCustomMode && totalEstimatedSeconds > 0 ? 'cursor-pointer' : ''
             }`}
             title={isCustomMode ? 'Klik atau geser untuk melompat ke detik tertentu' : undefined}
           >
             <div
-              className="bg-[#D9AC45] h-full transition-all duration-200 ease-out"
+              className="bg-[#D6AD52] h-full transition-all duration-200 ease-out"
               style={{ width: `${progressPercent}%` }}
             />
           </div>

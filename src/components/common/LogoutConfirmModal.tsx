@@ -35,27 +35,27 @@ export const LogoutConfirmModal: React.FC<LogoutConfirmModalProps> = ({
         }
       }}
     >
-      <div className="relative w-full max-w-md bg-white dark:bg-[#0B3026] border-3 border-[#171717] dark:border-[#D9AC45] rounded-lg shadow-[6px_6px_0px_#171717] dark:shadow-[6px_6px_0px_#000000] p-6 sm:p-8 text-[#171717] dark:text-[#F8F3E8] overflow-hidden animate-modal-in">
+      <div className="relative w-full max-w-md bg-white dark:bg-[#243A56] border-3 border-[#292D2B] dark:border-[#D6AD52] rounded-lg shadow-[6px_6px_0px_#292D2B] dark:shadow-[6px_6px_0px_#000000] p-6 sm:p-8 text-[#292D2B] dark:text-[#F1F4F8] overflow-hidden animate-modal-in">
         {/* Close Button */}
         <button
           onClick={onClose}
           disabled={loading}
-          className="absolute top-4 right-4 p-1.5 text-[#171717] dark:text-[#F8F3E8] hover:bg-[#F8F3E8] dark:hover:bg-[#06251D] rounded-md border-2 border-[#171717] dark:border-[#D9AC45]/60 transition cursor-pointer disabled:opacity-50"
+          className="absolute top-4 right-4 p-1.5 text-[#292D2B] dark:text-[#F1F4F8] hover:bg-[#FAF7F0] dark:hover:bg-[#16263D] rounded-md border-2 border-[#292D2B] dark:border-[#D6AD52]/60 transition cursor-pointer disabled:opacity-50"
         >
           <X className="w-4 h-4" />
         </button>
 
         {/* Header Icon */}
         <div className="text-center space-y-4">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-md bg-[#F04438] border-2 border-[#171717] text-white shadow-[3px_3px_0px_#171717]">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-md bg-[#F04438] border-2 border-[#292D2B] text-white shadow-[3px_3px_0px_#292D2B]">
             <LogOut className="w-7 h-7" />
           </div>
 
           <div className="space-y-1.5">
-            <h3 className="text-xl sm:text-2xl font-extrabold font-serif-brand text-[#171717] dark:text-white">
+            <h3 className="text-xl sm:text-2xl font-extrabold font-serif-brand text-[#292D2B] dark:text-white">
               Yakin ingin keluar?
             </h3>
-            <p className="text-xs sm:text-sm text-[#171717]/80 dark:text-[#F8F3E8]/85 leading-relaxed font-medium">
+            <p className="text-xs sm:text-sm text-[#292D2B]/80 dark:text-[#F1F4F8]/85 leading-relaxed font-medium">
               Anda akan keluar dari akun Dars with Osama. Riwayat progres dan nilai kuis Anda tetap tersimpan aman.
             </p>
           </div>

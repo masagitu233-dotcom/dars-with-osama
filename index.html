@@ -4,17 +4,19 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Remix Dars with Osama | Online Learning Platform</title>
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'><rect width='200' height='200' rx='24' fill='%2306251D' stroke='%23D9AC45' stroke-width='6'/><path d='M100 22 C125 58 142 85 142 118 C142 136 128 152 100 152 C72 152 58 136 58 118 C58 85 75 58 100 22 Z' fill='%23D9AC45'/><path d='M100 26 L100 96' stroke='%2306251D' stroke-width='4'/><circle cx='100' cy='98' r='5' fill='%2306251D'/><path d='M96 156 C68 140 38 142 16 154 C24 132 54 126 96 142 Z' fill='%23F8F3E8'/><path d='M104 156 C132 140 162 142 184 154 C176 132 146 126 104 142 Z' fill='%23F8F3E8'/></svg>" />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'><rect width='200' height='200' rx='24' fill='%23123D32' stroke='%23D6AD52' stroke-width='6'/><path d='M100 22 C125 58 142 85 142 118 C142 136 128 152 100 152 C72 152 58 136 58 118 C58 85 75 58 100 22 Z' fill='%23D6AD52'/><path d='M100 26 L100 96' stroke='%23123D32' stroke-width='4'/><circle cx='100' cy='98' r='5' fill='%23123D32'/><path d='M96 156 C68 140 38 142 16 154 C24 132 54 126 96 142 Z' fill='%23FAF7F0'/><path d='M104 156 C132 140 162 142 184 154 C176 132 146 126 104 142 Z' fill='%23FAF7F0'/></svg>" />
     <script>
       (function() {
         try {
           var saved = localStorage.getItem('dars_theme_preference');
-          var isDark = saved === 'dark' || ((!saved || saved === 'system') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          var isDark = saved === 'dark';
           if (isDark) {
             document.documentElement.classList.add('dark');
+            document.documentElement.classList.remove('light');
             document.documentElement.style.colorScheme = 'dark';
           } else {
             document.documentElement.classList.remove('dark');
+            document.documentElement.classList.add('light');
             document.documentElement.style.colorScheme = 'light';
           }
         } catch (e) {}
@@ -29,7 +31,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,800;1,400;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
   </head>
-  <body class="bg-[#F8F3E8] dark:bg-[#06251D] text-[#171717] dark:text-[#F8F3E8] antialiased font-sans selection:bg-[#D9AC45]/30 selection:text-[#06251D] dark:selection:text-[#D9AC45]">
+  <body class="bg-[#FAF7F0] dark:bg-[#101B2D] text-[#292D2B] dark:text-[#F1F4F8] antialiased font-sans selection:bg-[#D6AD52]/30 selection:text-[#123D32] dark:selection:text-[#D6AD52]">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

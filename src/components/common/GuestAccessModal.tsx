@@ -38,26 +38,26 @@ export const GuestAccessModal: React.FC<GuestAccessModalProps> = ({
         }
       }}
     >
-      <div className="relative w-full max-w-lg bg-white dark:bg-[#0B3026] border-3 border-[#171717] dark:border-[#D9AC45] rounded-lg shadow-[6px_6px_0px_#171717] dark:shadow-[6px_6px_0px_#000000] p-6 sm:p-8 text-[#171717] dark:text-[#F8F3E8] overflow-hidden animate-modal-in">
+      <div className="relative w-full max-w-lg bg-white dark:bg-[#243A56] border-3 border-[#292D2B] dark:border-[#D6AD52] rounded-lg shadow-[6px_6px_0px_#292D2B] dark:shadow-[6px_6px_0px_#000000] p-6 sm:p-8 text-[#292D2B] dark:text-[#F1F4F8] overflow-hidden animate-modal-in">
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-1.5 text-[#171717] dark:text-[#F8F3E8] hover:bg-[#F8F3E8] dark:hover:bg-[#06251D] rounded-md border-2 border-[#171717] dark:border-[#D9AC45]/60 transition cursor-pointer"
+          className="absolute top-4 right-4 p-1.5 text-[#292D2B] dark:text-[#F1F4F8] hover:bg-[#FAF7F0] dark:hover:bg-[#16263D] rounded-md border-2 border-[#292D2B] dark:border-[#D6AD52]/60 transition cursor-pointer"
         >
           <X className="w-4 h-4" />
         </button>
 
         {/* Header Icon & Title */}
         <div className="text-center space-y-3">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-md bg-[#06251D] border-2 border-[#171717] dark:border-[#D9AC45] text-[#D9AC45] shadow-[3px_3px_0px_#171717]">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-md bg-[#123D32] dark:bg-[#16263D] border-2 border-[#292D2B] dark:border-[#D6AD52] text-[#D6AD52] shadow-[3px_3px_0px_#292D2B]">
             <Lock className="w-7 h-7" />
           </div>
 
           <div className="space-y-1.5">
-            <h3 className="text-xl sm:text-2xl font-extrabold font-serif-brand text-[#171717] dark:text-white">
+            <h3 className="text-xl sm:text-2xl font-extrabold font-serif-brand text-[#292D2B] dark:text-white">
               Silakan Masuk ke Akun Dars with Osama
             </h3>
-            <p className="text-xs sm:text-sm text-[#171717]/80 dark:text-[#F8F3E8]/85 leading-relaxed max-w-md mx-auto font-medium">
+            <p className="text-xs sm:text-sm text-[#292D2B]/80 dark:text-[#F1F4F8]/85 leading-relaxed max-w-md mx-auto font-medium">
               Silakan masuk ke akun Dars with Osama untuk mulai belajar, memutar video syarah lengkap, menyimak naskah kajian, dan mengikuti kuis evaluasi.
             </p>
           </div>
@@ -65,21 +65,21 @@ export const GuestAccessModal: React.FC<GuestAccessModalProps> = ({
 
         {/* Optional Course Card Preview */}
         {course && (
-          <div className="mt-5 p-3.5 bg-[#F8F3E8] dark:bg-[#06251D] border-2 border-[#171717] dark:border-[#D9AC45]/60 rounded-md flex items-center gap-3 text-left shadow-[3px_3px_0px_#171717]">
+          <div className="mt-5 p-3.5 bg-[#FAF7F0] dark:bg-[#16263D] border-2 border-[#292D2B] dark:border-[#D6AD52]/60 rounded-md flex items-center gap-3 text-left shadow-[3px_3px_0px_#292D2B]">
             <img
               src={course.coverImageUrl || 'https://images.unsplash.com/photo-1542816417-0983c9c9ad53?auto=format&fit=crop&w=400&q=80'}
               alt={course.title}
-              className="w-16 h-16 rounded-md object-cover border-2 border-[#171717] shrink-0"
+              className="w-16 h-16 rounded-md object-cover border-2 border-[#292D2B] shrink-0"
             />
             <div className="min-w-0 flex-1">
-              <span className="text-[10px] uppercase font-extrabold text-[#06251D] dark:text-[#D9AC45] tracking-wider">
+              <span className="text-[10px] uppercase font-extrabold text-[#123D32] dark:text-[#D6AD52] tracking-wider">
                 Materi Dikerjakan
               </span>
-              <h4 className="text-xs sm:text-sm font-extrabold text-[#171717] dark:text-white truncate font-sans">
+              <h4 className="text-xs sm:text-sm font-extrabold text-[#292D2B] dark:text-white truncate font-sans">
                 {course.title}
               </h4>
               {course.titleAr && (
-                <p className="text-xs text-[#06251D] dark:text-[#D9AC45] font-amiri font-bold truncate" dir="rtl">
+                <p className="text-xs text-[#123D32] dark:text-[#D6AD52] font-amiri font-bold truncate" dir="rtl">
                   {course.titleAr}
                 </p>
               )}
@@ -109,7 +109,7 @@ export const GuestAccessModal: React.FC<GuestAccessModalProps> = ({
 
           <button
             onClick={onClose}
-            className="w-full py-2.5 text-xs font-extrabold text-[#171717]/75 hover:text-[#171717] dark:text-[#F8F3E8]/75 dark:hover:text-[#D9AC45] transition cursor-pointer"
+            className="w-full py-2.5 text-xs font-extrabold text-[#292D2B]/75 hover:text-[#292D2B] dark:text-[#F1F4F8]/75 dark:hover:text-[#D6AD52] transition cursor-pointer"
           >
             Kembali ke Katalog Pembelajaran
           </button>

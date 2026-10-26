@@ -174,13 +174,13 @@ export const AuthModal: React.FC = () => {
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-3 sm:p-4 bg-black/75 animate-fade-in overflow-y-auto">
-      <div className="relative w-full max-w-md my-auto bg-[#F8F3E8] dark:bg-[#0B3026] border-2 border-[#171717] dark:border-[#D9AC45] rounded-lg shadow-[6px_6px_0px_#171717] dark:shadow-[6px_6px_0px_#000000] text-[#171717] dark:text-[#F8F3E8] max-h-[92dvh] overflow-y-auto animate-modal-in">
+      <div className="relative w-full max-w-md my-auto bg-[#FAF7F0] dark:bg-[#16263D] border-2 border-[#292D2B] dark:border-[#D6AD52] rounded-lg shadow-[6px_6px_0px_#292D2B] dark:shadow-[6px_6px_0px_#000000] text-[#292D2B] dark:text-[#F1F4F8] max-h-[92dvh] overflow-y-auto animate-modal-in">
         {/* Top Forest Green Header Strip */}
-        <div className="bg-[#06251D] text-white px-5 py-4 border-b-2 border-[#171717] dark:border-[#D9AC45]/50 flex items-center justify-between">
+        <div className="bg-[#123D32] dark:bg-[#16263D] text-white px-5 py-4 border-b-2 border-[#292D2B] dark:border-[#D6AD52]/50 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <LogoSymbol className="w-9 h-9" />
             <div>
-              <span className="block text-[10px] font-bold uppercase tracking-widest text-[#D9AC45]">
+              <span className="block text-[10px] font-bold uppercase tracking-widest text-[#D6AD52]">
                 Portal Tholabul Ilmi
               </span>
               <h2 className="text-base sm:text-lg font-bold font-serif text-white leading-tight">
@@ -194,7 +194,7 @@ export const AuthModal: React.FC = () => {
             type="button"
             onClick={closeAuthModal}
             aria-label="Tutup jendela login"
-            className="p-2 bg-[#0B3026] text-[#F8F3E8] hover:bg-[#D9AC45] hover:text-[#171717] border-2 border-[#D9AC45]/60 rounded-md transition-all cursor-pointer"
+            className="p-2 bg-[#243A56] text-[#FAF7F0] hover:bg-[#D6AD52] hover:text-[#292D2B] border-2 border-[#D6AD52]/60 rounded-md transition-all cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -202,9 +202,9 @@ export const AuthModal: React.FC = () => {
 
         <div className="p-5 sm:p-6">
           {/* Context Notice */}
-          <p className="text-xs sm:text-sm text-[#171717]/80 dark:text-[#F8F3E8]/85 mb-4 leading-relaxed">
+          <p className="text-xs sm:text-sm text-[#292D2B]/80 dark:text-[#F1F4F8]/85 mb-4 leading-relaxed">
             {pendingAction ? (
-              <span className="block p-3 bg-[#D9AC45]/20 border-2 border-[#171717] dark:border-[#D9AC45] rounded-md font-bold text-[#171717] dark:text-[#D9AC45]">
+              <span className="block p-3 bg-[#D6AD52]/20 border-2 border-[#292D2B] dark:border-[#D6AD52] rounded-md font-bold text-[#292D2B] dark:text-[#D6AD52]">
                 {pendingAction.type === 'quiz' && 'Silakan masuk ke akun Dars with Osama untuk memulai evaluasi kuis dan menyimpan nilai Anda.'}
                 {pendingAction.type === 'enroll' && 'Silakan masuk ke akun Dars with Osama untuk mulai belajar dan melacak kemajuan belajar.'}
                 {pendingAction.type === 'session' && 'Silakan masuk ke akun Dars with Osama untuk mulai belajar dan memutar video syarah lengkap.'}
@@ -219,14 +219,14 @@ export const AuthModal: React.FC = () => {
           </p>
 
           {/* Tab Buttons (Login vs Register) */}
-          <div className="grid grid-cols-2 gap-2 p-1 bg-white dark:bg-[#06251D] border-2 border-[#171717] dark:border-[#D9AC45]/60 rounded-md mb-5">
+          <div className="grid grid-cols-2 gap-2 p-1 bg-white dark:bg-[#101B2D] border-2 border-[#292D2B] dark:border-[#D6AD52]/60 rounded-md mb-5">
             <button
               type="button"
               onClick={() => handleTabSwitch('login')}
               className={`py-2 text-xs sm:text-sm font-bold rounded transition-all cursor-pointer min-h-[40px] ${
                 authModalTab === 'login'
-                  ? 'bg-[#06251D] text-[#D9AC45] dark:bg-[#D9AC45] dark:text-[#171717] border border-[#171717]'
-                  : 'text-[#171717]/70 dark:text-[#F8F3E8]/70 hover:text-[#171717] dark:hover:text-white'
+                  ? 'bg-[#123D32] text-[#D6AD52] dark:bg-[#D6AD52] dark:text-[#292D2B] border border-[#292D2B]'
+                  : 'text-[#292D2B]/70 dark:text-[#F1F4F8]/70 hover:text-[#292D2B] dark:hover:text-white'
               }`}
             >
               Masuk
@@ -236,8 +236,8 @@ export const AuthModal: React.FC = () => {
               onClick={() => handleTabSwitch('register')}
               className={`py-2 text-xs sm:text-sm font-bold rounded transition-all cursor-pointer min-h-[40px] ${
                 authModalTab === 'register'
-                  ? 'bg-[#06251D] text-[#D9AC45] dark:bg-[#D9AC45] dark:text-[#171717] border border-[#171717]'
-                  : 'text-[#171717]/70 dark:text-[#F8F3E8]/70 hover:text-[#171717] dark:hover:text-white'
+                  ? 'bg-[#123D32] text-[#D6AD52] dark:bg-[#D6AD52] dark:text-[#292D2B] border border-[#292D2B]'
+                  : 'text-[#292D2B]/70 dark:text-[#F1F4F8]/70 hover:text-[#292D2B] dark:hover:text-white'
               }`}
             >
               Daftar Akun Baru
@@ -246,15 +246,15 @@ export const AuthModal: React.FC = () => {
 
           {/* Alerts */}
           {error && (
-            <div className="mb-4 p-3.5 bg-[#F04438]/15 border-2 border-[#F04438] rounded-md text-[#171717] dark:text-white text-xs flex items-start gap-2.5 shadow-[3px_3px_0px_#F04438] whitespace-pre-line">
+            <div className="mb-4 p-3.5 bg-[#F04438]/15 border-2 border-[#F04438] rounded-md text-[#292D2B] dark:text-white text-xs flex items-start gap-2.5 shadow-[3px_3px_0px_#F04438] whitespace-pre-line">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-[#F04438]" />
               <div className="flex-1 font-medium leading-relaxed">{error}</div>
             </div>
           )}
 
           {successMsg && (
-            <div className="mb-4 p-3.5 bg-[#06251D] border-2 border-[#D9AC45] rounded-md text-[#F8F3E8] text-xs flex items-start gap-2.5 shadow-[3px_3px_0px_#171717]">
-              <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-[#D9AC45]" />
+            <div className="mb-4 p-3.5 bg-[#123D32] border-2 border-[#D6AD52] rounded-md text-[#FAF7F0] text-xs flex items-start gap-2.5 shadow-[3px_3px_0px_#292D2B]">
+              <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-[#D6AD52]" />
               <span className="leading-relaxed font-medium">{successMsg}</span>
             </div>
           )}
@@ -266,7 +266,7 @@ export const AuthModal: React.FC = () => {
                 type="button"
                 onClick={handleGoogleSignIn}
                 disabled={loading}
-                className="w-full flex items-center justify-center gap-3 py-3 px-4 bg-white dark:bg-[#06251D] hover:bg-[#D9AC45]/20 text-[#171717] dark:text-[#F8F3E8] rounded-md font-bold text-xs sm:text-sm transition-all border-2 border-[#171717] dark:border-[#D9AC45]/70 shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#000000] active:translate-x-[1px] active:translate-y-[1px] disabled:opacity-50 cursor-pointer min-h-[44px]"
+                className="w-full flex items-center justify-center gap-3 py-3 px-4 bg-white dark:bg-[#101B2D] hover:bg-[#D6AD52]/20 text-[#292D2B] dark:text-[#F1F4F8] rounded-md font-bold text-xs sm:text-sm transition-all border-2 border-[#292D2B] dark:border-[#D6AD52]/70 shadow-[3px_3px_0px_#292D2B] dark:shadow-[3px_3px_0px_#000000] active:translate-x-[1px] active:translate-y-[1px] disabled:opacity-50 cursor-pointer min-h-[44px]"
               >
                 <svg className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" viewBox="0 0 24 24">
                   <path
@@ -291,10 +291,10 @@ export const AuthModal: React.FC = () => {
 
               <div className="relative my-4">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t-2 border-[#171717]/20 dark:border-[#D9AC45]/30"></div>
+                  <div className="w-full border-t-2 border-[#292D2B]/20 dark:border-[#D6AD52]/30"></div>
                 </div>
                 <div className="relative flex justify-center text-[11px] uppercase font-bold tracking-wider">
-                  <span className="bg-[#F8F3E8] dark:bg-[#0B3026] px-3 text-[#171717]/70 dark:text-[#D9AC45]">
+                  <span className="bg-[#FAF7F0] dark:bg-[#16263D] px-3 text-[#292D2B]/70 dark:text-[#D6AD52]">
                     atau dengan email
                   </span>
                 </div>
@@ -304,14 +304,14 @@ export const AuthModal: React.FC = () => {
 
           {/* Dedicated Educational Banner on Registration */}
           {authModalTab === 'register' && (
-            <div className="mb-4 p-3.5 bg-white dark:bg-[#06251D] border-2 border-[#171717] dark:border-[#D9AC45]/60 rounded-md text-[#171717] dark:text-[#F8F3E8] text-xs flex items-start gap-2.5 shadow-[3px_3px_0px_#171717]">
-              <ShieldCheck className="w-5 h-5 text-[#06251D] dark:text-[#D9AC45] shrink-0 mt-0.5" />
+            <div className="mb-4 p-3.5 bg-white dark:bg-[#101B2D] border-2 border-[#292D2B] dark:border-[#D6AD52]/60 rounded-md text-[#292D2B] dark:text-[#F1F4F8] text-xs flex items-start gap-2.5 shadow-[3px_3px_0px_#292D2B]">
+              <ShieldCheck className="w-5 h-5 text-[#123D32] dark:text-[#D6AD52] shrink-0 mt-0.5" />
               <div className="space-y-1.5 leading-relaxed">
-                <strong className="block font-bold text-[#06251D] dark:text-[#D9AC45] text-xs sm:text-sm">
+                <strong className="block font-bold text-[#123D32] dark:text-[#D6AD52] text-xs sm:text-sm">
                   Gunakan email milikmu dan buat password baru
                 </strong>
                 <p className="text-[11px] sm:text-xs">
-                  Gunakan alamat email yang kamu miliki dan buat password baru khusus untuk akun Dars with Osama. Password ini tidak harus sama dengan password Gmail atau email kamu. <strong className="underline decoration-[#D9AC45]">Kami tidak meminta password email pribadimu</strong>.
+                  Gunakan alamat email yang kamu miliki dan buat password baru khusus untuk akun Dars with Osama. Password ini tidak harus sama dengan password Gmail atau email kamu. <strong className="underline decoration-[#D6AD52]">Kami tidak meminta password email pribadimu</strong>.
                 </p>
               </div>
             </div>
@@ -321,11 +321,11 @@ export const AuthModal: React.FC = () => {
           <form onSubmit={handleSubmit} className="space-y-4">
             {authModalTab === 'register' && (
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-[#171717] dark:text-[#D9AC45] mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#292D2B] dark:text-[#D6AD52] mb-1.5">
                   Nama Lengkap / Kunyah
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#171717]/60 dark:text-[#D9AC45]">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#292D2B]/60 dark:text-[#D6AD52]">
                     <User className="w-4 h-4" />
                   </div>
                   <input
@@ -342,7 +342,7 @@ export const AuthModal: React.FC = () => {
             )}
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-[#171717] dark:text-[#D9AC45] mb-1.5">
+              <label className="block text-xs font-bold uppercase tracking-wider text-[#292D2B] dark:text-[#D6AD52] mb-1.5">
                 {authModalTab === 'login'
                   ? 'Email Terdaftar'
                   : authModalTab === 'forgot'
@@ -350,7 +350,7 @@ export const AuthModal: React.FC = () => {
                   : 'Alamat Email'}
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#171717]/60 dark:text-[#D9AC45]">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#292D2B]/60 dark:text-[#D6AD52]">
                   <Mail className="w-4 h-4" />
                 </div>
                 <input
@@ -364,11 +364,11 @@ export const AuthModal: React.FC = () => {
                 />
               </div>
               {authModalTab === 'register' ? (
-                <p className="text-[11px] text-[#171717]/70 dark:text-[#F8F3E8]/70 mt-1">
+                <p className="text-[11px] text-[#292D2B]/70 dark:text-[#F1F4F8]/70 mt-1">
                   Gunakan email yang kamu miliki dan bisa kamu akses.
                 </p>
               ) : authModalTab === 'forgot' ? (
-                <p className="text-[11px] text-[#171717]/70 dark:text-[#F8F3E8]/70 mt-1">
+                <p className="text-[11px] text-[#292D2B]/70 dark:text-[#F1F4F8]/70 mt-1">
                   Pastikan kamu masih bisa mengakses kotak masuk (inbox) atau folder spam email ini.
                 </p>
               ) : null}
@@ -379,21 +379,21 @@ export const AuthModal: React.FC = () => {
                 {/* Primary Password Field */}
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="block text-xs font-bold uppercase tracking-wider text-[#171717] dark:text-[#D9AC45]">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-[#292D2B] dark:text-[#D6AD52]">
                       Password Akun
                     </label>
                     {authModalTab === 'login' && (
                       <button
                         type="button"
                         onClick={() => handleTabSwitch('forgot')}
-                        className="text-xs font-bold text-[#06251D] dark:text-[#D9AC45] hover:underline cursor-pointer"
+                        className="text-xs font-bold text-[#123D32] dark:text-[#D6AD52] hover:underline cursor-pointer"
                       >
                         Lupa password?
                       </button>
                     )}
                   </div>
                   <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#171717]/60 dark:text-[#D9AC45]">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#292D2B]/60 dark:text-[#D6AD52]">
                       <Lock className="w-4 h-4" />
                     </div>
                     <input
@@ -414,13 +414,13 @@ export const AuthModal: React.FC = () => {
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
                       aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
-                      className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[#171717]/60 dark:text-[#D9AC45] hover:text-[#171717] dark:hover:text-white transition cursor-pointer"
+                      className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[#292D2B]/60 dark:text-[#D6AD52] hover:text-[#292D2B] dark:hover:text-white transition cursor-pointer"
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
-                  <p className="text-[11px] text-[#171717]/70 dark:text-[#F8F3E8]/70 mt-1 flex items-center gap-1">
-                    <Info className="w-3.5 h-3.5 shrink-0 text-[#06251D] dark:text-[#D9AC45]" />
+                  <p className="text-[11px] text-[#292D2B]/70 dark:text-[#F1F4F8]/70 mt-1 flex items-center gap-1">
+                    <Info className="w-3.5 h-3.5 shrink-0 text-[#123D32] dark:text-[#D6AD52]" />
                     <span>
                       {authModalTab === 'register'
                         ? 'Bukan password Gmail atau password email kamu. Minimal 6 karakter.'
@@ -432,11 +432,11 @@ export const AuthModal: React.FC = () => {
                 {/* Confirm Password Field (Register Only) */}
                 {authModalTab === 'register' && (
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-[#171717] dark:text-[#D9AC45] mb-1.5">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-[#292D2B] dark:text-[#D6AD52] mb-1.5">
                       Ulangi Password Akun
                     </label>
                     <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#171717]/60 dark:text-[#D9AC45]">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#292D2B]/60 dark:text-[#D6AD52]">
                         <Lock className="w-4 h-4" />
                       </div>
                       <input
@@ -453,7 +453,7 @@ export const AuthModal: React.FC = () => {
                         type="button"
                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                         aria-label={showConfirmPassword ? 'Sembunyikan konfirmasi password' : 'Tampilkan konfirmasi password'}
-                        className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[#171717]/60 dark:text-[#D9AC45] hover:text-[#171717] dark:hover:text-white transition cursor-pointer"
+                        className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[#292D2B]/60 dark:text-[#D6AD52] hover:text-[#292D2B] dark:hover:text-white transition cursor-pointer"
                       >
                         {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
@@ -469,7 +469,7 @@ export const AuthModal: React.FC = () => {
               className="w-full nb-btn nb-btn-gold py-3 text-xs sm:text-sm mt-2 min-h-[46px]"
             >
               {loading ? (
-                <div className="w-5 h-5 border-2 border-[#171717]/30 border-t-[#171717] rounded-full animate-spin" />
+                <div className="w-5 h-5 border-2 border-[#292D2B]/30 border-t-[#292D2B] rounded-full animate-spin" />
               ) : (
                 <>
                   <span>
@@ -489,32 +489,32 @@ export const AuthModal: React.FC = () => {
               <button
                 type="button"
                 onClick={() => handleTabSwitch('login')}
-                className="text-xs font-bold text-[#06251D] dark:text-[#D9AC45] hover:underline cursor-pointer min-h-[40px] inline-flex items-center"
+                className="text-xs font-bold text-[#123D32] dark:text-[#D6AD52] hover:underline cursor-pointer min-h-[40px] inline-flex items-center"
               >
                 ← Kembali ke halaman Masuk
               </button>
             </div>
           ) : authModalTab === 'login' ? (
-            <div className="text-center mt-5 pt-3 border-t-2 border-[#171717]/15 dark:border-[#D9AC45]/20">
-              <p className="text-xs text-[#171717]/80 dark:text-[#F8F3E8]/80">
+            <div className="text-center mt-5 pt-3 border-t-2 border-[#292D2B]/15 dark:border-[#D6AD52]/20">
+              <p className="text-xs text-[#292D2B]/80 dark:text-[#F1F4F8]/80">
                 Belum memiliki akun?{' '}
                 <button
                   type="button"
                   onClick={() => handleTabSwitch('register')}
-                  className="font-bold text-[#06251D] dark:text-[#D9AC45] underline cursor-pointer ml-1"
+                  className="font-bold text-[#123D32] dark:text-[#D6AD52] underline cursor-pointer ml-1"
                 >
                   Daftar Akun Baru
                 </button>
               </p>
             </div>
           ) : (
-            <div className="text-center mt-5 pt-3 border-t-2 border-[#171717]/15 dark:border-[#D9AC45]/20">
-              <p className="text-xs text-[#171717]/80 dark:text-[#F8F3E8]/80">
+            <div className="text-center mt-5 pt-3 border-t-2 border-[#292D2B]/15 dark:border-[#D6AD52]/20">
+              <p className="text-xs text-[#292D2B]/80 dark:text-[#F1F4F8]/80">
                 Sudah memiliki akun?{' '}
                 <button
                   type="button"
                   onClick={() => handleTabSwitch('login')}
-                  className="font-bold text-[#06251D] dark:text-[#D9AC45] underline cursor-pointer ml-1"
+                  className="font-bold text-[#123D32] dark:text-[#D6AD52] underline cursor-pointer ml-1"
                 >
                   Masuk di Sini
                 </button>

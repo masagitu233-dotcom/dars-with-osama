@@ -171,16 +171,16 @@ export const AdminConsultationManager: React.FC = () => {
   return (
     <div className="space-y-6 font-sans">
       {/* HEADER TITLE */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 nb-card bg-white dark:bg-[#0B3026] p-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 nb-card bg-white dark:bg-[#16263D] p-6">
         <div className="space-y-1.5">
-          <div className="nb-badge bg-[#D9AC45] text-[#171717]">
+          <div className="nb-badge bg-[#D6AD52] text-charcoal">
             <ShieldAlert className="w-3.5 h-3.5" />
             <span>Panel Administrasi Konsultasi</span>
           </div>
-          <h2 className="text-xl sm:text-2xl font-extrabold font-serif-brand text-[#171717] dark:text-[#F8F3E8]">
+          <h2 className="text-xl sm:text-2xl font-extrabold font-serif-brand text-charcoal dark:text-offwhite">
             Kelola Konsultasi & Q&A Siswa
           </h2>
-          <p className="text-xs text-[#171717]/75 dark:text-[#F8F3E8]/75">
+          <p className="text-xs text-slate-gray dark:text-blue-gray">
             Membaca pertanyaan masuk, memberikan balasan resmi, mengelola status, serta menyetujui publikasi Q&A.
           </p>
         </div>
@@ -194,7 +194,7 @@ export const AdminConsultationManager: React.FC = () => {
       </div>
 
       {toastMessage && (
-        <div className="p-4 bg-[#D9AC45] border-2 border-[#171717] shadow-[4px_4px_0px_#171717] text-[#171717] font-bold text-xs rounded-md flex items-center justify-between gap-2 animate-fade-in">
+        <div className="p-4 bg-[#D6AD52] border-2 border-charcoal shadow-[4px_4px_0px_#292D2B] text-charcoal font-bold text-xs rounded-md flex items-center justify-between gap-2 animate-fade-in">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 shrink-0" />
             <span>{toastMessage}</span>
@@ -206,10 +206,10 @@ export const AdminConsultationManager: React.FC = () => {
       )}
 
       {/* FILTER & SEARCH CONTROLS */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 nb-card bg-white dark:bg-[#0B3026] p-4">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 nb-card bg-white dark:bg-[#16263D] p-4">
         {/* Search Input (Col 5) */}
         <div className="md:col-span-5 relative">
-          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#171717]/60 dark:text-[#F8F3E8]/60" />
+          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-gray dark:text-blue-gray" />
           <input
             type="text"
             value={searchQuery}
@@ -221,7 +221,7 @@ export const AdminConsultationManager: React.FC = () => {
 
         {/* Category Filter (Col 4) */}
         <div className="md:col-span-4 flex items-center gap-2">
-          <Filter className="w-4 h-4 text-[#06251D] dark:text-[#D9AC45] shrink-0" />
+          <Filter className="w-4 h-4 text-[#123D32] dark:text-[#D6AD52] shrink-0" />
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value as any)}
@@ -250,16 +250,16 @@ export const AdminConsultationManager: React.FC = () => {
 
       {/* TABLE / LIST OF CONSULTATIONS */}
       {loading ? (
-        <div className="py-16 text-center text-xs font-bold text-[#171717]/75 dark:text-[#F8F3E8]/75">
+        <div className="py-16 text-center text-xs font-bold text-slate-gray dark:text-blue-gray">
           Memuat data konsultasi siswa...
         </div>
       ) : filteredList.length === 0 ? (
-        <div className="p-12 text-center nb-card bg-white dark:bg-[#0B3026] space-y-2">
-          <MessageSquare className="w-8 h-8 text-[#D9AC45] mx-auto" />
-          <p className="text-sm font-extrabold text-[#171717] dark:text-[#F8F3E8]">
+        <div className="p-12 text-center nb-card bg-white dark:bg-[#16263D] space-y-2">
+          <MessageSquare className="w-8 h-8 text-[#D6AD52] mx-auto" />
+          <p className="text-sm font-extrabold text-charcoal dark:text-offwhite">
             Tidak Ada Konsultasi Ditemukan
           </p>
-          <p className="text-xs text-[#171717]/70 dark:text-[#F8F3E8]/70">
+          <p className="text-xs text-slate-gray dark:text-blue-gray">
             Coba ubah kata kunci pencarian atau filter status/kategori.
           </p>
         </div>
@@ -268,7 +268,7 @@ export const AdminConsultationManager: React.FC = () => {
           {filteredList.map((item) => (
             <div
               key={item.id}
-              className="nb-card bg-white dark:bg-[#0B3026] p-5 space-y-4"
+              className="nb-card bg-white dark:bg-[#16263D] p-5 space-y-4"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="space-y-1.5 flex-1">
@@ -278,7 +278,7 @@ export const AdminConsultationManager: React.FC = () => {
                       className={`nb-badge ${
                         item.category === 'private'
                           ? 'bg-[#F04438] text-white'
-                          : 'bg-[#06251D] text-[#D9AC45]'
+                          : 'bg-[#123D32] text-[#D6AD52]'
                       }`}
                     >
                       {item.category === 'private' ? '🔒 Konsultasi Pribadi' : '📖 Materi & Pembelajaran'}
@@ -287,9 +287,9 @@ export const AdminConsultationManager: React.FC = () => {
                     <span
                       className={`nb-badge ${
                         item.status === 'answered'
-                          ? 'bg-[#D9AC45] text-[#171717]'
+                          ? 'bg-[#D6AD52] text-charcoal'
                           : item.status === 'closed'
-                          ? 'bg-[#F8F3E8] dark:bg-[#06251D] text-[#171717] dark:text-[#F8F3E8]'
+                          ? 'bg-[#FAF7F0] dark:bg-[#243A56] text-charcoal dark:text-offwhite'
                           : 'bg-[#3478F6] text-white'
                       }`}
                     >
@@ -308,14 +308,14 @@ export const AdminConsultationManager: React.FC = () => {
                     )}
                   </div>
 
-                  <h3 className="text-base font-extrabold font-serif-brand text-[#171717] dark:text-[#F8F3E8]">
+                  <h3 className="text-base font-extrabold font-serif-brand text-charcoal dark:text-offwhite">
                     {item.title}
                   </h3>
 
                   {/* Student Identity Information */}
-                  <div className="flex flex-wrap items-center gap-3 text-xs text-[#171717]/75 dark:text-[#F8F3E8]/75 font-medium">
+                  <div className="flex flex-wrap items-center gap-3 text-xs text-slate-gray dark:text-blue-gray font-medium">
                     <span className="flex items-center gap-1">
-                      <User className="w-3.5 h-3.5 text-[#06251D] dark:text-[#D9AC45]" />
+                      <User className="w-3.5 h-3.5 text-[#123D32] dark:text-[#D6AD52]" />
                       <strong>{item.studentName}</strong>
                     </span>
                     {item.studentEmail && (
@@ -343,21 +343,21 @@ export const AdminConsultationManager: React.FC = () => {
                     onClick={() => openManageModal(item)}
                     className="nb-btn nb-btn-primary px-3.5 py-2 text-xs"
                   >
-                    <MessageSquare className="w-3.5 h-3.5 text-[#D9AC45]" />
+                    <MessageSquare className="w-3.5 h-3.5 text-[#D6AD52]" />
                     <span>{item.replyContent ? 'Edit Balasan' : 'Jawab Pertanyaan'}</span>
                   </button>
                 </div>
               </div>
 
               {/* Question Preview */}
-              <div className="p-3.5 bg-[#F8F3E8] dark:bg-[#06251D] border-2 border-[#171717] dark:border-[#D9AC45]/50 rounded-md text-xs text-[#171717] dark:text-[#F8F3E8] line-clamp-3 whitespace-pre-line font-sans">
+              <div className="p-3.5 bg-[#FAF7F0] dark:bg-[#243A56] border-2 border-charcoal dark:border-[#34465D] rounded-md text-xs text-charcoal dark:text-offwhite line-clamp-3 whitespace-pre-line font-sans">
                 {item.content}
               </div>
 
               {/* Admin Reply Preview */}
               {item.replyContent && (
-                <div className="p-3.5 bg-white dark:bg-[#06251D] border-2 border-[#171717] border-l-4 border-l-[#D9AC45] rounded-md text-xs text-[#171717] dark:text-[#F8F3E8] space-y-1 font-sans">
-                  <span className="font-extrabold text-[11px] text-[#06251D] dark:text-[#D9AC45] block">
+                <div className="p-3.5 bg-white dark:bg-[#243A56] border-2 border-charcoal border-l-4 border-l-[#D6AD52] rounded-md text-xs text-charcoal dark:text-offwhite space-y-1 font-sans">
+                  <span className="font-extrabold text-[11px] text-[#123D32] dark:text-[#D6AD52] block">
                     Balasan Admin Saat Ini:
                   </span>
                   <p className="line-clamp-2 whitespace-pre-line">{item.replyContent}</p>
@@ -365,7 +365,7 @@ export const AdminConsultationManager: React.FC = () => {
               )}
 
               {/* Publication Control for Learning Category */}
-              <div className="pt-3 border-t-2 border-[#171717]/15 dark:border-[#D9AC45]/30 flex flex-wrap items-center justify-between gap-2 text-xs">
+              <div className="pt-3 border-t-2 border-slate-200 dark:border-slate-700/60 flex flex-wrap items-center justify-between gap-2 text-xs">
                 {item.category === 'private' ? (
                   <span className="text-[11px] text-[#F04438] font-extrabold flex items-center gap-1">
                     <Lock className="w-3.5 h-3.5" />
@@ -403,7 +403,7 @@ export const AdminConsultationManager: React.FC = () => {
                       setShareTab('share');
                       setShareModalOpen(true);
                     }}
-                    className="nb-btn bg-[#3478F6] text-white border-2 border-[#171717] px-3 py-1.5 text-xs"
+                    className="nb-btn bg-[#3478F6] text-white border-2 border-charcoal px-3 py-1.5 text-xs"
                     title="Bagikan Tautan / Buat Gambar Kartu Dakwah"
                   >
                     <Share2 className="w-3.5 h-3.5" />
@@ -420,7 +420,7 @@ export const AdminConsultationManager: React.FC = () => {
                   })}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-[11px] text-[#06251D] dark:text-[#D9AC45] font-extrabold hover:underline"
+                  className="inline-flex items-center gap-1 text-[11px] text-[#123D32] dark:text-[#D6AD52] font-extrabold hover:underline"
                 >
                   <MessageCircle className="w-3.5 h-3.5" />
                   <span>Hubungi Siswa di WhatsApp</span>
@@ -434,15 +434,15 @@ export const AdminConsultationManager: React.FC = () => {
       {/* MODAL EDIT BALASAN & STATUS */}
       {selectedConsultation && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs animate-fade-in overflow-y-auto">
-          <div className="relative w-full max-w-2xl nb-card bg-white dark:bg-[#0B3026] p-6 sm:p-8 space-y-6 my-auto">
-            <div className="flex items-center justify-between border-b-2 border-[#171717] dark:border-[#D9AC45]/50 pb-4">
+          <div className="relative w-full max-w-2xl nb-card bg-white dark:bg-[#16263D] p-6 sm:p-8 space-y-6 my-auto">
+            <div className="flex items-center justify-between border-b-2 border-charcoal dark:border-[#D6AD52]/50 pb-4">
               <div className="flex items-center gap-2.5">
-                <ShieldCheck className="w-6 h-6 text-[#06251D] dark:text-[#D9AC45]" />
+                <ShieldCheck className="w-6 h-6 text-[#123D32] dark:text-[#D6AD52]" />
                 <div>
-                  <h3 className="font-extrabold text-lg font-serif-brand text-[#171717] dark:text-[#F8F3E8]">
+                  <h3 className="font-extrabold text-lg font-serif-brand text-charcoal dark:text-offwhite">
                     Respon & Kelola Konsultasi
                   </h3>
-                  <p className="text-xs text-[#171717]/70 dark:text-[#F8F3E8]/70 font-mono">
+                  <p className="text-xs text-slate-gray dark:text-blue-gray font-mono">
                     ID: {selectedConsultation.id}
                   </p>
                 </div>
@@ -457,43 +457,43 @@ export const AdminConsultationManager: React.FC = () => {
             </div>
 
             {errorMessage && (
-              <div className="p-3.5 bg-[#F04438] text-white border-2 border-[#171717] text-xs font-bold rounded-md flex items-center gap-2">
+              <div className="p-3.5 bg-[#F04438] text-white border-2 border-charcoal text-xs font-bold rounded-md flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>{errorMessage}</span>
               </div>
             )}
 
             {/* Student Info Card */}
-            <div className="p-4 rounded-md bg-[#F8F3E8] dark:bg-[#06251D] border-2 border-[#171717] dark:border-[#D9AC45]/50 space-y-2 text-xs">
+            <div className="p-4 rounded-md bg-[#FAF7F0] dark:bg-[#243A56] border-2 border-charcoal dark:border-[#34465D] space-y-2 text-xs">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="font-extrabold text-[#06251D] dark:text-[#D9AC45]">
+                <span className="font-extrabold text-[#123D32] dark:text-[#D6AD52]">
                   Informasi Penanya:
                 </span>
                 <span
                   className={`nb-badge ${
                     selectedConsultation.category === 'private'
                       ? 'bg-[#F04438] text-white'
-                      : 'bg-[#06251D] text-[#D9AC45]'
+                      : 'bg-[#123D32] text-[#D6AD52]'
                   }`}
                 >
                   {selectedConsultation.category === 'private' ? '🔒 Konsultasi Pribadi' : '📖 Materi & Pembelajaran'}
                 </span>
               </div>
 
-              <p className="text-[#171717] dark:text-[#F8F3E8]">
+              <p className="text-charcoal dark:text-offwhite">
                 <strong>Nama:</strong> {selectedConsultation.studentName} ({selectedConsultation.studentEmail || 'Tanpa Email'})
               </p>
 
               <div className="pt-1">
-                <strong className="block text-[#06251D] dark:text-[#D9AC45]">Judul:</strong>
-                <span className="font-serif-brand font-extrabold text-sm text-[#171717] dark:text-[#F8F3E8]">
+                <strong className="block text-[#123D32] dark:text-[#D6AD52]">Judul:</strong>
+                <span className="font-serif-brand font-extrabold text-sm text-charcoal dark:text-offwhite">
                   {selectedConsultation.title}
                 </span>
               </div>
 
               <div className="pt-1">
-                <strong className="block text-[#06251D] dark:text-[#D9AC45]">Isi Pertanyaan:</strong>
-                <p className="mt-1 p-3 rounded-md bg-white dark:bg-[#0B3026] border-2 border-[#171717] dark:border-[#D9AC45]/50 text-xs text-[#171717] dark:text-[#F8F3E8] leading-relaxed whitespace-pre-line font-sans">
+                <strong className="block text-[#123D32] dark:text-[#D6AD52]">Isi Pertanyaan:</strong>
+                <p className="mt-1 p-3 rounded-md bg-white dark:bg-[#16263D] border-2 border-charcoal dark:border-[#34465D] text-xs text-charcoal dark:text-offwhite leading-relaxed whitespace-pre-line font-sans">
                   {selectedConsultation.content}
                 </p>
               </div>
@@ -501,7 +501,7 @@ export const AdminConsultationManager: React.FC = () => {
 
             {/* Status Change Selector */}
             <div className="space-y-1.5">
-              <label className="text-xs font-extrabold text-[#171717] dark:text-[#F8F3E8]">
+              <label className="text-xs font-extrabold text-charcoal dark:text-offwhite">
                 Ubah Status Konsultasi:
               </label>
               <div className="grid grid-cols-3 gap-2">
@@ -532,7 +532,7 @@ export const AdminConsultationManager: React.FC = () => {
                   onClick={() => handleStatusChange(selectedConsultation, 'closed')}
                   className={`nb-btn py-2 px-3 text-xs justify-center ${
                     selectedConsultation.status === 'closed'
-                      ? 'bg-[#171717] text-white border-2 border-[#171717]'
+                      ? 'bg-charcoal text-white border-2 border-charcoal'
                       : 'nb-btn-secondary'
                   }`}
                 >
@@ -543,7 +543,7 @@ export const AdminConsultationManager: React.FC = () => {
 
             {/* Reply Rich Text Editor Input */}
             <div className="space-y-1.5">
-              <label className="text-xs font-extrabold text-[#171717] dark:text-[#F8F3E8]">
+              <label className="text-xs font-extrabold text-charcoal dark:text-offwhite">
                 Tulis Balasan Resmi Ustaz / Admin (Format Teks Kaya & Ayat Al-Qur'an):
               </label>
               <RichTextEditor
@@ -555,7 +555,7 @@ export const AdminConsultationManager: React.FC = () => {
             </div>
 
             {/* Actions */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t-2 border-[#171717] dark:border-[#D9AC45]/50">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t-2 border-charcoal dark:border-[#D6AD52]/50">
               {selectedConsultation.category === 'learning' ? (
                 <button
                   type="button"
@@ -588,7 +588,7 @@ export const AdminConsultationManager: React.FC = () => {
                   disabled={actionLoading === 'reply'}
                   className="nb-btn nb-btn-primary px-5 py-2 text-xs disabled:opacity-50"
                 >
-                  <Send className="w-3.5 h-3.5 text-[#D9AC45]" />
+                  <Send className="w-3.5 h-3.5 text-[#D6AD52]" />
                   <span>{actionLoading === 'reply' ? 'Menyimpan...' : 'Kirim Balasan'}</span>
                 </button>
               </div>

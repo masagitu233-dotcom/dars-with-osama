@@ -20,13 +20,13 @@ export const LogoSymbol: React.FC<LogoSymbolProps> = ({ className = 'w-10 h-10' 
     >
       <defs>
         <linearGradient id="darsGreenGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#0B3026" />
-          <stop offset="100%" stopColor="#06251D" />
+          <stop offset="0%" stopColor="#1A5345" />
+          <stop offset="100%" stopColor="#123D32" />
         </linearGradient>
         <linearGradient id="darsGoldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#EBC35E" />
-          <stop offset="50%" stopColor="#D9AC45" />
-          <stop offset="100%" stopColor="#B88B28" />
+          <stop offset="0%" stopColor="#E5C26B" />
+          <stop offset="50%" stopColor="#D6AD52" />
+          <stop offset="100%" stopColor="#B38936" />
         </linearGradient>
       </defs>
 
@@ -38,7 +38,7 @@ export const LogoSymbol: React.FC<LogoSymbolProps> = ({ className = 'w-10 h-10' 
         height="104"
         rx="18"
         fill="url(#darsGreenGrad)"
-        stroke="#D9AC45"
+        stroke="#D6AD52"
         strokeWidth="4"
       />
 
@@ -49,10 +49,10 @@ export const LogoSymbol: React.FC<LogoSymbolProps> = ({ className = 'w-10 h-10' 
         width="90"
         height="90"
         rx="12"
-        stroke="#D9AC45"
+        stroke="#D6AD52"
         strokeWidth="1.5"
         strokeDasharray="4 3"
-        opacity="0.65"
+        opacity="0.75"
       />
 
       {/* Top Islamic 8-Pointed Star (Rub el Hizb) */}
@@ -72,7 +72,7 @@ export const LogoSymbol: React.FC<LogoSymbolProps> = ({ className = 'w-10 h-10' 
           transform="rotate(45)"
           fill="url(#darsGoldGrad)"
         />
-        <circle cx="0" cy="0" r="2.5" fill="#06251D" />
+        <circle cx="0" cy="0" r="2.5" fill="#123D32" />
       </g>
 
       {/* Crescent Moon (Hilal) Embracing the Book */}
@@ -84,7 +84,7 @@ export const LogoSymbol: React.FC<LogoSymbolProps> = ({ className = 'w-10 h-10' 
       {/* Open Kitab / Book Pages */}
       <path
         d="M60 54C50 54 39 50 30 45V80C39 85 50 89 60 89C70 89 81 85 90 80V45C81 50 70 54 60 54Z"
-        fill="#F8F3E8"
+        fill="#FAF7F0"
         stroke="url(#darsGoldGrad)"
         strokeWidth="2.5"
         strokeLinejoin="round"
@@ -96,7 +96,7 @@ export const LogoSymbol: React.FC<LogoSymbolProps> = ({ className = 'w-10 h-10' 
         y1="54"
         x2="60"
         y2="89"
-        stroke="#06251D"
+        stroke="#123D32"
         strokeWidth="3"
         strokeLinecap="round"
       />
@@ -104,13 +104,13 @@ export const LogoSymbol: React.FC<LogoSymbolProps> = ({ className = 'w-10 h-10' 
       {/* Left & Right Page Calligraphy Lines */}
       <path
         d="M37 57C43 60 50 62 55 62M37 66C43 69 50 71 55 71M37 75C43 78 50 80 55 80"
-        stroke="#06251D"
+        stroke="#123D32"
         strokeWidth="2.2"
         strokeLinecap="round"
       />
       <path
         d="M83 57C77 60 70 62 65 62M83 66C77 69 70 71 65 71M83 75C77 78 70 80 65 80"
-        stroke="#06251D"
+        stroke="#123D32"
         strokeWidth="2.2"
         strokeLinecap="round"
       />
@@ -157,18 +157,18 @@ export const LogoFull: React.FC<LogoFullProps> = ({
       onClick={onClick}
       className={`inline-flex items-center gap-3 select-none ${onClick ? 'cursor-pointer group' : ''}`}
     >
-      <div className="relative flex items-center justify-center rounded-md border-2 border-[#171717] dark:border-[#D9AC45] shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#D9AC45] bg-[#06251D] transition-transform duration-150 group-hover:-translate-y-0.5">
+      <div className="relative flex items-center justify-center rounded-md border-2 border-[#292D2B] dark:border-[#34465D] shadow-[2px_2px_0px_#292D2B] dark:shadow-[2px_2px_0px_#D6AD52] bg-[#123D32] dark:bg-[#16263D] transition-transform duration-150 group-hover:-translate-y-0.5">
         <LogoSymbol className={`${iconSizes[size]}`} />
       </div>
 
       <div className="flex flex-col text-left shrink-0 whitespace-nowrap">
         <span
-          className={`font-serif-brand font-extrabold tracking-tight leading-none text-[#06251D] dark:text-[#F8F3E8] transition-colors whitespace-nowrap ${titleSizes[size]}`}
+          className={`font-serif-brand font-extrabold tracking-tight leading-none text-[#123D32] dark:text-[#F1F4F8] transition-colors whitespace-nowrap ${titleSizes[size]}`}
         >
-          Dars <span className="font-normal italic text-[#B88B28] dark:text-[#D9AC45]">with</span> Osama
+          Dars <span className="font-normal italic text-[#D6AD52]">with</span> Osama
         </span>
         {showTagline && (
-          <span className="text-[10px] font-sans font-extrabold tracking-[0.2em] uppercase text-[#171717] dark:text-[#D9AC45] mt-1 whitespace-nowrap">
+          <span className="text-[10px] font-sans font-extrabold tracking-[0.2em] uppercase text-[#626A66] dark:text-[#D6AD52] mt-1 whitespace-nowrap">
             ILMU • KAJIAN • KITAB
           </span>
         )}

@@ -745,7 +745,7 @@ function MainApp() {
 
   return (
     <SmoothScrollProvider currentView={routeScrollKey}>
-      <div className="min-h-screen bg-[#F8F3E8] dark:bg-[#06251D] text-[#171717] dark:text-[#F8F3E8] font-sans selection:bg-[#D9AC45]/30 selection:text-[#171717] dark:selection:text-[#F8F3E8] transition-colors duration-250">
+      <div className="min-h-screen bg-[#FAF7F0] dark:bg-[#101B2D] text-[#292D2B] dark:text-[#F1F4F8] font-sans selection:bg-[#D6AD52]/30 selection:text-[#292D2B] dark:selection:text-[#F1F4F8] transition-colors duration-250">
         {currentView === 'admin-dashboard' && isAdmin ? (
           <AdminDashboard
             initialTab={adminInitialTab}

@@ -427,13 +427,13 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
       )}
 
       {/* HEADER BAR */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 nb-card bg-white dark:bg-[#0B3026] p-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 nb-card bg-white dark:bg-[#16263D] p-6">
         <div>
-          <h2 className="text-lg font-extrabold font-serif-brand text-[#171717] dark:text-[#F8F3E8] flex items-center gap-2">
-            <FileText className="w-5 h-5 text-[#06251D] dark:text-[#D9AC45]" />
+          <h2 className="text-lg font-extrabold font-serif-brand text-charcoal dark:text-offwhite flex items-center gap-2">
+            <FileText className="w-5 h-5 text-[#123D32] dark:text-[#D6AD52]" />
             <span>Manajemen Blog & Artikel ({posts.length})</span>
           </h2>
-          <p className="text-xs text-[#171717]/75 dark:text-[#F8F3E8]/75 mt-1">
+          <p className="text-xs text-slate-gray dark:text-blue-gray mt-1">
             Kelola publikasi naskah ilmu, catatan kajian, artikel tazkiyah, serta faedah Islam.
           </p>
         </div>
@@ -452,16 +452,16 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
             onClick={handleOpenAddModal}
             className="nb-btn nb-btn-primary px-4 py-2.5 text-xs"
           >
-            <Plus className="w-4 h-4 text-[#D9AC45]" />
+            <Plus className="w-4 h-4 text-[#D6AD52]" />
             <span>+ Buat Artikel Baru</span>
           </button>
         </div>
       </div>
 
       {/* FILTER & SEARCH BAR */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 nb-card bg-white dark:bg-[#0B3026] p-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 nb-card bg-white dark:bg-[#16263D] p-4">
         <div className="relative flex-1 max-w-md">
-          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#171717]/60 dark:text-[#F8F3E8]/60" />
+          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-gray dark:text-blue-gray" />
           <input
             type="text"
             value={searchQuery}
@@ -496,11 +496,11 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
       </div>
 
       {/* ARTICLES TABLE */}
-      <div className="nb-card bg-white dark:bg-[#0B3026] overflow-hidden">
+      <div className="nb-card bg-white dark:bg-[#16263D] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
-              <tr className="bg-[#06251D] text-[#D9AC45] border-b-2 border-[#171717] font-extrabold uppercase text-[11px]">
+              <tr className="bg-[#123D32] dark:bg-[#101B2D] text-[#D6AD52] border-b-2 border-charcoal font-extrabold uppercase text-[11px]">
                 <th className="p-4">Sampul & Judul Artikel</th>
                 <th className="p-4">Kategori</th>
                 <th className="p-4">Status</th>
@@ -509,37 +509,37 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
                 <th className="p-4 text-right">Aksi</th>
               </tr>
             </thead>
-            <tbody className="divide-y-2 divide-[#171717]/15 dark:divide-[#D9AC45]/25 text-[#171717] dark:text-[#F8F3E8]">
+            <tbody className="divide-y-2 divide-slate-200 dark:divide-slate-700/60 text-charcoal dark:text-offwhite">
               {filteredPosts.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-[#171717]/70 dark:text-[#F8F3E8]/70 font-semibold">
+                  <td colSpan={6} className="p-8 text-center text-slate-gray dark:text-blue-gray font-semibold">
                     Belum ada artikel yang sesuai. Klik "+ Buat Artikel Baru" untuk memublikasikan tulisan.
                   </td>
                 </tr>
               ) : (
                 filteredPosts.map(post => (
-                  <tr key={post.id} className="hover:bg-[#F8F3E8] dark:hover:bg-[#06251D]/50 transition">
+                  <tr key={post.id} className="hover:bg-[#FAF7F0] dark:hover:bg-[#243A56]/50 transition">
                     <td className="p-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-14 h-10 rounded-md bg-[#F8F3E8] dark:bg-[#06251D] overflow-hidden shrink-0 border-2 border-[#171717]">
+                        <div className="w-14 h-10 rounded-md bg-[#FAF7F0] dark:bg-[#243A56] overflow-hidden shrink-0 border-2 border-charcoal">
                           {post.coverImageUrl ? (
                             <img src={post.coverImageUrl} alt={post.title} className="w-full h-full object-cover" />
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center text-[#06251D] dark:text-[#D9AC45]">
+                            <div className="w-full h-full flex items-center justify-center text-[#123D32] dark:text-[#D6AD52]">
                               <FileText className="w-4 h-4" />
                             </div>
                           )}
                         </div>
                         <div className="min-w-0 max-w-xs sm:max-w-md">
-                          <p className="font-extrabold text-[#171717] dark:text-[#F8F3E8] truncate text-xs sm:text-sm">
+                          <p className="font-extrabold text-charcoal dark:text-offwhite truncate text-xs sm:text-sm">
                             {post.title}
                           </p>
                           {post.titleAr && (
-                            <p className="font-amiri text-xs text-[#06251D] dark:text-[#D9AC45] font-bold truncate">
+                            <p className="font-amiri text-xs text-[#123D32] dark:text-[#D6AD52] font-bold truncate">
                               {post.titleAr}
                             </p>
                           )}
-                          <p className="text-[10px] text-[#171717]/65 dark:text-[#F8F3E8]/65 font-mono truncate">
+                          <p className="text-[10px] text-slate-gray dark:text-blue-gray font-mono truncate">
                             /{post.slug}
                           </p>
                         </div>
@@ -547,7 +547,7 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
                     </td>
 
                     <td className="p-4">
-                      <span className="nb-badge bg-[#F8F3E8] dark:bg-[#06251D] text-[#171717] dark:text-[#F8F3E8]">
+                      <span className="nb-badge bg-[#FAF7F0] dark:bg-[#243A56] text-charcoal dark:text-offwhite">
                         {post.category}
                       </span>
                     </td>
@@ -557,8 +557,8 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
                         onClick={() => handleToggleStatus(post)}
                         className={`nb-badge cursor-pointer ${
                           post.status === 'published'
-                            ? 'bg-[#06251D] text-[#D9AC45]'
-                            : 'bg-[#D9AC45] text-[#171717]'
+                            ? 'bg-[#123D32] text-[#D6AD52]'
+                            : 'bg-[#D6AD52] text-charcoal'
                         }`}
                       >
                         {post.status === 'published' ? 'Terbit (Published)' : 'Draf (Draft)'}
@@ -566,15 +566,15 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
                     </td>
 
                     <td className="p-4">
-                      <p className="font-bold text-[#171717] dark:text-[#F8F3E8]">{post.readingTimeMinutes} min baca</p>
-                      <p className="text-[10px] text-[#171717]/70 dark:text-[#F8F3E8]/70">{post.viewsCount || 0} pembaca</p>
+                      <p className="font-bold text-charcoal dark:text-offwhite">{post.readingTimeMinutes} min baca</p>
+                      <p className="text-[10px] text-slate-gray dark:text-blue-gray">{post.viewsCount || 0} pembaca</p>
                       {post.audioConfig?.mode === 'custom' && post.audioConfig.customAudioUrl ? (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-[#06251D] dark:text-[#D9AC45] mt-1">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-[#123D32] dark:text-[#D6AD52] mt-1">
                           <Mic className="w-3 h-3" /> Audio Rekaman
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 text-[10px] text-[#171717]/75 dark:text-[#F8F3E8]/75 mt-1 font-semibold">
-                          <Volume2 className="w-3 h-3 text-[#06251D] dark:text-[#D9AC45]" /> TTS {post.audioConfig?.speechRate ? `${post.audioConfig.speechRate}×` : '1×'}
+                        <span className="inline-flex items-center gap-1 text-[10px] text-slate-gray dark:text-blue-gray mt-1 font-semibold">
+                          <Volume2 className="w-3 h-3 text-[#123D32] dark:text-[#D6AD52]" /> TTS {post.audioConfig?.speechRate ? `${post.audioConfig.speechRate}×` : '1×'}
                         </span>
                       )}
                     </td>

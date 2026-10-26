@@ -112,20 +112,20 @@ export const SessionShareModal: React.FC<SessionShareModalProps> = ({
       aria-labelledby="session-share-modal-title"
     >
       <div
-        className="nb-card w-full max-w-lg max-h-[90dvh] flex flex-col overflow-hidden bg-white dark:bg-[#0B3026] text-[#171717] dark:text-[#F8F3E8]"
+        className="nb-card w-full max-w-lg max-h-[90dvh] flex flex-col overflow-hidden bg-white dark:bg-[#243A56] text-[#292D2B] dark:text-[#F1F4F8]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* HEADER */}
-        <div className="p-4 sm:p-5 bg-[#06251D] text-[#F8F3E8] flex items-center justify-between border-b-2 border-[#171717] dark:border-[#D9AC45]/60 shrink-0">
+        <div className="p-4 sm:p-5 bg-[#123D32] dark:bg-[#16263D] text-[#FAF7F0] flex items-center justify-between border-b-2 border-[#292D2B] dark:border-[#D6AD52]/60 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-md bg-[#D9AC45] flex items-center justify-center text-[#171717] border-2 border-[#171717]">
+            <div className="w-9 h-9 rounded-md bg-[#D6AD52] flex items-center justify-center text-[#292D2B] border-2 border-[#292D2B]">
               <Share2 className="w-5 h-5" />
             </div>
             <div>
-              <h3 id="session-share-modal-title" className="font-extrabold text-base text-[#F8F3E8] leading-tight">
+              <h3 id="session-share-modal-title" className="font-extrabold text-base text-[#FAF7F0] leading-tight">
                 Bagikan Sesi Pembelajaran
               </h3>
-              <p className="text-[11px] text-[#D9AC45] font-bold">
+              <p className="text-[11px] text-[#D6AD52] font-bold">
                 Dars with Osama • ILMU • KAJIAN • KITAB
               </p>
             </div>
@@ -134,7 +134,7 @@ export const SessionShareModal: React.FC<SessionShareModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-md bg-[#F8F3E8]/15 hover:bg-[#F8F3E8]/25 text-[#F8F3E8] border border-[#D9AC45]/50 flex items-center justify-center transition cursor-pointer"
+            className="w-8 h-8 rounded-md bg-[#FAF7F0]/15 hover:bg-[#FAF7F0]/25 text-[#FAF7F0] border border-[#D6AD52]/50 flex items-center justify-center transition cursor-pointer"
             title="Tutup"
             aria-label="Tutup modal bagikan sesi"
           >
@@ -144,8 +144,8 @@ export const SessionShareModal: React.FC<SessionShareModalProps> = ({
 
         <div className="p-4 sm:p-5 space-y-4 flex-1 min-h-0 overflow-y-auto">
           {/* SOCIAL PREVIEW CARD */}
-          <div className="rounded-lg bg-[#F8F3E8] dark:bg-[#06251D] border-2 border-[#171717] dark:border-[#D9AC45]/60 overflow-hidden">
-            <div className="relative aspect-video w-full bg-[#171717] overflow-hidden border-b-2 border-[#171717]">
+          <div className="rounded-lg bg-[#FAF7F0] dark:bg-[#16263D] border-2 border-[#292D2B] dark:border-[#D6AD52]/60 overflow-hidden">
+            <div className="relative aspect-video w-full bg-[#292D2B] overflow-hidden border-b-2 border-[#292D2B]">
               <img
                 src={shareData.thumbnailUrl}
                 alt={session.title}
@@ -157,13 +157,13 @@ export const SessionShareModal: React.FC<SessionShareModalProps> = ({
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent" />
               <div className="absolute top-3 left-3">
-                <span className="nb-badge bg-[#06251D] text-[#D9AC45]">
+                <span className="nb-badge bg-[#123D32] text-[#D6AD52]">
                   <Video className="w-3 h-3" />
                   <span>{course.title}</span>
                 </span>
               </div>
               <div className="absolute bottom-3 left-3 right-3 text-white">
-                <p className="text-[10px] uppercase tracking-wider text-[#D9AC45] font-extrabold flex items-center gap-1">
+                <p className="text-[10px] uppercase tracking-wider text-[#D6AD52] font-extrabold flex items-center gap-1">
                   <ShieldCheck className="w-3 h-3" />
                   <span>Dars with Osama • Preview Tautan Sosial</span>
                 </p>
@@ -174,7 +174,7 @@ export const SessionShareModal: React.FC<SessionShareModalProps> = ({
             </div>
 
             <div className="p-3.5 space-y-1.5">
-              <p className="text-xs text-[#171717]/80 dark:text-[#F8F3E8]/80 leading-relaxed line-clamp-2">
+              <p className="text-xs text-[#292D2B]/80 dark:text-[#F1F4F8]/80 leading-relaxed line-clamp-2">
                 {shareData.ogDescription}
               </p>
             </div>
@@ -182,7 +182,7 @@ export const SessionShareModal: React.FC<SessionShareModalProps> = ({
 
           {/* FEEDBACK BANNER */}
           {(copiedUrl || copiedInvite) && (
-            <div className="p-3 rounded-md bg-[#D9AC45] border-2 border-[#171717] text-[#171717] text-xs font-bold flex items-center gap-2 animate-fade-in">
+            <div className="p-3 rounded-md bg-[#D6AD52] border-2 border-[#292D2B] text-[#292D2B] text-xs font-bold flex items-center gap-2 animate-fade-in">
               <Check className="w-4 h-4 shrink-0" />
               <span>
                 <strong>
@@ -196,9 +196,9 @@ export const SessionShareModal: React.FC<SessionShareModalProps> = ({
           )}
 
           {/* INVITATION MESSAGE BOX */}
-          <div className="p-3.5 rounded-lg bg-[#F8F3E8] dark:bg-[#06251D] border-2 border-[#171717] dark:border-[#D9AC45]/60 space-y-2.5">
+          <div className="p-3.5 rounded-lg bg-[#FAF7F0] dark:bg-[#16263D] border-2 border-[#292D2B] dark:border-[#D6AD52]/60 space-y-2.5">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-[11px] font-extrabold text-[#06251D] dark:text-[#D9AC45] flex items-center gap-1.5">
+              <span className="text-[11px] font-extrabold text-[#123D32] dark:text-[#D6AD52] flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5" />
                 <span>Teks Ajakan Menonton Sesi:</span>
               </span>
@@ -211,14 +211,14 @@ export const SessionShareModal: React.FC<SessionShareModalProps> = ({
                 <span>{copiedInvite ? 'Tersalin!' : 'Salin Ajakan'}</span>
               </button>
             </div>
-            <p className="text-xs text-[#171717] dark:text-[#F8F3E8] bg-white dark:bg-[#0B3026] p-2.5 rounded-md border-2 border-[#171717] dark:border-[#D9AC45]/50 leading-relaxed select-all">
+            <p className="text-xs text-[#292D2B] dark:text-[#F1F4F8] bg-white dark:bg-[#243A56] p-2.5 rounded-md border-2 border-[#292D2B] dark:border-[#D6AD52]/50 leading-relaxed select-all">
               {shareData.shareMessage}
             </p>
           </div>
 
           {/* SOCIAL PLATFORMS GRID */}
           <div className="space-y-2">
-            <label className="text-xs font-extrabold text-[#171717] dark:text-[#F8F3E8] uppercase tracking-wider block">
+            <label className="text-xs font-extrabold text-[#292D2B] dark:text-[#F1F4F8] uppercase tracking-wider block">
               Bagikan Langsung ke Platform:
             </label>
 
@@ -228,14 +228,14 @@ export const SessionShareModal: React.FC<SessionShareModalProps> = ({
                 onClick={handleWhatsAppShare}
                 className="nb-btn nb-btn-primary p-2.5 text-xs justify-center"
               >
-                <MessageCircle className="w-4 h-4 text-[#D9AC45]" />
+                <MessageCircle className="w-4 h-4 text-[#D6AD52]" />
                 <span>WhatsApp</span>
               </button>
 
               <button
                 type="button"
                 onClick={handleTelegramShare}
-                className="nb-btn bg-[#3478F6] text-white border-2 border-[#171717] p-2.5 text-xs justify-center"
+                className="nb-btn bg-[#42658A] text-white border-2 border-[#292D2B] p-2.5 text-xs justify-center"
               >
                 <Send className="w-4 h-4" />
                 <span>Telegram</span>
@@ -246,16 +246,16 @@ export const SessionShareModal: React.FC<SessionShareModalProps> = ({
                 onClick={handleFacebookShare}
                 className="nb-btn nb-btn-secondary p-2.5 text-xs justify-center"
               >
-                <Facebook className="w-4 h-4 text-[#3478F6]" />
+                <Facebook className="w-4 h-4 text-[#42658A]" />
                 <span>Facebook</span>
               </button>
 
               <button
                 type="button"
                 onClick={handleTwitterShare}
-                className="nb-btn bg-[#171717] text-white border-2 border-[#171717] p-2.5 text-xs justify-center"
+                className="nb-btn bg-[#292D2B] text-white border-2 border-[#292D2B] p-2.5 text-xs justify-center"
               >
-                <Share2 className="w-4 h-4 text-[#D9AC45]" />
+                <Share2 className="w-4 h-4 text-[#D6AD52]" />
                 <span>X (Twitter)</span>
               </button>
             </div>
@@ -266,17 +266,17 @@ export const SessionShareModal: React.FC<SessionShareModalProps> = ({
                 onClick={handleNativeShare}
                 className="nb-btn nb-btn-secondary w-full mt-2 p-2.5 text-xs justify-center"
               >
-                <Share2 className="w-4 h-4 text-[#06251D] dark:text-[#D9AC45]" />
+                <Share2 className="w-4 h-4 text-[#123D32] dark:text-[#D6AD52]" />
                 <span>Bagikan melalui Menu Perangkat...</span>
               </button>
             )}
           </div>
 
           {/* DIRECT COPY LINK INPUT */}
-          <div className="space-y-1.5 pt-2 border-t-2 border-[#171717]/20 dark:border-[#D9AC45]/30">
+          <div className="space-y-1.5 pt-2 border-t-2 border-[#292D2B]/20 dark:border-[#D6AD52]/30">
             <label
               htmlFor="session-permanent-url-input"
-              className="text-xs font-extrabold text-[#171717] dark:text-[#F8F3E8] uppercase tracking-wider block"
+              className="text-xs font-extrabold text-[#292D2B] dark:text-[#F1F4F8] uppercase tracking-wider block"
             >
               Salin Tautan Permanen Sesi:
             </label>
@@ -305,7 +305,7 @@ export const SessionShareModal: React.FC<SessionShareModalProps> = ({
         </div>
 
         {/* FOOTER */}
-        <div className="p-3.5 bg-[#F8F3E8] dark:bg-[#06251D] border-t-2 border-[#171717] dark:border-[#D9AC45]/50 text-center shrink-0">
+        <div className="p-3.5 bg-[#FAF7F0] dark:bg-[#16263D] border-t-2 border-[#292D2B] dark:border-[#D6AD52]/50 text-center shrink-0">
           <button
             type="button"
             onClick={onClose}

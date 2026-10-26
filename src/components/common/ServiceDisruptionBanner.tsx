@@ -60,10 +60,10 @@ export const ServiceDisruptionBanner: React.FC<ServiceDisruptionBannerProps> = (
   if (mode === 'full') {
     return (
       <div
-        className="max-w-2xl mx-auto my-8 p-6 sm:p-8 bg-white dark:bg-[#0B3026] border-2 border-[#171717] dark:border-[#D9AC45] rounded-lg shadow-[5px_5px_0px_#171717] dark:shadow-[5px_5px_0px_#000000] text-[#171717] dark:text-[#F8F3E8] space-y-5"
+        className="max-w-2xl mx-auto my-8 p-6 sm:p-8 bg-white dark:bg-[#243A56] border-2 border-[#292D2B] dark:border-[#D6AD52] rounded-lg shadow-[5px_5px_0px_#292D2B] dark:shadow-[5px_5px_0px_#000000] text-[#292D2B] dark:text-[#F1F4F8] space-y-5"
       >
         <div className="flex items-start gap-4">
-          <div className="p-3 bg-[#D9AC45] border-2 border-[#171717] rounded-md text-[#171717] shrink-0 shadow-[2px_2px_0px_#171717]">
+          <div className="p-3 bg-[#D6AD52] border-2 border-[#292D2B] rounded-md text-[#292D2B] shrink-0 shadow-[2px_2px_0px_#292D2B]">
             {info.isQuota ? (
               <Database className="w-7 h-7" />
             ) : info.category === 'network-or-domain-blocked' ? (
@@ -75,27 +75,27 @@ export const ServiceDisruptionBanner: React.FC<ServiceDisruptionBannerProps> = (
 
           <div className="space-y-1.5 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="nb-badge bg-[#D9AC45] text-[#171717]">
+              <span className="nb-badge bg-[#D6AD52] text-[#292D2B]">
                 {info.isQuota ? 'Batas Kuota Tercapai' : 'Kendala Server / Jaringan'}
               </span>
               {code && (
-                <span className="text-[10px] font-mono font-bold text-[#171717]/70 dark:text-[#D9AC45]">
+                <span className="text-[10px] font-mono font-bold text-[#292D2B]/70 dark:text-[#D6AD52]">
                   [{code}]
                 </span>
               )}
             </div>
-            <h3 className="text-lg sm:text-xl font-extrabold text-[#171717] dark:text-white font-serif-brand">
+            <h3 className="text-lg sm:text-xl font-extrabold text-[#292D2B] dark:text-white font-serif-brand">
               {displayTitle}
             </h3>
-            <p className="text-xs sm:text-sm text-[#171717]/80 dark:text-[#F8F3E8]/85 leading-relaxed font-medium">
+            <p className="text-xs sm:text-sm text-[#292D2B]/80 dark:text-[#F1F4F8]/85 leading-relaxed font-medium">
               {displayMessage}
             </p>
           </div>
         </div>
 
         {/* REASSURANCE BADGE */}
-        <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-md bg-[#F8F3E8] dark:bg-[#06251D] border-2 border-[#171717] dark:border-[#D9AC45]/50 text-xs text-[#171717] dark:text-[#F8F3E8]">
-          <ShieldCheck className="w-4 h-4 text-[#06251D] dark:text-[#D9AC45] shrink-0" />
+        <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-md bg-[#FAF7F0] dark:bg-[#16263D] border-2 border-[#292D2B] dark:border-[#D6AD52]/50 text-xs text-[#292D2B] dark:text-[#F1F4F8]">
+          <ShieldCheck className="w-4 h-4 text-[#123D32] dark:text-[#D6AD52] shrink-0" />
           <span>
             <strong>Keamanan Data:</strong> Data artikel, kurikulum, dan akun Anda tetap aman tersimpan di Google Cloud Firestore.
           </span>
@@ -103,8 +103,8 @@ export const ServiceDisruptionBanner: React.FC<ServiceDisruptionBannerProps> = (
 
         {/* RETRY CONTROLS */}
         {onRetry && (
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-3 border-t-2 border-[#171717]/15 dark:border-[#D9AC45]/30">
-            <span className="text-[11px] font-semibold text-[#171717]/70 dark:text-[#F8F3E8]/70">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-3 border-t-2 border-[#292D2B]/15 dark:border-[#D6AD52]/30">
+            <span className="text-[11px] font-semibold text-[#292D2B]/70 dark:text-[#F1F4F8]/70">
               {isCooldownActive
                 ? `Jeda permintaan untuk mencegah beban berlebih (${remainingCooldown} dtk tersisa)`
                 : 'Siap untuk mencoba menyinkronkan data kembali'}
@@ -132,20 +132,20 @@ export const ServiceDisruptionBanner: React.FC<ServiceDisruptionBannerProps> = (
 
   return (
     <div
-      className="p-3.5 sm:p-4 rounded-md bg-[#F8F3E8] dark:bg-[#0B3026] border-2 border-[#171717] dark:border-[#D9AC45] text-[#171717] dark:text-[#F8F3E8] shadow-[4px_4px_0px_#171717] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6"
+      className="p-3.5 sm:p-4 rounded-md bg-[#FAF7F0] dark:bg-[#243A56] border-2 border-[#292D2B] dark:border-[#D6AD52] text-[#292D2B] dark:text-[#F1F4F8] shadow-[4px_4px_0px_#292D2B] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6"
     >
       <div className="flex items-center gap-3">
-        <div className="p-2 bg-[#D9AC45] border-2 border-[#171717] rounded-md text-[#171717] shrink-0">
+        <div className="p-2 bg-[#D6AD52] border-2 border-[#292D2B] rounded-md text-[#292D2B] shrink-0">
           <Database className="w-4 h-4" />
         </div>
         <div className="text-xs space-y-0.5">
-          <div className="font-extrabold text-[#171717] dark:text-white flex items-center gap-2">
+          <div className="font-extrabold text-[#292D2B] dark:text-white flex items-center gap-2">
             <span>{displayTitle}</span>
-            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-sm bg-[#06251D] text-[#D9AC45] border border-[#171717]">
+            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-sm bg-[#123D32] text-[#D6AD52] border border-[#292D2B]">
               Data Tersimpan di Memori
             </span>
           </div>
-          <p className="text-[#171717]/80 dark:text-[#F8F3E8]/85 line-clamp-1 sm:line-clamp-none font-medium">
+          <p className="text-[#292D2B]/80 dark:text-[#F1F4F8]/85 line-clamp-1 sm:line-clamp-none font-medium">
             {displayMessage}
           </p>
         </div>

@@ -371,13 +371,13 @@ export const AdminInstructorProfileManager: React.FC<AdminInstructorProfileManag
       )}
 
       {/* TOP HEADER BAR */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 nb-card bg-white dark:bg-[#0B3026] p-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 nb-card bg-white dark:bg-[#16263D] p-6">
         <div>
-          <h2 className="text-lg font-extrabold font-serif-brand text-[#171717] dark:text-[#F8F3E8] flex items-center gap-2">
-            <UserCheck className="w-5 h-5 text-[#06251D] dark:text-[#D9AC45]" />
+          <h2 className="text-lg font-extrabold font-serif-brand text-[#292D2B] dark:text-[#F1F4F8] flex items-center gap-2">
+            <UserCheck className="w-5 h-5 text-[#123D32] dark:text-[#D6AD52]" />
             <span>Pengelolaan Halaman Profil Pengajar</span>
           </h2>
-          <p className="text-xs text-[#171717]/75 dark:text-[#F8F3E8]/75 mt-1">
+          <p className="text-xs text-[#626A66] dark:text-[#B4C0D0] mt-1">
             Kelola identitas, foto profil, biografi, bagian konten dinamis, serta gambar pendukung untuk {formData.name || 'Osama Nur Samsil, S.H.'}
           </p>
         </div>
@@ -389,7 +389,7 @@ export const AdminInstructorProfileManager: React.FC<AdminInstructorProfileManag
               onClick={onOpenPublicProfile}
               className="nb-btn nb-btn-secondary px-3.5 py-2.5 text-xs"
             >
-              <ExternalLink className="w-3.5 h-3.5 text-[#06251D] dark:text-[#D9AC45]" />
+              <ExternalLink className="w-3.5 h-3.5 text-[#123D32] dark:text-[#D6AD52]" />
               <span>Buka Halaman Publik</span>
             </button>
           )}
@@ -404,7 +404,7 @@ export const AdminInstructorProfileManager: React.FC<AdminInstructorProfileManag
                 : 'nb-btn-secondary'
             }`}
           >
-            {isPreviewMode ? <Edit className="w-4 h-4" /> : <Eye className="w-4 h-4 text-[#06251D] dark:text-[#D9AC45]" />}
+            {isPreviewMode ? <Edit className="w-4 h-4" /> : <Eye className="w-4 h-4 text-[#123D32] dark:text-[#D6AD52]" />}
             <span>{isPreviewMode ? 'Kembali ke Editor' : 'Pratinjau Sebelum Menyimpan'}</span>
           </button>
 
@@ -415,7 +415,7 @@ export const AdminInstructorProfileManager: React.FC<AdminInstructorProfileManag
             disabled={saving || loading}
             className="nb-btn nb-btn-primary px-5 py-2.5 text-xs disabled:opacity-50"
           >
-            {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4 text-[#D9AC45]" />}
+            {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4 text-[#D6AD52]" />}
             <span>{saving ? 'Menyimpan...' : 'Simpan Perubahan Profil'}</span>
           </button>
         </div>
@@ -424,7 +424,7 @@ export const AdminInstructorProfileManager: React.FC<AdminInstructorProfileManag
       {/* PREVIEW MODE */}
       {isPreviewMode ? (
         <div className="space-y-4">
-          <div className="p-4 rounded-md bg-[#D9AC45] border-2 border-[#171717] shadow-[4px_4px_0px_#171717] flex flex-wrap items-center justify-between gap-3 text-xs text-[#171717] font-bold">
+          <div className="p-4 rounded-md bg-[#D6AD52] border-2 border-[#292D2B] shadow-[4px_4px_0px_#292D2B] flex flex-wrap items-center justify-between gap-3 text-xs text-[#292D2B] font-bold">
             <div className="flex items-center gap-2">
               <Eye className="w-4 h-4 shrink-0" />
               <span>
@@ -456,15 +456,15 @@ export const AdminInstructorProfileManager: React.FC<AdminInstructorProfileManag
         /* EDIT FORM MODE */
         <form onSubmit={handleSaveProfile} className="space-y-6">
           {/* 1. IDENTITAS UTAMA & FOTO PROFIL */}
-          <div className="nb-card bg-white dark:bg-[#0B3026] p-6 space-y-6">
-            <h3 className="text-base font-extrabold font-serif-brand text-[#171717] dark:text-[#F8F3E8] border-b-2 border-[#171717]/20 dark:border-[#D9AC45]/30 pb-3">
+          <div className="nb-card bg-white dark:bg-[#16263D] p-6 space-y-6">
+            <h3 className="text-base font-extrabold font-serif-brand text-[#292D2B] dark:text-[#F1F4F8] border-b-2 border-[#292D2B]/20 dark:border-[#34465D] pb-3">
               1. Identitas Pengajar & Foto Profil
             </h3>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Photo Upload & Preview Column */}
-              <div className="p-4 bg-[#F8F3E8] dark:bg-[#06251D] rounded-lg border-2 border-[#171717] dark:border-[#D9AC45]/50 flex flex-col items-center space-y-3">
-                <div className="w-36 h-36 rounded-lg overflow-hidden bg-[#06251D] text-[#D9AC45] border-2 border-[#171717] shadow-[4px_4px_0px_#171717] flex items-center justify-center">
+              <div className="p-4 bg-[#FAF7F0] dark:bg-[#243A56] rounded-lg border-2 border-[#292D2B] dark:border-[#34465D] flex flex-col items-center space-y-3">
+                <div className="w-36 h-36 rounded-lg overflow-hidden bg-[#123D32] dark:bg-[#101B2D] text-[#D6AD52] border-2 border-[#292D2B] shadow-[4px_4px_0px_#292D2B] flex items-center justify-center">
                   {formData.photoUrl ? (
                     <img
                       src={formData.photoUrl}
@@ -478,7 +478,7 @@ export const AdminInstructorProfileManager: React.FC<AdminInstructorProfileManag
 
                 <div className="w-full space-y-2 text-center">
                   <label className="nb-btn nb-btn-primary w-full px-3 py-2 text-xs justify-center">
-                    <Upload className="w-3.5 h-3.5 text-[#D9AC45]" />
+                    <Upload className="w-3.5 h-3.5 text-[#D6AD52]" />
                     <span>{formData.photoUrl ? 'Ganti Foto Profil' : 'Unggah Foto Profil'}</span>
                     <input
                       type="file"
@@ -490,7 +490,7 @@ export const AdminInstructorProfileManager: React.FC<AdminInstructorProfileManag
                   </label>
 
                   {uploadingPhoto && (
-                    <p className="text-[11px] text-[#06251D] dark:text-[#D9AC45] font-extrabold">
+                    <p className="text-[11px] text-[#123D32] dark:text-[#D6AD52] font-extrabold">
                       Mengunggah foto... {photoProgress}%
                     </p>
                   )}
@@ -508,8 +508,8 @@ export const AdminInstructorProfileManager: React.FC<AdminInstructorProfileManag
                   )}
                 </div>
 
-                <div className="w-full pt-2 border-t-2 border-[#171717]/20 dark:border-[#D9AC45]/30 space-y-2 text-left">
-                  <label className="text-[11px] font-extrabold text-[#171717] dark:text-[#F8F3E8] block">
+                <div className="w-full pt-2 border-t-2 border-[#292D2B]/20 dark:border-[#34465D] space-y-2 text-left">
+                  <label className="text-[11px] font-extrabold text-[#292D2B] dark:text-[#F1F4F8] block">
                     URL Foto Profil (Opsional):
                   </label>
                   <input
@@ -521,7 +521,7 @@ export const AdminInstructorProfileManager: React.FC<AdminInstructorProfileManag
                     className="nb-input w-full px-3 py-1.5 text-xs"
                   />
 
-                  <label className="text-[11px] font-extrabold text-[#171717] dark:text-[#F8F3E8] block">
+                  <label className="text-[11px] font-extrabold text-[#292D2B] dark:text-[#F1F4F8] block">
                     Keterangan Foto (Caption):
                   </label>
                   <input
@@ -538,7 +538,7 @@ export const AdminInstructorProfileManager: React.FC<AdminInstructorProfileManag
               <div className="lg:col-span-2 space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="text-xs font-extrabold text-[#171717] dark:text-[#F8F3E8] block mb-1">
+                    <label className="text-xs font-extrabold text-[#292D2B] dark:text-[#F1F4F8] block mb-1">
                       Nama Lengkap & Gelar Pengajar *
                     </label>
                     <input
@@ -553,7 +553,7 @@ export const AdminInstructorProfileManager: React.FC<AdminInstructorProfileManag
                   </div>
 
                   <div>
-                    <label className="text-xs font-extrabold text-[#171717] dark:text-[#F8F3E8] block mb-1">
+                    <label className="text-xs font-extrabold text-[#292D2B] dark:text-[#F1F4F8] block mb-1">
                       Peran / Amanah Pengajar *
                     </label>
                     <input
@@ -569,7 +569,7 @@ export const AdminInstructorProfileManager: React.FC<AdminInstructorProfileManag
                 </div>
 
                 <div>
-                  <label className="text-xs font-extrabold text-[#171717] dark:text-[#F8F3E8] block mb-1">
+                  <label className="text-xs font-extrabold text-[#292D2B] dark:text-[#F1F4F8] block mb-1">
                     Judul Halaman Profil *
                   </label>
                   <input
@@ -584,7 +584,7 @@ export const AdminInstructorProfileManager: React.FC<AdminInstructorProfileManag
                 </div>
 
                 <div>
-                  <label className="text-xs font-extrabold text-[#171717] dark:text-[#F8F3E8] block mb-1">
+                  <label className="text-xs font-extrabold text-[#292D2B] dark:text-[#F1F4F8] block mb-1">
                     Biografi Singkat (Tampil di Kartu Utama Atas)
                   </label>
                   <RichTextEditor
@@ -599,12 +599,12 @@ export const AdminInstructorProfileManager: React.FC<AdminInstructorProfileManag
           </div>
 
           {/* 2. ISI TULISAN UTAMA */}
-          <div className="nb-card bg-white dark:bg-[#0B3026] p-6 space-y-4">
+          <div className="nb-card bg-white dark:bg-[#16263D] p-6 space-y-4">
             <div>
-              <h3 className="text-base font-extrabold font-serif-brand text-[#171717] dark:text-[#F8F3E8]">
+              <h3 className="text-base font-extrabold font-serif-brand text-[#292D2B] dark:text-[#F1F4F8]">
                 2. Isi Tulisan Utama Profil
               </h3>
-              <p className="text-xs text-[#171717]/75 dark:text-[#F8F3E8]/75 mt-0.5">
+              <p className="text-xs text-[#626A66] dark:text-[#B4C0D0] mt-0.5">
                 Mendukung Heading 1–3, Paragraf Normal, Rata Kiri/Tengah/Kanan/Justify, Daftar Poin/Angka, Hyperlink Otomatis, dan Gambar.
               </p>
             </div>
@@ -618,14 +618,14 @@ export const AdminInstructorProfileManager: React.FC<AdminInstructorProfileManag
           </div>
 
           {/* 3. BAGIAN KONTEN DINAMIS */}
-          <div className="nb-card bg-white dark:bg-[#0B3026] p-6 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 border-[#171717]/20 dark:border-[#D9AC45]/30 pb-3">
+          <div className="nb-card bg-white dark:bg-[#16263D] p-6 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 border-[#292D2B]/20 dark:border-[#34465D] pb-3">
               <div>
-                <h3 className="text-base font-extrabold font-serif-brand text-[#171717] dark:text-[#F8F3E8] flex items-center gap-2">
-                  <Layers className="w-4 h-4 text-[#06251D] dark:text-[#D9AC45]" />
+                <h3 className="text-base font-extrabold font-serif-brand text-[#292D2B] dark:text-[#F1F4F8] flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-[#123D32] dark:text-[#D6AD52]" />
                   <span>3. Bagian Konten Dinamis ({formData.sections.length})</span>
                 </h3>
-                <p className="text-xs text-[#171717]/75 dark:text-[#F8F3E8]/75 mt-0.5">
+                <p className="text-xs text-[#626A66] dark:text-[#B4C0D0] mt-0.5">
                   Tambah, edit, hapus, dan atur urutan bagian konten khusus (misal: Latar Belakang Keilmuan, Metode Pengajaran, Karya/Kajian, dsb.).
                 </p>
               </div>
@@ -636,13 +636,13 @@ export const AdminInstructorProfileManager: React.FC<AdminInstructorProfileManag
                 onClick={handleOpenAddSection}
                 className="nb-btn nb-btn-primary px-4 py-2 text-xs shrink-0"
               >
-                <Plus className="w-4 h-4 text-[#D9AC45]" />
+                <Plus className="w-4 h-4 text-[#D6AD52]" />
                 <span>+ Tambah Bagian Konten</span>
               </button>
             </div>
 
             {formData.sections.length === 0 ? (
-              <div className="p-8 text-center rounded-md border-2 border-dashed border-[#171717]/40 text-xs text-[#171717]/70 dark:text-[#F8F3E8]/70">
+              <div className="p-8 text-center rounded-md border-2 border-dashed border-[#292D2B]/40 text-xs text-[#626A66] dark:text-[#B4C0D0]">
                 Belum ada bagian konten tambahan. Klik <strong>"+ Tambah Bagian Konten"</strong> untuk menambahkan bagian baru sesuai kebutuhan admin.
               </div>
             ) : (
@@ -651,17 +651,17 @@ export const AdminInstructorProfileManager: React.FC<AdminInstructorProfileManag
                   <div
                     key={sec.id}
                     data-testid={`admin-profile-section-item-${idx}`}
-                    className="p-4 rounded-md bg-[#F8F3E8] dark:bg-[#06251D] border-2 border-[#171717] dark:border-[#D9AC45]/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                    className="p-4 rounded-md bg-[#FAF7F0] dark:bg-[#243A56] border-2 border-[#292D2B] dark:border-[#34465D] flex flex-col sm:flex-row sm:items-center justify-between gap-4"
                   >
                     <div className="flex items-start gap-3 min-w-0">
-                      <span className="w-7 h-7 rounded-md bg-[#06251D] text-[#D9AC45] border-2 border-[#171717] font-extrabold text-xs flex items-center justify-center shrink-0">
+                      <span className="w-7 h-7 rounded-md bg-[#123D32] text-[#D6AD52] border-2 border-[#292D2B] font-extrabold text-xs flex items-center justify-center shrink-0">
                         {idx + 1}
                       </span>
                       <div className="min-w-0 space-y-1">
-                        <h4 className="font-extrabold text-[#171717] dark:text-[#F8F3E8] text-xs sm:text-sm truncate">
+                        <h4 className="font-extrabold text-[#292D2B] dark:text-[#F1F4F8] text-xs sm:text-sm truncate">
                           {sec.title || `Bagian #${idx + 1}`}
                         </h4>
-                        <p className="text-xs text-[#171717]/75 dark:text-[#F8F3E8]/75 line-clamp-2">
+                        <p className="text-xs text-[#626A66] dark:text-[#B4C0D0] line-clamp-2">
                           {sec.content.replace(/<[^>]*>/g, ' ').trim() || '(Tanpa teks)'}
                         </p>
                       </div>
@@ -714,21 +714,21 @@ export const AdminInstructorProfileManager: React.FC<AdminInstructorProfileManag
           </div>
 
           {/* 4. GAMBAR PENDUKUNG */}
-          <div className="nb-card bg-white dark:bg-[#0B3026] p-6 space-y-5">
-            <div className="border-b-2 border-[#171717]/20 dark:border-[#D9AC45]/30 pb-3">
-              <h3 className="text-base font-extrabold font-serif-brand text-[#171717] dark:text-[#F8F3E8] flex items-center gap-2">
-                <ImageIcon className="w-4 h-4 text-[#06251D] dark:text-[#D9AC45]" />
+          <div className="nb-card bg-white dark:bg-[#16263D] p-6 space-y-5">
+            <div className="border-b-2 border-[#292D2B]/20 dark:border-[#34465D] pb-3">
+              <h3 className="text-base font-extrabold font-serif-brand text-[#292D2B] dark:text-[#F1F4F8] flex items-center gap-2">
+                <ImageIcon className="w-4 h-4 text-[#123D32] dark:text-[#D6AD52]" />
                 <span>4. Gambar Pendukung Profil ({formData.supportingImages.length})</span>
               </h3>
-              <p className="text-xs text-[#171717]/75 dark:text-[#F8F3E8]/75 mt-0.5">
+              <p className="text-xs text-[#626A66] dark:text-[#B4C0D0] mt-0.5">
                 Unggah, ganti, atau hapus gambar pendukung/dokumentasi untuk ditampilkan pada halaman profil.
               </p>
             </div>
 
             {/* Add New Supporting Image Controls */}
-            <div className="p-4 rounded-lg bg-[#F8F3E8] dark:bg-[#06251D] border-2 border-[#171717] dark:border-[#D9AC45]/50 grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+            <div className="p-4 rounded-lg bg-[#FAF7F0] dark:bg-[#243A56] border-2 border-[#292D2B] dark:border-[#34465D] grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
               <div>
-                <label className="text-xs font-extrabold text-[#171717] dark:text-[#F8F3E8] block mb-1">
+                <label className="text-xs font-extrabold text-[#292D2B] dark:text-[#F1F4F8] block mb-1">
                   Keterangan Gambar Baru (Caption)
                 </label>
                 <input
@@ -742,7 +742,7 @@ export const AdminInstructorProfileManager: React.FC<AdminInstructorProfileManag
               </div>
 
               <div>
-                <label className="text-xs font-extrabold text-[#171717] dark:text-[#F8F3E8] block mb-1">
+                <label className="text-xs font-extrabold text-[#292D2B] dark:text-[#F1F4F8] block mb-1">
                   Masukkan URL Gambar Pendukung
                 </label>
                 <div className="flex items-center gap-2">
@@ -768,7 +768,7 @@ export const AdminInstructorProfileManager: React.FC<AdminInstructorProfileManag
 
               <div>
                 <label className="nb-btn nb-btn-primary w-full px-4 py-2 text-xs justify-center">
-                  <Upload className="w-3.5 h-3.5 text-[#D9AC45]" />
+                  <Upload className="w-3.5 h-3.5 text-[#D6AD52]" />
                   <span>{uploadingSupporting ? `Mengunggah ${supportingProgress}%...` : 'Unggah Berkas Gambar'}</span>
                   <input
                     type="file"
@@ -788,9 +788,9 @@ export const AdminInstructorProfileManager: React.FC<AdminInstructorProfileManag
                   <div
                     key={img.id}
                     data-testid={`supporting-img-card-${idx}`}
-                    className="rounded-lg border-2 border-[#171717] dark:border-[#D9AC45]/60 bg-[#F8F3E8] dark:bg-[#06251D] overflow-hidden flex flex-col justify-between shadow-[3px_3px_0px_#171717]"
+                    className="rounded-lg border-2 border-[#292D2B] dark:border-[#34465D] bg-[#FAF7F0] dark:bg-[#243A56] overflow-hidden flex flex-col justify-between shadow-[3px_3px_0px_#292D2B] dark:shadow-[3px_3px_0px_#34465D]"
                   >
-                    <div className="aspect-video w-full bg-white dark:bg-[#0B3026] overflow-hidden border-b-2 border-[#171717]">
+                    <div className="aspect-video w-full bg-white dark:bg-[#16263D] overflow-hidden border-b-2 border-[#292D2B] dark:border-[#34465D]">
                       <img src={img.url} alt={img.caption || 'Pendukung'} className="w-full h-full object-cover" />
                     </div>
                     <div className="p-3 space-y-2">
@@ -842,9 +842,9 @@ export const AdminInstructorProfileManager: React.FC<AdminInstructorProfileManag
       {/* SECTION ADD / EDIT MODAL */}
       {editingSection && (
         <div className="fixed inset-0 z-70 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
-          <div className="nb-card bg-white dark:bg-[#0B3026] w-full max-w-3xl overflow-hidden my-8 flex flex-col max-h-[90vh]">
-            <div className="p-5 border-b-2 border-[#171717] dark:border-[#D9AC45]/50 bg-[#06251D] text-[#F8F3E8] flex items-center justify-between">
-              <h3 className="font-extrabold font-serif-brand text-[#F8F3E8] text-base">
+          <div className="nb-card bg-white dark:bg-[#16263D] w-full max-w-3xl overflow-hidden my-8 flex flex-col max-h-[90vh]">
+            <div className="p-5 border-b-2 border-[#292D2B] dark:border-[#34465D] bg-[#123D32] dark:bg-[#243A56] text-[#F1F4F8] flex items-center justify-between">
+              <h3 className="font-extrabold font-serif-brand text-[#F1F4F8] text-base">
                 {formData.sections.some(s => s.id === editingSection.id)
                   ? 'Edit Bagian Konten Profil'
                   : 'Tambah Bagian Konten Profil Baru'}
@@ -860,7 +860,7 @@ export const AdminInstructorProfileManager: React.FC<AdminInstructorProfileManag
 
             <div className="p-6 overflow-y-auto space-y-4 flex-1 text-xs">
               <div>
-                <label className="text-xs font-extrabold text-[#171717] dark:text-[#F8F3E8] block mb-1">
+                <label className="text-xs font-extrabold text-[#292D2B] dark:text-[#F1F4F8] block mb-1">
                   Judul Bagian Konten *
                 </label>
                 <input
@@ -873,8 +873,8 @@ export const AdminInstructorProfileManager: React.FC<AdminInstructorProfileManag
                 />
               </div>
 
-              <div className="p-4 rounded-lg bg-[#F8F3E8] dark:bg-[#06251D] border-2 border-[#171717] dark:border-[#D9AC45]/50 space-y-3">
-                <label className="text-xs font-extrabold text-[#171717] dark:text-[#F8F3E8] block">
+              <div className="p-4 rounded-lg bg-[#FAF7F0] dark:bg-[#243A56] border-2 border-[#292D2B] dark:border-[#34465D] space-y-3">
+                <label className="text-xs font-extrabold text-[#292D2B] dark:text-[#F1F4F8] block">
                   Gambar Bagian Konten (Opsional)
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
@@ -883,10 +883,10 @@ export const AdminInstructorProfileManager: React.FC<AdminInstructorProfileManag
                       type="file"
                       accept="image/*"
                       onChange={handleSectionImageUpload}
-                      className="w-full text-xs text-[#171717] dark:text-[#F8F3E8] file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-2 file:border-[#171717] file:text-xs file:font-extrabold file:bg-[#D9AC45] file:text-[#171717] cursor-pointer"
+                      className="w-full text-xs text-[#292D2B] dark:text-[#F1F4F8] file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-2 file:border-[#292D2B] file:text-xs file:font-extrabold file:bg-[#D6AD52] file:text-[#292D2B] cursor-pointer"
                     />
                     {uploadingSectionImg && (
-                      <p className="text-[11px] font-bold text-[#06251D] dark:text-[#D9AC45]">Mengunggah... {sectionImgProgress}%</p>
+                      <p className="text-[11px] font-bold text-[#123D32] dark:text-[#D6AD52]">Mengunggah... {sectionImgProgress}%</p>
                     )}
                     <input
                       type="url"
@@ -903,7 +903,7 @@ export const AdminInstructorProfileManager: React.FC<AdminInstructorProfileManag
                       className="nb-input w-full px-3 py-1.5 text-xs"
                     />
                   </div>
-                  <div className="aspect-video rounded-md bg-white dark:bg-[#0B3026] overflow-hidden flex items-center justify-center relative border-2 border-[#171717]">
+                  <div className="aspect-video rounded-md bg-white dark:bg-[#16263D] overflow-hidden flex items-center justify-center relative border-2 border-[#292D2B] dark:border-[#34465D]">
                     {editingSection.imageUrl ? (
                       <>
                         <img src={editingSection.imageUrl} alt="Bagian" className="w-full h-full object-cover" />
@@ -916,14 +916,14 @@ export const AdminInstructorProfileManager: React.FC<AdminInstructorProfileManag
                         </button>
                       </>
                     ) : (
-                      <span className="text-[#171717]/60 text-xs font-bold">Tanpa Gambar</span>
+                      <span className="text-[#626A66] dark:text-[#B4C0D0] text-xs font-bold">Tanpa Gambar</span>
                     )}
                   </div>
                 </div>
               </div>
 
               <div>
-                <label className="text-xs font-extrabold text-[#171717] dark:text-[#F8F3E8] block mb-1">
+                <label className="text-xs font-extrabold text-[#292D2B] dark:text-[#F1F4F8] block mb-1">
                   Isi Konten Bagian *
                 </label>
                 <RichTextEditor
@@ -935,7 +935,7 @@ export const AdminInstructorProfileManager: React.FC<AdminInstructorProfileManag
               </div>
             </div>
 
-            <div className="p-4 border-t-2 border-[#171717] dark:border-[#D9AC45]/50 bg-[#F8F3E8] dark:bg-[#06251D] flex items-center justify-end gap-2">
+            <div className="p-4 border-t-2 border-[#292D2B] dark:border-[#34465D] bg-[#FAF7F0] dark:bg-[#243A56] flex items-center justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setEditingSection(null)}

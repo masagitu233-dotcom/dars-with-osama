@@ -174,17 +174,17 @@ export const AdminCommentsManager: React.FC<AdminCommentsManagerProps> = ({
       )}
 
       {/* HEADER & SUMMARY STATS */}
-      <div className="nb-card bg-white dark:bg-[#0B3026] p-6 space-y-6">
+      <div className="nb-card bg-white dark:bg-[#16263D] p-6 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-md bg-[#06251D] border-2 border-[#171717] text-[#D9AC45] flex items-center justify-center shadow-[3px_3px_0px_#171717]">
+            <div className="w-12 h-12 rounded-md bg-[#123D32] dark:bg-[#243A56] border-2 border-[#292D2B] dark:border-[#34465D] text-[#D6AD52] flex items-center justify-center shadow-[3px_3px_0px_#292D2B] dark:shadow-[3px_3px_0px_#34465D]">
               <MessageSquare className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-xl sm:text-2xl font-extrabold font-serif-brand text-[#171717] dark:text-[#F8F3E8]">
+              <h2 className="text-xl sm:text-2xl font-extrabold font-serif-brand text-[#292D2B] dark:text-[#F1F4F8]">
                 Moderasi Komentar Artikel ({comments.length})
               </h2>
-              <p className="text-xs text-[#171717]/75 dark:text-[#F8F3E8]/75">
+              <p className="text-xs text-[#626A66] dark:text-[#B4C0D0]">
                 Tinjau, setujui, tolak, atau bersihkan komentar publik dari pembaca artikel ilmiah Dars with Osama.
               </p>
             </div>
@@ -196,7 +196,7 @@ export const AdminCommentsManager: React.FC<AdminCommentsManagerProps> = ({
             disabled={loading}
             className="nb-btn nb-btn-secondary px-3.5 py-2 text-xs self-start sm:self-center"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-[#06251D] dark:text-[#D9AC45]' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-[#123D32] dark:text-[#D6AD52]' : ''}`} />
             <span>Segarkan Data</span>
           </button>
         </div>
@@ -205,10 +205,10 @@ export const AdminCommentsManager: React.FC<AdminCommentsManagerProps> = ({
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
           <div
             onClick={() => setStatusFilter('all')}
-            className={`p-3.5 rounded-md border-2 border-[#171717] transition cursor-pointer ${
+            className={`p-3.5 rounded-md border-2 border-[#292D2B] dark:border-[#34465D] transition cursor-pointer ${
               statusFilter === 'all'
-                ? 'bg-[#06251D] text-[#D9AC45] shadow-[3px_3px_0px_#171717]'
-                : 'bg-[#F8F3E8] dark:bg-[#06251D]/60 text-[#171717] dark:text-[#F8F3E8]'
+                ? 'bg-[#123D32] text-[#D6AD52] shadow-[3px_3px_0px_#292D2B] dark:shadow-[3px_3px_0px_#34465D]'
+                : 'bg-[#FAF7F0] dark:bg-[#243A56] text-[#292D2B] dark:text-[#F1F4F8]'
             }`}
           >
             <span className="text-[10px] uppercase font-extrabold tracking-wider">Total Masuk</span>
@@ -217,10 +217,10 @@ export const AdminCommentsManager: React.FC<AdminCommentsManagerProps> = ({
 
           <div
             onClick={() => setStatusFilter('pending')}
-            className={`p-3.5 rounded-md border-2 border-[#171717] transition cursor-pointer ${
+            className={`p-3.5 rounded-md border-2 border-[#292D2B] dark:border-[#34465D] transition cursor-pointer ${
               statusFilter === 'pending'
-                ? 'bg-[#D9AC45] text-[#171717] shadow-[3px_3px_0px_#171717]'
-                : 'bg-[#F8F3E8] dark:bg-[#06251D]/60 text-[#171717] dark:text-[#F8F3E8]'
+                ? 'bg-[#D6AD52] text-[#292D2B] shadow-[3px_3px_0px_#292D2B]'
+                : 'bg-[#FAF7F0] dark:bg-[#243A56] text-[#292D2B] dark:text-[#F1F4F8]'
             }`}
           >
             <div className="flex items-center justify-between">
@@ -228,7 +228,7 @@ export const AdminCommentsManager: React.FC<AdminCommentsManagerProps> = ({
                 Menunggu
               </span>
               {pendingCount > 0 && (
-                <span className="w-2.5 h-2.5 rounded-sm bg-[#F04438] border border-[#171717] animate-pulse" />
+                <span className="w-2.5 h-2.5 rounded-sm bg-[#F04438] border border-[#292D2B] animate-pulse" />
               )}
             </div>
             <p className="text-xl font-extrabold mt-1">{pendingCount}</p>
@@ -236,10 +236,10 @@ export const AdminCommentsManager: React.FC<AdminCommentsManagerProps> = ({
 
           <div
             onClick={() => setStatusFilter('approved')}
-            className={`p-3.5 rounded-md border-2 border-[#171717] transition cursor-pointer ${
+            className={`p-3.5 rounded-md border-2 border-[#292D2B] dark:border-[#34465D] transition cursor-pointer ${
               statusFilter === 'approved'
-                ? 'bg-[#06251D] text-[#D9AC45] shadow-[3px_3px_0px_#171717]'
-                : 'bg-[#F8F3E8] dark:bg-[#06251D]/60 text-[#171717] dark:text-[#F8F3E8]'
+                ? 'bg-[#123D32] text-[#D6AD52] shadow-[3px_3px_0px_#292D2B] dark:shadow-[3px_3px_0px_#34465D]'
+                : 'bg-[#FAF7F0] dark:bg-[#243A56] text-[#292D2B] dark:text-[#F1F4F8]'
             }`}
           >
             <span className="text-[10px] uppercase font-extrabold tracking-wider">
@@ -250,10 +250,10 @@ export const AdminCommentsManager: React.FC<AdminCommentsManagerProps> = ({
 
           <div
             onClick={() => setStatusFilter('rejected')}
-            className={`p-3.5 rounded-md border-2 border-[#171717] transition cursor-pointer ${
+            className={`p-3.5 rounded-md border-2 border-[#292D2B] dark:border-[#34465D] transition cursor-pointer ${
               statusFilter === 'rejected'
-                ? 'bg-[#F04438] text-white shadow-[3px_3px_0px_#171717]'
-                : 'bg-[#F8F3E8] dark:bg-[#06251D]/60 text-[#171717] dark:text-[#F8F3E8]'
+                ? 'bg-[#F04438] text-white shadow-[3px_3px_0px_#292D2B]'
+                : 'bg-[#FAF7F0] dark:bg-[#243A56] text-[#292D2B] dark:text-[#F1F4F8]'
             }`}
           >
             <span className="text-[10px] uppercase font-extrabold tracking-wider">
@@ -264,9 +264,9 @@ export const AdminCommentsManager: React.FC<AdminCommentsManagerProps> = ({
         </div>
 
         {/* SEARCH & FILTER CONTROLS */}
-        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 pt-3 border-t-2 border-[#171717]/20 dark:border-[#D9AC45]/30">
+        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 pt-3 border-t-2 border-[#292D2B]/20 dark:border-[#34465D]">
           <div className="relative flex-1">
-            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#171717]/60 dark:text-[#F8F3E8]/60">
+            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#626A66] dark:text-[#B4C0D0]">
               <Search className="w-4 h-4" />
             </div>
             <input
@@ -296,24 +296,24 @@ export const AdminCommentsManager: React.FC<AdminCommentsManagerProps> = ({
       </div>
 
       {/* COMMENTS LIST TABLE / CARDS */}
-      <div className="nb-card bg-white dark:bg-[#0B3026] overflow-hidden">
+      <div className="nb-card bg-white dark:bg-[#16263D] overflow-hidden">
         {loading ? (
           <div className="py-16 text-center space-y-3">
-            <div className="w-8 h-8 border-3 border-[#06251D] dark:border-[#D9AC45] border-t-transparent rounded-full animate-spin mx-auto" />
-            <p className="text-xs text-[#171717]/75 dark:text-[#F8F3E8]/75 font-bold">Memuat data komentar...</p>
+            <div className="w-8 h-8 border-3 border-[#123D32] dark:border-[#D6AD52] border-t-transparent rounded-full animate-spin mx-auto" />
+            <p className="text-xs text-[#626A66] dark:text-[#B4C0D0] font-bold">Memuat data komentar...</p>
           </div>
         ) : filteredComments.length === 0 ? (
           <div className="py-16 px-4 text-center space-y-2">
-            <MessageSquare className="w-10 h-10 text-[#D9AC45] mx-auto" />
-            <h4 className="text-sm font-extrabold text-[#171717] dark:text-[#F8F3E8] font-sans">
+            <MessageSquare className="w-10 h-10 text-[#D6AD52] mx-auto" />
+            <h4 className="text-sm font-extrabold text-[#292D2B] dark:text-[#F1F4F8] font-sans">
               Tidak Ada Komentar Ditemukan
             </h4>
-            <p className="text-xs text-[#171717]/70 dark:text-[#F8F3E8]/70 max-w-sm mx-auto">
+            <p className="text-xs text-[#626A66] dark:text-[#B4C0D0] max-w-sm mx-auto">
               Tidak ada data komentar yang cocok dengan filter atau kata kunci pencarian Anda.
             </p>
           </div>
         ) : (
-          <div className="divide-y-2 divide-[#171717]/15 dark:divide-[#D9AC45]/25">
+          <div className="divide-y-2 divide-[#292D2B]/15 dark:divide-[#34465D]">
             {filteredComments.map((comment) => {
               const post = postMap.get(comment.articleId);
               const dateStr = new Date(comment.createdAt).toLocaleDateString('id-ID', {
@@ -329,25 +329,25 @@ export const AdminCommentsManager: React.FC<AdminCommentsManagerProps> = ({
               return (
                 <div
                   key={comment.id}
-                  className="p-5 sm:p-6 space-y-3 hover:bg-[#F8F3E8]/60 dark:hover:bg-[#06251D]/50 transition"
+                  className="p-5 sm:p-6 space-y-3 hover:bg-[#FAF7F0] dark:hover:bg-[#243A56]/50 transition"
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-md bg-[#06251D] text-[#D9AC45] border-2 border-[#171717] font-extrabold text-xs flex items-center justify-center uppercase shrink-0">
+                      <div className="w-9 h-9 rounded-md bg-[#123D32] text-[#D6AD52] border-2 border-[#292D2B] font-extrabold text-xs flex items-center justify-center uppercase shrink-0">
                         {comment.authorName.charAt(0)}
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <h4 className="font-extrabold text-sm text-[#171717] dark:text-[#F8F3E8] font-sans">
+                          <h4 className="font-extrabold text-sm text-[#292D2B] dark:text-[#F1F4F8] font-sans">
                             {comment.authorName}
                           </h4>
                           <span
                             className={`nb-badge ${
                               comment.status === 'approved'
-                                ? 'bg-[#06251D] text-[#D9AC45]'
+                                ? 'bg-[#123D32] text-[#D6AD52]'
                                 : comment.status === 'rejected'
                                 ? 'bg-[#F04438] text-white'
-                                : 'bg-[#D9AC45] text-[#171717]'
+                                : 'bg-[#D6AD52] text-[#292D2B]'
                             }`}
                           >
                             {comment.status === 'approved'
@@ -357,7 +357,7 @@ export const AdminCommentsManager: React.FC<AdminCommentsManagerProps> = ({
                               : 'Menunggu Moderasi'}
                           </span>
                         </div>
-                        <div className="flex items-center gap-2 text-[11px] text-[#171717]/70 dark:text-[#F8F3E8]/70 mt-0.5 font-medium">
+                        <div className="flex items-center gap-2 text-[11px] text-[#626A66] dark:text-[#B4C0D0] mt-0.5 font-medium">
                           <Calendar className="w-3 h-3" />
                           <span>{dateStr}</span>
                           {comment.moderatedBy && (
@@ -380,7 +380,7 @@ export const AdminCommentsManager: React.FC<AdminCommentsManagerProps> = ({
                           className="nb-btn nb-btn-primary px-3 py-1.5 text-xs disabled:opacity-50"
                           title="Setujui komentar agar tampil secara publik"
                         >
-                          <Check className="w-3.5 h-3.5 text-[#D9AC45]" />
+                          <Check className="w-3.5 h-3.5 text-[#D6AD52]" />
                           <span>Setujui</span>
                         </button>
                       )}
@@ -410,16 +410,16 @@ export const AdminCommentsManager: React.FC<AdminCommentsManagerProps> = ({
                   </div>
 
                   {/* Comment Body */}
-                  <div className="bg-[#F8F3E8] dark:bg-[#06251D] rounded-md p-3.5 border-2 border-[#171717] dark:border-[#D9AC45]/50 text-xs sm:text-sm text-[#171717] dark:text-[#F8F3E8] leading-relaxed whitespace-pre-line font-sans">
+                  <div className="bg-[#FAF7F0] dark:bg-[#243A56] rounded-md p-3.5 border-2 border-[#292D2B] dark:border-[#34465D] text-xs sm:text-sm text-[#292D2B] dark:text-[#F1F4F8] leading-relaxed whitespace-pre-line font-sans">
                     {comment.content}
                   </div>
 
                   {/* Linked Article Metadata */}
                   <div className="flex flex-wrap items-center justify-between gap-2 text-xs pt-1">
-                    <div className="flex items-center gap-2 text-[#171717]/75 dark:text-[#F8F3E8]/75 truncate">
-                      <span className="font-extrabold text-[#171717] dark:text-[#F8F3E8]">Artikel:</span>
+                    <div className="flex items-center gap-2 text-[#626A66] dark:text-[#B4C0D0] truncate">
+                      <span className="font-extrabold text-[#292D2B] dark:text-[#F1F4F8]">Artikel:</span>
                       {post ? (
-                        <span className="truncate max-w-md font-bold text-[#06251D] dark:text-[#D9AC45]">
+                        <span className="truncate max-w-md font-bold text-[#123D32] dark:text-[#D6AD52]">
                           {post.title}
                         </span>
                       ) : (
@@ -431,7 +431,7 @@ export const AdminCommentsManager: React.FC<AdminCommentsManagerProps> = ({
                       <button
                         type="button"
                         onClick={() => onNavigateToPost(post)}
-                        className="inline-flex items-center gap-1 text-[11px] font-extrabold text-[#06251D] dark:text-[#D9AC45] hover:underline cursor-pointer"
+                        className="inline-flex items-center gap-1 text-[11px] font-extrabold text-[#123D32] dark:text-[#D6AD52] hover:underline cursor-pointer"
                       >
                         <span>Lihat Artikel</span>
                         <ExternalLink className="w-3 h-3" />

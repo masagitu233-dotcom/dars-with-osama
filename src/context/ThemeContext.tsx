@@ -21,14 +21,14 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         return saved;
       }
     }
-    return 'system';
+    return 'light';
   });
 
   const [systemIsDark, setSystemIsDark] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
       return window.matchMedia('(prefers-color-scheme: dark)').matches;
     }
-    return true;
+    return false;
   });
 
   // Listen to system theme preference changes

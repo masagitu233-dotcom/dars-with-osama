@@ -177,16 +177,16 @@ export const ArticleCommentsSection: React.FC<ArticleCommentsSectionProps> = ({
       className="nb-card p-5 sm:p-8 space-y-8"
     >
       {/* HEADER WITH TITLE & ADMIN TOGGLE */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-5 border-b-2 border-[#171717]/15 dark:border-[#D9AC45]/25">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-5 border-b-2 border-slate-200 dark:border-slate-700/60">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-md bg-[#06251D] border-2 border-[#171717] dark:border-[#D9AC45] text-[#D9AC45] flex items-center justify-center shrink-0">
+          <div className="w-10 h-10 rounded-md bg-[#123D32] dark:bg-[#16263D] border-2 border-[#123D32] dark:border-[#D6AD52] text-[#D6AD52] flex items-center justify-center shrink-0">
             <MessageSquare className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-lg sm:text-xl font-bold font-serif text-[#171717] dark:text-white">
+            <h3 className="text-lg sm:text-xl font-bold font-serif text-charcoal dark:text-offwhite">
               Komentar & Diskusi Pembaca ({comments.length})
             </h3>
-            <p className="text-xs text-[#171717]/75 dark:text-[#F8F3E8]/75 font-sans">
+            <p className="text-xs text-slate-gray dark:text-blue-gray font-sans">
               Ruang faedah ilmiah, tanggapan, dan catatan pembahasan artikel ini.
             </p>
           </div>
@@ -199,8 +199,8 @@ export const ArticleCommentsSection: React.FC<ArticleCommentsSectionProps> = ({
               onClick={() => setShowAdminAll(!showAdminAll)}
               className={`px-3 py-1.5 rounded-md text-xs font-extrabold border-2 transition cursor-pointer ${
                 showAdminAll
-                  ? 'bg-[#D9AC45] text-[#171717] border-[#171717]'
-                  : 'bg-[#F8F3E8] dark:bg-[#06251D] text-[#171717] dark:text-[#F8F3E8] border-[#171717] dark:border-[#D9AC45]'
+                  ? 'bg-[#D6AD52] text-charcoal border-charcoal'
+                  : 'bg-[#FAF7F0] dark:bg-[#16263D] text-charcoal dark:text-offwhite border-charcoal dark:border-[#D6AD52]'
               }`}
             >
               {showAdminAll ? 'Mode Admin: Semua Komentar' : 'Mode Publik: Hanya Disetujui'}
@@ -211,20 +211,20 @@ export const ArticleCommentsSection: React.FC<ArticleCommentsSectionProps> = ({
 
       {/* RECENTLY SUBMITTED PREVIEW BANNER (IF ANY) */}
       {recentlySubmitted && (
-        <div className="p-4 bg-[#D9AC45]/20 border-2 border-[#171717] dark:border-[#D9AC45] rounded-md space-y-2 text-xs">
+        <div className="p-4 bg-[#D6AD52]/20 border-2 border-charcoal dark:border-[#D6AD52] rounded-md space-y-2 text-xs">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 font-bold text-[#171717] dark:text-[#D9AC45]">
-              <Clock className="w-4 h-4 text-[#06251D] dark:text-[#D9AC45]" />
+            <div className="flex items-center gap-2 font-bold text-charcoal dark:text-[#D6AD52]">
+              <Clock className="w-4 h-4 text-[#123D32] dark:text-[#D6AD52]" />
               <span>Komentar Anda Sedang Menunggu Peninjauan Moderator</span>
             </div>
-            <span className="px-2 py-0.5 rounded bg-[#D9AC45] text-[#171717] border border-[#171717] text-[10px] font-extrabold uppercase tracking-wider">
+            <span className="px-2 py-0.5 rounded bg-[#D6AD52] text-charcoal border border-charcoal text-[10px] font-extrabold uppercase tracking-wider">
               Pending
             </span>
           </div>
-          <p className="text-[#171717] dark:text-[#F8F3E8] italic pl-4 border-l-2 border-[#171717] dark:border-[#D9AC45]">
+          <p className="text-charcoal dark:text-offwhite italic pl-4 border-l-2 border-charcoal dark:border-[#D6AD52]">
             "{recentlySubmitted.content}"
           </p>
-          <p className="text-[11px] text-[#171717]/80 dark:text-[#F8F3E8]/80 pl-4">
+          <p className="text-[11px] text-slate-gray dark:text-blue-gray pl-4">
             Oleh: <strong>{recentlySubmitted.authorName}</strong> • Komentar akan ditampilkan untuk umum setelah disetujui.
           </p>
         </div>
@@ -234,16 +234,16 @@ export const ArticleCommentsSection: React.FC<ArticleCommentsSectionProps> = ({
       <div className="space-y-4">
         {loading ? (
           <div className="py-10 text-center space-y-3">
-            <div className="w-8 h-8 border-3 border-[#06251D] dark:border-[#D9AC45] border-t-transparent rounded-full animate-spin mx-auto" />
-            <p className="text-xs text-[#171717]/70 dark:text-[#F8F3E8]/70 font-bold">Memuat komentar pembaca...</p>
+            <div className="w-8 h-8 border-3 border-[#123D32] dark:border-[#D6AD52] border-t-transparent rounded-full animate-spin mx-auto" />
+            <p className="text-xs text-slate-gray dark:text-blue-gray font-bold">Memuat komentar pembaca...</p>
           </div>
         ) : comments.length === 0 ? (
-          <div className="py-10 px-4 text-center border-2 border-dashed border-[#171717]/30 dark:border-[#D9AC45]/40 rounded-md space-y-2 bg-[#F8F3E8]/60 dark:bg-[#06251D]/60">
-            <MessageSquare className="w-8 h-8 text-[#06251D] dark:text-[#D9AC45] mx-auto" />
-            <h4 className="text-sm font-bold font-serif text-[#171717] dark:text-[#F8F3E8]">
+          <div className="py-10 px-4 text-center border-2 border-dashed border-slate-300 dark:border-[#34465D] rounded-md space-y-2 bg-[#EFE5D2]/60 dark:bg-[#16263D]/60">
+            <MessageSquare className="w-8 h-8 text-[#123D32] dark:text-[#D6AD52] mx-auto" />
+            <h4 className="text-sm font-bold font-serif text-charcoal dark:text-offwhite">
               Belum Ada Komentar Publik
             </h4>
-            <p className="text-xs text-[#171717]/75 dark:text-[#F8F3E8]/75 max-w-sm mx-auto">
+            <p className="text-xs text-slate-gray dark:text-blue-gray max-w-sm mx-auto">
               Jadilah pembaca pertama yang memberikan tanggapan atau faedah ilmiah berharga melalui formulir di bawah ini.
             </p>
           </div>
@@ -259,33 +259,33 @@ export const ArticleCommentsSection: React.FC<ArticleCommentsSectionProps> = ({
               return (
                 <div
                   key={comment.id}
-                  className="bg-[#F8F3E8] dark:bg-[#06251D] border-0 sm:border-2 border-[#171717] dark:border-[#D9AC45]/60 rounded-md p-3.5 sm:p-5 space-y-2.5 shadow-none sm:shadow-[3px_3px_0px_#171717] dark:sm:shadow-[3px_3px_0px_#000000] border-b sm:border-b-2 border-b-[#171717]/15"
+                  className="bg-[#FAF7F0] dark:bg-[#243A56] border-0 sm:border-2 border-charcoal dark:border-[#34465D] rounded-md p-3.5 sm:p-5 space-y-2.5 shadow-none sm:shadow-[3px_3px_0px_#292D2B] dark:sm:shadow-[3px_3px_0px_#000000] border-b sm:border-b-2 border-b-slate-200"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded bg-[#06251D] dark:bg-[#0B3026] border border-[#171717] dark:border-[#D9AC45] text-[#D9AC45] font-bold text-xs flex items-center justify-center uppercase shrink-0">
+                      <div className="w-8 h-8 rounded bg-[#123D32] dark:bg-[#16263D] border border-charcoal dark:border-[#D6AD52] text-[#D6AD52] font-bold text-xs flex items-center justify-center uppercase shrink-0">
                         {comment.authorName.charAt(0)}
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <h5 className="font-bold text-xs sm:text-sm text-[#171717] dark:text-white font-sans">
+                          <h5 className="font-bold text-xs sm:text-sm text-charcoal dark:text-offwhite font-sans">
                             {comment.authorName}
                           </h5>
                           {isAdmin && (
                             <span
                               className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider border ${
                                 comment.status === 'approved'
-                                  ? 'bg-[#06251D] text-[#D9AC45] border-[#171717]'
+                                  ? 'bg-[#123D32] text-[#D6AD52] border-charcoal'
                                   : comment.status === 'rejected'
-                                  ? 'bg-[#F04438] text-white border-[#171717]'
-                                  : 'bg-[#D9AC45] text-[#171717] border-[#171717]'
+                                  ? 'bg-[#F04438] text-white border-charcoal'
+                                  : 'bg-[#D6AD52] text-charcoal border-charcoal'
                               }`}
                             >
                               {comment.status}
                             </span>
                           )}
                         </div>
-                        <span className="text-[11px] font-medium text-[#171717]/70 dark:text-[#F8F3E8]/70">
+                        <span className="text-[11px] font-medium text-slate-gray dark:text-blue-gray">
                           {dateStr}
                         </span>
                       </div>
@@ -298,7 +298,7 @@ export const ArticleCommentsSection: React.FC<ArticleCommentsSectionProps> = ({
                           <button
                             type="button"
                             onClick={() => handleModerate(comment.id, 'approved')}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 bg-[#06251D] text-[#D9AC45] border border-[#171717] rounded text-xs font-bold cursor-pointer"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 bg-[#123D32] text-[#D6AD52] border border-charcoal rounded text-xs font-bold cursor-pointer"
                             title="Setujui komentar agar tampil ke publik"
                           >
                             <Check className="w-3.5 h-3.5" />
@@ -309,7 +309,7 @@ export const ArticleCommentsSection: React.FC<ArticleCommentsSectionProps> = ({
                           <button
                             type="button"
                             onClick={() => handleModerate(comment.id, 'rejected')}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 bg-[#D9AC45] text-[#171717] border border-[#171717] rounded text-xs font-bold cursor-pointer"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 bg-[#D6AD52] text-charcoal border border-charcoal rounded text-xs font-bold cursor-pointer"
                             title="Tolak komentar"
                           >
                             <X className="w-3.5 h-3.5" />
@@ -319,7 +319,7 @@ export const ArticleCommentsSection: React.FC<ArticleCommentsSectionProps> = ({
                         <button
                           type="button"
                           onClick={() => handleDelete(comment.id)}
-                          className="p-1.5 bg-[#F04438] text-white border border-[#171717] rounded transition cursor-pointer"
+                          className="p-1.5 bg-[#F04438] text-white border border-charcoal rounded transition cursor-pointer"
                           title="Hapus komentar permanen"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -328,7 +328,7 @@ export const ArticleCommentsSection: React.FC<ArticleCommentsSectionProps> = ({
                     )}
                   </div>
 
-                  <p className="text-xs sm:text-sm text-[#171717] dark:text-[#F8F3E8] leading-relaxed pl-0 sm:pl-10 pt-1 sm:pt-0 whitespace-pre-line font-sans">
+                  <p className="text-xs sm:text-sm text-charcoal dark:text-offwhite leading-relaxed pl-0 sm:pl-10 pt-1 sm:pt-0 whitespace-pre-line font-sans">
                     {comment.content}
                   </p>
                 </div>
@@ -339,38 +339,38 @@ export const ArticleCommentsSection: React.FC<ArticleCommentsSectionProps> = ({
       </div>
 
       {/* ADD COMMENT FORM */}
-      <div className="pt-6 border-t-2 border-[#171717]/15 dark:border-[#D9AC45]/25 space-y-4">
+      <div className="pt-6 border-t-2 border-slate-200 dark:border-slate-700/60 space-y-4">
         <div className="space-y-1">
-          <h4 className="text-base sm:text-lg font-bold font-serif text-[#171717] dark:text-white flex items-center gap-2">
+          <h4 className="text-base sm:text-lg font-bold font-serif text-charcoal dark:text-offwhite flex items-center gap-2">
             <span>Tinggalkan Komentar Pembaca</span>
-            <Sparkles className="w-4 h-4 text-[#D9AC45]" />
+            <Sparkles className="w-4 h-4 text-[#D6AD52]" />
           </h4>
-          <p className="text-xs text-[#171717]/75 dark:text-[#F8F3E8]/75 font-sans">
+          <p className="text-xs text-slate-gray dark:text-blue-gray font-sans">
             Sampaikan tanggapan, faedah ilmiah, atau pertanyaan terkait artikel dengan bahasa yang santun dan adab islami.
           </p>
         </div>
 
         {errorMsg && (
-          <div className="p-3 bg-[#F04438]/15 border-2 border-[#F04438] rounded-md text-[#171717] dark:text-white text-xs font-bold flex items-start gap-2">
+          <div className="p-3 bg-[#F04438]/15 border-2 border-[#F04438] rounded-md text-charcoal dark:text-offwhite text-xs font-bold flex items-start gap-2">
             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-[#F04438]" />
             <span>{errorMsg}</span>
           </div>
         )}
 
         {successMsg && (
-          <div className="p-3 bg-[#06251D] border-2 border-[#D9AC45] rounded-md text-[#F8F3E8] text-xs font-bold flex items-start gap-2">
-            <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-[#D9AC45]" />
+          <div className="p-3 bg-[#123D32] dark:bg-[#16263D] border-2 border-[#D6AD52] rounded-md text-offwhite text-xs font-bold flex items-start gap-2">
+            <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-[#D6AD52]" />
             <span>{successMsg}</span>
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-[#171717] dark:text-[#D9AC45] mb-1.5">
+            <label className="block text-xs font-bold uppercase tracking-wider text-charcoal dark:text-[#D6AD52] mb-1.5">
               Nama Lengkap / Kunyah <span className="text-[#F04438]">*</span>
             </label>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#171717]/60 dark:text-[#D9AC45]">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-gray dark:text-[#D6AD52]">
                 <User className="w-4 h-4" />
               </div>
               <input
@@ -383,17 +383,17 @@ export const ArticleCommentsSection: React.FC<ArticleCommentsSectionProps> = ({
                 className="nb-input pl-10 pr-4 py-2.5 min-h-[44px]"
               />
             </div>
-            <p className="text-[11px] text-[#171717]/70 dark:text-[#F8F3E8]/70 mt-1">
+            <p className="text-[11px] text-slate-gray dark:text-blue-gray mt-1">
               Nama yang akan ditampilkan pada komentar artikel ini (2 - 100 karakter).
             </p>
           </div>
 
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-xs font-bold uppercase tracking-wider text-[#171717] dark:text-[#D9AC45]">
+              <label className="block text-xs font-bold uppercase tracking-wider text-charcoal dark:text-[#D6AD52]">
                 Isi Komentar / Tanggapan <span className="text-[#F04438]">*</span>
               </label>
-              <span className={`text-[11px] font-bold ${content.length > 950 ? 'text-[#F04438]' : 'text-[#171717]/60 dark:text-[#F8F3E8]/60'}`}>
+              <span className={`text-[11px] font-bold ${content.length > 950 ? 'text-[#F04438]' : 'text-slate-gray dark:text-blue-gray'}`}>
                 {content.length} / 1000 karakter
               </span>
             </div>
@@ -409,8 +409,8 @@ export const ArticleCommentsSection: React.FC<ArticleCommentsSectionProps> = ({
           </div>
 
           {/* Moderation Policy Notice */}
-          <div className="p-3 bg-[#F8F3E8] dark:bg-[#06251D] rounded-md text-[11px] text-[#171717] dark:text-[#F8F3E8] flex items-start gap-2 border-2 border-[#171717]/30 dark:border-[#D9AC45]/50">
-            <Info className="w-4 h-4 text-[#06251D] dark:text-[#D9AC45] shrink-0 mt-0.5" />
+          <div className="p-3 bg-[#FAF7F0] dark:bg-[#16263D] rounded-md text-[11px] text-charcoal dark:text-offwhite flex items-start gap-2 border-2 border-slate-300 dark:border-[#34465D]">
+            <Info className="w-4 h-4 text-[#123D32] dark:text-[#D6AD52] shrink-0 mt-0.5" />
             <span>
               Komentar akan ditinjau oleh tim moderator sebelum dipublikasikan demi menjaga adab, kesopanan, dan fokus pada pembahasan ilmiah.
             </span>
@@ -424,7 +424,7 @@ export const ArticleCommentsSection: React.FC<ArticleCommentsSectionProps> = ({
             >
               {submitting ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-[#171717]/30 border-t-[#171717] rounded-full animate-spin" />
+                  <div className="w-4 h-4 border-2 border-charcoal/30 border-t-charcoal rounded-full animate-spin" />
                   <span>Mengirimkan...</span>
                 </>
               ) : (

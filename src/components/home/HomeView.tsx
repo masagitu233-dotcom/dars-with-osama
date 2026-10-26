@@ -63,44 +63,44 @@ const HomeQACard: React.FC<{
     >
       <div className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="nb-badge bg-[#06251D] text-[#D9AC45]">
+          <span className="nb-badge bg-[#123D32] text-[#D6AD52]">
             Tanya Jawab Syar'i
           </span>
-          <span className="text-[11px] font-bold text-[#171717]/70 dark:text-[#F8F3E8]/70">
+          <span className="text-[11px] font-bold text-[#626A66] dark:text-[#B4C0D0]">
             {item.publishedAt
               ? new Date(item.publishedAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
               : 'Terbit'}
           </span>
         </div>
 
-        <h3 className="font-serif font-bold text-base text-[#171717] dark:text-[#F8F3E8] line-clamp-2 leading-snug group-hover:text-[#06251D] dark:group-hover:text-[#D9AC45] transition-colors">
+        <h3 className="font-serif font-bold text-base text-[#292D2B] dark:text-[#F1F4F8] line-clamp-2 leading-snug group-hover:text-[#123D32] dark:group-hover:text-[#D6AD52] transition-colors">
           {item.title}
         </h3>
 
-        <p className="text-xs text-[#171717]/80 dark:text-[#F8F3E8]/80 line-clamp-2 leading-relaxed">
-          <strong className="font-bold text-[#171717] dark:text-[#D9AC45]">Pertanyaan: </strong>
+        <p className="text-xs text-[#292D2B]/85 dark:text-[#F1F4F8]/85 line-clamp-2 leading-relaxed">
+          <strong className="font-bold text-[#123D32] dark:text-[#D6AD52]">Pertanyaan: </strong>
           {shortQuestion}
         </p>
 
         {shortAnswer && (
-          <div className="p-2.5 sm:p-3 rounded-md bg-[#F8F3E8] dark:bg-[#06251D] border-0 sm:border-2 border-l-2 sm:border-l-2 border-l-[#D9AC45] sm:border-[#171717] dark:border-[#D9AC45]/60 text-xs text-[#171717] dark:text-[#F8F3E8] leading-relaxed line-clamp-2">
-            <strong className="font-bold text-[#06251D] dark:text-[#D9AC45]">Jawaban Ustaz: </strong>
+          <div className="p-2.5 sm:p-3 rounded-md bg-[#FAF7F0] dark:bg-[#16263D] border-0 sm:border-2 border-l-2 sm:border-l-2 border-l-[#D6AD52] sm:border-[#292D2B] dark:border-[#34465D] text-xs text-[#292D2B] dark:text-[#F1F4F8] leading-relaxed line-clamp-2">
+            <strong className="font-bold text-[#123D32] dark:text-[#D6AD52]">Jawaban Ustaz: </strong>
             {shortAnswer}
           </div>
         )}
       </div>
 
-      <div className="pt-3 border-t-2 border-[#171717]/15 dark:border-[#D9AC45]/25 flex items-center justify-between text-xs">
-        <span className="inline-flex items-center gap-1.5 font-extrabold text-[#06251D] dark:text-[#D9AC45]">
+      <div className="pt-3 border-t-2 border-[#292D2B]/15 dark:border-[#34465D] flex items-center justify-between text-xs">
+        <span className="inline-flex items-center gap-1.5 font-extrabold text-[#123D32] dark:text-[#D6AD52]">
           <span>Baca Jawaban Lengkap</span>
           {!user ? (
-            <Lock className="w-3.5 h-3.5 text-[#D9AC45] ml-1" />
+            <Lock className="w-3.5 h-3.5 text-[#D6AD52] ml-1" />
           ) : (
             <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
           )}
         </span>
         {!user && (
-          <span className="text-[10px] font-bold text-[#171717] bg-[#D9AC45] px-2 py-0.5 rounded border border-[#171717]">
+          <span className="text-[10px] font-bold text-[#123D32] bg-[#D6AD52] px-2 py-0.5 rounded border border-[#292D2B]">
             Login
           </span>
         )}
@@ -139,7 +139,7 @@ const HomeArticleCard: React.FC<{
       className="nb-card-interactive overflow-hidden flex flex-col justify-between group cursor-pointer h-full"
     >
       <div>
-        <div className="relative aspect-video w-full overflow-hidden bg-[#06251D] border-b-2 border-[#171717] dark:border-[#D9AC45]/60">
+        <div className="relative aspect-video w-full overflow-hidden bg-[#123D32] dark:bg-[#16263D] border-b-2 border-[#292D2B] dark:border-[#34465D]">
           <img
             src={displayImg}
             alt={post.title}
@@ -148,38 +148,38 @@ const HomeArticleCard: React.FC<{
             loading="lazy"
           />
           {post.category && (
-            <span className="absolute top-3 left-3 px-2.5 py-1 bg-[#D9AC45] text-[#171717] font-extrabold text-[10px] uppercase tracking-wider rounded border-2 border-[#171717] shadow-[2px_2px_0px_#171717]">
+            <span className="absolute top-3 left-3 px-2.5 py-1 bg-[#D6AD52] text-[#123D32] font-extrabold text-[10px] uppercase tracking-wider rounded border-2 border-[#292D2B] shadow-[2px_2px_0px_#292D2B]">
               {post.category}
             </span>
           )}
         </div>
 
         <div className="p-4 sm:p-5 space-y-2.5 text-left">
-          <div className="flex items-center gap-3 text-[11px] text-[#171717]/70 dark:text-[#F8F3E8]/70 font-bold">
+          <div className="flex items-center gap-3 text-[11px] text-[#626A66] dark:text-[#B4C0D0] font-bold">
             <span className="flex items-center gap-1">
-              <Calendar className="w-3.5 h-3.5 text-[#06251D] dark:text-[#D9AC45]" />
+              <Calendar className="w-3.5 h-3.5 text-[#123D32] dark:text-[#D6AD52]" />
               <span>{formattedDate}</span>
             </span>
             {post.readingTimeMinutes > 0 && (
               <span className="flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5 text-[#3478F6]" />
+                <Clock className="w-3.5 h-3.5 text-[#237A70] dark:text-[#A9C5E8]" />
                 <span>{post.readingTimeMinutes} mnt baca</span>
               </span>
             )}
           </div>
 
-          <h3 className="font-serif font-bold text-base sm:text-lg text-[#171717] dark:text-[#F8F3E8] line-clamp-2 group-hover:text-[#06251D] dark:group-hover:text-[#D9AC45] transition-colors leading-snug">
+          <h3 className="font-serif font-bold text-base sm:text-lg text-[#292D2B] dark:text-[#F1F4F8] line-clamp-2 group-hover:text-[#123D32] dark:group-hover:text-[#D6AD52] transition-colors leading-snug">
             {post.title}
           </h3>
 
-          <p className="text-xs text-[#171717]/80 dark:text-[#F8F3E8]/80 line-clamp-2 leading-relaxed">
+          <p className="text-xs text-[#626A66] dark:text-[#B4C0D0] line-clamp-2 leading-relaxed">
             {post.excerpt}
           </p>
         </div>
       </div>
 
-      <div className="px-4 sm:px-5 pb-4 pt-2 border-t-2 border-[#171717]/10 dark:border-[#D9AC45]/20 text-left flex items-center justify-between">
-        <span className="inline-flex items-center gap-1.5 text-xs font-extrabold text-[#06251D] dark:text-[#D9AC45]">
+      <div className="px-4 sm:px-5 pb-4 pt-2 border-t-2 border-[#292D2B]/10 dark:border-[#34465D] text-left flex items-center justify-between">
+        <span className="inline-flex items-center gap-1.5 text-xs font-extrabold text-[#123D32] dark:text-[#D6AD52]">
           <span>Baca Artikel</span>
           <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
         </span>
@@ -295,16 +295,16 @@ export const HomeView: React.FC<HomeViewProps> = ({
         className="max-w-6xl mx-auto px-4 sm:px-6"
       >
         <div className="nb-card p-5 sm:p-8 space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b-2 border-[#171717] dark:border-[#D9AC45]/50 pb-4">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b-2 border-[#292D2B] dark:border-[#34465D] pb-4">
             <div className="space-y-1">
-              <span className="nb-badge bg-[#D9AC45] text-[#171717]">
+              <span className="nb-badge bg-[#D6AD52] text-[#123D32]">
                 <Sparkles className="w-3.5 h-3.5 mr-1" />
                 <span>Kurikulum Pilihan</span>
               </span>
-              <h2 className="text-xl sm:text-3xl font-bold text-[#171717] dark:text-[#F8F3E8] font-serif pt-1">
+              <h2 className="text-xl sm:text-3xl font-bold text-[#292D2B] dark:text-[#F1F4F8] font-serif pt-1">
                 Katalog Kursus & Syarah Matan Unggulan
               </h2>
-              <p className="text-xs sm:text-sm text-[#171717]/75 dark:text-[#F8F3E8]/80">
+              <p className="text-xs sm:text-sm text-[#626A66] dark:text-[#B4C0D0]">
                 Mulai belajar sekarang secara gratis untuk menyimak rekaman video, membaca naskah materi, dan mengerjakan evaluasi.
               </p>
             </div>
@@ -314,7 +314,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               className="nb-btn nb-btn-primary px-4 py-2.5 text-xs self-start sm:self-auto shrink-0"
             >
               <span>Lihat Seluruh Katalog</span>
-              <ArrowRight className="w-4 h-4 text-[#D9AC45]" />
+              <ArrowRight className="w-4 h-4 text-[#D6AD52]" />
             </button>
           </div>
 
@@ -340,16 +340,16 @@ export const HomeView: React.FC<HomeViewProps> = ({
         className="max-w-6xl mx-auto px-4 sm:px-6"
       >
         <div className="nb-card p-5 sm:p-8 space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b-2 border-[#171717] dark:border-[#D9AC45]/50 pb-4">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b-2 border-[#292D2B] dark:border-[#34465D] pb-4">
             <div className="space-y-1">
-              <span className="nb-badge bg-[#06251D] text-[#D9AC45]">
+              <span className="nb-badge bg-[#123D32] text-[#D6AD52]">
                 <BookMarked className="w-3.5 h-3.5 mr-1" />
                 <span>Naskah & Faedah Keilmuan</span>
               </span>
-              <h2 className="text-xl sm:text-3xl font-bold text-[#171717] dark:text-[#F8F3E8] font-serif pt-1">
+              <h2 className="text-xl sm:text-3xl font-bold text-[#292D2B] dark:text-[#F1F4F8] font-serif pt-1">
                 Artikel & Catatan Ilmiah Terbaru
               </h2>
-              <p className="text-xs sm:text-sm text-[#171717]/75 dark:text-[#F8F3E8]/80">
+              <p className="text-xs sm:text-sm text-[#626A66] dark:text-[#B4C0D0]">
                 Baca tulisan, faedah kajian, dan catatan ilmiyyah terbaru untuk menambah wawasan dan pemahaman.
               </p>
             </div>
@@ -381,12 +381,12 @@ export const HomeView: React.FC<HomeViewProps> = ({
               ))}
             </div>
           ) : (
-            <div className="p-8 text-center bg-[#F8F3E8] dark:bg-[#06251D] border-2 border-dashed border-[#171717] dark:border-[#D9AC45]/60 rounded-md space-y-3">
-              <BookMarked className="w-8 h-8 text-[#06251D] dark:text-[#D9AC45] mx-auto" />
-              <h4 className="text-sm font-bold text-[#171717] dark:text-[#F8F3E8] font-serif">
+            <div className="p-8 text-center bg-[#FAF7F0] dark:bg-[#16263D] border-2 border-dashed border-[#292D2B] dark:border-[#34465D] rounded-md space-y-3">
+              <BookMarked className="w-8 h-8 text-[#123D32] dark:text-[#D6AD52] mx-auto" />
+              <h4 className="text-sm font-bold text-[#292D2B] dark:text-[#F1F4F8] font-serif">
                 Belum Ada Artikel Dipublikasikan
               </h4>
-              <p className="text-xs text-[#171717]/75 dark:text-[#F8F3E8]/75 max-w-sm mx-auto">
+              <p className="text-xs text-[#626A66] dark:text-[#B4C0D0] max-w-sm mx-auto">
                 Artikel ilmiah dan catatan keilmuan terbaru sedang disiapkan. Anda dapat menjelajahi materi kitab interaktif di atas.
               </p>
             </div>
@@ -400,16 +400,16 @@ export const HomeView: React.FC<HomeViewProps> = ({
         className="max-w-6xl mx-auto px-4 sm:px-6"
       >
         <div className="nb-card p-5 sm:p-8 space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b-2 border-[#171717] dark:border-[#D9AC45]/50 pb-4">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b-2 border-[#292D2B] dark:border-[#34465D] pb-4">
             <div className="space-y-1">
-              <span className="nb-badge bg-[#3478F6] text-white">
+              <span className="nb-badge bg-[#237A70] text-white">
                 <MessageSquare className="w-3.5 h-3.5 mr-1" />
                 <span>Bimbingan & Konsultasi Syar'i</span>
               </span>
-              <h2 className="text-xl sm:text-3xl font-bold text-[#171717] dark:text-[#F8F3E8] font-serif pt-1">
+              <h2 className="text-xl sm:text-3xl font-bold text-[#292D2B] dark:text-[#F1F4F8] font-serif pt-1">
                 Tanya Jawab Pilihan
               </h2>
-              <p className="text-xs sm:text-sm text-[#171717]/75 dark:text-[#F8F3E8]/80">
+              <p className="text-xs sm:text-sm text-[#626A66] dark:text-[#B4C0D0]">
                 Arsip pertanyaan & jawaban materi pembelajaran pilihan yang telah dijawab oleh Ustaz & Pembimbing.
               </p>
             </div>
@@ -445,12 +445,12 @@ export const HomeView: React.FC<HomeViewProps> = ({
               ))}
             </div>
           ) : qaError ? (
-            <div className="p-8 text-center bg-[#D9AC45]/15 border-2 border-[#171717] dark:border-[#D9AC45] rounded-md space-y-3">
-              <HelpCircle className="w-8 h-8 text-[#06251D] dark:text-[#D9AC45] mx-auto" />
-              <h4 className="text-sm font-bold text-[#171717] dark:text-[#F8F3E8] font-serif">
+            <div className="p-8 text-center bg-[#D6AD52]/15 border-2 border-[#292D2B] dark:border-[#34465D] rounded-md space-y-3">
+              <HelpCircle className="w-8 h-8 text-[#123D32] dark:text-[#D6AD52] mx-auto" />
+              <h4 className="text-sm font-bold text-[#292D2B] dark:text-[#F1F4F8] font-serif">
                 Sinkronisasi Tanya Jawab Terkendala ({qaError.category === 'resource-exhausted' ? 'Batas Kuota Firestore' : 'Jaringan'})
               </h4>
-              <p className="text-xs text-[#171717]/80 dark:text-[#F8F3E8]/80 max-w-sm mx-auto leading-relaxed">
+              <p className="text-xs text-[#626A66] dark:text-[#B4C0D0] max-w-sm mx-auto leading-relaxed">
                 Data konsultasi tetap aman tersimpan di Google Cloud Firestore. Anda dapat mencoba memuat ulang kembali.
               </p>
               <button
@@ -462,12 +462,12 @@ export const HomeView: React.FC<HomeViewProps> = ({
               </button>
             </div>
           ) : (
-            <div className="p-8 text-center bg-[#F8F3E8] dark:bg-[#06251D] border-2 border-dashed border-[#171717] dark:border-[#D9AC45]/60 rounded-md space-y-3">
-              <HelpCircle className="w-8 h-8 text-[#06251D] dark:text-[#D9AC45] mx-auto" />
-              <h4 className="text-sm font-bold text-[#171717] dark:text-[#F8F3E8] font-serif">
+            <div className="p-8 text-center bg-[#FAF7F0] dark:bg-[#16263D] border-2 border-dashed border-[#292D2B] dark:border-[#34465D] rounded-md space-y-3">
+              <HelpCircle className="w-8 h-8 text-[#123D32] dark:text-[#D6AD52] mx-auto" />
+              <h4 className="text-sm font-bold text-[#292D2B] dark:text-[#F1F4F8] font-serif">
                 Belum Ada Tanya Jawab Dipublikasikan
               </h4>
-              <p className="text-xs text-[#171717]/75 dark:text-[#F8F3E8]/75 max-w-sm mx-auto leading-relaxed">
+              <p className="text-xs text-[#626A66] dark:text-[#B4C0D0] max-w-sm mx-auto leading-relaxed">
                 Pertanyaan materi pembelajaran yang telah disetujui akan ditampilkan di sini. Anda dapat mengajukan pertanyaan baru melalui Ruang Konsultasi.
               </p>
               <button
@@ -483,22 +483,22 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
       {/* SECTION 5: PROFIL PENGAJAR & PERKENALAN */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6">
-        <div className="bg-[#06251D] text-[#F8F3E8] border-2 border-[#171717] dark:border-[#D9AC45] rounded-lg p-6 sm:p-8 shadow-[6px_6px_0px_#171717] dark:shadow-[6px_6px_0px_#000000] flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+        <div className="bg-[#123D32] dark:bg-[#16263D] text-[#FAF7F0] dark:text-[#F1F4F8] border-2 border-[#292D2B] dark:border-[#34465D] rounded-lg p-6 sm:p-8 shadow-[6px_6px_0px_#292D2B] dark:shadow-[6px_6px_0px_#101B2D] flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div className="flex items-start gap-4 sm:gap-5">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-md bg-[#0B3026] border-2 border-[#D9AC45] flex items-center justify-center shrink-0 shadow-[4px_4px_0px_#000000]">
-              <GraduationCap className="w-8 h-8 sm:w-10 sm:h-10 text-[#D9AC45]" />
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-md bg-[#0B3026] dark:bg-[#243A56] border-2 border-[#D6AD52] flex items-center justify-center shrink-0 shadow-[4px_4px_0px_#101B2D]">
+              <GraduationCap className="w-8 h-8 sm:w-10 sm:h-10 text-[#D6AD52]" />
             </div>
             <div className="space-y-2 text-left">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-[#D9AC45] text-[#171717] font-extrabold text-[10px] uppercase tracking-wider rounded border border-[#171717]">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-[#D6AD52] text-[#123D32] font-extrabold text-[10px] uppercase tracking-wider rounded border border-[#292D2B]">
                 Pengampu & Pembimbing Kajian
               </span>
               <h2 className="text-xl sm:text-2xl font-bold font-serif text-white">
                 Mengenal Pengajar Dars with Osama
               </h2>
-              <p className="text-xs sm:text-sm text-[#F8F3E8]/85 max-w-2xl leading-relaxed">
+              <p className="text-xs sm:text-sm text-[#FAF7F0]/85 dark:text-[#B4C0D0] max-w-2xl leading-relaxed">
                 Pelajari latar belakang pendidikan, riwayat talaqqi, metode pengajaran kitab turats, serta fokus keilmuan pengajar di Dars with Osama.
               </p>
-              <div className="flex flex-wrap items-center gap-3 pt-1 text-xs text-[#D9AC45] font-bold">
+              <div className="flex flex-wrap items-center gap-3 pt-1 text-xs text-[#D6AD52] font-bold">
                 <span className="inline-flex items-center gap-1">
                   <CheckCircle2 className="w-3.5 h-3.5" />
                   <span>Kurikulum Berjenjang</span>
@@ -526,14 +526,14 @@ export const HomeView: React.FC<HomeViewProps> = ({
         ref={closingRef}
         className="max-w-4xl mx-auto px-4 sm:px-6 text-center"
       >
-        <div className="p-6 sm:p-8 bg-[#F8F3E8] dark:bg-[#0B3026] border-2 border-[#171717] dark:border-[#D9AC45] rounded-lg space-y-3 shadow-[4px_4px_0px_#171717] dark:shadow-[4px_4px_0px_#000000]">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-md bg-[#06251D] text-[#D9AC45] border-2 border-[#171717] dark:border-[#D9AC45] mb-1 shadow-[2px_2px_0px_#171717]">
+        <div className="p-6 sm:p-8 bg-[#FAF7F0] dark:bg-[#16263D] border-2 border-[#292D2B] dark:border-[#34465D] rounded-lg space-y-3 shadow-[4px_4px_0px_#292D2B] dark:shadow-[4px_4px_0px_#101B2D]">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-md bg-[#123D32] dark:bg-[#243A56] text-[#D6AD52] border-2 border-[#292D2B] dark:border-[#34465D] mb-1 shadow-[2px_2px_0px_#292D2B] dark:shadow-[2px_2px_0px_#101B2D]">
             <HeartHandshake className="w-6 h-6" />
           </div>
-          <p className="text-sm sm:text-base md:text-lg font-serif font-bold text-[#171717] dark:text-[#F8F3E8] leading-relaxed max-w-2xl mx-auto">
+          <p className="text-sm sm:text-base md:text-lg font-serif font-bold text-[#292D2B] dark:text-[#F1F4F8] leading-relaxed max-w-2xl mx-auto">
             “Semoga Dars with Osama menjadi salah satu jalan bagi kita untuk terus belajar, memperluas wawasan, dan memperoleh ilmu yang bermanfaat.”
           </p>
-          <p className="text-xs sm:text-sm text-[#06251D] dark:text-[#D9AC45] font-bold">
+          <p className="text-xs sm:text-sm text-[#123D32] dark:text-[#D6AD52] font-bold">
             “Selamat membaca, selamat belajar, dan semoga Allah memberkahi setiap langkah kita dalam menuntut ilmu.”
           </p>
         </div>

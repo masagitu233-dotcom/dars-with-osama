@@ -13,17 +13,17 @@ export const Toast: React.FC<ToastProps> = ({ message, type = 'success', onClose
   return (
     <div className="fixed bottom-6 right-6 z-[120] max-w-sm w-full animate-fade-in-up">
       <div
-        className={`p-4 rounded-md border-2 border-[#171717] shadow-[4px_4px_0px_#171717] flex items-start gap-3 text-xs sm:text-sm font-bold ${
+        className={`p-4 rounded-md border-2 border-[#292D2B] shadow-[4px_4px_0px_#292D2B] flex items-start gap-3 text-xs sm:text-sm font-bold ${
           type === 'success'
-            ? 'bg-[#06251D] text-[#F8F3E8] dark:border-[#D9AC45]'
+            ? 'bg-[#123D32] text-[#FAF7F0] dark:border-[#D6AD52]'
             : type === 'error'
             ? 'bg-[#F04438] text-white'
-            : 'bg-[#F8F3E8] dark:bg-[#0B3026] text-[#171717] dark:text-[#F8F3E8] dark:border-[#D9AC45]'
+            : 'bg-[#FAF7F0] dark:bg-[#243A56] text-[#292D2B] dark:text-[#F1F4F8] dark:border-[#D6AD52]'
         }`}
       >
-        {type === 'success' && <CheckCircle2 className="w-5 h-5 text-[#D9AC45] shrink-0 mt-0.5" />}
+        {type === 'success' && <CheckCircle2 className="w-5 h-5 text-[#D6AD52] shrink-0 mt-0.5" />}
         {type === 'error' && <AlertCircle className="w-5 h-5 text-white shrink-0 mt-0.5" />}
-        {type === 'info' && <Info className="w-5 h-5 text-[#3478F6] dark:text-[#D9AC45] shrink-0 mt-0.5" />}
+        {type === 'info' && <Info className="w-5 h-5 text-[#42658A] dark:text-[#D6AD52] shrink-0 mt-0.5" />}
 
         <div className="flex-1 leading-snug">{message}</div>
 

@@ -107,25 +107,25 @@ export const ShareQAModal: React.FC<ShareQAModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/75 animate-fade-in overflow-y-auto font-sans">
-      <div className="relative w-full max-w-lg bg-[#F8F3E8] dark:bg-[#0B3026] border-2 border-[#171717] dark:border-[#D9AC45] rounded-lg shadow-[6px_6px_0px_#171717] dark:shadow-[6px_6px_0px_#000000] overflow-hidden my-auto flex flex-col">
+      <div className="relative w-full max-w-lg bg-[#FAF7F0] dark:bg-[#16263D] border-2 border-charcoal dark:border-[#D6AD52] rounded-lg shadow-[6px_6px_0px_#292D2B] dark:shadow-[6px_6px_0px_#000000] overflow-hidden my-auto flex flex-col">
         {/* Header Bar */}
-        <div className="flex items-center justify-between px-6 py-4 bg-[#06251D] text-white border-b-2 border-[#171717] dark:border-[#D9AC45]/60 shrink-0">
+        <div className="flex items-center justify-between px-6 py-4 bg-[#123D32] dark:bg-[#101B2D] text-white border-b-2 border-charcoal dark:border-[#D6AD52]/60 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-md bg-[#0B3026] flex items-center justify-center text-[#D9AC45] border-2 border-[#D9AC45] shrink-0">
+            <div className="w-9 h-9 rounded-md bg-[#16263D] flex items-center justify-center text-[#D6AD52] border-2 border-[#D6AD52] shrink-0">
               <Share2 className="w-5 h-5" />
             </div>
             <div>
               <h3 className="text-sm font-bold font-serif text-white leading-tight">
                 Bagikan Pertanyaan
               </h3>
-              <p className="text-[11px] text-[#D9AC45] font-bold">
+              <p className="text-[11px] text-[#D6AD52] font-bold">
                 Dars with Osama • ILMU • KAJIAN • KITAB
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-md bg-[#0B3026] hover:bg-[#D9AC45] text-[#F8F3E8] hover:text-[#171717] border border-[#D9AC45] flex items-center justify-center transition cursor-pointer"
+            className="w-8 h-8 rounded-md bg-[#16263D] hover:bg-[#D6AD52] text-offwhite hover:text-charcoal border border-[#D6AD52] flex items-center justify-center transition cursor-pointer"
             title="Tutup"
           >
             <X className="w-4 h-4" />
@@ -135,14 +135,14 @@ export const ShareQAModal: React.FC<ShareQAModalProps> = ({
         {/* Modal Body */}
         <div className="p-6 space-y-6">
           {!isEligibleToShare ? (
-            <div className="p-6 bg-white dark:bg-[#06251D] border-2 border-[#171717] dark:border-[#D9AC45] rounded-md text-center space-y-3">
-              <div className="w-12 h-12 rounded-md bg-[#D9AC45] border-2 border-[#171717] text-[#171717] flex items-center justify-center mx-auto">
+            <div className="p-6 bg-white dark:bg-[#16263D] border-2 border-charcoal dark:border-[#D6AD52] rounded-md text-center space-y-3">
+              <div className="w-12 h-12 rounded-md bg-[#D6AD52] border-2 border-charcoal text-charcoal flex items-center justify-center mx-auto">
                 <Lock className="w-6 h-6" />
               </div>
-              <h4 className="text-base font-bold font-serif text-[#171717] dark:text-[#D9AC45]">
+              <h4 className="text-base font-bold font-serif text-charcoal dark:text-[#D6AD52]">
                 Privasi Terlindungi: Tidak Dapat Dibagikan ke Publik
               </h4>
-              <p className="text-xs text-[#171717]/80 dark:text-[#F8F3E8]/80 leading-relaxed max-w-md mx-auto">
+              <p className="text-xs text-slate-gray dark:text-blue-gray leading-relaxed max-w-md mx-auto">
                 {consultation.category === 'private'
                   ? 'Pertanyaan ini merupakan Konsultasi Pribadi. Sesuai kebijakan syariat dan amanah privasi, konsultasi pribadi tidak diizinkan untuk dipublikasikan atau dibagikan ke publik.'
                   : 'Jawaban konsultasi ini belum disetujui / dipublikasikan oleh Admin.'}
@@ -159,36 +159,36 @@ export const ShareQAModal: React.FC<ShareQAModalProps> = ({
           ) : (
             <div className="space-y-6 animate-fade-in">
               {/* Topic Overview Card */}
-              <div className="p-4 rounded-md bg-white dark:bg-[#06251D] border-2 border-[#171717] dark:border-[#D9AC45]/60 space-y-2.5 shadow-[3px_3px_0px_#171717]">
+              <div className="p-4 rounded-md bg-white dark:bg-[#243A56] border-2 border-charcoal dark:border-[#34465D] space-y-2.5 shadow-[3px_3px_0px_#292D2B]">
                 <div className="flex items-center justify-between gap-2 text-[11px] font-bold">
-                  <span className="px-2 py-0.5 rounded bg-[#06251D] text-[#D9AC45] border border-[#171717] dark:border-[#D9AC45]">
+                  <span className="px-2 py-0.5 rounded bg-[#123D32] text-[#D6AD52] border border-charcoal dark:border-[#D6AD52]">
                     ❓ Pertanyaan Tanya Jawab
                   </span>
-                  <span className="text-[#06251D] dark:text-[#D9AC45] font-bold flex items-center gap-1">
-                    <Lock className="w-3 h-3 text-[#D9AC45]" />
+                  <span className="text-[#123D32] dark:text-[#D6AD52] font-bold flex items-center gap-1">
+                    <Lock className="w-3 h-3 text-[#D6AD52]" />
                     <span>Jawaban Terkunci (Perlu Klik Link)</span>
                   </span>
                 </div>
 
-                <h4 className="font-serif font-bold text-sm sm:text-base text-[#171717] dark:text-[#F8F3E8]">
+                <h4 className="font-serif font-bold text-sm sm:text-base text-charcoal dark:text-offwhite">
                   {consultation.title}
                 </h4>
 
                 {cleanQuestionSnippet && (
-                  <p className="text-xs text-[#171717]/80 dark:text-[#F8F3E8]/80 line-clamp-2 leading-relaxed font-sans border-l-4 border-[#D9AC45] pl-2.5">
+                  <p className="text-xs text-slate-gray dark:text-blue-gray line-clamp-2 leading-relaxed font-sans border-l-4 border-[#D6AD52] pl-2.5">
                     &quot;{cleanQuestionSnippet}&quot;
                   </p>
                 )}
 
-                <div className="pt-2 text-[11px] font-medium text-[#171717] dark:text-[#F8F3E8] bg-[#F8F3E8] dark:bg-[#0B3026] p-2.5 rounded border border-[#171717] dark:border-[#D9AC45]/60 flex items-center gap-2">
-                  <Sparkles className="w-3.5 h-3.5 text-[#D9AC45] shrink-0" />
+                <div className="pt-2 text-[11px] font-medium text-charcoal dark:text-offwhite bg-[#FAF7F0] dark:bg-[#16263D] p-2.5 rounded border border-charcoal dark:border-[#34465D] flex items-center gap-2">
+                  <Sparkles className="w-3.5 h-3.5 text-[#D6AD52] shrink-0" />
                   <span>Teks & pratinjau yang dibagikan hanya memuat <strong>pertanyaan</strong>. Pembaca harus mengklik link untuk membaca jawaban resmi dari Ustaz.</span>
                 </div>
               </div>
 
               {/* Direct Link Section */}
               <div className="space-y-2">
-                <label className="text-xs font-extrabold text-[#171717] dark:text-[#D9AC45] uppercase tracking-wider block">
+                <label className="text-xs font-extrabold text-charcoal dark:text-[#D6AD52] uppercase tracking-wider block">
                   Salin Link Permanen Pertanyaan:
                 </label>
 
@@ -205,12 +205,12 @@ export const ShareQAModal: React.FC<ShareQAModalProps> = ({
                   >
                     {copied ? (
                       <>
-                        <Check className="w-4 h-4 text-[#D9AC45]" />
+                        <Check className="w-4 h-4 text-[#D6AD52]" />
                         <span>Tersalin</span>
                       </>
                     ) : (
                       <>
-                        <Copy className="w-4 h-4 text-[#D9AC45]" />
+                        <Copy className="w-4 h-4 text-[#D6AD52]" />
                         <span>Salin Link</span>
                       </>
                     )}
@@ -220,7 +220,7 @@ export const ShareQAModal: React.FC<ShareQAModalProps> = ({
 
               {/* Social Share Buttons Grid */}
               <div className="space-y-2.5">
-                <label className="text-xs font-extrabold text-[#171717] dark:text-[#D9AC45] uppercase tracking-wider block">
+                <label className="text-xs font-extrabold text-charcoal dark:text-[#D6AD52] uppercase tracking-wider block">
                   Pilih Platform Berbagi:
                 </label>
 
@@ -229,7 +229,7 @@ export const ShareQAModal: React.FC<ShareQAModalProps> = ({
                     onClick={handleShareWhatsApp}
                     className="nb-btn nb-btn-primary p-3 text-xs justify-center"
                   >
-                    <MessageCircle className="w-4 h-4 text-[#D9AC45]" />
+                    <MessageCircle className="w-4 h-4 text-[#D6AD52]" />
                     <span>WhatsApp</span>
                   </button>
 
@@ -251,9 +251,9 @@ export const ShareQAModal: React.FC<ShareQAModalProps> = ({
 
                   <button
                     onClick={handleShareTwitter}
-                    className="nb-btn bg-[#171717] text-white p-3 text-xs justify-center"
+                    className="nb-btn bg-charcoal text-white p-3 text-xs justify-center"
                   >
-                    <Twitter className="w-4 h-4 text-[#D9AC45]" />
+                    <Twitter className="w-4 h-4 text-[#D6AD52]" />
                     <span>X (Twitter)</span>
                   </button>
                 </div>
@@ -263,7 +263,7 @@ export const ShareQAModal: React.FC<ShareQAModalProps> = ({
                     onClick={handleNativeShare}
                     className="w-full mt-2 nb-btn nb-btn-secondary py-2.5 px-4 text-xs"
                   >
-                    <ExternalLink className="w-3.5 h-3.5 text-[#D9AC45]" />
+                    <ExternalLink className="w-3.5 h-3.5 text-[#D6AD52]" />
                     <span>Gunakan Menu Berbagi Bawaan Perangkat</span>
                   </button>
                 )}
@@ -273,7 +273,7 @@ export const ShareQAModal: React.FC<ShareQAModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="p-4 bg-white dark:bg-[#06251D] border-t-2 border-[#171717] dark:border-[#D9AC45]/60 text-center">
+        <div className="p-4 bg-white dark:bg-[#16263D] border-t-2 border-charcoal dark:border-[#34465D] text-center">
           <button
             type="button"
             onClick={onClose}
