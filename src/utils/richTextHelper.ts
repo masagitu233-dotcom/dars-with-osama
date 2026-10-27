@@ -341,5 +341,48 @@ export function sanitizeRichTextHtml(rawHtml: string): string {
     return `style="${rawStyle.replace(/"/g, "'")}"`;
   });
 
+  // 9. Wrap all <table> elements in a responsive overflow-x container and enforce min-width for mobile
+  if (cleaned.includes('<table')) {
+    if (typeof DOMParser !== 'undefined') {
+      try {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(`<body>${cleaned}</body>`, 'text/html');
+        const tables = doc.querySelectorAll('table');
+        if (tables.length > 0) {
+          tables.forEach(tableEl => {
+            tableEl.classList.add('w-full', 'min-w-[580px]', 'border-collapse');
+            const parent = tableEl.parentElement;
+            const isWrapped = parent && (
+              parent.classList.contains('table-responsive-wrapper') ||
+              parent.classList.contains('overflow-x-auto') ||
+              parent.classList.contains('table-wrapper')
+            );
+            if (!isWrapped) {
+              const wrapper = doc.createElement('div');
+              wrapper.className = 'table-responsive-wrapper w-full overflow-x-auto my-4 sm:my-6 max-w-full rounded-md border-2 border-[#171717] dark:border-[#454B5E] shadow-xs';
+              tableEl.parentNode?.insertBefore(wrapper, tableEl);
+              wrapper.appendChild(tableEl);
+            }
+          });
+          cleaned = doc.body.innerHTML;
+        }
+      } catch {
+        cleaned = cleaned.replace(/<table\b([^>]*)>([\s\S]*?)<\/table>/gi, (fullMatch, rawAttrs, inner) => {
+          if (fullMatch.includes('table-responsive-wrapper') || fullMatch.includes('overflow-x-auto')) {
+            return fullMatch;
+          }
+          return `<div class="table-responsive-wrapper w-full overflow-x-auto my-4 max-w-full rounded-md border-2 border-[#171717] dark:border-[#454B5E] shadow-xs"><table${rawAttrs} class="w-full min-w-[580px] border-collapse">${inner}</table></div>`;
+        });
+      }
+    } else {
+      cleaned = cleaned.replace(/<table\b([^>]*)>([\s\S]*?)<\/table>/gi, (fullMatch, rawAttrs, inner) => {
+        if (fullMatch.includes('table-responsive-wrapper') || fullMatch.includes('overflow-x-auto')) {
+          return fullMatch;
+        }
+        return `<div class="table-responsive-wrapper w-full overflow-x-auto my-4 max-w-full rounded-md border-2 border-[#171717] dark:border-[#454B5E] shadow-xs"><table${rawAttrs} class="w-full min-w-[580px] border-collapse">${inner}</table></div>`;
+      });
+    }
+  }
+
   return cleaned.trim();
 }

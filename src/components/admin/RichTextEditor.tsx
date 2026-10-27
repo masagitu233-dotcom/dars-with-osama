@@ -99,7 +99,14 @@ function sanitizeAndLinkifyHtml(rawHtml: string): string {
     }
 
     doc.querySelectorAll('table').forEach(el => {
-      el.className = 'w-full border-collapse border-2 border-[#171717] text-xs sm:text-sm my-4';
+      el.className = 'w-full min-w-[580px] border-collapse border-2 border-[#171717] dark:border-[#454B5E] text-xs sm:text-sm my-0';
+      const parent = el.parentElement;
+      if (!parent?.classList.contains('table-responsive-wrapper') && !parent?.classList.contains('overflow-x-auto')) {
+        const wrapper = doc.createElement('div');
+        wrapper.className = 'table-responsive-wrapper w-full overflow-x-auto my-4 max-w-full rounded-md border-2 border-[#171717] dark:border-[#454B5E] shadow-xs';
+        el.parentNode?.insertBefore(wrapper, el);
+        wrapper.appendChild(el);
+      }
     });
     doc.querySelectorAll('td, th').forEach(el => {
       el.classList.add('border', 'border-[#171717]', 'p-2');
