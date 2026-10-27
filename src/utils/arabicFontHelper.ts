@@ -33,35 +33,98 @@ export function autoWrapArabicText(html: string): string {
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
 
-    // 1. Process block elements (paragraphs, headings, blockquotes, list items, table cells, divs)
+    // 0a. Remove empty paragraphs inside blockquotes or RTL quote divs to prevent excessive vertical whitespace
+    const emptyCheckCandidates = doc.body.querySelectorAll('blockquote p, div[dir="rtl"] p');
+    emptyCheckCandidates.forEach((p) => {
+      const text = (p.textContent || '').replace(/[\u00A0\s]+/g, '').trim();
+      if (!text && !p.querySelector('img, br, hr, iframe, svg')) {
+        p.remove();
+      }
+    });
+
+    // 0b. Convert inline <bdi> tags containing Arabic into inline <span class="font-amiri inline-arabic" dir="rtl" lang="ar">
+    const bdiElements = doc.body.querySelectorAll('bdi');
+    bdiElements.forEach((bdi) => {
+      const text = bdi.textContent || '';
+      if (ARABIC_CHAR_PATTERN.test(text)) {
+        const span = doc.createElement('span');
+        span.className = 'font-amiri inline-arabic';
+        span.setAttribute('dir', 'rtl');
+        span.setAttribute('lang', 'ar');
+        while (bdi.firstChild) {
+          span.appendChild(bdi.firstChild);
+        }
+        bdi.parentNode?.replaceChild(span, bdi);
+      }
+    });
+
+    // 1a. Mark explicit RTL quote containers (div[dir="rtl"]) as long Arabic quote blocks
+    const rtlDivs = doc.body.querySelectorAll('div[dir="rtl"], div.arabic-text, div.arabic-quote-block');
+    rtlDivs.forEach((div) => {
+      const text = (div.textContent || '').trim();
+      if (ARABIC_CHAR_PATTERN.test(text)) {
+        div.setAttribute('dir', 'rtl');
+        div.setAttribute('lang', 'ar');
+        div.classList.add('font-amiri', 'arabic-quote-block', 'text-right');
+        // Strip hardcoded small inline font-size on inner spans/headings inside quote containers
+        div.querySelectorAll<HTMLElement>('span[style*="font-size"], h1[style*="font-size"], h2[style*="font-size"], h3[style*="font-size"], p[style*="font-size"]').forEach((inner) => {
+          inner.style.removeProperty('font-size');
+          inner.style.removeProperty('line-height');
+        });
+      }
+    });
+
+    // 1b. Process block elements (paragraphs, headings, blockquotes, list items, table cells)
     const blockElements = doc.body.querySelectorAll('p, blockquote, h1, h2, h3, h4, h5, h6, li, td, th');
 
     blockElements.forEach((el) => {
       // Skip preformatted or code blocks
       if (['PRE', 'CODE', 'SCRIPT', 'STYLE'].includes(el.tagName)) return;
 
-      const text = el.textContent || '';
+      // If this element is already inside an .arabic-quote-block or div[dir="rtl"], do not turn it into a nested card block
+      if (el.closest('.arabic-quote-block, div[dir="rtl"]')) {
+        el.removeAttribute('dir');
+        el.classList.remove('kitab-paper', 'arabic-quote-block', 'arabic-text');
+        return;
+      }
 
-      // Case A: Standalone pure Arabic line/block (e.g. Arabic hadith or ayat block without Indonesian text)
-      if (isPureArabicText(text)) {
-        el.setAttribute('dir', 'rtl');
-        el.setAttribute('lang', 'ar');
-        if (!el.classList.contains('font-amiri')) {
-          el.classList.add('font-amiri');
+      const text = (el.textContent || '').trim();
+
+      // Table cells (td, th), list items (li), and paragraphs inside list items or tables should NEVER become boxed quote blocks.
+      // Their Arabic text will be wrapped in inline <span class="font-amiri inline-arabic"> in Step 2.
+      const isInsideListOrTable = Boolean(el.closest('li, td, th'));
+      const isHeading = /^H[1-6]$/.test(el.tagName);
+
+      if (isPureArabicText(text) && !isInsideListOrTable && !isHeading) {
+        // Count Arabic words to ensure 1–2 word standalone snippets stay inline while full quotes/matan use the block container
+        const wordCount = text.split(/\s+/).filter(Boolean).length;
+        const isBlockquote = el.tagName === 'BLOCKQUOTE' || Boolean(el.closest('blockquote'));
+
+        if (isBlockquote || wordCount >= 3 || text.length >= 25) {
+          // If this is a <p> inside a pure-Arabic <blockquote>, let the parent <blockquote> be the single quote container
+          const parentBlockquote = el.tagName !== 'BLOCKQUOTE' ? el.closest('blockquote') : null;
+          if (parentBlockquote && isPureArabicText(parentBlockquote.textContent || '')) {
+            parentBlockquote.setAttribute('dir', 'rtl');
+            parentBlockquote.setAttribute('lang', 'ar');
+            parentBlockquote.classList.add('font-amiri', 'arabic-quote-block', 'text-right');
+            return;
+          }
+
+          el.setAttribute('dir', 'rtl');
+          el.setAttribute('lang', 'ar');
+          el.classList.add('font-amiri', 'arabic-quote-block', 'text-right');
+          return;
         }
-        if (!el.classList.contains('text-right')) {
-          el.classList.add('text-right');
-        }
-      } else {
-        // Case B: Indonesian-dominant or mixed block
-        // Explicitly set dir="ltr" if not already specified, preserving left-to-right paragraph flow
-        if (!el.getAttribute('dir')) {
-          el.setAttribute('dir', 'ltr');
-        }
+      }
+
+      // Indonesian-dominant, mixed block, heading, list item, or table cell:
+      // Keep dir="ltr" on the block container so Arabic words inside are wrapped with inline-arabic spans
+      if (!el.getAttribute('dir') || isInsideListOrTable) {
+        el.setAttribute('dir', 'ltr');
       }
     });
 
-    // 1b. Wrap any table elements inside responsive horizontal scroll containers so they never break mobile viewport
+    // 1c. Wrap any table elements inside responsive horizontal scroll containers so they never break mobile viewport
     const tables = doc.body.querySelectorAll('table');
     tables.forEach((table) => {
       const parent = table.parentElement;
@@ -73,7 +136,7 @@ export function autoWrapArabicText(html: string): string {
       }
     });
 
-    // 2. Identify text nodes in mixed contexts that contain Arabic snippets
+    // 2. Identify text nodes outside .arabic-quote-block that contain Arabic snippets
     const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
     const textNodesToWrap: Text[] = [];
 
@@ -84,29 +147,23 @@ export function autoWrapArabicText(html: string): string {
 
       if (ARABIC_CHAR_PATTERN.test(text)) {
         const parent = textNode.parentElement;
-        
-        // Skip if parent is a pre/code or already an isolated Arabic span
-        const isExcluded = parent?.closest('code, pre, .inline-arabic');
-        
-        if (!isExcluded) {
-          // If the nearest block parent is a standalone pure Arabic block, its whole text is already RTL
-          const closestBlock = parent?.closest('p, blockquote, h1, h2, h3, h4, h5, h6, li, td, th, div');
-          const isBlockPureArabic = closestBlock && isPureArabicText(closestBlock.textContent || '');
 
-          if (!isBlockPureArabic) {
-            textNodesToWrap.push(textNode);
-          }
+        // Skip if parent is pre/code, already inside an isolated inline-arabic span, or inside a long .arabic-quote-block
+        const isExcluded = parent?.closest('code, pre, .inline-arabic, .arabic-inline, .arabic-quote-block');
+
+        if (!isExcluded) {
+          textNodesToWrap.push(textNode);
         }
       }
       currentNode = walker.nextNode();
     }
 
-    // 3. Wrap only the Arabic segments within mixed text nodes
+    // 3. Wrap only the Arabic segments within mixed/inline text nodes using <span class="font-amiri inline-arabic">
     for (const textNode of textNodesToWrap) {
       const text = textNode.nodeValue || '';
       const parts = text.split(ARABIC_SPLIT_REGEX);
 
-      if (parts.length <= 1) continue;
+      if (parts.length <= 1 && !ARABIC_CHAR_PATTERN.test(text)) continue;
 
       const fragment = doc.createDocumentFragment();
 
@@ -114,7 +171,7 @@ export function autoWrapArabicText(html: string): string {
         if (!part) continue;
 
         if (ARABIC_CHAR_PATTERN.test(part)) {
-          // Inline Arabic segment: wrap with isolated bidirectional span
+          // Inline Arabic segment: wrap with isolated bidirectional span (no border/background/card styles)
           const span = doc.createElement('span');
           span.className = 'font-amiri inline-arabic';
           span.setAttribute('dir', 'rtl');

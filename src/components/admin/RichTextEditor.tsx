@@ -527,7 +527,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     if (tableHeader) {
       let ths = '';
       for (let c = 1; c <= colsCount; c++) {
-        ths += `<th class="border border-[#171717] px-2.5 py-1.5 sm:px-3 sm:py-2 font-extrabold text-left bg-[#F8F3E8] dark:bg-[#06251D]">Judul Kolom ${c}</th>`;
+        ths += `<th class="border-2 border-[#171717] dark:border-[#B8E8D8] px-2.5 py-1.5 sm:px-3 sm:py-2 font-extrabold text-left bg-[#FAF7F0] dark:bg-[#214743] text-[#171717] dark:text-[#F0F7F5]">Judul Kolom ${c}</th>`;
       }
       headerHtml = `<thead><tr>${ths}</tr></thead>`;
     }
@@ -536,12 +536,12 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     for (let r = 1; r <= rowsCount; r++) {
       let tds = '';
       for (let c = 1; c <= colsCount; c++) {
-        tds += `<td class="border border-[#171717] px-2.5 py-1.5 sm:px-3 sm:py-2">Baris ${r}, Kolom ${c}</td>`;
+        tds += `<td class="border-2 border-[#171717] dark:border-[#B8E8D8] px-2.5 py-1.5 sm:px-3 sm:py-2 text-[#171717] dark:text-[#F0F7F5]">Baris ${r}, Kolom ${c}</td>`;
       }
       tbodyRows += `<tr>${tds}</tr>`;
     }
 
-    const tableHtml = `<div class="table-responsive-wrapper w-full overflow-x-auto my-4"><table class="w-full border-collapse border sm:border-2 border-[#171717] text-xs sm:text-sm">${headerHtml}<tbody>${tbodyRows}</tbody></table></div><p><br></p>`;
+    const tableHtml = `<div class="table-responsive-wrapper w-full overflow-x-auto my-4"><table class="w-full border-collapse border-2 border-[#171717] dark:border-[#B8E8D8] text-xs sm:text-sm">${headerHtml}<tbody>${tbodyRows}</tbody></table></div><p><br></p>`;
     execCommand('insertHTML', tableHtml);
     setShowTableModal(false);
   };
@@ -556,7 +556,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     const newTr = document.createElement('tr');
     for (let i = 0; i < colsCount; i++) {
       const td = document.createElement('td');
-      td.className = 'border border-[#171717] px-2.5 py-1.5 sm:px-3 sm:py-2';
+      td.className = 'border-2 border-[#171717] dark:border-[#B8E8D8] px-2.5 py-1.5 sm:px-3 sm:py-2';
       td.innerHTML = 'Data Baru';
       newTr.appendChild(td);
     }
@@ -579,7 +579,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     rows.forEach(tr => {
       const isHeader = tr.parentNode?.nodeName === 'THEAD' || tr.querySelector('th');
       const newCell = document.createElement(isHeader ? 'th' : 'td');
-      newCell.className = 'border border-[#171717] px-2.5 py-1.5 sm:px-3 sm:py-2 font-bold';
+      newCell.className = 'border-2 border-[#171717] dark:border-[#B8E8D8] px-2.5 py-1.5 sm:px-3 sm:py-2 font-bold';
       newCell.innerHTML = isHeader ? 'Kolom Baru' : 'Data Baru';
 
       const targetCell = tr.children[colIndex];
@@ -632,7 +632,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   };
 
   const insertArabicBlock = () => {
-    const arabicHtml = `<div class="my-4 p-4 bg-[#F8F3E8] dark:bg-[#06251D] rounded-lg border-2 border-[#171717] dark:border-[#D9AC45]/60 text-right font-amiri text-xl text-[#06251D] dark:text-[#D9AC45] leading-relaxed" dir="rtl">نَصٌّ عَرَبِيٌّ مُشَكَّلٌ هُنَا...</div><p><br></p>`;
+    const arabicHtml = `<div class="my-4 p-4 bg-[#FAF7F0] dark:bg-[#214743] rounded-md border-2 border-[#171717] dark:border-[#B8E8D8] text-right font-amiri text-xl text-[#171717] dark:text-[#F0F7F5] leading-relaxed" dir="rtl">نَصٌّ عَرَبِيٌّ مُشَكَّلٌ هُنَا...</div><p><br></p>`;
     execCommand('insertHTML', arabicHtml);
   };
 
@@ -682,11 +682,11 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     handleInput();
   };
 
-  const activeBtnClass = 'bg-[#D9AC45] text-[#171717] border-[#171717] font-extrabold';
-  const inactiveBtnClass = 'bg-white dark:bg-[#0B3026] text-[#171717] dark:text-[#F8F3E8] border-transparent hover:border-[#171717] dark:hover:border-[#D9AC45]';
+  const activeBtnClass = 'bg-[#F2D98A] text-[#102C2B] border-[#171717] dark:border-[#B8E8D8] font-extrabold';
+  const inactiveBtnClass = 'bg-white dark:bg-[#193A37] text-[#171717] dark:text-[#F0F7F5] border-transparent hover:border-[#171717] dark:hover:border-[#B8E8D8]';
 
   return (
-    <div className="border-2 border-[#171717] dark:border-[#D9AC45]/60 rounded-lg overflow-hidden bg-white dark:bg-[#0B3026] transition-colors shadow-[3px_3px_0px_#171717]">
+    <div className="border-2 border-[#171717] dark:border-[#B8E8D8] rounded-md overflow-hidden bg-white dark:bg-[#193A37] transition-colors shadow-[4px_4px_0px_#171717] dark:shadow-[4px_4px_0px_#071918]">
       {/* Inline Editor Error Banner */}
       {editorError && (
         <div className="px-3 py-2 bg-[#F04438] border-b-2 border-[#171717] text-white text-xs font-bold flex items-center justify-between gap-2">

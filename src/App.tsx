@@ -54,7 +54,11 @@ import {
   getBlogPostBySlug,
   invalidateServicesCache
 } from './firebase/services';
-import { classifyFirestoreError } from './firebase/config';
+import {
+  classifyFirestoreError,
+  getLatestFirestoreDiagnostic,
+  getDataSourceStatus
+} from './firebase/config';
 import { ServiceDisruptionBanner } from './components/common/ServiceDisruptionBanner';
 import { canAttemptRetry, DEFAULT_RETRY_COOLDOWN_SECONDS } from './utils/serviceDisruptionHelper';
 import {
@@ -531,7 +535,18 @@ function MainApp() {
       setCategories(cats);
       setCourses(crss);
       setBlogPosts(posts);
-      setLoadError(null);
+
+      const sourceStatus = getDataSourceStatus();
+      const latestDiag = getLatestFirestoreDiagnostic();
+      if (sourceStatus.isUsingFallback && latestDiag) {
+        setLoadError({
+          category: latestDiag.category,
+          summary: latestDiag.summary,
+          code: latestDiag.code
+        });
+      } else {
+        setLoadError(null);
+      }
 
       setSelectedBlogPost(prev => {
         if (!prev) return null;
@@ -749,7 +764,7 @@ function MainApp() {
 
   return (
     <SmoothScrollProvider currentView={routeScrollKey}>
-      <div className="min-h-screen bg-[#FAF7F0] dark:bg-[#101B2D] text-[#292D2B] dark:text-[#F1F4F8] font-sans selection:bg-[#D6AD52]/30 selection:text-[#292D2B] dark:selection:text-[#F1F4F8] transition-colors duration-250">
+      <div className="min-h-screen bg-[#FAF7F0] dark:bg-[#0D2B36] text-[#171717] dark:text-[#CEFEF1] font-sans selection:bg-[#4CA7A1]/30 selection:text-[#171717] dark:selection:text-[#CEFEF1] transition-colors duration-250">
         {currentView === 'admin-dashboard' && isAdmin ? (
           <AdminDashboard
             initialTab={adminInitialTab}
@@ -801,6 +816,25 @@ function MainApp() {
 
               {/* Main Body Router */}
               <main className="flex-1 pb-12 sm:pb-16">
+                {loadError && currentView === 'home' && (
+                  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+                    <ServiceDisruptionBanner
+                      category={loadError.category}
+                      code={loadError.code}
+                      onRetry={handleRetryLoadData}
+                      isRetrying={isRetryingData}
+                      lastAttemptTimestamp={lastDataFetchTimestamp}
+                      mode="banner"
+                      hasExistingData={true}
+                      customTitle={
+                        loadError.category === 'resource-exhausted'
+                          ? 'Mode Cadangan Aktif (Kuota Baca Harian Firestore Tercapai)'
+                          : undefined
+                      }
+                      customMessage={loadError.summary}
+                    />
+                  </div>
+                )}
                 <div key={currentView} className="animate-fade-in">
                   {/* VIEW 1: HOME */}
                   {currentView === 'home' && (

@@ -1,674 +1,1266 @@
 @import "tailwindcss";
-
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-serif-brand: 'Playfair Display', Georgia, serif;
-  --font-amiri: 'Amiri', 'Scheherazade New', 'Traditional Arabic', serif;
-  --font-arabic: 'Amiri', 'Tajawal', 'Cairo', serif;
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Newsreader", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-display: "Space Grotesk", "Plus Jakarta Sans", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-arabic: "Scheherazade New", "Amiri", "Traditional Arabic", serif;
 
-  /* Primary Light Mode Palette Tokens */
-  --color-warm-ivory: #FAF7F0;
-  --color-pure-white: #FFFFFF;
-  --color-deep-emerald: #123D32;
-  --color-royal-teal: #237A70;
-  --color-muted-gold: #D6AD52;
-  --color-soft-sage: #E5EEE7;
-  --color-warm-sand: #EFE5D2;
-  --color-charcoal: #292D2B;
-  --color-slate-gray: #626A66;
+  /* Light Mode Core Palette */
+  --color-cream: #FAF7F0;
+  --color-cream-dark: #EFE5D2;
+  --color-charcoal: #171717;
+  --color-charcoal-light: #525856;
+  --color-slate-gray: #525856;
 
-  /* Primary Dark Mode Palette Tokens (Elegant Blue) */
-  --color-midnight-navy: #101B2D;
-  --color-deep-navy: #16263D;
-  --color-slate-blue: #243A56;
-  --color-steel-blue: #42658A;
-  --color-soft-blue: #A9C5E8;
-  --color-off-white: #F1F4F8;
-  --color-blue-gray: #B4C0D0;
-  --color-dark-border: #34465D;
+  /* Dark Mode Core Palette (Midnight Navy #171923, Secondary #252936, Accent Soft Gold #C6A75E, Warm White #F0EEE8) */
+  --color-navy-deep: #171923;
+  --color-navy-bg: #171923;
+  --color-navy-surface: #252936;
+  --color-navy-surface-alt: #252936;
+  --color-off-white: #F0EEE8;
+  --color-offwhite: #F0EEE8;
+  --color-blue-gray: #B7BBC7;
 
-  /* Brand and Utility Aliases */
-  --color-dars-emerald: #123D32;
-  --color-dars-teal: #237A70;
-  --color-dars-gold: #D6AD52;
-  --color-dars-ivory: #FAF7F0;
-  --color-dars-sand: #EFE5D2;
-  --color-dars-sage: #E5EEE7;
-  --color-dars-charcoal: #292D2B;
-  --color-dars-red: #F04438;
+  /* Accents */
+  --color-mint: #C6A75E;
+  --color-mint-light: #B7BBC7;
+  --color-turquoise: #C6A75E;
+  --color-yellow: #C6A75E;
+  --color-coral: #E05A5A;
+  --color-lavender: #252936;
+  --color-sky: #C6A75E;
+}
 
-  /* Backward Compatibility Aliases */
-  --color-dars-forest: #123D32;
-  --color-dars-darkgreen: #123D32;
-  --color-dars-cream: #FAF7F0;
-  --color-dars-black: #292D2B;
-  --color-dars-white: #FFFFFF;
-  --color-dars-cobalt: #42658A;
+:root {
+  --nb-bg-deep: #EFE5D2;
+  --nb-bg: #FAF7F0;
+  --nb-bg-subtle: #F4EFE4;
+  --nb-surface: #FFFFFF;
+  --nb-surface-alt: #FAF7F0;
+  --nb-surface-elevated: #EFE5D2;
+  --nb-text: #171717;
+  --nb-text-secondary: #525856;
+  --nb-text-muted: #626A66;
+  --nb-border: #171717;
+  --nb-border-strong: #171717;
+  --nb-divider: rgba(23, 23, 23, 0.25);
+  --nb-shadow: #171717;
+  --nb-accent: #123D32;
+  --nb-accent-gold: #D6AD52;
+  --nb-focus: #123D32;
+}
+
+.dark {
+  --nb-bg-deep: #171923;
+  --nb-bg: #171923;
+  --nb-bg-subtle: #171923;
+  --nb-surface: #303544;
+  --nb-surface-alt: #303544;
+  --nb-surface-elevated: #3A3F52;
+  --nb-text: #F0EEE8;
+  --nb-text-secondary: #B7BBC7;
+  --nb-text-muted: #8E94A5;
+  --nb-border: #454B5E;
+  --nb-border-strong: #C6A75E;
+  --nb-divider: #454B5E;
+  --nb-shadow: #11121A;
+  --nb-accent: #C6A75E;
+  --nb-accent-gold: #C6A75E;
+  --nb-focus: #C6A75E;
+  color-scheme: dark;
 }
 
 @layer base {
-  :root {
-    --nb-bg: #FAF7F0;
-    --nb-sidebar: #123D32;
-    --nb-sidebar-text: #FFFFFF;
-    --nb-header: #FFFFFF;
-    --nb-surface: #FFFFFF;
-    --nb-surface-secondary: #E5EEE7;
-    --nb-surface-alt: #EFE5D2;
-    --nb-text: #292D2B;
-    --nb-text-muted: #626A66;
-    --nb-border: #292D2B;
-    --nb-border-light: rgba(41, 45, 43, 0.16);
-    --nb-shadow-color: #292D2B;
-    --nb-accent: #D6AD52;
-    --nb-primary: #123D32;
-    --nb-teal: #237A70;
-  }
-
-  .dark {
-    --nb-bg: #101B2D;
-    --nb-sidebar: #16263D;
-    --nb-sidebar-text: #F1F4F8;
-    --nb-header: #16263D;
-    --nb-surface: #243A56;
-    --nb-surface-secondary: #16263D;
-    --nb-surface-alt: #1F334E;
-    --nb-text: #F1F4F8;
-    --nb-text-muted: #B4C0D0;
-    --nb-border: #34465D;
-    --nb-border-light: rgba(52, 70, 93, 0.7);
-    --nb-shadow-color: #0A111C;
-    --nb-accent: #D6AD52;
-    --nb-primary: #D6AD52;
-    --nb-secondary: #42658A;
-    --nb-soft-blue: #A9C5E8;
-  }
-
-  html {
-    font-family: var(--font-sans);
-    scroll-behavior: smooth;
-    background-color: var(--nb-bg);
-    color: var(--nb-text);
-  }
-
   body {
-    overflow-x: hidden;
     background-color: var(--nb-bg);
     color: var(--nb-text);
+    font-family: var(--font-sans);
     transition: background-color 0.2s ease, color 0.2s ease;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--nb-text);
+  }
+
+  select option {
+    background-color: #FFFFFF;
+    color: #171717;
+  }
+
+  .dark select option {
+    background-color: #303544;
+    color: #F0EEE8;
   }
 }
 
-/* =========================================================
-   MODERN NEO-BRUTALISM COMPONENT SYSTEM (WARM LIGHT & NAVY DARK)
-   ========================================================= */
+.font-serif-brand {
+  font-family: var(--font-serif);
+}
+
+.font-amiri {
+  font-family: var(--font-arabic);
+}
+
+/* ==========================================================================
+   NEO-BRUTALIST COMPONENT SYSTEM (CRISP 2PX BORDERS & OFFSET SHADOWS)
+   - Light Mode: 2px solid #171717 + crisp #171717 offset shadow
+   - Dark Mode:  Surface #32343C, 2px solid Slate/Charcoal #4A4D5A + #12121D offset shadow
+   ========================================================================== */
 
 .nb-card {
-  background-color: #FFFFFF;
-  border: 2px solid #292D2B;
-  border-radius: 8px;
-  box-shadow: 4px 4px 0px #292D2B;
-  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  background-color: var(--nb-surface);
+  color: var(--nb-text);
+  border: 2px solid var(--nb-border);
+  box-shadow: 4px 4px 0px var(--nb-shadow);
+  border-radius: 0.625rem;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background-color 0.18s ease;
 }
 
 .dark .nb-card {
-  background-color: #243A56;
-  border-color: #34465D;
-  box-shadow: 4px 4px 0px #0A111C;
+  background-color: #303544 !important;
+  color: #F0EEE8 !important;
+  border: 2px solid #454B5E !important;
+  box-shadow: 4px 4px 0px #11121A;
 }
 
 .nb-card-interactive {
-  background-color: #FFFFFF;
-  border: 2px solid #292D2B;
-  border-radius: 8px;
-  box-shadow: 4px 4px 0px #292D2B;
-  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  background-color: var(--nb-surface);
+  color: var(--nb-text);
+  border: 2px solid var(--nb-border);
+  box-shadow: 4px 4px 0px var(--nb-shadow);
+  border-radius: 0.625rem;
+  transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.18s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.18s ease, background-color 0.18s ease;
 }
 
 .dark .nb-card-interactive {
-  background-color: #243A56;
-  border-color: #34465D;
-  box-shadow: 4px 4px 0px #0A111C;
+  background-color: #303544 !important;
+  color: #F0EEE8 !important;
+  border: 2px solid #454B5E !important;
+  box-shadow: 4px 4px 0px #11121A;
 }
 
 .nb-card-interactive:hover {
   transform: translate(-2px, -2px);
-  box-shadow: 6px 6px 0px #292D2B;
+  border-color: var(--nb-border);
+  box-shadow: 6px 6px 0px var(--nb-shadow);
 }
 
 .dark .nb-card-interactive:hover {
-  border-color: #D6AD52;
-  box-shadow: 6px 6px 0px #D6AD52;
+  background-color: #3A3F52 !important;
+  border-color: #C6A75E !important;
+  box-shadow: 6px 6px 0px #11121A;
+}
+
+.nb-card-interactive:focus-visible {
+  outline: 2px solid var(--nb-focus);
+  outline-offset: 2px;
+  border-color: var(--nb-border);
 }
 
 .nb-card-interactive:active {
-  transform: translate(2px, 2px);
-  box-shadow: 2px 2px 0px #292D2B;
+  transform: translate(0px, 0px);
+  box-shadow: 2px 2px 0px var(--nb-shadow);
 }
 
-.dark .nb-card-interactive:active {
-  box-shadow: 2px 2px 0px #D6AD52;
-}
-
-/* Calm reading container for long-form articles & lesson notes */
+/* Reading Surface (Long-form Content, Articles, Q&A Detail, Modals) */
 .nb-reading-surface {
-  background-color: #FFFFFF;
-  border: 2px solid #292D2B;
-  border-radius: 8px;
-  box-shadow: 4px 4px 0px rgba(41, 45, 43, 0.14);
+  background-color: var(--nb-surface);
+  color: var(--nb-text);
+  border: 2px solid var(--nb-border);
+  box-shadow: 4px 4px 0px var(--nb-shadow);
+  border-radius: 0.625rem;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
 .dark .nb-reading-surface {
-  background-color: #16263D;
-  border-color: #34465D;
-  box-shadow: 4px 4px 0px rgba(10, 17, 28, 0.6);
+  background-color: #303544 !important;
+  color: #F0EEE8 !important;
+  border: 2px solid #454B5E !important;
+  box-shadow: 4px 4px 0px #11121A;
 }
 
-@media (max-width: 639px) {
-  .nb-reading-surface {
-    border: none;
-    box-shadow: none;
-    border-radius: 6px;
-  }
+/* Content Cards Dark Mode Styling (Charcoal #303544 surface, Border #454B5E, Gold #C6A75E hover border) */
+.dark .course-card,
+.dark .article-card,
+.dark .qa-card,
+.dark .stat-card,
+.dark .session-card,
+.dark .q-card {
+  background-color: #303544 !important;
+  color: #F0EEE8 !important;
+  border: 2px solid #454B5E !important;
+  box-shadow: 4px 4px 0px #11121A !important;
 }
 
-/* Neo-Brutalist Buttons */
+.dark .course-card:hover,
+.dark .article-card:hover,
+.dark .qa-card:hover,
+.dark .stat-card:hover,
+.dark .session-card:hover {
+  background-color: #3A3F52 !important;
+  border-color: #C6A75E !important;
+  box-shadow: 6px 6px 0px #11121A !important;
+}
+
+/* Buttons & Variants */
 .nb-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
+  gap: 0.45rem;
+  font-family: var(--font-sans);
   font-weight: 700;
-  border: 2px solid #292D2B;
-  border-radius: 6px;
-  box-shadow: 3px 3px 0px #292D2B;
-  transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease;
+  border: 2px solid var(--nb-border);
+  box-shadow: 2px 2px 0px var(--nb-shadow);
+  border-radius: 0.375rem;
+  transition: all 0.15s ease;
   cursor: pointer;
-}
-
-.dark .nb-btn {
-  border-color: #34465D;
-  box-shadow: 3px 3px 0px #0A111C;
 }
 
 .nb-btn:hover:not(:disabled) {
   transform: translate(-1px, -1px);
-  box-shadow: 4px 4px 0px #292D2B;
-}
-
-.dark .nb-btn:hover:not(:disabled) {
-  box-shadow: 4px 4px 0px #D6AD52;
-  border-color: #D6AD52;
+  box-shadow: 3px 3px 0px var(--nb-shadow);
 }
 
 .nb-btn:active:not(:disabled) {
-  transform: translate(2px, 2px);
-  box-shadow: 0px 0px 0px #292D2B;
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0px var(--nb-shadow);
 }
 
-.dark .nb-btn:active:not(:disabled) {
-  box-shadow: 0px 0px 0px #0A111C;
+.nb-btn:focus-visible {
+  outline: 2px solid var(--nb-focus);
+  outline-offset: 2px;
 }
 
 .nb-btn:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+  transform: none;
   box-shadow: none;
 }
 
 .nb-btn-primary {
   background-color: #123D32;
-  color: #FFFFFF;
-  border: 2px solid #292D2B;
+  color: #FAF7F0;
+  border-color: #171717;
+}
+
+.nb-btn-primary:hover:not(:disabled) {
+  background-color: #0E3128;
 }
 
 .dark .nb-btn-primary {
-  background-color: #D6AD52;
-  color: #101B2D;
-  border-color: #D6AD52;
+  background-color: #C6A75E !important;
+  color: #171923 !important;
+  border-color: #C6A75E !important;
+}
+
+.dark .nb-btn-primary:hover:not(:disabled) {
+  background-color: #D4B76E !important;
+  color: #171923 !important;
+  border-color: #D4B76E !important;
+}
+
+.nb-btn-secondary {
+  background-color: #FAF7F0;
+  color: #171717;
+  border-color: #171717;
+}
+
+.nb-btn-secondary:hover:not(:disabled) {
+  background-color: #EFE5D2;
+}
+
+.dark .nb-btn-secondary {
+  background-color: #303544 !important;
+  color: #F0EEE8 !important;
+  border-color: #454B5E !important;
+}
+
+.dark .nb-btn-secondary:hover:not(:disabled) {
+  background-color: #3A3F52 !important;
+  color: #C6A75E !important;
+  border-color: #C6A75E !important;
 }
 
 .nb-btn-gold {
   background-color: #D6AD52;
-  color: #101B2D;
-  border: 2px solid #292D2B;
+  color: #171717;
+  border-color: #171717;
+}
+
+.nb-btn-gold:hover:not(:disabled) {
+  background-color: #C99D40;
 }
 
 .dark .nb-btn-gold {
-  background-color: #D6AD52;
-  color: #101B2D;
-  border-color: #D6AD52;
+  background-color: #C6A75E !important;
+  color: #171923 !important;
+  border-color: #C6A75E !important;
 }
 
-.nb-btn-secondary {
-  background-color: #EFE5D2;
-  color: #292D2B;
-  border: 2px solid #292D2B;
-}
-
-.dark .nb-btn-secondary {
-  background-color: #243A56;
-  color: #F1F4F8;
-  border-color: #34465D;
+.dark .nb-btn-gold:hover:not(:disabled) {
+  background-color: #D4B76E !important;
+  color: #171923 !important;
+  border-color: #D4B76E !important;
 }
 
 .nb-btn-danger {
-  background-color: #F04438;
+  background-color: #D9534F;
   color: #FFFFFF;
-  border: 2px solid #292D2B;
+  border-color: #171717;
+}
+
+.nb-btn-danger:hover:not(:disabled) {
+  background-color: #C9433F;
 }
 
 .dark .nb-btn-danger {
-  background-color: #F04438;
+  background-color: #C94A4A;
   color: #FFFFFF;
-  border-color: #34465D;
+  border-color: #454B5E;
 }
 
-/* Neo-Brutalist Inputs */
+.dark .nb-btn-danger:hover:not(:disabled) {
+  background-color: #B83D3D;
+}
+
+/* Inputs, Selects & Textareas */
 .nb-input {
+  width: 100%;
   background-color: #FFFFFF;
-  color: #292D2B;
-  border: 2px solid #292D2B;
-  border-radius: 6px;
-  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+  color: #171717;
+  border: 2px solid #171717;
+  border-radius: 0.375rem;
+  padding: 0.625rem 0.875rem;
+  font-family: var(--font-sans);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+}
+
+.nb-input::placeholder {
+  color: #626A66;
+  opacity: 1;
 }
 
 .dark .nb-input {
-  background-color: #16263D;
-  color: #F1F4F8;
-  border-color: #34465D;
+  background-color: #171923 !important;
+  color: #F0EEE8 !important;
+  border: 2px solid #454B5E !important;
+}
+
+.dark .nb-input::placeholder {
+  color: #B7BBC7 !important;
+  opacity: 0.8;
 }
 
 .nb-input:focus {
   outline: none;
   border-color: #123D32;
-  box-shadow: 3px 3px 0px #D6AD52;
+  box-shadow: 3px 3px 0px #171717;
 }
 
 .dark .nb-input:focus {
-  border-color: #D6AD52;
-  box-shadow: 3px 3px 0px #D6AD52;
+  border-color: #C6A75E !important;
+  box-shadow: 3px 3px 0px #11121A !important;
 }
 
-/* Neo-Brutalist Badge */
+.nb-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Badges */
 .nb-badge {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  padding: 0.2rem 0.6rem;
+  gap: 0.3rem;
+  padding: 0.2rem 0.65rem;
+  font-family: var(--font-sans);
   font-size: 0.7rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  border: 2px solid #292D2B;
-  border-radius: 4px;
+  font-weight: 700;
+  border: 1.5px solid var(--nb-border);
+  border-radius: 0.375rem;
 }
 
-.dark .nb-badge {
-  border-color: #34465D;
+/* ==========================================================================
+   THEME CONSISTENCY & DARK MODE HARMONIZATION RULES
+   - Main Background: Midnight Navy #171923
+   - Secondary Background / Card / Sidebar / Panel: Dark Slate #252936
+   - Active CTA / Accent / Highlight: Soft Gold #C6A75E (Text #171923)
+   - Primary Text: Warm White #F0EEE8
+   - Secondary Text: Soft Gray #B7BBC7
+   - Borders: Dark Slate / Charcoal #363B4E (Accent border: #C6A75E)
+   ========================================================================== */
+
+/* 1. Utility classes for offwhite / blue-gray / slate-gray */
+.text-offwhite,
+.text-off-white {
+  color: #F0EEE8;
 }
 
-.font-amiri {
-  font-family: var(--font-amiri);
+.text-slate-gray {
+  color: #525856;
 }
 
-.font-serif-brand {
-  font-family: var(--font-serif-brand);
+.dark .dark\:text-offwhite,
+.dark .dark\:text-off-white {
+  color: #F0EEE8 !important;
 }
 
-.font-arabic {
-  font-family: var(--font-arabic);
+.dark .dark\:text-blue-gray {
+  color: #B7BBC7 !important;
 }
 
-/* Automatic Arabic Typography Detection Class */
+/* 2. Harmonize Dark Mode Backgrounds */
+/* Main page / deepest page background -> #171923 */
+.dark .dark\:bg-navy-bg,
+.dark .dark\:bg-navy-deep,
+.dark .bg-navy-deep,
+.dark .bg-navy-bg {
+  background-color: #171923 !important;
+}
+
+/* Primary panels, cards, sidebars, headers, dialogs, excerpts, and subcontainers -> #303544 */
+.dark [class*="dark:bg-[#001722]"],
+.dark [class*="dark:bg-[#143331]"],
+.dark [class*="dark:bg-[#0D2B36]"],
+.dark [class*="dark:bg-[#102C2B]"],
+.dark [class*="dark:bg-[#171A2E]"],
+.dark [class*="dark:bg-[#101B2D]"],
+.dark [class*="dark:bg-[#06251D]"],
+.dark [class*="dark:bg-[#071F1A]"],
+.dark [class*="dark:bg-[#1A1A28]"],
+.dark [class*="dark:bg-[#1F5F63]"],
+.dark [class*="dark:bg-[#193A37]"],
+.dark [class*="dark:bg-[#202440]"],
+.dark [class*="dark:bg-[#16263D]"],
+.dark [class*="dark:bg-[#082A21]"],
+.dark [class*="dark:bg-[#0B3026]"],
+.dark [class*="dark:bg-[#0D2D25]"],
+.dark [class*="dark:bg-[#0A3D4A]"],
+.dark [class*="dark:bg-[#214743]"],
+.dark [class*="dark:bg-[#252B49]"],
+.dark [class*="dark:bg-[#243A56]"],
+.dark [class*="dark:bg-[#1F334E]"],
+.dark [class*="dark:bg-[#123A30]"],
+.dark [class*="dark:bg-[#10606F]"],
+.dark [class*="dark:bg-[#0D4E5B]"],
+.dark [class*="dark:bg-[#32343C]"],
+.dark [class*="dark:bg-[#252936]"],
+.dark [class*="dark:bg-[#E6C719]"],
+.dark .dark\:bg-navy-surface,
+.dark .dark\:bg-navy-surface-alt {
+  background-color: #303544 !important;
+}
+
+/* Interactive hover surfaces in dark mode -> #3A3F52 */
+.dark [class*="dark:hover:bg-[#1F5F63]"]:hover,
+.dark [class*="dark:hover:bg-[#252B49]"]:hover,
+.dark [class*="dark:hover:bg-[#243A56]"]:hover,
+.dark [class*="dark:hover:bg-[#0B3026]"]:hover,
+.dark [class*="dark:hover:bg-[#06251D]"]:hover,
+.dark [class*="dark:hover:bg-[#16263D]"]:hover,
+.dark [class*="dark:hover:bg-[#202440]"]:hover,
+.dark [class*="dark:hover:bg-[#1F334E]"]:hover,
+.dark [class*="dark:hover:bg-[#123A30]"]:hover,
+.dark [class*="dark:hover:bg-[#3D404B]"]:hover,
+.dark [class*="dark:hover:bg-[#2F3445]"]:hover,
+.dark .dark\:hover\:bg-navy-surface:hover,
+.dark .dark\:hover\:bg-navy-surface-alt:hover {
+  background-color: #3A3F52 !important;
+}
+
+/* Active buttons, active tabs, CTA pills, highlights in dark mode -> Soft Gold #C6A75E (Text #171923) */
+.dark [class*="dark:bg-[#4CA7A1]"],
+.dark [class*="dark:bg-[#6D83FF]"],
+.dark [class*="dark:bg-[#D6AD52]"],
+.dark [class*="dark:bg-[#E2BD6B]"],
+.dark [class*="dark:bg-[#F2D98A]"],
+.dark [class*="dark:bg-[#FFCC00]"],
+.dark [class*="dark:bg-[#FFDE10]"] {
+  background-color: #C6A75E !important;
+  color: #171923 !important;
+}
+
+.dark [class*="dark:hover:bg-[#5A70F0]"]:hover,
+.dark [class*="dark:hover:bg-[#4CA7A1]"]:hover,
+.dark [class*="dark:hover:bg-[#FFE642]"]:hover {
+  background-color: #D4B76E !important;
+  color: #171923 !important;
+}
+
+/* 3. Harmonize Dark Mode Text Colors (Warm White #F0EEE8 Primary & Soft Gray #B7BBC7 Secondary) */
+.dark [class*="dark:text-[#CEFEF1]"],
+.dark [class*="dark:text-[#F0F7F5]"],
+.dark [class*="dark:text-[#F4F6F9]"],
+.dark [class*="dark:text-[#F1F4F8]"],
+.dark [class*="dark:text-[#F3F4FA]"],
+.dark [class*="dark:text-[#F8F3E8]"],
+.dark [class*="dark:text-[#F6F1E7]"],
+.dark [class*="dark:text-[#EDF4F2]"],
+.dark [class*="dark:text-[#F2F7F5]"],
+.dark [class*="dark:text-[#E2F4F0]"],
+.dark [class*="dark:text-[#E2E8F0]"],
+.dark [class*="dark:text-[#F2F5F4]"] {
+  color: #F0EEE8 !important;
+}
+
+.dark [class*="dark:text-[#A6D6C9]"],
+.dark [class*="dark:text-[#B9C9C5]"],
+.dark [class*="dark:text-[#A0A8C0]"],
+.dark [class*="dark:text-[#B4C0D0]"],
+.dark [class*="dark:text-[#A6B0CF]"],
+.dark [class*="dark:text-[#A9C5E8]"],
+.dark [class*="dark:text-[#94A3B8]"],
+.dark [class*="dark:text-[#C4D3CE]"],
+.dark [class*="dark:text-[#B2C5BF]"],
+.dark [class*="dark:text-[#88A39B]"],
+.dark [class*="dark:text-[#B4C6DF]"],
+.dark [class*="dark:text-[#B8DAD5]"],
+.dark [class*="dark:text-[#98D8D0]"],
+.dark [class*="dark:text-[#B0B8C1]"],
+.dark .dark\:text-stone-300,
+.dark .dark\:text-stone-400 {
+  color: #B7BBC7 !important;
+}
+
+/* Catch un-overridden dark text classes inside dark mode containers */
+.dark .text-charcoal:not([class*="bg-yellow"]):not([class*="bg-[#C6A75E]"]):not([class*="bg-[#FFDE10]"]):not([class*="bg-[#FFCC00]"]):not([class*="bg-[#4CA7A1]"]):not([class*="bg-[#F2D98A]"]):not([class*="bg-[#E2BD6B]"]):not([class*="bg-[#D6AD52]"]):not([class*="bg-[#D9AC45]"]):not([class*="bg-[#A8E6CF]"]):not([class*="bg-[#A6D6C9]"]):not([class*="bg-[#B8E8D8]"]):not([class*="bg-mint"]):not([class*="bg-amber"]):not([class*="bg-white"]) {
+  color: #F0EEE8;
+}
+
+.dark .text-charcoal-light,
+.dark .text-slate-gray,
+.dark .text-stone-500,
+.dark .text-stone-600 {
+  color: #B7BBC7;
+}
+
+/* Highlights / Accents in dark mode -> Soft Gold #C6A75E */
+.dark [class*="dark:text-[#4CA7A1]"],
+.dark [class*="dark:text-[#D6AD52]"],
+.dark [class*="dark:text-[#D9AC45]"],
+.dark [class*="dark:text-[#E2BD6B]"],
+.dark [class*="dark:text-[#E5BE68]"],
+.dark [class*="dark:text-[#F2D98A]"],
+.dark [class*="dark:text-[#FACC15]"],
+.dark [class*="dark:text-[#FFDE10]"],
+.dark [class*="dark:text-[#6D83FF]"] {
+  color: #C6A75E !important;
+}
+
+/* 4. Harmonize Borders in Dark Mode -> Harmonious Dark Slate #454B5E */
+:root:not(.dark) [class*="border-[#292D2B]"],
+:root:not(.dark) .border-charcoal {
+  border-color: #171717;
+}
+
+.dark [class*="dark:border-[#4CA7A1]"],
+.dark [class*="dark:border-[#B8E8D8]"],
+.dark [class*="dark:border-[#333B63]"],
+.dark [class*="dark:border-[#34465D]"],
+.dark [class*="dark:border-[#124235]"],
+.dark [class*="dark:border-[#1B6A78]"],
+.dark [class*="dark:border-[#99E2D3]"],
+.dark [class*="dark:border-[#6D83FF]"],
+.dark [class*="dark:border-[#D9AC45]"],
+.dark [class*="dark:border-[#D6AD52]"],
+.dark [class*="dark:border-slate-700"],
+.dark [class*="dark:border-stone-800"],
+.dark [class*="border-[#171717]"],
+.dark [class*="border-[#292D2B]"],
+.dark [class*="border-[#1E2422]"],
+.dark .border-charcoal,
+.dark [class*="dark:border-off-white"],
+.dark [class*="dark:border-offwhite"],
+.dark [class*="dark:border-blue-gray"],
+.dark [class*="dark:border-[#A6D6C9]"],
+.dark [class*="dark:border-[#4A4D5A]"],
+.dark [class*="dark:border-[#363B4E]"],
+.dark [class*="dark:border-[#C4A915]"] {
+  border-color: #454B5E !important;
+}
+
+/* Dividers between table rows and Q&A items in dark mode -> #454B5E */
+.dark [class*="dark:divide-[#4CA7A1]"] > :not([hidden]) ~ :not([hidden]),
+.dark [class*="dark:divide-[#333B63]"] > :not([hidden]) ~ :not([hidden]),
+.dark [class*="dark:divide-[#34465D]"] > :not([hidden]) ~ :not([hidden]),
+.dark [class*="dark:divide-[#124235]"] > :not([hidden]) ~ :not([hidden]),
+.dark [class*="dark:divide-[#D9AC45]"] > :not([hidden]) ~ :not([hidden]),
+.dark [class*="dark:divide-slate-700"] > :not([hidden]) ~ :not([hidden]),
+.dark [class*="dark:divide-stone-800"] > :not([hidden]) ~ :not([hidden]),
+.dark [class*="divide-charcoal"] > :not([hidden]) ~ :not([hidden]),
+.dark [class*="divide-slate-200"] > :not([hidden]) ~ :not([hidden]),
+.dark [class*="divide-stone-200"] > :not([hidden]) ~ :not([hidden]),
+.dark [class*="divide-[#171717]"] > :not([hidden]) ~ :not([hidden]),
+.dark [class*="divide-[#292D2B]"] > :not([hidden]) ~ :not([hidden]) {
+  border-color: #454B5E !important;
+}
+
+/* ==========================================================================
+   ARABIC TYPOGRAPHY & SCALABLE READING CONTROLS
+   ========================================================================== */
+
+:root {
+  --reading-font-scale: 1;
+}
+
 .arabic-text {
-  font-family: 'Amiri', 'Scheherazade New', 'Traditional Arabic', serif !important;
-  font-size: 1.38em;
-  line-height: 2.25;
+  font-family: var(--font-arabic);
+  direction: rtl;
+  line-height: 1.8 !important;
+  font-size: calc(1.375rem * var(--reading-font-scale, 1));
+  font-weight: 400;
+  padding: 0.25em 0;
+  word-spacing: 0.05em;
+  letter-spacing: 0;
+  font-feature-settings: "kern" 1, "liga" 1, "calt" 1, "mkmk" 1, "mark" 1;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  overflow-wrap: break-word;
+}
+
+/* 1. Short Inline Arabic Text in Paragraphs, Lists & Tables:
+   - Strictly inline element (span), 1.25em relative to surrounding Latin text
+   - Zero border, zero background, zero padding/margin, no card styling
+   - Proportional line-height so paragraph lines never expand disproportionately */
+.arabic-inline,
+.inline-arabic,
+.blog-content .inline-arabic,
+.blog-content .arabic-inline,
+.blog-content span[dir="rtl"],
+.blog-content bdi,
+.rich-editor-content .inline-arabic,
+.rich-editor-content .arabic-inline,
+.rich-editor-content span[dir="rtl"],
+.rich-editor-content bdi {
+  display: inline !important;
+  font-family: var(--font-arabic);
   direction: rtl;
   unicode-bidi: isolate;
+  font-size: 1.25em !important;
+  line-height: 1.25 !important;
+  vertical-align: baseline;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  font-feature-settings: "kern" 1, "liga" 1, "calt" 1, "mkmk" 1, "mark" 1;
+  text-rendering: optimizeLegibility;
+}
+
+.reading-scalable-text {
+  font-size: calc(0.9375rem * var(--reading-font-scale, 1));
+  line-height: 1.8;
+}
+
+.reading-scalable-excerpt {
+  font-size: calc(0.9375rem * var(--reading-font-scale, 1));
+  line-height: 1.75;
+}
+
+.reading-scalable-arabic {
+  font-family: var(--font-arabic);
+  direction: rtl;
+  font-size: calc(1.375rem * var(--reading-font-scale, 1));
+  line-height: 1.8 !important;
+}
+
+@media (max-width: 640px) {
+  .reading-scalable-text {
+    font-size: calc(0.875rem * var(--reading-font-scale, 1));
+  }
+  .reading-scalable-arabic {
+    font-size: calc(1.25rem * var(--reading-font-scale, 1));
+  }
+}
+
+/* ==========================================================================
+   BLOG CONTENT & RICH TEXT EDITOR TYPOGRAPHY (LIGHT & DARK MODE LEGIBILITY)
+   ========================================================================== */
+
+.blog-content,
+.rich-editor-content {
+  font-family: var(--font-serif);
+  font-size: calc(0.96875rem * var(--reading-font-scale, 1));
+  line-height: 1.85;
+  color: var(--nb-text);
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  word-break: break-word;
+  max-width: 100%;
+}
+
+@media (max-width: 640px) {
+  .blog-content,
+  .rich-editor-content {
+    font-size: calc(0.9125rem * var(--reading-font-scale, 1));
+  }
+}
+
+.blog-content *,
+.rich-editor-content * {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.blog-content p,
+.rich-editor-content p {
+  margin-bottom: 1.15rem;
+  color: inherit;
+}
+
+.blog-content p:empty,
+.rich-editor-content p:empty {
+  display: none !important;
+}
+
+/* Preserve inline text-align set by the editor */
+.blog-content [style*="text-align: center"],
+.rich-editor-content [style*="text-align: center"] {
+  text-align: center;
+}
+
+.blog-content [style*="text-align: right"],
+.rich-editor-content [style*="text-align: right"] {
+  text-align: right;
+}
+
+.blog-content [style*="text-align: justify"],
+.rich-editor-content [style*="text-align: justify"] {
+  text-align: justify;
+}
+
+.blog-content [style*="text-align: left"],
+.rich-editor-content [style*="text-align: left"] {
+  text-align: left;
+}
+
+.blog-content h1,
+.blog-content h2,
+.blog-content h3,
+.blog-content h4,
+.blog-content h5,
+.blog-content h6,
+.rich-editor-content h1,
+.rich-editor-content h2,
+.rich-editor-content h3,
+.rich-editor-content h4,
+.rich-editor-content h5,
+.rich-editor-content h6 {
+  font-family: var(--font-display);
   font-weight: 700;
-  letter-spacing: 0;
-  padding: 0 0.15em;
+  color: var(--nb-text);
+  margin-top: 1.75rem;
+  margin-bottom: 0.7rem;
+  line-height: 1.35;
+}
+
+.blog-content h1,
+.rich-editor-content h1 {
+  font-size: calc(1.625rem * var(--reading-font-scale, 1));
+}
+
+.blog-content h2,
+.rich-editor-content h2 {
+  font-size: calc(1.35rem * var(--reading-font-scale, 1));
+  padding-bottom: 0.4rem;
+  border-bottom: 2px solid var(--nb-divider);
+}
+
+.blog-content h3,
+.rich-editor-content h3 {
+  font-size: calc(1.15rem * var(--reading-font-scale, 1));
+}
+
+.blog-content h4,
+.rich-editor-content h4 {
+  font-size: calc(1.025rem * var(--reading-font-scale, 1));
+}
+
+.blog-content strong,
+.blog-content b,
+.rich-editor-content strong,
+.rich-editor-content b {
+  font-weight: 700;
+  color: var(--nb-text);
+}
+
+.blog-content em,
+.blog-content i,
+.rich-editor-content em,
+.rich-editor-content i {
+  color: inherit;
+}
+
+.blog-content a,
+.rich-editor-content a {
   color: #123D32;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font-weight: 700;
 }
 
-.dark .arabic-text {
-  color: #D6AD52;
+.dark .blog-content a,
+.dark .rich-editor-content a {
+  color: #C6A75E !important;
+  text-decoration-color: #C6A75E;
 }
 
-/* Custom Subtle Scrollbars */
+.blog-content ul,
+.rich-editor-content ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+  margin-bottom: 1.15rem;
+  color: inherit;
+}
+
+.blog-content ol,
+.rich-editor-content ol {
+  list-style-type: decimal;
+  padding-left: 1.5rem;
+  margin-bottom: 1.15rem;
+  color: inherit;
+}
+
+.blog-content li,
+.rich-editor-content li {
+  margin-bottom: 0.35rem;
+  color: inherit;
+}
+
+.blog-content li p,
+.rich-editor-content li p {
+  margin-bottom: 0.2rem;
+}
+
+.blog-content li::marker,
+.rich-editor-content li::marker {
+  color: var(--nb-text-secondary);
+}
+
+.blog-content blockquote,
+.rich-editor-content blockquote {
+  border: 2px solid var(--nb-border);
+  border-left: 4px solid #123D32;
+  padding: 0.75rem 1rem;
+  margin: 0.75rem 0;
+  background-color: var(--nb-surface-alt);
+  color: var(--nb-text);
+  border-radius: 0.5rem;
+  font-style: italic;
+}
+
+.blog-content blockquote > p:last-child,
+.rich-editor-content blockquote > p:last-child {
+  margin-bottom: 0;
+}
+
+.dark .blog-content blockquote,
+.dark .rich-editor-content blockquote {
+  border-color: #363B4E;
+  border-left: 4px solid #C6A75E;
+  background-color: #252936;
+  color: #F0EEE8;
+}
+
+/* 2. Long Arabic Quote Blocks inside Blog Content & Lesson Notes:
+   - Scoped strictly to block-level quote containers (never inline spans)
+   - Desktop padding: 12px 16px (0.75rem 1rem), Mobile padding: 8px 12px (0.5rem 0.75rem)
+   - Compact vertical margin: 0.75rem 0 desktop, 0.5rem 0 mobile
+   - Proportional font-size: 22px (1.375rem) desktop, 20px (1.25rem) mobile, scalable
+   - Line-height: 1.8 so harakat remain legible without excessive container height */
+.blog-content .arabic-quote-block,
+.blog-content div[dir="rtl"],
+.blog-content blockquote[dir="rtl"],
+.blog-content p[dir="rtl"],
+.blog-content .arabic-text:not(span):not(.inline-arabic),
+.rich-editor-content .arabic-quote-block,
+.rich-editor-content div[dir="rtl"],
+.rich-editor-content blockquote[dir="rtl"],
+.rich-editor-content p[dir="rtl"],
+.rich-editor-content .arabic-text:not(span):not(.inline-arabic) {
+  display: block;
+  font-family: var(--font-arabic);
+  direction: rtl;
+  text-align: right;
+  font-style: normal;
+  font-size: calc(1.375rem * var(--reading-font-scale, 1)) !important;
+  line-height: 1.8 !important;
+  margin: 0.75rem 0 !important;
+  padding: 0.75rem 1rem !important;
+  background-color: var(--nb-surface-alt);
+  color: var(--nb-text);
+  border-radius: 0.5rem;
+  border: 2px solid var(--nb-border);
+  border-right: 4px solid #123D32;
+  word-spacing: 0.05em;
+  font-feature-settings: "kern" 1, "liga" 1, "calt" 1, "mkmk" 1, "mark" 1;
+  text-rendering: optimizeLegibility;
+}
+
+@media (max-width: 640px) {
+  .blog-content blockquote,
+  .rich-editor-content blockquote {
+    padding: 0.5rem 0.75rem;
+    margin: 0.5rem 0;
+  }
+
+  .blog-content .arabic-quote-block,
+  .blog-content div[dir="rtl"],
+  .blog-content blockquote[dir="rtl"],
+  .blog-content p[dir="rtl"],
+  .blog-content .arabic-text:not(span):not(.inline-arabic),
+  .rich-editor-content .arabic-quote-block,
+  .rich-editor-content div[dir="rtl"],
+  .rich-editor-content blockquote[dir="rtl"],
+  .rich-editor-content p[dir="rtl"],
+  .rich-editor-content .arabic-text:not(span):not(.inline-arabic) {
+    font-size: calc(1.25rem * var(--reading-font-scale, 1)) !important;
+    line-height: 1.8 !important;
+    margin: 0.5rem 0 !important;
+    padding: 0.5rem 0.75rem !important;
+  }
+}
+
+.dark .arabic-quote-block,
+.dark .reading-scalable-arabic,
+.dark blockquote[dir="rtl"],
+.dark div[dir="rtl"].p-4,
+.dark div[dir="rtl"].p-6,
+.dark .blog-content .arabic-quote-block,
+.dark .blog-content div[dir="rtl"],
+.dark .blog-content blockquote[dir="rtl"],
+.dark .blog-content p[dir="rtl"],
+.dark .blog-content .arabic-text:not(span):not(.inline-arabic),
+.dark .rich-editor-content .arabic-quote-block,
+.dark .rich-editor-content div[dir="rtl"],
+.dark .rich-editor-content blockquote[dir="rtl"],
+.dark .rich-editor-content p[dir="rtl"],
+.dark .rich-editor-content .arabic-text:not(span):not(.inline-arabic) {
+  background-color: #C6A75E !important;
+  color: #171923 !important;
+  border: 1px solid #A88C49 !important;
+  border-right: 4px solid #A88C49 !important;
+}
+
+.dark .arabic-quote-block *,
+.dark .reading-scalable-arabic *,
+.dark blockquote[dir="rtl"] *,
+.dark div[dir="rtl"].p-4 *,
+.dark div[dir="rtl"].p-6 *,
+.dark .blog-content .arabic-quote-block *,
+.dark .blog-content div[dir="rtl"] *,
+.dark .blog-content blockquote[dir="rtl"] *,
+.dark .blog-content p[dir="rtl"] *,
+.dark .blog-content .arabic-text:not(span):not(.inline-arabic) *,
+.dark .rich-editor-content .arabic-quote-block *,
+.dark .rich-editor-content div[dir="rtl"] *,
+.dark .rich-editor-content blockquote[dir="rtl"] *,
+.dark .rich-editor-content p[dir="rtl"] *,
+.dark .rich-editor-content .arabic-text:not(span):not(.inline-arabic) * {
+  color: #171923 !important;
+}
+
+/* Reset nested elements inside Arabic quote containers so they never create duplicate boxes, borders, or extra margins */
+.blog-content .arabic-quote-block p,
+.blog-content .arabic-quote-block h1,
+.blog-content .arabic-quote-block h2,
+.blog-content .arabic-quote-block h3,
+.blog-content .arabic-quote-block h4,
+.blog-content .arabic-quote-block h5,
+.blog-content .arabic-quote-block h6,
+.blog-content .arabic-quote-block blockquote,
+.blog-content .arabic-quote-block span,
+.blog-content div[dir="rtl"] p,
+.blog-content div[dir="rtl"] h1,
+.blog-content div[dir="rtl"] h2,
+.blog-content div[dir="rtl"] h3,
+.blog-content div[dir="rtl"] h4,
+.blog-content div[dir="rtl"] h5,
+.blog-content div[dir="rtl"] h6,
+.blog-content div[dir="rtl"] blockquote,
+.blog-content div[dir="rtl"] span,
+.blog-content blockquote[dir="rtl"] p,
+.rich-editor-content .arabic-quote-block p,
+.rich-editor-content .arabic-quote-block h1,
+.rich-editor-content .arabic-quote-block h2,
+.rich-editor-content .arabic-quote-block h3,
+.rich-editor-content .arabic-quote-block blockquote,
+.rich-editor-content .arabic-quote-block span,
+.rich-editor-content div[dir="rtl"] p,
+.rich-editor-content div[dir="rtl"] h3,
+.rich-editor-content div[dir="rtl"] blockquote {
+  font-family: var(--font-arabic) !important;
+  font-size: inherit !important;
+  line-height: 1.8 !important;
+  font-style: normal !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+/* When an Arabic quote div is already inside an outer blockquote (e.g. quote + source citation),
+   avoid rendering a box-inside-a-box */
+.blog-content blockquote .arabic-quote-block,
+.blog-content blockquote div[dir="rtl"],
+.rich-editor-content blockquote .arabic-quote-block,
+.rich-editor-content blockquote div[dir="rtl"] {
+  border: 0 !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 0 0.35rem 0 !important;
+}
+
+/* Preserve explicit alignment on Arabic blocks if set by author */
+.blog-content .arabic-quote-block[style*="text-align: center"],
+.blog-content div[dir="rtl"][style*="text-align: center"],
+.blog-content p[dir="rtl"][style*="text-align: center"],
+.blog-content .arabic-text[style*="text-align: center"],
+.rich-editor-content .arabic-quote-block[style*="text-align: center"],
+.rich-editor-content div[dir="rtl"][style*="text-align: center"],
+.rich-editor-content .arabic-text[style*="text-align: center"] {
+  text-align: center;
+}
+
+/* Tables inside Blog Content & RichTextEditor */
+.blog-content table,
+.rich-editor-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.5rem 0;
+  font-family: var(--font-sans);
+  font-size: 0.925rem;
+  line-height: 1.6;
+  border: 2px solid var(--nb-border) !important;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  background-color: var(--nb-surface);
+  color: var(--nb-text);
+}
+
+.blog-content th,
+.rich-editor-content th {
+  background-color: var(--nb-surface-alt) !important;
+  color: var(--nb-text) !important;
+  font-weight: 700;
+  text-align: left;
+  padding: 0.7rem 0.9rem;
+  border: 1.5px solid var(--nb-border) !important;
+}
+
+.blog-content td,
+.rich-editor-content td {
+  padding: 0.7rem 0.9rem;
+  border: 1.5px solid var(--nb-border) !important;
+  color: var(--nb-text) !important;
+  background-color: transparent !important;
+}
+
+.blog-content tr:nth-child(even) td,
+.rich-editor-content tr:nth-child(even) td {
+  background-color: rgba(18, 61, 50, 0.04) !important;
+}
+
+.dark .blog-content tr:nth-child(even) td,
+.dark .rich-editor-content tr:nth-child(even) td {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+}
+
+/* Code & Pre blocks inside Blog Content */
+.blog-content pre,
+.rich-editor-content pre {
+  background-color: var(--nb-surface-alt);
+  color: var(--nb-text);
+  border: 2px solid var(--nb-border);
+  border-radius: 0.5rem;
+  padding: 0.9rem 1.15rem;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  margin: 1.35rem 0;
+}
+
+.blog-content code,
+.rich-editor-content code {
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+  background-color: var(--nb-surface-alt);
+  color: var(--nb-text);
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.375rem;
+}
+
+.blog-content figcaption,
+.rich-editor-content figcaption {
+  font-family: var(--font-sans);
+  font-size: 0.825rem;
+  color: var(--nb-text-secondary) !important;
+  text-align: center;
+  margin-top: 0.5rem;
+}
+
+.blog-content hr,
+.rich-editor-content hr {
+  border: 0;
+  border-top: 2px solid var(--nb-divider);
+  margin: 1.75rem 0;
+}
+
+/* CRITICAL: Safely neutralize dark inline text colors from copy-pasted HTML in Dark Mode
+   without touching layout, alignment, or font-family attributes */
+.dark .blog-content [style*="color: rgb(0, 0, 0)"],
+.dark .blog-content [style*="color: rgb(17, 24, 39)"],
+.dark .blog-content [style*="color: rgb(23, 23, 23)"],
+.dark .blog-content [style*="color: rgb(28, 25, 23)"],
+.dark .blog-content [style*="color: rgb(30, 36, 34)"],
+.dark .blog-content [style*="color: rgb(31, 41, 55)"],
+.dark .blog-content [style*="color: rgb(41, 37, 36)"],
+.dark .blog-content [style*="color: rgb(41, 45, 43)"],
+.dark .blog-content [style*="color: rgb(51, 51, 51)"],
+.dark .blog-content [style*="color: rgb(55, 65, 81)"],
+.dark .blog-content [style*="color: rgb(68, 64, 60)"],
+.dark .blog-content [style*="color: rgb(75, 85, 99)"],
+.dark .blog-content [style*="color:#000"],
+.dark .blog-content [style*="color: #000"],
+.dark .blog-content [style*="color:#111"],
+.dark .blog-content [style*="color: #111"],
+.dark .blog-content [style*="color:#171717"],
+.dark .blog-content [style*="color: #171717"],
+.dark .blog-content [style*="color:#1E2422"],
+.dark .blog-content [style*="color: #1E2422"],
+.dark .blog-content [style*="color:#222"],
+.dark .blog-content [style*="color: #222"],
+.dark .blog-content [style*="color:#292D2B"],
+.dark .blog-content [style*="color: #292D2B"],
+.dark .blog-content [style*="color:#333"],
+.dark .blog-content [style*="color: #333"],
+.dark .blog-content [style*="color:#444"],
+.dark .blog-content [style*="color: #444"],
+.dark .blog-content [style*="color: black"],
+.dark .blog-content font[color="#000000"],
+.dark .blog-content font[color="#171717"],
+.dark .blog-content font[color="#292D2B"],
+.dark .rich-editor-content [style*="color: rgb(0, 0, 0)"],
+.dark .rich-editor-content [style*="color: rgb(23, 23, 23)"],
+.dark .rich-editor-content [style*="color: rgb(41, 45, 43)"],
+.dark .rich-editor-content [style*="color:#000"],
+.dark .rich-editor-content [style*="color: #000"],
+.dark .rich-editor-content [style*="color:#171717"],
+.dark .rich-editor-content [style*="color: #171717"],
+.dark .rich-editor-content [style*="color:#292D2B"],
+.dark .rich-editor-content [style*="color: #292D2B"] {
+  color: #F2F5F4 !important;
+}
+
+/* Neutralize light inline background-colors on spans/paragraphs pasted from external docs in Dark Mode */
+.dark .blog-content span[style*="background-color: rgb(255, 255, 255)"],
+.dark .blog-content span[style*="background-color: #ffffff"],
+.dark .blog-content span[style*="background-color:#ffffff"],
+.dark .blog-content p[style*="background-color: rgb(255, 255, 255)"],
+.dark .rich-editor-content span[style*="background-color: rgb(255, 255, 255)"],
+.dark .rich-editor-content p[style*="background-color: rgb(255, 255, 255)"] {
+  background-color: transparent !important;
+}
+
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #FAF7F0;
-  border-left: 2px solid #292D2B;
-}
-
-.dark ::-webkit-scrollbar-track {
-  background: #101B2D;
-  border-left: 2px solid #34465D;
+  background: var(--nb-bg);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #123D32;
-  border: 1px solid #292D2B;
+  background: var(--nb-border);
+  border-radius: 9999px;
 }
 
-.dark ::-webkit-scrollbar-thumb {
-  background: #42658A;
-  border: 1px solid #101B2D;
+::-webkit-scrollbar-thumb:hover {
+  background: var(--nb-text-secondary);
 }
 
-/* Subtle Islamic Geometric Pattern Overlay */
-.bg-islamic-pattern {
-  background-image: radial-gradient(rgba(214, 173, 82, 0.15) 1.5px, transparent 1.5px);
-  background-size: 20px 20px;
+.no-scrollbar::-webkit-scrollbar,
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
 }
 
-/* Animations */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+.no-scrollbar,
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+/* Audio Player Highlight Sync */
+.blog-content [data-audio-block],
+.blog-title-block[data-audio-block] {
+  transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease;
+  border-radius: 0.5rem;
 }
 
-@keyframes modalIn {
-  from {
-    opacity: 0;
-    transform: scale(0.98) translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
+.blog-content [data-audio-block].audio-active-block,
+.blog-title-block[data-audio-block].audio-active-block {
+  background-color: rgba(18, 61, 50, 0.1) !important;
+  box-shadow: -3px 0 0 0 #123D32, 0 0 0 4px rgba(18, 61, 50, 0.1);
 }
 
-.animate-fade-in {
-  animation: fadeIn 0.25s ease-out forwards;
+.dark .blog-content [data-audio-block].audio-active-block,
+.dark .blog-title-block[data-audio-block].audio-active-block {
+  background-color: rgba(198, 167, 94, 0.15) !important;
+  box-shadow: -3px 0 0 0 #C6A75E, 0 0 0 4px rgba(198, 167, 94, 0.15);
+  color: #F0EEE8 !important;
 }
 
-.animate-fade-in-up {
-  animation: fadeInUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+.audio-sentence-span {
+  transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+  border-radius: 0.25rem;
 }
 
-.animate-modal-in {
-  animation: modalIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+.audio-active-sentence {
+  background-color: rgba(214, 173, 82, 0.35) !important;
+  color: #171717 !important;
+  box-shadow: 0 0 0 2px rgba(214, 173, 82, 0.35);
 }
 
-/* Rich Text Editor & Calm Long-Form Blog Content Styling */
-.rich-editor-content:empty:before {
-  content: attr(data-placeholder);
-  color: #626A66;
-  pointer-events: none;
-  display: block;
+.dark .audio-active-sentence {
+  background-color: rgba(198, 167, 94, 0.25) !important;
+  color: #F0EEE8 !important;
+  box-shadow: 0 0 0 2px rgba(198, 167, 94, 0.35);
 }
 
-.rich-editor-content h1,
-.blog-content h1 {
-  font-size: 1.75rem;
-  font-weight: 800;
-  margin-top: 1.6rem;
-  margin-bottom: 0.75rem;
-  line-height: 1.25;
-  font-family: var(--font-serif-brand);
-  color: #292D2B;
+.audio-word-span {
+  transition: background-color 0.12s ease, color 0.12s ease;
+  border-radius: 0.2rem;
 }
 
-.dark .rich-editor-content h1,
-.dark .blog-content h1 {
-  color: #F1F4F8;
-}
-
-.rich-editor-content h2,
-.blog-content h2 {
-  font-size: 1.4rem;
-  font-weight: 800;
-  margin-top: 1.5rem;
-  margin-bottom: 0.65rem;
-  line-height: 1.3;
-  font-family: var(--font-serif-brand);
-  color: #123D32;
-}
-
-.dark .rich-editor-content h2,
-.dark .blog-content h2 {
-  color: #D6AD52;
-}
-
-.rich-editor-content h3,
-.blog-content h3 {
-  font-size: 1.18rem;
+.audio-active-word {
+  background-color: #123D32 !important;
+  color: #FFFFFF !important;
   font-weight: 700;
-  margin-top: 1.25rem;
-  margin-bottom: 0.5rem;
-  line-height: 1.4;
-  color: #237A70;
+  box-shadow: 0 0 0 2px #123D32;
 }
 
-.dark .rich-editor-content h3,
-.dark .blog-content h3 {
-  color: #A9C5E8;
-}
-
-.rich-editor-content p,
-.blog-content p {
-  margin-bottom: 1.15rem;
-  line-height: 1.85;
-  color: inherit;
-}
-
-.rich-editor-content ul,
-.blog-content ul {
-  list-style-type: disc;
-  padding-left: 1.5rem;
-  margin-bottom: 1.15rem;
-}
-
-.rich-editor-content ol,
-.blog-content ol {
-  list-style-type: decimal;
-  padding-left: 1.5rem;
-  margin-bottom: 1.15rem;
-}
-
-.rich-editor-content li,
-.blog-content li {
-  margin-bottom: 0.4rem;
-  line-height: 1.75;
-}
-
-.rich-editor-content blockquote,
-.blog-content blockquote {
-  border-left: 4px solid #D6AD52;
-  background-color: #EFE5D2;
-  border-top: 1px solid rgba(41, 45, 43, 0.12);
-  border-right: 1px solid rgba(41, 45, 43, 0.12);
-  border-bottom: 1px solid rgba(41, 45, 43, 0.12);
-  padding: 1rem 1.25rem;
-  border-radius: 6px;
-  font-style: italic;
-  margin: 1.25rem 0;
-  color: #292D2B;
-}
-
-.dark .rich-editor-content blockquote,
-.dark .blog-content blockquote {
-  border-left-color: #D6AD52;
-  background-color: #16263D;
-  border-top-color: #34465D;
-  border-right-color: #34465D;
-  border-bottom-color: #34465D;
-  color: #F1F4F8;
-}
-
-.rich-editor-content a,
-.blog-content a {
-  color: #123D32;
-  text-decoration: underline;
-  text-decoration-thickness: 2px;
-  text-underline-offset: 3px;
+.dark .audio-active-word {
+  background-color: #C6A75E !important;
+  color: #171923 !important;
   font-weight: 700;
-  cursor: pointer;
-}
-
-.dark .rich-editor-content a,
-.dark .blog-content a {
-  color: #A9C5E8;
-}
-
-.rich-editor-content a:hover,
-.blog-content a:hover {
-  color: #237A70;
-}
-
-.dark .rich-editor-content a:hover,
-.dark .blog-content a:hover {
-  color: #D6AD52;
-}
-
-/* Preserve explicit text alignment set via RichTextEditor across editor, preview, and public view */
-.rich-editor-content [style*="text-align: center"],
-.blog-content [style*="text-align: center"] {
-  text-align: center;
-}
-
-.rich-editor-content [style*="text-align: right"],
-.blog-content [style*="text-align: right"] {
-  text-align: right;
-}
-
-.rich-editor-content [style*="text-align: justify"],
-.blog-content [style*="text-align: justify"] {
-  text-align: justify;
-}
-
-.rich-editor-content [style*="text-align: left"],
-.blog-content [style*="text-align: left"] {
-  text-align: left;
-}
-
-/* =========================================================
-   RESPONSIVE TABLES & MOBILE READING EXPANSION
-   ========================================================= */
-
-.blog-content,
-.rich-editor-content {
-  word-break: break-word;
-  overflow-wrap: break-word;
-}
-
-@media (max-width: 639px) {
-  .blog-content p,
-  .rich-editor-content p {
-    font-size: 0.9375rem;
-    line-height: 1.8;
-    margin-bottom: 1rem;
-  }
-
-  .blog-content blockquote,
-  .rich-editor-content blockquote {
-    padding: 0.75rem 0.875rem;
-    margin: 1rem 0;
-    border-left-width: 3px;
-  }
-}
-
-/* Responsive Table Wrapper with Touch Scroll */
-.table-responsive-wrapper {
-  width: 100%;
-  max-width: 100%;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  margin: 1rem 0;
-  border-radius: 6px;
-}
-
-@media (min-width: 640px) {
-  .table-responsive-wrapper {
-    border: 1px solid rgba(41, 45, 43, 0.15);
-  }
-  .dark .table-responsive-wrapper {
-    border-color: #34465D;
-  }
-}
-
-.blog-content table,
-.prose table,
-.rich-editor-content table {
-  width: 100%;
-  border-collapse: collapse;
-  text-align: left;
-  font-size: 0.8125rem;
-  margin: 0;
-}
-
-@media (min-width: 640px) {
-  .blog-content table,
-  .prose table,
-  .rich-editor-content table {
-    font-size: 0.875rem;
-  }
-}
-
-.blog-content table th,
-.prose table th,
-.rich-editor-content table th {
-  background-color: #EFE5D2;
-  color: #123D32;
-  font-weight: 800;
-  padding: 0.5rem 0.625rem;
-  border: 1px solid rgba(41, 45, 43, 0.2);
-  white-space: nowrap;
-}
-
-.dark .blog-content table th,
-.dark .prose table th,
-.dark .rich-editor-content table th {
-  background-color: #16263D;
-  color: #D6AD52;
-  border-color: #34465D;
-}
-
-.blog-content table td,
-.prose table td,
-.rich-editor-content table td {
-  padding: 0.5rem 0.625rem;
-  border: 1px solid rgba(41, 45, 43, 0.12);
-  word-break: break-word;
-}
-
-.dark .blog-content table td,
-.dark .prose table td,
-.dark .rich-editor-content table td {
-  border-color: #34465D;
-}
-
-/* Print Overrides for Certificate */
-@media print {
-  body * {
-    visibility: hidden;
-  }
-  #root {
-    display: none;
-  }
+  box-shadow: 0 0 0 2px #C6A75E;
 }

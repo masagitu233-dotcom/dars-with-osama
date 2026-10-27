@@ -427,13 +427,13 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
       )}
 
       {/* HEADER BAR */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 nb-card bg-white dark:bg-[#16263D] p-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 nb-card bg-white dark:bg-[#1F5F63] p-6">
         <div>
-          <h2 className="text-lg font-extrabold font-serif-brand text-charcoal dark:text-offwhite flex items-center gap-2">
-            <FileText className="w-5 h-5 text-[#123D32] dark:text-[#D6AD52]" />
+          <h2 className="text-lg font-extrabold font-serif-brand text-charcoal dark:text-[#FFFFFF] flex items-center gap-2">
+            <FileText className="w-5 h-5 text-[#123D32] dark:text-[#4CA7A1]" />
             <span>Manajemen Blog & Artikel ({posts.length})</span>
           </h2>
-          <p className="text-xs text-slate-gray dark:text-blue-gray mt-1">
+          <p className="text-xs text-slate-gray dark:text-[#A6D6C9] mt-1">
             Kelola publikasi naskah ilmu, catatan kajian, artikel tazkiyah, serta faedah Islam.
           </p>
         </div>
@@ -452,16 +452,16 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
             onClick={handleOpenAddModal}
             className="nb-btn nb-btn-primary px-4 py-2.5 text-xs"
           >
-            <Plus className="w-4 h-4 text-[#D6AD52]" />
+            <Plus className="w-4 h-4 text-[#001722]" />
             <span>+ Buat Artikel Baru</span>
           </button>
         </div>
       </div>
 
       {/* FILTER & SEARCH BAR */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 nb-card bg-white dark:bg-[#16263D] p-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 nb-card bg-white dark:bg-[#1F5F63] p-4">
         <div className="relative flex-1 max-w-md">
-          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-gray dark:text-blue-gray" />
+          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-gray dark:text-[#A6D6C9]" />
           <input
             type="text"
             value={searchQuery}
@@ -496,11 +496,11 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
       </div>
 
       {/* ARTICLES TABLE */}
-      <div className="nb-card bg-white dark:bg-[#16263D] overflow-hidden">
+      <div className="nb-card bg-white dark:bg-[#1F5F63] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
-              <tr className="bg-[#123D32] dark:bg-[#101B2D] text-[#D6AD52] border-b-2 border-charcoal font-extrabold uppercase text-[11px]">
+              <tr className="bg-[#123D32] dark:bg-[#001722] text-[#FAF7F0] dark:text-[#CEFEF1] border-b-2 border-[#171717] dark:border-[#4CA7A1] font-extrabold uppercase text-[11px]">
                 <th className="p-4">Sampul & Judul Artikel</th>
                 <th className="p-4">Kategori</th>
                 <th className="p-4">Status</th>
@@ -509,37 +509,37 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
                 <th className="p-4 text-right">Aksi</th>
               </tr>
             </thead>
-            <tbody className="divide-y-2 divide-slate-200 dark:divide-slate-700/60 text-charcoal dark:text-offwhite">
+            <tbody className="divide-y-2 divide-slate-200 dark:divide-[#4CA7A1]/50 text-charcoal dark:text-[#CEFEF1]">
               {filteredPosts.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="p-8 text-center text-slate-gray dark:text-blue-gray font-semibold">
+                <tr className="bg-white dark:bg-[#0D2B36]">
+                  <td colSpan={6} className="p-8 text-center text-slate-gray dark:text-[#A6D6C9] font-semibold">
                     Belum ada artikel yang sesuai. Klik "+ Buat Artikel Baru" untuk memublikasikan tulisan.
                   </td>
                 </tr>
               ) : (
                 filteredPosts.map(post => (
-                  <tr key={post.id} className="hover:bg-[#FAF7F0] dark:hover:bg-[#243A56]/50 transition">
+                  <tr key={post.id} className="bg-white dark:bg-[#0D2B36] even:dark:bg-[#1F5F63]/70 hover:bg-[#FAF7F0] dark:hover:bg-[#1F5F63] transition">
                     <td className="p-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-14 h-10 rounded-md bg-[#FAF7F0] dark:bg-[#243A56] overflow-hidden shrink-0 border-2 border-charcoal">
+                        <div className="w-14 h-10 rounded-md bg-[#FAF7F0] dark:bg-[#001722] overflow-hidden shrink-0 border-2 border-[#171717] dark:border-[#4CA7A1]">
                           {post.coverImageUrl ? (
                             <img src={post.coverImageUrl} alt={post.title} className="w-full h-full object-cover" />
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center text-[#123D32] dark:text-[#D6AD52]">
+                            <div className="w-full h-full flex items-center justify-center text-[#123D32] dark:text-[#4CA7A1]">
                               <FileText className="w-4 h-4" />
                             </div>
                           )}
                         </div>
                         <div className="min-w-0 max-w-xs sm:max-w-md">
-                          <p className="font-extrabold text-charcoal dark:text-offwhite truncate text-xs sm:text-sm">
+                          <p className="font-extrabold text-charcoal dark:text-[#CEFEF1] truncate text-xs sm:text-sm">
                             {post.title}
                           </p>
                           {post.titleAr && (
-                            <p className="font-amiri text-xs text-[#123D32] dark:text-[#D6AD52] font-bold truncate">
+                            <p className="font-amiri text-xs text-[#123D32] dark:text-[#A6D6C9] font-bold truncate">
                               {post.titleAr}
                             </p>
                           )}
-                          <p className="text-[10px] text-slate-gray dark:text-blue-gray font-mono truncate">
+                          <p className="text-[10px] text-slate-gray dark:text-[#A6D6C9] font-mono truncate">
                             /{post.slug}
                           </p>
                         </div>
@@ -547,7 +547,7 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
                     </td>
 
                     <td className="p-4">
-                      <span className="nb-badge bg-[#FAF7F0] dark:bg-[#243A56] text-charcoal dark:text-offwhite">
+                      <span className="nb-badge bg-[#FAF7F0] dark:bg-[#001722] text-charcoal dark:text-[#CEFEF1] border-[#171717] dark:border-[#4CA7A1]">
                         {post.category}
                       </span>
                     </td>
@@ -557,8 +557,8 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
                         onClick={() => handleToggleStatus(post)}
                         className={`nb-badge cursor-pointer ${
                           post.status === 'published'
-                            ? 'bg-[#123D32] text-[#D6AD52]'
-                            : 'bg-[#D6AD52] text-charcoal'
+                            ? 'bg-[#123D32] dark:bg-[#4CA7A1] text-[#FAF7F0] dark:text-[#001722] border-[#171717] dark:border-[#001722]'
+                            : 'bg-[#FAF7F0] dark:bg-[#001722] text-charcoal dark:text-[#A6D6C9] border-[#171717] dark:border-[#4CA7A1]'
                         }`}
                       >
                         {post.status === 'published' ? 'Terbit (Published)' : 'Draf (Draft)'}
@@ -566,20 +566,20 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
                     </td>
 
                     <td className="p-4">
-                      <p className="font-bold text-charcoal dark:text-offwhite">{post.readingTimeMinutes} min baca</p>
-                      <p className="text-[10px] text-slate-gray dark:text-blue-gray">{post.viewsCount || 0} pembaca</p>
+                      <p className="font-bold text-charcoal dark:text-[#CEFEF1]">{post.readingTimeMinutes} min baca</p>
+                      <p className="text-[10px] text-slate-gray dark:text-[#A6D6C9]">{post.viewsCount || 0} pembaca</p>
                       {post.audioConfig?.mode === 'custom' && post.audioConfig.customAudioUrl ? (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-[#123D32] dark:text-[#D6AD52] mt-1">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-[#123D32] dark:text-[#4CA7A1] mt-1">
                           <Mic className="w-3 h-3" /> Audio Rekaman
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 text-[10px] text-slate-gray dark:text-blue-gray mt-1 font-semibold">
-                          <Volume2 className="w-3 h-3 text-[#123D32] dark:text-[#D6AD52]" /> TTS {post.audioConfig?.speechRate ? `${post.audioConfig.speechRate}×` : '1×'}
+                        <span className="inline-flex items-center gap-1 text-[10px] text-slate-gray dark:text-[#A6D6C9] mt-1 font-semibold">
+                          <Volume2 className="w-3 h-3 text-[#123D32] dark:text-[#4CA7A1]" /> TTS {post.audioConfig?.speechRate ? `${post.audioConfig.speechRate}×` : '1×'}
                         </span>
                       )}
                     </td>
 
-                    <td className="p-4 text-[11px] font-medium">
+                    <td className="p-4 text-[11px] font-medium text-charcoal dark:text-[#A6D6C9]">
                       {new Date(post.updatedAt || post.createdAt).toLocaleString('id-ID')}
                     </td>
 
@@ -804,11 +804,11 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
                     />
                   </div>
 
-                  <div className="aspect-video w-full rounded-md bg-white dark:bg-[#0B3026] overflow-hidden relative border-2 border-[#171717]">
+                  <div className="aspect-video w-full rounded-md bg-white dark:bg-[#214743] overflow-hidden relative border-2 border-[#171717] dark:border-[#B8E8D8]">
                     {formData.coverImageUrl ? (
                       <img src={formData.coverImageUrl} alt="Sampul" className="w-full h-full object-cover" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-[#171717]/60 text-xs font-bold">
+                      <div className="w-full h-full flex items-center justify-center text-[#525856] dark:text-[#B9C9C5] text-xs font-bold">
                         Belum ada sampul
                       </div>
                     )}
@@ -817,8 +817,8 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
               </div>
 
               {/* PENGATURAN AUDIO READING */}
-              <div className="p-5 bg-[#F8F3E8] dark:bg-[#06251D] rounded-lg border-2 border-[#171717] dark:border-[#D9AC45]/50 space-y-4">
-                <div className="flex items-center justify-between p-4 bg-white dark:bg-[#0B3026] rounded-md border-2 border-[#171717] dark:border-[#D9AC45]/50">
+              <div className="p-5 bg-[#FAF7F0] dark:bg-[#143331] rounded-lg border-2 border-[#171717] dark:border-[#B8E8D8] space-y-4">
+                <div className="flex items-center justify-between p-4 bg-white dark:bg-[#193A37] rounded-md border-2 border-[#171717] dark:border-[#B8E8D8]">
                   <div className="flex items-start sm:items-center gap-3">
                     <input
                       type="checkbox"
@@ -837,25 +837,25 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
                           }
                         }))
                       }
-                      className="w-5 h-5 mt-0.5 sm:mt-0 accent-[#06251D] rounded cursor-pointer shrink-0"
+                      className="w-5 h-5 mt-0.5 sm:mt-0 accent-[#123D32] rounded cursor-pointer shrink-0"
                     />
                     <label htmlFor="checkbox-audio-enabled" className="cursor-pointer">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs sm:text-sm font-extrabold text-[#171717] dark:text-[#F8F3E8] flex items-center gap-1.5">
-                          <Headphones className="w-4 h-4 text-[#06251D] dark:text-[#D9AC45]" />
+                        <span className="text-xs sm:text-sm font-extrabold text-[#171717] dark:text-[#F0F7F5] flex items-center gap-1.5">
+                          <Headphones className="w-4 h-4 text-[#123D32] dark:text-[#F2D98A]" />
                           <span>Aktifkan Audio Reading pada Artikel Ini</span>
                         </span>
                         {formData.audioConfig?.enabled ? (
-                          <span className="nb-badge bg-[#06251D] text-[#D9AC45]">
+                          <span className="nb-badge bg-[#123D32] text-[#F2D98A]">
                             Aktif (Tampil di Publik)
                           </span>
                         ) : (
-                          <span className="nb-badge bg-[#F8F3E8] dark:bg-[#06251D] text-[#171717] dark:text-[#F8F3E8]">
+                          <span className="nb-badge bg-[#FAF7F0] dark:bg-[#214743] text-[#525856] dark:text-[#B9C9C5]">
                             Nonaktif (Tidak Ditampilkan)
                           </span>
                         )}
                       </div>
-                      <p className="text-[11px] text-[#171717]/75 dark:text-[#F8F3E8]/75 mt-0.5">
+                      <p className="text-[11px] text-[#525856] dark:text-[#B9C9C5] mt-0.5">
                         {formData.audioConfig?.enabled
                           ? 'Tombol Audio Reading akan ditampilkan di halaman publik artikel ini sehingga pembaca dapat menyimak audio.'
                           : 'Tombol Audio Reading tidak akan ditampilkan pada artikel publik ini (fitur audio dinonaktifkan).'}

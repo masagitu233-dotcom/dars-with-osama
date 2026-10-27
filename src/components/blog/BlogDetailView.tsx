@@ -18,6 +18,7 @@ import { ArticleShareModal } from './ArticleShareModal';
 import { useArticleSEO } from '../../hooks/useArticleSEO';
 import { ArticleAudioPlayer } from './ArticleAudioPlayer';
 import { ArticleCommentsSection } from './ArticleCommentsSection';
+import { ReadingFontControls, useReadingFontSize } from '../common/ReadingFontControls';
 
 interface BlogDetailViewProps {
   post: BlogPost;
@@ -34,6 +35,7 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
 }) => {
   const [copied, setCopied] = useState<boolean>(false);
   const [shareModalOpen, setShareModalOpen] = useState<boolean>(false);
+  const fontControl = useReadingFontSize();
 
   // Dynamically inject OpenGraph, Twitter cards, and Schema.org metadata for crawlers & social media
   useArticleSEO(post);
@@ -101,7 +103,7 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
           onClick={onBack}
           className="nb-btn nb-btn-secondary px-3.5 py-2 text-xs"
         >
-          <ArrowLeft className="w-4 h-4 text-[#123D32] dark:text-[#D6AD52]" />
+          <ArrowLeft className="w-4 h-4 text-[#123D32] dark:text-[#4CA7A1]" />
           <span>Kembali ke Daftar Artikel</span>
         </button>
 
@@ -112,7 +114,7 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
             className="nb-btn nb-btn-secondary px-3.5 py-2 text-xs"
             title="Salin tautan permanen artikel ini"
           >
-            {copied ? <Check className="w-4 h-4 text-[#123D32] dark:text-[#D6AD52]" /> : <Copy className="w-4 h-4 text-[#D6AD52]" />}
+            {copied ? <Check className="w-4 h-4 text-[#123D32] dark:text-[#CEFEF1]" /> : <Copy className="w-4 h-4 text-[#123D32] dark:text-[#4CA7A1]" />}
             <span>{copied ? 'Link Disalin!' : 'Salin Link'}</span>
           </button>
 
@@ -130,63 +132,79 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
 
       {/* COPIED TOAST NOTIFICATION BANNER */}
       {copied && (
-        <div className="p-3.5 rounded-md bg-[#123D32] border-2 border-[#D6AD52] text-[#FAF7F0] text-xs flex items-center justify-between shadow-[4px_4px_0px_#292D2B] animate-fade-in">
+        <div className="p-3.5 rounded-md bg-[#123D32] dark:bg-[#1F5F63] border-2 border-[#171717] dark:border-[#4CA7A1] text-[#FAF7F0] dark:text-[#CEFEF1] text-xs flex items-center justify-between shadow-[4px_4px_0px_#171717] dark:shadow-[4px_4px_0px_#001722] animate-fade-in">
           <div className="flex items-center gap-2.5">
-            <Check className="w-4 h-4 text-[#D6AD52] shrink-0" />
+            <Check className="w-4 h-4 text-[#CEFEF1] shrink-0" />
             <div>
               <strong>Link artikel berhasil disalin!</strong> Tautan permanen siap dibagikan ke WhatsApp, Telegram, atau media sosial.
             </div>
           </div>
-          <span className="text-[10px] font-mono bg-[#0B3026] px-2 py-0.5 rounded border border-[#D6AD52]/40 text-[#D6AD52] hidden sm:inline-block">
+          <span className="text-[10px] font-mono bg-[#001722] px-2 py-0.5 rounded border border-[#4CA7A1] text-[#CEFEF1] hidden sm:inline-block">
             {articleUrl}
           </span>
         </div>
       )}
 
-      {/* CALM EDITORIAL ARTICLE READING CARD */}
-      <article className="nb-reading-surface p-3.5 sm:p-8 md:p-12 space-y-5 sm:space-y-8 border-0 sm:border-2 shadow-none sm:shadow-[4px_4px_0px_rgba(41,45,43,0.12)]">
+      {/* EDITORIAL ARTICLE READING CARD */}
+      <article
+        style={fontControl.style}
+        className="nb-reading-surface p-4 sm:p-8 md:p-12 space-y-5 sm:space-y-8"
+      >
         {/* Editorial Header */}
-        <div className="space-y-4 border-b-2 border-[#292D2B]/15 dark:border-[#34465D] pb-6">
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="px-3 py-1 bg-[#123D32] text-[#D6AD52] font-extrabold text-xs uppercase tracking-wider rounded border-2 border-[#292D2B] dark:border-[#34465D]">
-              {post.category}
-            </span>
+        <div className="space-y-4 border-b-2 border-[#171717] dark:border-[#4CA7A1] pb-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="px-3 py-1 bg-[#4CA7A1] text-[#001722] font-extrabold text-xs uppercase tracking-wider rounded border-2 border-[#171717] dark:border-[#001722]">
+                {post.category}
+              </span>
 
-            <div className="flex flex-wrap items-center gap-3 text-xs text-[#626A66] dark:text-[#B4C0D0] font-bold">
-              <span className="flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5 text-[#123D32] dark:text-[#D6AD52]" />
-                {new Date(post.publishedAt || post.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
-              </span>
-              <span>•</span>
-              <span className="flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5 text-[#237A70] dark:text-[#A9C5E8]" />
-                {post.readingTimeMinutes} Menit Baca
-              </span>
-              {post.viewsCount !== undefined && post.viewsCount > 0 && (
-                <>
-                  <span>•</span>
-                  <span className="flex items-center gap-1">
-                    <Eye className="w-3.5 h-3.5 text-[#D6AD52]" />
-                    {post.viewsCount} Dibaca
-                  </span>
-                </>
-              )}
+              <div className="flex flex-wrap items-center gap-3 text-xs text-[#525855] dark:text-[#A6D6C9] font-bold">
+                <span className="flex items-center gap-1">
+                  <Calendar className="w-3.5 h-3.5 text-[#123D32] dark:text-[#A6D6C9]" />
+                  {new Date(post.publishedAt || post.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                </span>
+                <span>•</span>
+                <span className="flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5 text-[#123D32] dark:text-[#A6D6C9]" />
+                  {post.readingTimeMinutes} Menit Baca
+                </span>
+                {post.viewsCount !== undefined && post.viewsCount > 0 && (
+                  <>
+                    <span>•</span>
+                    <span className="flex items-center gap-1">
+                      <Eye className="w-3.5 h-3.5 text-[#123D32] dark:text-[#4CA7A1]" />
+                      {post.viewsCount} Dibaca
+                    </span>
+                  </>
+                )}
+              </div>
             </div>
+
+            <ReadingFontControls
+              step={fontControl.step}
+              percentage={fontControl.percentage}
+              canDecrease={fontControl.canDecrease}
+              canIncrease={fontControl.canIncrease}
+              isDefault={fontControl.isDefault}
+              onDecrease={fontControl.decrease}
+              onIncrease={fontControl.increase}
+              onReset={fontControl.reset}
+            />
           </div>
 
           <h1
-            className="text-2xl sm:text-4xl font-bold text-[#292D2B] dark:text-[#F1F4F8] leading-tight font-serif tracking-tight"
+            className="text-2xl sm:text-3xl lg:text-4xl font-bold text-[#171717] dark:text-[#CEFEF1] leading-tight font-serif tracking-tight"
             dangerouslySetInnerHTML={{ __html: autoWrapArabicText(post.title) }}
           />
 
           {post.titleAr && (
-            <p className="font-amiri text-2xl sm:text-3xl text-[#123D32] dark:text-[#D6AD52] font-bold leading-relaxed" dir="rtl">
+            <p className="font-amiri text-xl sm:text-2xl text-[#123D32] dark:text-[#CEFEF1] font-bold leading-[2.0]" dir="rtl">
               {post.titleAr}
             </p>
           )}
 
           <p
-            className="text-xs sm:text-base text-[#292D2B] dark:text-[#F1F4F8] leading-relaxed border-l-3 sm:border-l-4 border-[#D6AD52] pl-3 sm:pl-4 py-2 bg-[#FAF7F0] dark:bg-[#16263D] rounded-r-md font-medium"
+            className="reading-scalable-excerpt text-[#171717] dark:text-[#CEFEF1] border-2 border-[#171717] dark:border-[#4CA7A1] border-l-4 border-l-[#123D32] dark:border-l-[#4CA7A1] pl-3 sm:pl-4 py-2.5 pr-3 bg-[#FAF7F0] dark:bg-[#0D2B36] rounded-md font-medium"
             dangerouslySetInnerHTML={{ __html: autoWrapArabicText(post.excerpt) }}
           />
         </div>
@@ -199,7 +217,7 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
         {/* COVER IMAGE */}
         {post.coverImageUrl && (
           <figure className="space-y-2">
-            <div className="aspect-video w-full rounded-md overflow-hidden bg-[#123D32] border-2 border-[#292D2B] dark:border-[#34465D]">
+            <div className="aspect-video w-full rounded-md overflow-hidden bg-[#123D32] dark:bg-[#0D2B36] border-2 border-[#171717] dark:border-[#4CA7A1]">
               <img
                 src={post.coverImageUrl}
                 alt={post.title}
@@ -207,7 +225,7 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
               />
             </div>
             {post.coverImageCaption && (
-              <figcaption className="text-center text-xs text-[#626A66] dark:text-[#B4C0D0] italic">
+              <figcaption className="text-center text-xs text-[#525855] dark:text-[#A6D6C9] italic">
                 {post.coverImageCaption}
               </figcaption>
             )}
@@ -217,14 +235,14 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
         {/* MAIN BODY HTML CONTENT — Calm reading zone */}
         <div
           data-testid="article-body-content"
-          className="prose dark:prose-invert max-w-none sm:max-w-[68ch] mx-auto text-[#292D2B] dark:text-[#F1F4F8] text-sm sm:text-base leading-relaxed space-y-3.5 sm:space-y-4 font-sans blog-content"
+          className="prose dark:prose-invert max-w-none sm:max-w-[68ch] mx-auto text-[#171717] dark:text-[#CEFEF1] leading-relaxed space-y-3.5 sm:space-y-4 font-sans blog-content"
           dangerouslySetInnerHTML={{ __html: autoWrapArabicText(sanitizeRichTextHtml(post.content)) }}
         />
 
         {/* ARABIC CONTENT SECTION (IF PRESENT) */}
         {post.contentAr && (
           <div
-            className="p-3.5 sm:p-6 bg-[#FAF7F0] dark:bg-[#16263D] border-0 sm:border-2 border-[#292D2B] dark:border-[#34465D] rounded-md space-y-3 font-amiri text-right text-base sm:text-lg text-[#123D32] dark:text-[#F1F4F8]"
+            className="p-4 sm:p-6 bg-[#FAF7F0] dark:bg-[#0D2B36] border-2 border-[#171717] dark:border-[#4CA7A1] rounded-md space-y-3 font-amiri text-right reading-scalable-arabic text-[#171717] dark:text-[#CEFEF1]"
             dir="rtl"
           >
             <div dangerouslySetInnerHTML={{ __html: post.contentAr }} />
@@ -233,14 +251,14 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
 
         {/* TAGS */}
         {post.tags && post.tags.length > 0 && (
-          <div className="pt-6 border-t-2 border-[#292D2B]/15 dark:border-[#34465D] flex flex-wrap items-center gap-2">
-            <span className="text-xs font-extrabold text-[#292D2B] dark:text-[#D6AD52] uppercase flex items-center gap-1 mr-2">
-              <Tag className="w-3.5 h-3.5" /> Tag:
+          <div className="pt-6 border-t-2 border-[#171717] dark:border-[#4CA7A1] flex flex-wrap items-center gap-2">
+            <span className="text-xs font-extrabold text-[#171717] dark:text-[#CEFEF1] uppercase flex items-center gap-1 mr-2">
+              <Tag className="w-3.5 h-3.5 text-[#4CA7A1]" /> Tag:
             </span>
             {post.tags.map(t => (
               <span
                 key={t}
-                className="px-3 py-1 rounded bg-[#FAF7F0] dark:bg-[#16263D] border border-[#292D2B] dark:border-[#34465D] text-[#292D2B] dark:text-[#F1F4F8] text-xs font-bold"
+                className="px-3 py-1 rounded bg-[#FAF7F0] dark:bg-[#0D2B36] border-2 border-[#171717] dark:border-[#4CA7A1] text-[#171717] dark:text-[#CEFEF1] text-xs font-bold"
               >
                 #{t}
               </span>
@@ -249,8 +267,8 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
         )}
 
         {/* AUTHOR BIO CARD */}
-        <div className="p-5 sm:p-6 bg-[#FAF7F0] dark:bg-[#16263D] rounded-md border-2 border-[#292D2B] dark:border-[#34465D] flex flex-col sm:flex-row items-center sm:items-start gap-4">
-          <div className="w-14 h-14 rounded-md bg-[#123D32] dark:bg-[#243A56] text-[#D6AD52] font-bold text-xl flex items-center justify-center shrink-0 border-2 border-[#292D2B] dark:border-[#34465D] overflow-hidden">
+        <div className="p-5 sm:p-6 bg-[#FAF7F0] dark:bg-[#0D2B36] rounded-md border-2 border-[#171717] dark:border-[#4CA7A1] flex flex-col sm:flex-row items-center sm:items-start gap-4">
+          <div className="w-14 h-14 rounded-md bg-[#001722] text-[#CEFEF1] font-bold text-xl flex items-center justify-center shrink-0 border-2 border-[#171717] dark:border-[#4CA7A1] overflow-hidden">
             {post.authorPhoto ? (
               <img src={post.authorPhoto} alt={post.authorName} className="w-full h-full object-cover" />
             ) : (
@@ -259,23 +277,23 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
           </div>
           <div className="text-center sm:text-left space-y-1.5">
             <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-              <h4 className="font-bold font-serif text-[#292D2B] dark:text-[#F1F4F8] text-base">
+              <h4 className="font-bold font-serif text-[#171717] dark:text-[#CEFEF1] text-base">
                 {post.authorName}
               </h4>
-              <span className="px-2.5 py-0.5 rounded bg-[#D6AD52] text-[#123D32] border border-[#292D2B] text-[10px] font-extrabold uppercase">
+              <span className="px-2.5 py-0.5 rounded bg-[#4CA7A1] text-[#001722] border border-[#171717] dark:border-[#001722] text-[10px] font-extrabold uppercase">
                 {post.authorRole || 'Pengasuh & Pengajar'}
               </span>
             </div>
-            <p className="text-xs text-[#626A66] dark:text-[#B4C0D0] leading-relaxed">
+            <p className="text-xs text-[#525855] dark:text-[#A6D6C9] leading-relaxed">
               Membagikan ilmu syar'i, faedah kajian, tazkiyatun nufs, serta catatan keilmuan Islam untuk membina santri dan pembaca setia Dars with Osama.
             </p>
           </div>
         </div>
 
         {/* BOTTOM SHARE & COPY BAR */}
-        <div className="pt-4 border-t-2 border-[#292D2B]/15 dark:border-[#34465D] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="pt-4 border-t-2 border-[#171717] dark:border-[#4CA7A1] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-extrabold uppercase tracking-wider text-[#292D2B] dark:text-[#D6AD52]">
+            <span className="text-xs font-extrabold uppercase tracking-wider text-[#171717] dark:text-[#CEFEF1]">
               Bagikan atau Simpan Artikel:
             </span>
           </div>
@@ -295,7 +313,7 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
               className="nb-btn nb-btn-secondary px-4 py-2.5 text-xs"
               title="Salin tautan permanen artikel ke clipboard"
             >
-              {copied ? <Check className="w-4 h-4 text-[#123D32] dark:text-[#D6AD52]" /> : <Copy className="w-4 h-4 text-[#D6AD52]" />}
+              {copied ? <Check className="w-4 h-4 text-[#123D32] dark:text-[#CEFEF1]" /> : <Copy className="w-4 h-4 text-[#123D32] dark:text-[#4CA7A1]" />}
               <span>{copied ? 'Tautan Disalin!' : 'Salin Link'}</span>
             </button>
           </div>
@@ -308,8 +326,8 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
       {/* RELATED ARTICLES SECTION */}
       {relatedArticles.length > 0 && (
         <div className="space-y-4 pt-4">
-          <h3 className="text-lg font-bold font-serif text-[#292D2B] dark:text-[#F1F4F8] flex items-center gap-2">
-            <BookOpen className="w-5 h-5 text-[#123D32] dark:text-[#D6AD52]" />
+          <h3 className="text-lg font-bold font-serif text-[#171717] dark:text-[#CEFEF1] flex items-center gap-2">
+            <BookOpen className="w-5 h-5 text-[#123D32] dark:text-[#4CA7A1]" />
             <span>Artikel Terkait Lainnya</span>
           </h3>
 
@@ -321,19 +339,19 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
                 className="nb-card-interactive p-4 space-y-2 cursor-pointer group flex flex-col justify-between"
               >
                 <div className="space-y-2">
-                  <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-[#123D32] text-[#D6AD52] border border-[#292D2B]">
+                  <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-[#4CA7A1] text-[#001722] border border-[#171717] dark:border-[#001722]">
                     {rel.category}
                   </span>
-                  <h4 className="font-bold font-serif text-[#292D2B] dark:text-[#F1F4F8] text-xs sm:text-sm line-clamp-2 group-hover:text-[#123D32] dark:group-hover:text-[#D6AD52] transition">
+                  <h4 className="font-bold font-serif text-[#171717] dark:text-[#CEFEF1] text-xs sm:text-sm line-clamp-2 group-hover:text-[#123D32] dark:group-hover:text-white transition">
                     {rel.title}
                   </h4>
-                  <p className="text-[11px] text-[#626A66] dark:text-[#B4C0D0] line-clamp-2">
+                  <p className="text-[11px] text-[#525855] dark:text-[#A6D6C9] line-clamp-2">
                     {rel.excerpt}
                   </p>
                 </div>
-                <div className="pt-2 border-t border-[#292D2B]/15 dark:border-[#34465D] text-[11px] font-bold text-[#626A66] dark:text-[#B4C0D0] flex items-center justify-between">
+                <div className="pt-2 border-t border-[#171717] dark:border-[#4CA7A1] text-[11px] font-bold text-[#525855] dark:text-[#A6D6C9] flex items-center justify-between">
                   <span>{rel.readingTimeMinutes} min baca</span>
-                  <span className="text-[#123D32] dark:text-[#D6AD52] font-extrabold group-hover:translate-x-1 transition">Baca →</span>
+                  <span className="text-[#123D32] dark:text-[#4CA7A1] font-extrabold group-hover:translate-x-1 transition">Baca Artikel →</span>
                 </div>
               </div>
             ))}

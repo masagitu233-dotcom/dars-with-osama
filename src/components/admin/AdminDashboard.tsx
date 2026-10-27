@@ -64,7 +64,7 @@ import {
   seedDefaultBlogPostsIfEmpty,
   invalidateServicesCache
 } from '../../firebase/services';
-import { firebaseConfig, getLatestFirestoreDiagnostic } from '../../firebase/config';
+import { firebaseConfig, getLatestFirestoreDiagnostic, getDataSourceStatus } from '../../firebase/config';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { ConfirmModal } from '../common/ConfirmModal';
@@ -75,6 +75,7 @@ import { AdminConsultationManager } from './AdminConsultationManager';
 import { AdminCommentsManager } from './AdminCommentsManager';
 import { AdminInstructorProfileManager } from './AdminInstructorProfileManager';
 import { RichTextEditor } from './RichTextEditor';
+import { QuizImportModal } from './QuizImportModal';
 import { MessageSquare, UserCheck } from 'lucide-react';
 import { getAllArticleCommentsForAdmin } from '../../firebase/services';
 import { auditBrowserStorageEntries } from '../../utils/dataAuditHelper';
@@ -208,6 +209,27 @@ export const AdminDashboard: React.FC<{
 
   // Independent Quiz modal editing
   const [editingQuiz, setEditingQuiz] = useState<Partial<Quiz> | null>(null);
+
+  // Quiz Import via Copy & Paste
+  const [showQuizImportModal, setShowQuizImportModal] = useState(false);
+  const [quizImportTarget, setQuizImportTarget] = useState<'session' | 'independent'>('session');
+
+  const handleImportedQuestions = (imported: Question[], mode: 'append' | 'replace') => {
+    if (quizImportTarget === 'session') {
+      setSessionFormData(prev => ({
+        ...prev,
+        enableQuiz: true,
+        questions: mode === 'replace' ? imported : [...prev.questions, ...imported]
+      }));
+      showStatus('success', `${imported.length} soal berhasil ${mode === 'replace' ? 'menggantikan daftar soal' : 'ditambahkan ke'} kuis sesi.`);
+    } else if (editingQuiz) {
+      setEditingQuiz(prev => ({
+        ...prev,
+        questions: mode === 'replace' ? imported : [...(prev?.questions || []), ...imported]
+      }));
+      showStatus('success', `${imported.length} soal berhasil ${mode === 'replace' ? 'menggantikan daftar soal' : 'ditambahkan ke'} kuis evaluasi.`);
+    }
+  };
 
   // File upload state
   const [uploadingFile, setUploadingFile] = useState(false);
@@ -781,26 +803,26 @@ export const AdminDashboard: React.FC<{
   };
 
   return (
-    <div className="min-h-screen bg-[#FAF7F0] dark:bg-[#101B2D] text-charcoal dark:text-offwhite flex flex-col lg:flex-row font-sans transition-colors duration-200">
+    <div className="min-h-screen bg-[#FAF7F0] dark:bg-[#0D2B36] text-charcoal dark:text-[#CEFEF1] flex flex-col lg:flex-row font-sans transition-colors duration-200">
       {/* ========================================================= */}
       {/* MOBILE TOP BAR (Logo acts as Sidebar Toggle) */}
       {/* ========================================================= */}
-      <div className="lg:hidden sticky top-0 z-30 bg-white dark:bg-[#16263D] text-charcoal dark:text-offwhite border-b-2 border-charcoal dark:border-[#D6AD52]/60 px-4 py-3 flex items-center justify-between gap-3 shadow-[0_3px_0_#292D2B]">
+      <div className="lg:hidden sticky top-0 z-30 bg-white dark:bg-[#0D2B36] text-charcoal dark:text-[#CEFEF1] border-b-2 border-charcoal dark:border-[#1F5F63] px-4 py-3 flex items-center justify-between gap-3 shadow-[0_3px_0_#292D2B]">
         <button
           type="button"
           onClick={() => setSidebarOpen(!sidebarOpen)}
           aria-label={sidebarOpen ? "Tutup Sidebar Admin" : "Buka Sidebar Admin"}
           title={sidebarOpen ? "Tutup Sidebar Admin" : "Buka Sidebar Admin"}
-          className="flex items-center gap-2.5 p-1 -ml-1 rounded-md border-2 border-transparent hover:border-charcoal dark:hover:border-[#D6AD52]/60 hover:bg-[#EFE5D2] dark:hover:bg-[#16263D] active:translate-x-[1px] active:translate-y-[1px] transition cursor-pointer text-left group"
+          className="flex items-center gap-2.5 p-1 -ml-1 rounded-md border-2 border-transparent hover:border-charcoal dark:hover:border-[#4CA7A1] hover:bg-[#EFE5D2] dark:hover:bg-[#1F5F63] active:translate-x-[1px] active:translate-y-[1px] transition cursor-pointer text-left group"
         >
-          <div className="w-8 h-8 rounded-md border-2 border-charcoal dark:border-[#D6AD52] shadow-[2px_2px_0px_#292D2B] bg-[#123D32] flex items-center justify-center transition-transform group-hover:scale-105 shrink-0">
+          <div className="w-8 h-8 rounded-md border-2 border-charcoal dark:border-[#4CA7A1] shadow-[2px_2px_0px_#292D2B] bg-[#123D32] dark:bg-[#1F5F63] flex items-center justify-center transition-transform group-hover:scale-105 shrink-0">
             <LogoSymbol className="w-7 h-7" />
           </div>
           <div className="flex flex-col">
-            <span className="font-serif-brand font-bold text-sm tracking-tight text-charcoal dark:text-offwhite group-hover:text-[#237A70] dark:group-hover:text-[#D6AD52] transition-colors">
+            <span className="font-serif-brand font-bold text-sm tracking-tight text-charcoal dark:text-[#CEFEF1] group-hover:text-[#237A70] dark:group-hover:text-[#4CA7A1] transition-colors">
               Dars with Osama
             </span>
-            <span className="text-[9px] text-[#237A70] dark:text-[#D6AD52] font-extrabold tracking-wider uppercase">
+            <span className="text-[9px] text-[#237A70] dark:text-[#A6D6C9] font-extrabold tracking-wider uppercase">
               Admin Panel {sidebarOpen ? '• Tutup' : '• Menu'}
             </span>
           </div>
@@ -808,24 +830,24 @@ export const AdminDashboard: React.FC<{
 
         <button
           onClick={() => setTheme(effectiveTheme === 'dark' ? 'light' : 'dark')}
-          className="p-2 bg-[#EFE5D2] dark:bg-[#16263D] text-[#237A70] dark:text-[#D6AD52] border-2 border-charcoal dark:border-[#D6AD52]/60 rounded-md hover:bg-[#D6AD52] hover:text-charcoal transition cursor-pointer"
+          className="p-2 bg-[#EFE5D2] dark:bg-[#1F5F63] text-[#237A70] dark:text-[#CEFEF1] border-2 border-charcoal dark:border-[#4CA7A1] rounded-md hover:bg-[#4CA7A1] hover:text-[#001722] transition cursor-pointer"
           title="Toggle Dark Mode"
         >
-          {effectiveTheme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          {effectiveTheme === 'dark' ? <Sun className="w-4 h-4 text-[#CEFEF1]" /> : <Moon className="w-4 h-4" />}
         </button>
       </div>
 
       {/* ========================================================= */}
       {/* CENTRALIZED LEFT SIDEBAR NAV (FIXED VIEWPORT & MOBILE DRAWER) */}
       {/* ========================================================= */}
-      <aside className={`fixed top-0 left-0 z-40 h-screen h-[100dvh] bg-[#FFFDF7] dark:bg-[#082A21] text-[#171717] dark:text-[#F8F3E8] border-r-2 border-[#171717] dark:border-[#D9AC45]/50 flex flex-col justify-between shrink-0 transition-all duration-300 ease-in-out ${
+      <aside className={`fixed top-0 left-0 z-40 h-screen h-[100dvh] bg-[#FFFDF7] dark:bg-[#001722] text-[#171717] dark:text-[#CEFEF1] border-r-2 border-[#171717] dark:border-[#4CA7A1] flex flex-col justify-between shrink-0 transition-all duration-300 ease-in-out ${
         sidebarCollapsed ? 'w-20' : 'w-72'
       } ${
         sidebarOpen ? 'translate-x-0 shadow-[6px_0_0_#171717] z-50' : '-translate-x-full lg:translate-x-0 shadow-none'
       }`}>
         <div className="flex flex-col h-full overflow-hidden">
           {/* BRAND HEADER & LOGO SIDEBAR TOGGLE */}
-          <div className={`p-4 border-b-2 border-[#171717] dark:border-[#D9AC45]/40 flex items-center shrink-0 ${sidebarCollapsed ? 'lg:justify-center' : 'justify-between'} bg-white dark:bg-[#06251D]`}>
+          <div className={`p-4 border-b-2 border-[#171717] dark:border-[#4CA7A1] flex items-center shrink-0 ${sidebarCollapsed ? 'lg:justify-center' : 'justify-between'} bg-white dark:bg-[#001722]`}>
             <button
               type="button"
               onClick={() => {
@@ -837,21 +859,21 @@ export const AdminDashboard: React.FC<{
               }}
               aria-label={sidebarCollapsed ? "Buka Sidebar Admin" : "Tutup Sidebar Admin"}
               title={sidebarCollapsed ? "Buka / Perluas Sidebar Admin" : "Tutup / Kecilkan Sidebar Admin"}
-              className={`flex items-center gap-3 overflow-hidden text-left p-1 -ml-1 rounded-md border-2 border-transparent hover:border-[#171717]/30 dark:hover:border-[#D9AC45]/50 hover:bg-[#F5EFE2] dark:hover:bg-[#082A21] transition cursor-pointer group ${
+              className={`flex items-center gap-3 overflow-hidden text-left p-1 -ml-1 rounded-md border-2 border-transparent hover:border-[#171717]/30 dark:hover:border-[#4CA7A1] hover:bg-[#F5EFE2] dark:hover:bg-[#1F5F63] transition cursor-pointer group ${
                 sidebarCollapsed ? 'lg:justify-center lg:m-0' : ''
               }`}
             >
-              <div className="w-10 h-10 rounded-md border-2 border-[#171717] dark:border-[#D9AC45] shadow-[2px_2px_0px_#171717] bg-[#06251D] flex items-center justify-center transition-transform group-hover:scale-105 shrink-0">
+              <div className="w-10 h-10 rounded-md border-2 border-[#171717] dark:border-[#4CA7A1] shadow-[2px_2px_0px_#171717] bg-[#123D32] dark:bg-[#1F5F63] flex items-center justify-center transition-transform group-hover:scale-105 shrink-0">
                 <LogoSymbol className="w-9 h-9 shrink-0" />
               </div>
               {!sidebarCollapsed && (
                 <div className="truncate">
                   <div className="flex items-center gap-1.5">
-                    <span className="font-serif-brand font-bold text-base text-[#171717] dark:text-[#F8F3E8] tracking-tight truncate group-hover:text-[#0B6B50] dark:group-hover:text-[#D9AC45] transition-colors">
+                    <span className="font-serif-brand font-bold text-base text-[#171717] dark:text-[#FFFFFF] tracking-tight truncate group-hover:text-[#0B6B50] dark:group-hover:text-[#4CA7A1] transition-colors">
                       Dars with Osama
                     </span>
                   </div>
-                  <span className="inline-block text-[10px] px-2 py-0.5 rounded-sm bg-[#D9AC45] text-[#171717] border border-[#171717] font-extrabold uppercase tracking-wider truncate">
+                  <span className="inline-block text-[10px] px-2 py-0.5 rounded-sm bg-[#D6AD52] dark:bg-[#4CA7A1] text-[#171717] dark:text-[#001722] border border-[#171717] dark:border-[#001722] font-extrabold uppercase tracking-wider truncate">
                     Admin Dashboard
                   </span>
                 </div>
@@ -861,7 +883,7 @@ export const AdminDashboard: React.FC<{
             {/* Close drawer button on mobile */}
             <button
               onClick={() => setSidebarOpen(false)}
-              className="lg:hidden p-1.5 text-[#171717] dark:text-[#F8F3E8]/80 hover:text-[#171717] hover:bg-[#D9AC45] rounded-md border border-[#171717]/40 dark:border-[#D9AC45]/40 transition cursor-pointer shrink-0"
+              className="lg:hidden p-1.5 text-[#171717] dark:text-[#CEFEF1] hover:text-[#171717] hover:bg-[#4CA7A1] dark:hover:text-[#001722] rounded-md border border-[#171717]/40 dark:border-[#4CA7A1] transition cursor-pointer shrink-0"
               aria-label="Tutup Sidebar Admin"
               title="Tutup Sidebar"
             >
@@ -870,22 +892,22 @@ export const AdminDashboard: React.FC<{
           </div>
 
           {/* QUICK SEARCH BAR IN SIDEBAR */}
-          <div className="p-3.5 border-b-2 border-[#171717] dark:border-[#D9AC45]/30 bg-[#F5EFE2] dark:bg-[#06251D]/60">
+          <div className="p-3.5 border-b-2 border-[#171717] dark:border-[#4CA7A1] bg-[#F5EFE2] dark:bg-[#0D2B36]">
             <div className={`relative flex items-center ${sidebarCollapsed ? 'lg:justify-center' : ''}`}>
-              <Search className={`w-3.5 h-3.5 text-[#0B6B50] dark:text-[#D9AC45] ${sidebarCollapsed ? 'lg:static' : 'absolute left-3'}`} />
+              <Search className={`w-3.5 h-3.5 text-[#0B6B50] dark:text-[#4CA7A1] ${sidebarCollapsed ? 'lg:static' : 'absolute left-3'}`} />
               {!sidebarCollapsed && (
                 <input
                   type="text"
                   value={quickSearch}
                   onChange={(e) => setQuickSearch(e.target.value)}
                   placeholder="Pencarian cepat data..."
-                  className="w-full pl-9 pr-7 py-2 bg-white dark:bg-[#06251D] border-2 border-[#171717]/30 dark:border-[#D9AC45]/40 rounded-md text-xs focus:outline-hidden focus:border-[#0B6B50] dark:focus:border-[#D9AC45] text-[#171717] dark:text-[#F8F3E8] placeholder:text-[#57534E]/70 dark:placeholder:text-[#F8F3E8]/50 font-semibold"
+                  className="w-full pl-9 pr-7 py-2 bg-white dark:bg-[#001722] border-2 border-[#171717]/30 dark:border-[#4CA7A1] rounded-md text-xs focus:outline-hidden focus:border-[#0B6B50] dark:focus:border-[#CEFEF1] text-[#171717] dark:text-[#CEFEF1] placeholder:text-[#57534E]/70 dark:placeholder:text-[#A6D6C9] font-semibold"
                 />
               )}
               {!sidebarCollapsed && quickSearch && (
                 <button
                   onClick={() => setQuickSearch('')}
-                  className="absolute right-2.5 text-[#57534E] dark:text-[#F8F3E8]/60 hover:text-[#0B6B50] dark:hover:text-[#D9AC45]"
+                  className="absolute right-2.5 text-[#57534E] dark:text-[#A6D6C9] hover:text-[#0B6B50] dark:hover:text-[#CEFEF1]"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -898,7 +920,7 @@ export const AdminDashboard: React.FC<{
             {/* GROUP 1: UTAMA */}
             <div className="space-y-1.5">
               {!sidebarCollapsed && (
-                <p className="px-3 text-[10px] font-extrabold text-[#0B6B50] dark:text-[#D9AC45] uppercase tracking-wider truncate">
+                <p className="px-3 text-[10px] font-extrabold text-[#0B6B50] dark:text-[#A6D6C9] uppercase tracking-wider truncate">
                   UTAMA
                 </p>
               )}
@@ -907,11 +929,11 @@ export const AdminDashboard: React.FC<{
                 title="Dashboard Overview"
                 className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'} rounded-md text-xs font-extrabold transition cursor-pointer ${
                   activeTab === 'dashboard'
-                    ? 'bg-[#D9AC45] text-[#171717] border-2 border-[#171717] shadow-[3px_3px_0px_#171717]'
-                    : 'text-[#171717] dark:text-[#F8F3E8]/85 hover:bg-[#F5EFE2] dark:hover:bg-[#06251D] border-2 border-transparent hover:border-[#171717]/30 dark:hover:border-[#D9AC45]/40'
+                    ? 'bg-[#123D32] dark:bg-[#1F5F63] text-[#FAF7F0] dark:text-[#CEFEF1] border-2 border-[#171717] dark:border-[#4CA7A1] border-l-4 dark:border-l-[#4CA7A1] shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#001722]'
+                    : 'bg-[#F5EFE2]/60 dark:bg-[#0D2B36] text-[#171717] dark:text-[#A6D6C9] hover:bg-[#F5EFE2] dark:hover:bg-[#1F5F63] dark:hover:text-[#CEFEF1] border-2 border-[#171717]/40 dark:border-[#4CA7A1]'
                 }`}
               >
-                <BarChart2 className={`w-4 h-4 shrink-0 ${activeTab === 'dashboard' ? 'text-[#171717]' : 'text-[#0B6B50] dark:text-[#D9AC45]'}`} />
+                <BarChart2 className={`w-4 h-4 shrink-0 ${activeTab === 'dashboard' ? 'text-[#FAF7F0] dark:text-[#CEFEF1]' : 'text-[#0B6B50] dark:text-[#4CA7A1]'}`} />
                 {!sidebarCollapsed && <span className="truncate">Dashboard Overview</span>}
               </button>
             </div>
@@ -919,7 +941,7 @@ export const AdminDashboard: React.FC<{
             {/* GROUP 2: KONTEN PEMBELAJARAN */}
             <div className="space-y-1.5">
               {!sidebarCollapsed && (
-                <p className="px-3 text-[10px] font-extrabold text-[#0B6B50] dark:text-[#D9AC45] uppercase tracking-wider truncate">
+                <p className="px-3 text-[10px] font-extrabold text-[#0B6B50] dark:text-[#A6D6C9] uppercase tracking-wider truncate">
                   KONTEN PEMBELAJARAN
                 </p>
               )}
@@ -928,19 +950,19 @@ export const AdminDashboard: React.FC<{
                 title={`Mata Pelajaran (${courses.length})`}
                 className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3.5 py-2.5'} rounded-md text-xs font-extrabold transition cursor-pointer ${
                   activeTab === 'courses'
-                    ? 'bg-[#D9AC45] text-[#171717] border-2 border-[#171717] shadow-[3px_3px_0px_#171717]'
-                    : 'text-[#171717] dark:text-[#F8F3E8]/85 hover:bg-[#F5EFE2] dark:hover:bg-[#06251D] border-2 border-transparent hover:border-[#171717]/30 dark:hover:border-[#D9AC45]/40'
+                    ? 'bg-[#123D32] dark:bg-[#1F5F63] text-[#FAF7F0] dark:text-[#CEFEF1] border-2 border-[#171717] dark:border-[#4CA7A1] border-l-4 dark:border-l-[#4CA7A1] shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#001722]'
+                    : 'bg-[#F5EFE2]/60 dark:bg-[#0D2B36] text-[#171717] dark:text-[#A6D6C9] hover:bg-[#F5EFE2] dark:hover:bg-[#1F5F63] dark:hover:text-[#CEFEF1] border-2 border-[#171717]/40 dark:border-[#4CA7A1]'
                 }`}
               >
                 <div className="flex items-center gap-3 truncate">
-                  <BookOpen className={`w-4 h-4 shrink-0 ${activeTab === 'courses' ? 'text-[#171717]' : 'text-[#0B6B50] dark:text-[#D9AC45]'}`} />
+                  <BookOpen className={`w-4 h-4 shrink-0 ${activeTab === 'courses' ? 'text-[#FAF7F0] dark:text-[#CEFEF1]' : 'text-[#0B6B50] dark:text-[#4CA7A1]'}`} />
                   {!sidebarCollapsed && <span className="truncate">Mata Pelajaran</span>}
                 </div>
                 {!sidebarCollapsed && (
                   <span className={`text-[10px] px-2 py-0.5 rounded-sm font-extrabold shrink-0 border ${
                     activeTab === 'courses'
-                      ? 'bg-[#171717] text-[#D9AC45] border-[#171717]'
-                      : 'bg-[#F5EFE2] dark:bg-[#06251D] text-[#171717] dark:text-[#F8F3E8] border-[#171717]/30 dark:border-[#D9AC45]/40'
+                      ? 'bg-[#4CA7A1] text-[#001722] border-[#171717] dark:border-[#001722]'
+                      : 'bg-[#F5EFE2] dark:bg-[#001722] text-[#171717] dark:text-[#CEFEF1] border-[#171717]/30 dark:border-[#4CA7A1]'
                   }`}>
                     {courses.length}
                   </span>
@@ -952,19 +974,19 @@ export const AdminDashboard: React.FC<{
                 title={`Bab / Modul (${categories.length})`}
                 className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3.5 py-2.5'} rounded-md text-xs font-extrabold transition cursor-pointer ${
                   activeTab === 'categories'
-                    ? 'bg-[#D9AC45] text-[#171717] border-2 border-[#171717] shadow-[3px_3px_0px_#171717]'
-                    : 'text-[#171717] dark:text-[#F8F3E8]/85 hover:bg-[#F5EFE2] dark:hover:bg-[#06251D] border-2 border-transparent hover:border-[#171717]/30 dark:hover:border-[#D9AC45]/40'
+                    ? 'bg-[#123D32] dark:bg-[#1F5F63] text-[#FAF7F0] dark:text-[#CEFEF1] border-2 border-[#171717] dark:border-[#4CA7A1] border-l-4 dark:border-l-[#4CA7A1] shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#001722]'
+                    : 'bg-[#F5EFE2]/60 dark:bg-[#0D2B36] text-[#171717] dark:text-[#A6D6C9] hover:bg-[#F5EFE2] dark:hover:bg-[#1F5F63] dark:hover:text-[#CEFEF1] border-2 border-[#171717]/40 dark:border-[#4CA7A1]'
                 }`}
               >
                 <div className="flex items-center gap-3 truncate">
-                  <Layers className={`w-4 h-4 shrink-0 ${activeTab === 'categories' ? 'text-[#171717]' : 'text-[#0B6B50] dark:text-[#D9AC45]'}`} />
+                  <Layers className={`w-4 h-4 shrink-0 ${activeTab === 'categories' ? 'text-[#FAF7F0] dark:text-[#CEFEF1]' : 'text-[#0B6B50] dark:text-[#4CA7A1]'}`} />
                   {!sidebarCollapsed && <span className="truncate">Bab / Modul</span>}
                 </div>
                 {!sidebarCollapsed && (
                   <span className={`text-[10px] px-2 py-0.5 rounded-sm font-extrabold shrink-0 border ${
                     activeTab === 'categories'
-                      ? 'bg-[#171717] text-[#D9AC45] border-[#171717]'
-                      : 'bg-[#F5EFE2] dark:bg-[#06251D] text-[#171717] dark:text-[#F8F3E8] border-[#171717]/30 dark:border-[#D9AC45]/40'
+                      ? 'bg-[#4CA7A1] text-[#001722] border-[#171717] dark:border-[#001722]'
+                      : 'bg-[#F5EFE2] dark:bg-[#001722] text-[#171717] dark:text-[#CEFEF1] border-[#171717]/30 dark:border-[#4CA7A1]'
                   }`}>
                     {categories.length}
                   </span>
@@ -976,19 +998,19 @@ export const AdminDashboard: React.FC<{
                 title={`Sesi Pembelajaran (${totalSessionsCount})`}
                 className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3.5 py-2.5'} rounded-md text-xs font-extrabold transition cursor-pointer ${
                   activeTab === 'sessions'
-                    ? 'bg-[#D9AC45] text-[#171717] border-2 border-[#171717] shadow-[3px_3px_0px_#171717]'
-                    : 'text-[#171717] dark:text-[#F8F3E8]/85 hover:bg-[#F5EFE2] dark:hover:bg-[#06251D] border-2 border-transparent hover:border-[#171717]/30 dark:hover:border-[#D9AC45]/40'
+                    ? 'bg-[#123D32] dark:bg-[#1F5F63] text-[#FAF7F0] dark:text-[#CEFEF1] border-2 border-[#171717] dark:border-[#4CA7A1] border-l-4 dark:border-l-[#4CA7A1] shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#001722]'
+                    : 'bg-[#F5EFE2]/60 dark:bg-[#0D2B36] text-[#171717] dark:text-[#A6D6C9] hover:bg-[#F5EFE2] dark:hover:bg-[#1F5F63] dark:hover:text-[#CEFEF1] border-2 border-[#171717]/40 dark:border-[#4CA7A1]'
                 }`}
               >
                 <div className="flex items-center gap-3 truncate">
-                  <Video className={`w-4 h-4 shrink-0 ${activeTab === 'sessions' ? 'text-[#171717]' : 'text-[#0B6B50] dark:text-[#D9AC45]'}`} />
+                  <Video className={`w-4 h-4 shrink-0 ${activeTab === 'sessions' ? 'text-[#FAF7F0] dark:text-[#CEFEF1]' : 'text-[#0B6B50] dark:text-[#4CA7A1]'}`} />
                   {!sidebarCollapsed && <span className="truncate">Sesi Pembelajaran</span>}
                 </div>
                 {!sidebarCollapsed && (
                   <span className={`text-[10px] px-2 py-0.5 rounded-sm font-extrabold shrink-0 border ${
                     activeTab === 'sessions'
-                      ? 'bg-[#171717] text-[#D9AC45] border-[#171717]'
-                      : 'bg-[#F5EFE2] dark:bg-[#06251D] text-[#171717] dark:text-[#F8F3E8] border-[#171717]/30 dark:border-[#D9AC45]/40'
+                      ? 'bg-[#4CA7A1] text-[#001722] border-[#171717] dark:border-[#001722]'
+                      : 'bg-[#F5EFE2] dark:bg-[#001722] text-[#171717] dark:text-[#CEFEF1] border-[#171717]/30 dark:border-[#4CA7A1]'
                   }`}>
                     {totalSessionsCount}
                   </span>
@@ -1000,19 +1022,19 @@ export const AdminDashboard: React.FC<{
                 title={`Kuis Evaluasi (${quizzes.length})`}
                 className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3.5 py-2.5'} rounded-md text-xs font-extrabold transition cursor-pointer ${
                   activeTab === 'quizzes'
-                    ? 'bg-[#D9AC45] text-[#171717] border-2 border-[#171717] shadow-[3px_3px_0px_#171717]'
-                    : 'text-[#171717] dark:text-[#F8F3E8]/85 hover:bg-[#F5EFE2] dark:hover:bg-[#06251D] border-2 border-transparent hover:border-[#171717]/30 dark:hover:border-[#D9AC45]/40'
+                    ? 'bg-[#123D32] dark:bg-[#1F5F63] text-[#FAF7F0] dark:text-[#CEFEF1] border-2 border-[#171717] dark:border-[#4CA7A1] border-l-4 dark:border-l-[#4CA7A1] shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#001722]'
+                    : 'bg-[#F5EFE2]/60 dark:bg-[#0D2B36] text-[#171717] dark:text-[#A6D6C9] hover:bg-[#F5EFE2] dark:hover:bg-[#1F5F63] dark:hover:text-[#CEFEF1] border-2 border-[#171717]/40 dark:border-[#4CA7A1]'
                 }`}
               >
                 <div className="flex items-center gap-3 truncate">
-                  <HelpCircle className={`w-4 h-4 shrink-0 ${activeTab === 'quizzes' ? 'text-[#171717]' : 'text-[#0B6B50] dark:text-[#D9AC45]'}`} />
+                  <HelpCircle className={`w-4 h-4 shrink-0 ${activeTab === 'quizzes' ? 'text-[#FAF7F0] dark:text-[#CEFEF1]' : 'text-[#0B6B50] dark:text-[#4CA7A1]'}`} />
                   {!sidebarCollapsed && <span className="truncate">Kuis Evaluasi</span>}
                 </div>
                 {!sidebarCollapsed && (
                   <span className={`text-[10px] px-2 py-0.5 rounded-sm font-extrabold shrink-0 border ${
                     activeTab === 'quizzes'
-                      ? 'bg-[#171717] text-[#D9AC45] border-[#171717]'
-                      : 'bg-[#F5EFE2] dark:bg-[#06251D] text-[#171717] dark:text-[#F8F3E8] border-[#171717]/30 dark:border-[#D9AC45]/40'
+                      ? 'bg-[#4CA7A1] text-[#001722] border-[#171717] dark:border-[#001722]'
+                      : 'bg-[#F5EFE2] dark:bg-[#001722] text-[#171717] dark:text-[#CEFEF1] border-[#171717]/30 dark:border-[#4CA7A1]'
                   }`}>
                     {quizzes.length}
                   </span>
@@ -1024,19 +1046,19 @@ export const AdminDashboard: React.FC<{
                 title={`Blog & Artikel (${blogPosts.length})`}
                 className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3.5 py-2.5'} rounded-md text-xs font-extrabold transition cursor-pointer ${
                   activeTab === 'blog'
-                    ? 'bg-[#D9AC45] text-[#171717] border-2 border-[#171717] shadow-[3px_3px_0px_#171717]'
-                    : 'text-[#171717] dark:text-[#F8F3E8]/85 hover:bg-[#F5EFE2] dark:hover:bg-[#06251D] border-2 border-transparent hover:border-[#171717]/30 dark:hover:border-[#D9AC45]/40'
+                    ? 'bg-[#123D32] dark:bg-[#1F5F63] text-[#FAF7F0] dark:text-[#CEFEF1] border-2 border-[#171717] dark:border-[#4CA7A1] border-l-4 dark:border-l-[#4CA7A1] shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#001722]'
+                    : 'bg-[#F5EFE2]/60 dark:bg-[#0D2B36] text-[#171717] dark:text-[#A6D6C9] hover:bg-[#F5EFE2] dark:hover:bg-[#1F5F63] dark:hover:text-[#CEFEF1] border-2 border-[#171717]/40 dark:border-[#4CA7A1]'
                 }`}
               >
                 <div className="flex items-center gap-3 truncate">
-                  <FileText className={`w-4 h-4 shrink-0 ${activeTab === 'blog' ? 'text-[#171717]' : 'text-[#0B6B50] dark:text-[#D9AC45]'}`} />
+                  <FileText className={`w-4 h-4 shrink-0 ${activeTab === 'blog' ? 'text-[#FAF7F0] dark:text-[#CEFEF1]' : 'text-[#0B6B50] dark:text-[#4CA7A1]'}`} />
                   {!sidebarCollapsed && <span className="truncate">Blog & Artikel</span>}
                 </div>
                 {!sidebarCollapsed && (
                   <span className={`text-[10px] px-2 py-0.5 rounded-sm font-extrabold shrink-0 border ${
                     activeTab === 'blog'
-                      ? 'bg-[#171717] text-[#D9AC45] border-[#171717]'
-                      : 'bg-[#F5EFE2] dark:bg-[#06251D] text-[#171717] dark:text-[#F8F3E8] border-[#171717]/30 dark:border-[#D9AC45]/40'
+                      ? 'bg-[#4CA7A1] text-[#001722] border-[#171717] dark:border-[#001722]'
+                      : 'bg-[#F5EFE2] dark:bg-[#001722] text-[#171717] dark:text-[#CEFEF1] border-[#171717]/30 dark:border-[#4CA7A1]'
                   }`}>
                     {blogPosts.length}
                   </span>
@@ -1048,23 +1070,23 @@ export const AdminDashboard: React.FC<{
                 title={`Komentar Pembaca Artikel (${commentsCount})`}
                 className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3.5 py-2.5'} rounded-md text-xs font-extrabold transition cursor-pointer ${
                   activeTab === 'comments'
-                    ? 'bg-[#D9AC45] text-[#171717] border-2 border-[#171717] shadow-[3px_3px_0px_#171717]'
-                    : 'text-[#171717] dark:text-[#F8F3E8]/85 hover:bg-[#F5EFE2] dark:hover:bg-[#06251D] border-2 border-transparent hover:border-[#171717]/30 dark:hover:border-[#D9AC45]/40'
+                    ? 'bg-[#123D32] dark:bg-[#1F5F63] text-[#FAF7F0] dark:text-[#CEFEF1] border-2 border-[#171717] dark:border-[#4CA7A1] border-l-4 dark:border-l-[#4CA7A1] shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#001722]'
+                    : 'bg-[#F5EFE2]/60 dark:bg-[#0D2B36] text-[#171717] dark:text-[#A6D6C9] hover:bg-[#F5EFE2] dark:hover:bg-[#1F5F63] dark:hover:text-[#CEFEF1] border-2 border-[#171717]/40 dark:border-[#4CA7A1]'
                 }`}
               >
                 <div className="flex items-center gap-3 truncate">
-                  <MessageSquare className={`w-4 h-4 shrink-0 ${activeTab === 'comments' ? 'text-[#171717]' : 'text-[#0B6B50] dark:text-[#D9AC45]'}`} />
+                  <MessageSquare className={`w-4 h-4 shrink-0 ${activeTab === 'comments' ? 'text-[#FAF7F0] dark:text-[#CEFEF1]' : 'text-[#0B6B50] dark:text-[#4CA7A1]'}`} />
                   {!sidebarCollapsed && <span className="truncate">Komentar Artikel</span>}
                 </div>
                 {!sidebarCollapsed && pendingCommentsCount > 0 ? (
-                  <span className="text-[10px] px-2 py-0.5 rounded-sm bg-[#F04438] text-white border border-[#171717] font-extrabold shrink-0 animate-pulse">
+                  <span className="text-[10px] px-2 py-0.5 rounded-sm bg-[#C94A4A] text-white border border-[#171717] font-extrabold shrink-0 animate-pulse">
                     {pendingCommentsCount} baru
                   </span>
                 ) : !sidebarCollapsed && commentsCount > 0 ? (
                   <span className={`text-[10px] px-2 py-0.5 rounded-sm font-extrabold shrink-0 border ${
                     activeTab === 'comments'
-                      ? 'bg-[#171717] text-[#D9AC45] border-[#171717]'
-                      : 'bg-[#F5EFE2] dark:bg-[#06251D] text-[#171717] dark:text-[#F8F3E8] border-[#171717]/30 dark:border-[#D9AC45]/40'
+                      ? 'bg-[#4CA7A1] text-[#001722] border-[#171717] dark:border-[#001722]'
+                      : 'bg-[#F5EFE2] dark:bg-[#001722] text-[#171717] dark:text-[#CEFEF1] border-[#171717]/30 dark:border-[#4CA7A1]'
                   }`}>
                     {commentsCount}
                   </span>
@@ -1076,12 +1098,12 @@ export const AdminDashboard: React.FC<{
                 title="Konsultasi & Q&A Siswa"
                 className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3.5 py-2.5'} rounded-md text-xs font-extrabold transition cursor-pointer ${
                   activeTab === 'consultation'
-                    ? 'bg-[#D9AC45] text-[#171717] border-2 border-[#171717] shadow-[3px_3px_0px_#171717]'
-                    : 'text-[#171717] dark:text-[#F8F3E8]/85 hover:bg-[#F5EFE2] dark:hover:bg-[#06251D] border-2 border-transparent hover:border-[#171717]/30 dark:hover:border-[#D9AC45]/40'
+                    ? 'bg-[#123D32] dark:bg-[#1F5F63] text-[#FAF7F0] dark:text-[#CEFEF1] border-2 border-[#171717] dark:border-[#4CA7A1] border-l-4 dark:border-l-[#4CA7A1] shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#001722]'
+                    : 'bg-[#F5EFE2]/60 dark:bg-[#0D2B36] text-[#171717] dark:text-[#A6D6C9] hover:bg-[#F5EFE2] dark:hover:bg-[#1F5F63] dark:hover:text-[#CEFEF1] border-2 border-[#171717]/40 dark:border-[#4CA7A1]'
                 }`}
               >
                 <div className="flex items-center gap-3 truncate">
-                  <MessageSquare className={`w-4 h-4 shrink-0 ${activeTab === 'consultation' ? 'text-[#171717]' : 'text-[#0B6B50] dark:text-[#D9AC45]'}`} />
+                  <MessageSquare className={`w-4 h-4 shrink-0 ${activeTab === 'consultation' ? 'text-[#FAF7F0] dark:text-[#CEFEF1]' : 'text-[#0B6B50] dark:text-[#4CA7A1]'}`} />
                   {!sidebarCollapsed && <span className="truncate">Konsultasi & Q&A</span>}
                 </div>
               </button>
@@ -1092,12 +1114,12 @@ export const AdminDashboard: React.FC<{
                 title="Kelola Halaman Profil Pengajar"
                 className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3.5 py-2.5'} rounded-md text-xs font-extrabold transition cursor-pointer ${
                   activeTab === 'instructor-profile'
-                    ? 'bg-[#D9AC45] text-[#171717] border-2 border-[#171717] shadow-[3px_3px_0px_#171717]'
-                    : 'text-[#171717] dark:text-[#F8F3E8]/85 hover:bg-[#F5EFE2] dark:hover:bg-[#06251D] border-2 border-transparent hover:border-[#171717]/30 dark:hover:border-[#D9AC45]/40'
+                    ? 'bg-[#123D32] dark:bg-[#1F5F63] text-[#FAF7F0] dark:text-[#CEFEF1] border-2 border-[#171717] dark:border-[#4CA7A1] border-l-4 dark:border-l-[#4CA7A1] shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#001722]'
+                    : 'bg-[#F5EFE2]/60 dark:bg-[#0D2B36] text-[#171717] dark:text-[#A6D6C9] hover:bg-[#F5EFE2] dark:hover:bg-[#1F5F63] dark:hover:text-[#CEFEF1] border-2 border-[#171717]/40 dark:border-[#4CA7A1]'
                 }`}
               >
                 <div className="flex items-center gap-3 truncate">
-                  <UserCheck className={`w-4 h-4 shrink-0 ${activeTab === 'instructor-profile' ? 'text-[#171717]' : 'text-[#0B6B50] dark:text-[#D9AC45]'}`} />
+                  <UserCheck className={`w-4 h-4 shrink-0 ${activeTab === 'instructor-profile' ? 'text-[#FAF7F0] dark:text-[#CEFEF1]' : 'text-[#0B6B50] dark:text-[#4CA7A1]'}`} />
                   {!sidebarCollapsed && <span className="truncate">Profil Pengajar</span>}
                 </div>
               </button>
@@ -1106,7 +1128,7 @@ export const AdminDashboard: React.FC<{
             {/* GROUP 3: PENGGUNA & MONITORING */}
             <div className="space-y-1.5">
               {!sidebarCollapsed && (
-                <p className="px-3 text-[10px] font-extrabold text-[#0B6B50] dark:text-[#D9AC45] uppercase tracking-wider truncate">
+                <p className="px-3 text-[10px] font-extrabold text-[#0B6B50] dark:text-[#A6D6C9] uppercase tracking-wider truncate">
                   PENGGUNA & MONITORING
                 </p>
               )}
@@ -1115,19 +1137,19 @@ export const AdminDashboard: React.FC<{
                 title={`Pengguna Terdaftar (${users.length})`}
                 className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3.5 py-2.5'} rounded-md text-xs font-extrabold transition cursor-pointer ${
                   activeTab === 'users'
-                    ? 'bg-[#D9AC45] text-[#171717] border-2 border-[#171717] shadow-[3px_3px_0px_#171717]'
-                    : 'text-[#171717] dark:text-[#F8F3E8]/85 hover:bg-[#F5EFE2] dark:hover:bg-[#06251D] border-2 border-transparent hover:border-[#171717]/30 dark:hover:border-[#D9AC45]/40'
+                    ? 'bg-[#123D32] dark:bg-[#1F5F63] text-[#FAF7F0] dark:text-[#CEFEF1] border-2 border-[#171717] dark:border-[#4CA7A1] border-l-4 dark:border-l-[#4CA7A1] shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#001722]'
+                    : 'bg-[#F5EFE2]/60 dark:bg-[#0D2B36] text-[#171717] dark:text-[#A6D6C9] hover:bg-[#F5EFE2] dark:hover:bg-[#1F5F63] dark:hover:text-[#CEFEF1] border-2 border-[#171717]/40 dark:border-[#4CA7A1]'
                 }`}
               >
                 <div className="flex items-center gap-3 truncate">
-                  <Users className={`w-4 h-4 shrink-0 ${activeTab === 'users' ? 'text-[#171717]' : 'text-[#0B6B50] dark:text-[#D9AC45]'}`} />
+                  <Users className={`w-4 h-4 shrink-0 ${activeTab === 'users' ? 'text-[#FAF7F0] dark:text-[#CEFEF1]' : 'text-[#0B6B50] dark:text-[#4CA7A1]'}`} />
                   {!sidebarCollapsed && <span className="truncate">Pengguna Terdaftar</span>}
                 </div>
                 {!sidebarCollapsed && (
                   <span className={`text-[10px] px-2 py-0.5 rounded-sm font-extrabold shrink-0 border ${
                     activeTab === 'users'
-                      ? 'bg-[#171717] text-[#D9AC45] border-[#171717]'
-                      : 'bg-[#F5EFE2] dark:bg-[#06251D] text-[#171717] dark:text-[#F8F3E8] border-[#171717]/30 dark:border-[#D9AC45]/40'
+                      ? 'bg-[#4CA7A1] text-[#001722] border-[#171717] dark:border-[#001722]'
+                      : 'bg-[#F5EFE2] dark:bg-[#001722] text-[#171717] dark:text-[#CEFEF1] border-[#171717]/30 dark:border-[#4CA7A1]'
                   }`}>
                     {users.length}
                   </span>
@@ -1139,19 +1161,19 @@ export const AdminDashboard: React.FC<{
                 title={`Hasil Kuis & Nilai (${attempts.length})`}
                 className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3.5 py-2.5'} rounded-md text-xs font-extrabold transition cursor-pointer ${
                   activeTab === 'attempts'
-                    ? 'bg-[#D9AC45] text-[#171717] border-2 border-[#171717] shadow-[3px_3px_0px_#171717]'
-                    : 'text-[#171717] dark:text-[#F8F3E8]/85 hover:bg-[#F5EFE2] dark:hover:bg-[#06251D] border-2 border-transparent hover:border-[#171717]/30 dark:hover:border-[#D9AC45]/40'
+                    ? 'bg-[#123D32] dark:bg-[#1F5F63] text-[#FAF7F0] dark:text-[#CEFEF1] border-2 border-[#171717] dark:border-[#4CA7A1] border-l-4 dark:border-l-[#4CA7A1] shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#001722]'
+                    : 'bg-[#F5EFE2]/60 dark:bg-[#0D2B36] text-[#171717] dark:text-[#A6D6C9] hover:bg-[#F5EFE2] dark:hover:bg-[#1F5F63] dark:hover:text-[#CEFEF1] border-2 border-[#171717]/40 dark:border-[#4CA7A1]'
                 }`}
               >
                 <div className="flex items-center gap-3 truncate">
-                  <Award className={`w-4 h-4 shrink-0 ${activeTab === 'attempts' ? 'text-[#171717]' : 'text-[#0B6B50] dark:text-[#D9AC45]'}`} />
+                  <Award className={`w-4 h-4 shrink-0 ${activeTab === 'attempts' ? 'text-[#FAF7F0] dark:text-[#CEFEF1]' : 'text-[#0B6B50] dark:text-[#4CA7A1]'}`} />
                   {!sidebarCollapsed && <span className="truncate">Hasil Kuis & Nilai</span>}
                 </div>
                 {!sidebarCollapsed && (
                   <span className={`text-[10px] px-2 py-0.5 rounded-sm font-extrabold shrink-0 border ${
                     activeTab === 'attempts'
-                      ? 'bg-[#171717] text-[#D9AC45] border-[#171717]'
-                      : 'bg-[#F5EFE2] dark:bg-[#06251D] text-[#171717] dark:text-[#F8F3E8] border-[#171717]/30 dark:border-[#D9AC45]/40'
+                      ? 'bg-[#4CA7A1] text-[#001722] border-[#171717] dark:border-[#001722]'
+                      : 'bg-[#F5EFE2] dark:bg-[#001722] text-[#171717] dark:text-[#CEFEF1] border-[#171717]/30 dark:border-[#4CA7A1]'
                   }`}>
                     {attempts.length}
                   </span>
@@ -1159,20 +1181,20 @@ export const AdminDashboard: React.FC<{
               </button>
             </div>
 
-            {/* GROUP 4: AKSI & NAVIGASI ADMIN */}
+            {/* GROUP 4: AKSI & PINTASAN ADMIN */}
             <div className="space-y-1.5">
               {!sidebarCollapsed && (
-                <p className="px-3 text-[10px] font-extrabold text-[#0B6B50] dark:text-[#D9AC45] uppercase tracking-wider truncate">
-                  AKSI & NAVIGASI
+                <p className="px-3 text-[10px] font-extrabold text-[#0B6B50] dark:text-[#A6D6C9] uppercase tracking-wider truncate">
+                  AKSI & PINTASAN
                 </p>
               )}
               {onNavigateToSiswa && (
                 <button
                   onClick={() => { onNavigateToSiswa(); setSidebarOpen(false); }}
                   title="Lihat Web Siswa"
-                  className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'} rounded-md text-xs font-extrabold text-[#171717] dark:text-[#F8F3E8]/85 hover:bg-[#F5EFE2] dark:hover:bg-[#06251D] border-2 border-transparent hover:border-[#171717]/30 dark:hover:border-[#D9AC45]/40 transition cursor-pointer`}
+                  className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'} rounded-md text-xs font-extrabold bg-[#F5EFE2]/60 dark:bg-[#0D2B36] text-[#171717] dark:text-[#A6D6C9] hover:bg-[#F5EFE2] dark:hover:bg-[#1F5F63] dark:hover:text-[#CEFEF1] border-2 border-[#171717]/40 dark:border-[#4CA7A1] transition cursor-pointer`}
                 >
-                  <ExternalLink className="w-4 h-4 text-[#0B6B50] dark:text-[#D9AC45] shrink-0" />
+                  <ExternalLink className="w-4 h-4 text-[#0B6B50] dark:text-[#4CA7A1] shrink-0" />
                   {!sidebarCollapsed && <span className="truncate">Lihat Web Siswa</span>}
                 </button>
               )}
@@ -1180,23 +1202,23 @@ export const AdminDashboard: React.FC<{
               <button
                 onClick={handleExportReport}
                 title="Ekspor Laporan (CSV)"
-                className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'} rounded-md text-xs font-extrabold text-[#171717] dark:text-[#F8F3E8]/85 hover:bg-[#F5EFE2] dark:hover:bg-[#06251D] border-2 border-transparent hover:border-[#171717]/30 dark:hover:border-[#D9AC45]/40 transition cursor-pointer`}
+                className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'} rounded-md text-xs font-extrabold bg-[#F5EFE2]/60 dark:bg-[#0D2B36] text-[#171717] dark:text-[#A6D6C9] hover:bg-[#F5EFE2] dark:hover:bg-[#1F5F63] dark:hover:text-[#CEFEF1] border-2 border-[#171717]/40 dark:border-[#4CA7A1] transition cursor-pointer`}
               >
-                <Download className="w-4 h-4 text-[#0B6B50] dark:text-[#D9AC45] shrink-0" />
+                <Download className="w-4 h-4 text-[#0B6B50] dark:text-[#4CA7A1] shrink-0" />
                 {!sidebarCollapsed && <span className="truncate">Ekspor Laporan (CSV)</span>}
               </button>
 
               <button
                 onClick={() => setTheme(effectiveTheme === 'dark' ? 'light' : 'dark')}
                 title={`Mode Tampilan (${effectiveTheme === 'dark' ? 'Gelap' : 'Terang'})`}
-                className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3.5 py-2.5'} rounded-md text-xs font-extrabold text-[#171717] dark:text-[#F8F3E8]/85 hover:bg-[#F5EFE2] dark:hover:bg-[#06251D] border-2 border-transparent hover:border-[#171717]/30 dark:hover:border-[#D9AC45]/40 transition cursor-pointer`}
+                className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3.5 py-2.5'} rounded-md text-xs font-extrabold bg-[#F5EFE2]/60 dark:bg-[#0D2B36] text-[#171717] dark:text-[#A6D6C9] hover:bg-[#F5EFE2] dark:hover:bg-[#1F5F63] dark:hover:text-[#CEFEF1] border-2 border-[#171717]/40 dark:border-[#4CA7A1] transition cursor-pointer`}
               >
                 <div className="flex items-center gap-3 truncate">
-                  {effectiveTheme === 'dark' ? <Sun className="w-4 h-4 text-[#D9AC45] shrink-0" /> : <Moon className="w-4 h-4 text-[#0B6B50] shrink-0" />}
+                  {effectiveTheme === 'dark' ? <Sun className="w-4 h-4 text-[#4CA7A1] shrink-0" /> : <Moon className="w-4 h-4 text-[#0B6B50] shrink-0" />}
                   {!sidebarCollapsed && <span className="truncate">Mode Tampilan</span>}
                 </div>
                 {!sidebarCollapsed && (
-                  <span className="text-[10px] font-extrabold uppercase text-[#0B6B50] dark:text-[#D9AC45] shrink-0">
+                  <span className="text-[10px] font-extrabold uppercase text-[#0B6B50] dark:text-[#CEFEF1] shrink-0">
                     {effectiveTheme === 'dark' ? 'Gelap' : 'Terang'}
                   </span>
                 )}
@@ -1206,7 +1228,7 @@ export const AdminDashboard: React.FC<{
             {/* GROUP 5: PENGATURAN */}
             <div className="space-y-1.5">
               {!sidebarCollapsed && (
-                <p className="px-3 text-[10px] font-extrabold text-[#0B6B50] dark:text-[#D9AC45] uppercase tracking-wider truncate">
+                <p className="px-3 text-[10px] font-extrabold text-[#0B6B50] dark:text-[#A6D6C9] uppercase tracking-wider truncate">
                   PENGATURAN
                 </p>
               )}
@@ -1215,21 +1237,21 @@ export const AdminDashboard: React.FC<{
                 title="Status Firebase & Data"
                 className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'} rounded-md text-xs font-extrabold transition cursor-pointer ${
                   activeTab === 'firebase'
-                    ? 'bg-[#D9AC45] text-[#171717] border-2 border-[#171717] shadow-[3px_3px_0px_#171717]'
-                    : 'text-[#171717] dark:text-[#F8F3E8]/85 hover:bg-[#F5EFE2] dark:hover:bg-[#06251D] border-2 border-transparent hover:border-[#171717]/30 dark:hover:border-[#D9AC45]/40'
+                    ? 'bg-[#123D32] dark:bg-[#1F5F63] text-[#FAF7F0] dark:text-[#CEFEF1] border-2 border-[#171717] dark:border-[#4CA7A1] border-l-4 dark:border-l-[#4CA7A1] shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#001722]'
+                    : 'bg-[#F5EFE2]/60 dark:bg-[#0D2B36] text-[#171717] dark:text-[#A6D6C9] hover:bg-[#F5EFE2] dark:hover:bg-[#1F5F63] dark:hover:text-[#CEFEF1] border-2 border-[#171717]/40 dark:border-[#4CA7A1]'
                 }`}
               >
-                <Database className={`w-4 h-4 shrink-0 ${activeTab === 'firebase' ? 'text-[#171717]' : 'text-[#0B6B50] dark:text-[#D9AC45]'}`} />
+                <Database className={`w-4 h-4 shrink-0 ${activeTab === 'firebase' ? 'text-[#FAF7F0] dark:text-[#CEFEF1]' : 'text-[#0B6B50] dark:text-[#4CA7A1]'}`} />
                 {!sidebarCollapsed && <span className="truncate">Status Firebase & Data</span>}
               </button>
             </div>
           </div>
 
           {/* BOTTOM PROFILE & LOGOUT */}
-          <div className={`p-3.5 border-t-2 border-[#171717] dark:border-[#D9AC45]/40 bg-[#F5EFE2] dark:bg-[#06251D] space-y-3 ${sidebarCollapsed ? 'px-2' : 'px-3.5'}`}>
+          <div className={`p-3.5 border-t-2 border-[#171717] dark:border-[#4CA7A1] bg-[#F5EFE2] dark:bg-[#0D2B36] space-y-3 ${sidebarCollapsed ? 'px-2' : 'px-3.5'}`}>
             <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between gap-2'}`}>
               <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-9 h-9 rounded-md bg-[#D9AC45] text-[#171717] font-extrabold text-xs flex items-center justify-center shrink-0 overflow-hidden border-2 border-[#171717] shadow-[2px_2px_0px_#171717]">
+                <div className="w-9 h-9 rounded-md bg-[#4CA7A1] text-[#001722] font-extrabold text-xs flex items-center justify-center shrink-0 overflow-hidden border-2 border-[#171717] dark:border-[#A6D6C9] shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#001722]">
                   {(userProfile?.photoURL || user?.photoURL) ? (
                     <img
                       src={userProfile?.photoURL || user?.photoURL || ''}
@@ -1242,10 +1264,10 @@ export const AdminDashboard: React.FC<{
                 </div>
                 {!sidebarCollapsed && (
                   <div className="overflow-hidden text-xs">
-                    <p className="font-bold text-[#171717] dark:text-[#F8F3E8] truncate">
+                    <p className="font-bold text-[#171717] dark:text-[#CEFEF1] truncate">
                       {userProfile?.displayName || user?.displayName || 'Admin Dars with Osama'}
                     </p>
-                    <p className="text-[#57534E] dark:text-[#F8F3E8]/70 truncate text-[10px]">
+                    <p className="text-[#57534E] dark:text-[#A6D6C9] truncate text-[10px]">
                       {user?.email}
                     </p>
                   </div>
@@ -1253,7 +1275,7 @@ export const AdminDashboard: React.FC<{
               </div>
 
               {!sidebarCollapsed && (
-                <span className="shrink-0 text-[10px] px-2 py-0.5 rounded-sm bg-[#D9AC45] text-[#171717] font-extrabold border border-[#171717] uppercase">
+                <span className="shrink-0 text-[10px] px-2 py-0.5 rounded-sm bg-[#4CA7A1] text-[#001722] font-extrabold border border-[#171717] dark:border-[#001722] uppercase">
                   Admin
                 </span>
               )}
@@ -1262,7 +1284,7 @@ export const AdminDashboard: React.FC<{
             <button
               onClick={openLogoutConfirmModal}
               title="Keluar / Logout Admin"
-              className={`w-full flex items-center justify-center ${sidebarCollapsed ? 'px-0 py-2.5' : 'gap-2 py-2 px-3'} nb-btn nb-btn-danger text-xs`}
+              className={`w-full flex items-center justify-center ${sidebarCollapsed ? 'px-0 py-2.5' : 'gap-2 py-2 px-3'} rounded-md font-extrabold bg-[#C94A4A] hover:bg-[#D9534F] text-[#FFFFFF] border-2 border-[#171717] dark:border-[#A6D6C9] shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#001722] transition cursor-pointer text-xs`}
             >
               <LogOut className="w-3.5 h-3.5 shrink-0" />
               {!sidebarCollapsed && <span>Keluar / Logout</span>}
@@ -1275,7 +1297,7 @@ export const AdminDashboard: React.FC<{
       {sidebarOpen && (
         <div
           onClick={() => setSidebarOpen(false)}
-          className="fixed inset-0 bg-[#171717]/75 z-40 lg:hidden cursor-pointer"
+          className="fixed inset-0 bg-[#001722]/80 z-40 lg:hidden cursor-pointer"
           aria-hidden="true"
         />
       )}
@@ -1287,30 +1309,60 @@ export const AdminDashboard: React.FC<{
           <main className="flex-1 p-3 sm:p-6 lg:p-8 space-y-6 min-w-0">
           {/* Status Alert Notification */}
           {statusMessage && (
-            <div className={`p-4 rounded-md border-2 border-[#171717] shadow-[4px_4px_0px_#171717] text-xs sm:text-sm font-bold flex items-center gap-3 animate-fade-in-up ${
+            <div className={`p-4 rounded-md border-2 border-[#171717] dark:border-[#4CA7A1] shadow-[4px_4px_0px_#171717] dark:shadow-[4px_4px_0px_#001722] text-xs sm:text-sm font-bold flex items-center gap-3 animate-fade-in-up ${
               statusMessage.type === 'success'
-                ? 'bg-[#06251D] text-[#F8F3E8]'
-                : 'bg-[#F04438] text-white'
+                ? 'bg-[#1F5F63] text-[#CEFEF1]'
+                : 'bg-[#C94A4A] text-white'
             }`}>
-              {statusMessage.type === 'success' ? <CheckCircle className="w-5 h-5 text-[#D9AC45] shrink-0" /> : <AlertCircle className="w-5 h-5 text-white shrink-0" />}
+              {statusMessage.type === 'success' ? <CheckCircle className="w-5 h-5 text-[#4CA7A1] shrink-0" /> : <AlertCircle className="w-5 h-5 text-white shrink-0" />}
               <span>{statusMessage.text}</span>
             </div>
           )}
 
+          {/* Forensic Data Source & Quota Protection Banner */}
+          {getDataSourceStatus().isUsingFallback && (
+            <div className="p-4 rounded-md bg-[#FFFBEB] dark:bg-[#1F5F63] border-2 border-[#4CA7A1] text-[#171717] dark:text-[#CEFEF1] shadow-[4px_4px_0px_#171717] dark:shadow-[4px_4px_0px_#001722] space-y-2">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <ShieldAlert className="w-5 h-5 text-[#4CA7A1] shrink-0 mt-0.5" />
+                  <div className="space-y-1 text-xs">
+                    <p className="font-extrabold text-sm text-[#171717] dark:text-[#FFFFFF]">
+                      Proteksi Data Aktif — Menampilkan Data Cadangan Statis (Snapshot 22 Okt 2026)
+                    </p>
+                    <p className="text-[#171717]/85 dark:text-[#A6D6C9] leading-relaxed">
+                      Server Cloud Firestore (<code className="font-mono font-bold">{firebaseConfig.firestoreDatabaseId}</code>) saat ini mengembalikan status{' '}
+                      <code className="font-mono font-bold text-[#B42318] dark:text-[#CEFEF1]">
+                        {getLatestFirestoreDiagnostic()?.code || 'resource-exhausted'}
+                      </code>{' '}
+                      (Batas kuota baca harian gratis tercapai). <strong>Seluruh data terbaru Anda setelah 22 Okt 2026 tetap aman di server Firestore dan TIDAK tertimpa.</strong> Hindari menyimpan perubahan pada item lama di bawah ini hingga kuota baca harian kembali normal.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => loadAllAdminData(true)}
+                  className="shrink-0 px-3 py-1.5 rounded-md bg-[#4CA7A1] text-[#001722] border-2 border-[#171717] dark:border-[#001722] font-extrabold text-xs flex items-center gap-1.5 cursor-pointer"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+                  <span>Cek Server</span>
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* HEADER SECTION WITH BREADCRUMB & QUICK ACTION BUTTONS */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b-2 border-[#171717] dark:border-[#D9AC45]/40">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b-2 border-[#171717] dark:border-[#4CA7A1]">
             <div>
-              <div className="flex items-center gap-2 text-xs text-stone-600 dark:text-[#F8F3E8]/70 font-bold uppercase tracking-wider mb-1">
+              <div className="flex items-center gap-2 text-xs text-stone-600 dark:text-[#A6D6C9] font-bold uppercase tracking-wider mb-1">
                 <span>Admin</span>
-                <ChevronRight className="w-3.5 h-3.5 text-[#D9AC45]" />
-                <span className="text-[#06251D] dark:text-[#D9AC45] font-extrabold capitalize">
+                <ChevronRight className="w-3.5 h-3.5 text-[#4CA7A1]" />
+                <span className="text-[#06251D] dark:text-[#CEFEF1] font-extrabold capitalize">
                   {activeTab === 'dashboard' ? 'Dashboard Overview' : activeTab}
                 </span>
               </div>
-              <h1 className="text-xl sm:text-2xl font-bold text-[#171717] dark:text-[#F8F3E8] font-serif-brand tracking-tight">
+              <h1 className="text-xl sm:text-2xl font-bold text-[#171717] dark:text-[#FFFFFF] font-serif-brand tracking-tight">
                 Dashboard Administrasi Dars with Osama
               </h1>
-              <p className="text-stone-600 dark:text-[#F8F3E8]/75 text-xs sm:text-sm mt-0.5 font-medium">
+              <p className="text-stone-600 dark:text-[#A6D6C9] text-xs sm:text-sm mt-0.5 font-medium">
                 Kelola kurikulum ilmu, sesi pembelajaran, kuis evaluasi, dan pemantauan santri.
               </p>
             </div>
@@ -1337,7 +1389,7 @@ export const AdminDashboard: React.FC<{
                 })}
                 className="px-3.5 py-2 nb-btn nb-btn-secondary text-xs flex items-center gap-1.5"
               >
-                <Plus className="w-3.5 h-3.5 text-[#06251D] dark:text-[#D9AC45]" />
+                <Plus className="w-3.5 h-3.5 text-[#06251D] dark:text-[#4CA7A1]" />
                 <span>+ Mata Pelajaran</span>
               </button>
 
@@ -1351,7 +1403,7 @@ export const AdminDashboard: React.FC<{
                 })}
                 className="px-3.5 py-2 nb-btn nb-btn-secondary text-xs flex items-center gap-1.5"
               >
-                <Plus className="w-3.5 h-3.5 text-[#06251D] dark:text-[#D9AC45]" />
+                <Plus className="w-3.5 h-3.5 text-[#06251D] dark:text-[#4CA7A1]" />
                 <span>+ Bab / Modul</span>
               </button>
 
@@ -1359,7 +1411,7 @@ export const AdminDashboard: React.FC<{
                 onClick={() => handleOpenAddSessionModal()}
                 className="px-4 py-2 nb-btn nb-btn-primary text-xs flex items-center gap-1.5"
               >
-                <Plus className="w-4 h-4 text-[#D9AC45]" />
+                <Plus className="w-4 h-4 text-[#001722]" />
                 <span>+ Sesi Baru</span>
               </button>
             </div>
@@ -1374,90 +1426,90 @@ export const AdminDashboard: React.FC<{
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
                 <div
                   onClick={() => setActiveTab('courses')}
-                  className="nb-card p-4 hover:-translate-y-1 hover:shadow-[6px_6px_0px_#171717] transition-all cursor-pointer group"
+                  className="nb-card p-4 hover:-translate-y-1 hover:shadow-[6px_6px_0px_#171717] dark:hover:shadow-[6px_6px_0px_#001722] transition-all cursor-pointer group"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-stone-600 dark:text-[#F8F3E8]/70 uppercase tracking-wider">Mata Pelajaran</span>
-                    <div className="p-2 bg-[#D9AC45] text-[#171717] border-2 border-[#171717] rounded-sm group-hover:scale-110 transition">
+                    <span className="text-xs font-bold text-stone-600 dark:text-[#A6D6C9] uppercase tracking-wider">Mata Pelajaran</span>
+                    <div className="p-2 bg-[#4CA7A1] text-[#001722] border-2 border-[#171717] dark:border-[#001722] rounded-sm group-hover:scale-110 transition">
                       <BookOpen className="w-4 h-4" />
                     </div>
                   </div>
-                  <p className="text-2xl font-extrabold text-[#171717] dark:text-[#F8F3E8] mt-2 font-serif-brand">
+                  <p className="text-2xl font-extrabold text-[#171717] dark:text-[#CEFEF1] mt-2 font-serif-brand">
                     {courses.length}
                   </p>
-                  <p className="text-[10px] text-stone-600 dark:text-[#F8F3E8]/60 mt-0.5 font-bold">
+                  <p className="text-[10px] text-stone-600 dark:text-[#A6D6C9] mt-0.5 font-bold">
                     {courses.filter(c => c.isPublished).length} Terpublikasi
                   </p>
                 </div>
 
                 <div
                   onClick={() => setActiveTab('categories')}
-                  className="nb-card p-4 hover:-translate-y-1 hover:shadow-[6px_6px_0px_#171717] transition-all cursor-pointer group"
+                  className="nb-card p-4 hover:-translate-y-1 hover:shadow-[6px_6px_0px_#171717] dark:hover:shadow-[6px_6px_0px_#001722] transition-all cursor-pointer group"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-stone-600 dark:text-[#F8F3E8]/70 uppercase tracking-wider">Bab / Modul</span>
-                    <div className="p-2 bg-[#D9AC45] text-[#171717] border-2 border-[#171717] rounded-sm group-hover:scale-110 transition">
+                    <span className="text-xs font-bold text-stone-600 dark:text-[#A6D6C9] uppercase tracking-wider">Bab / Modul</span>
+                    <div className="p-2 bg-[#4CA7A1] text-[#001722] border-2 border-[#171717] dark:border-[#001722] rounded-sm group-hover:scale-110 transition">
                       <Layers className="w-4 h-4" />
                     </div>
                   </div>
-                  <p className="text-2xl font-extrabold text-[#171717] dark:text-[#F8F3E8] mt-2 font-serif-brand">
+                  <p className="text-2xl font-extrabold text-[#171717] dark:text-[#CEFEF1] mt-2 font-serif-brand">
                     {categories.length}
                   </p>
-                  <p className="text-[10px] text-stone-600 dark:text-[#F8F3E8]/60 mt-0.5 font-bold">
+                  <p className="text-[10px] text-stone-600 dark:text-[#A6D6C9] mt-0.5 font-bold">
                     Kategori Matan & Ilmu
                   </p>
                 </div>
 
                 <div
                   onClick={() => setActiveTab('sessions')}
-                  className="nb-card p-4 hover:-translate-y-1 hover:shadow-[6px_6px_0px_#171717] transition-all cursor-pointer group"
+                  className="nb-card p-4 hover:-translate-y-1 hover:shadow-[6px_6px_0px_#171717] dark:hover:shadow-[6px_6px_0px_#001722] transition-all cursor-pointer group"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-stone-600 dark:text-[#F8F3E8]/70 uppercase tracking-wider">Sesi Belajar</span>
-                    <div className="p-2 bg-[#3478F6] text-white border-2 border-[#171717] rounded-sm group-hover:scale-110 transition">
+                    <span className="text-xs font-bold text-stone-600 dark:text-[#A6D6C9] uppercase tracking-wider">Sesi Belajar</span>
+                    <div className="p-2 bg-[#0D2B36] text-[#CEFEF1] border-2 border-[#171717] dark:border-[#4CA7A1] rounded-sm group-hover:scale-110 transition">
                       <Video className="w-4 h-4" />
                     </div>
                   </div>
-                  <p className="text-2xl font-extrabold text-[#171717] dark:text-[#F8F3E8] mt-2 font-serif-brand">
+                  <p className="text-2xl font-extrabold text-[#171717] dark:text-[#CEFEF1] mt-2 font-serif-brand">
                     {totalSessionsCount}
                   </p>
-                  <p className="text-[10px] text-stone-600 dark:text-[#F8F3E8]/60 mt-0.5 font-bold">
+                  <p className="text-[10px] text-stone-600 dark:text-[#A6D6C9] mt-0.5 font-bold">
                     Total video & materi
                   </p>
                 </div>
 
                 <div
                   onClick={() => setActiveTab('users')}
-                  className="nb-card p-4 hover:-translate-y-1 hover:shadow-[6px_6px_0px_#171717] transition-all cursor-pointer group"
+                  className="nb-card p-4 hover:-translate-y-1 hover:shadow-[6px_6px_0px_#171717] dark:hover:shadow-[6px_6px_0px_#001722] transition-all cursor-pointer group"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-stone-600 dark:text-[#F8F3E8]/70 uppercase tracking-wider">Pengguna</span>
-                    <div className="p-2 bg-[#06251D] text-[#D9AC45] border-2 border-[#171717] rounded-sm group-hover:scale-110 transition">
+                    <span className="text-xs font-bold text-stone-600 dark:text-[#A6D6C9] uppercase tracking-wider">Pengguna</span>
+                    <div className="p-2 bg-[#001722] text-[#CEFEF1] border-2 border-[#171717] dark:border-[#4CA7A1] rounded-sm group-hover:scale-110 transition">
                       <Users className="w-4 h-4" />
                     </div>
                   </div>
-                  <p className="text-2xl font-extrabold text-[#171717] dark:text-[#F8F3E8] mt-2 font-serif-brand">
+                  <p className="text-2xl font-extrabold text-[#171717] dark:text-[#CEFEF1] mt-2 font-serif-brand">
                     {users.length}
                   </p>
-                  <p className="text-[10px] text-stone-600 dark:text-[#F8F3E8]/60 mt-0.5 font-bold">
+                  <p className="text-[10px] text-stone-600 dark:text-[#A6D6C9] mt-0.5 font-bold">
                     Santri terdaftar
                   </p>
                 </div>
 
                 <div
                   onClick={() => setActiveTab('quizzes')}
-                  className="nb-card p-4 hover:-translate-y-1 hover:shadow-[6px_6px_0px_#171717] transition-all cursor-pointer group"
+                  className="nb-card p-4 hover:-translate-y-1 hover:shadow-[6px_6px_0px_#171717] dark:hover:shadow-[6px_6px_0px_#001722] transition-all cursor-pointer group"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-stone-600 dark:text-[#F8F3E8]/70 uppercase tracking-wider">Kuis</span>
-                    <div className="p-2 bg-[#F04438] text-white border-2 border-[#171717] rounded-sm group-hover:scale-110 transition">
+                    <span className="text-xs font-bold text-stone-600 dark:text-[#A6D6C9] uppercase tracking-wider">Kuis</span>
+                    <div className="p-2 bg-[#4CA7A1] text-[#001722] border-2 border-[#171717] dark:border-[#001722] rounded-sm group-hover:scale-110 transition">
                       <HelpCircle className="w-4 h-4" />
                     </div>
                   </div>
-                  <p className="text-2xl font-extrabold text-[#171717] dark:text-[#F8F3E8] mt-2 font-serif-brand">
+                  <p className="text-2xl font-extrabold text-[#171717] dark:text-[#CEFEF1] mt-2 font-serif-brand">
                     {quizzes.length}
                   </p>
-                  <p className="text-[10px] text-stone-600 dark:text-[#F8F3E8]/60 mt-0.5 font-bold">
+                  <p className="text-[10px] text-stone-600 dark:text-[#A6D6C9] mt-0.5 font-bold">
                     Bank soal evaluasi
                   </p>
                 </div>
@@ -1466,42 +1518,42 @@ export const AdminDashboard: React.FC<{
               {/* BAGIAN STATISTIK TAMBAHAN */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="nb-card p-5 flex items-center gap-4">
-                  <div className="p-3 bg-[#D9AC45] text-[#171717] border-2 border-[#171717] rounded-md shrink-0 shadow-[2px_2px_0px_#171717]">
+                  <div className="p-3 bg-[#4CA7A1] text-[#001722] border-2 border-[#171717] dark:border-[#001722] rounded-md shrink-0 shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#001722]">
                     <Award className="w-6 h-6" />
                   </div>
                   <div>
-                    <p className="text-xs text-stone-600 dark:text-[#F8F3E8]/70 font-bold uppercase">Rata-Rata Skor Kuis</p>
-                    <p className="text-xl font-extrabold text-[#171717] dark:text-[#F8F3E8] mt-0.5">{averageQuizScore}%</p>
+                    <p className="text-xs text-stone-600 dark:text-[#A6D6C9] font-bold uppercase">Rata-Rata Skor Kuis</p>
+                    <p className="text-xl font-extrabold text-[#171717] dark:text-[#CEFEF1] mt-0.5">{averageQuizScore}%</p>
                   </div>
                 </div>
 
                 <div className="nb-card p-5 flex items-center gap-4">
-                  <div className="p-3 bg-[#06251D] text-[#D9AC45] border-2 border-[#171717] dark:border-[#D9AC45] rounded-md shrink-0 shadow-[2px_2px_0px_#171717]">
+                  <div className="p-3 bg-[#001722] text-[#CEFEF1] border-2 border-[#171717] dark:border-[#4CA7A1] rounded-md shrink-0 shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#001722]">
                     <CheckCircle className="w-6 h-6" />
                   </div>
                   <div>
-                    <p className="text-xs text-stone-600 dark:text-[#F8F3E8]/70 font-bold uppercase">Tingkat Kelulusan</p>
-                    <p className="text-xl font-extrabold text-[#171717] dark:text-[#F8F3E8] mt-0.5">{passRate}%</p>
+                    <p className="text-xs text-stone-600 dark:text-[#A6D6C9] font-bold uppercase">Tingkat Kelulusan</p>
+                    <p className="text-xl font-extrabold text-[#171717] dark:text-[#CEFEF1] mt-0.5">{passRate}%</p>
                   </div>
                 </div>
 
                 <div className="nb-card p-5 flex items-center gap-4">
-                  <div className="p-3 bg-[#3478F6] text-white border-2 border-[#171717] rounded-md shrink-0 shadow-[2px_2px_0px_#171717]">
+                  <div className="p-3 bg-[#0D2B36] text-[#CEFEF1] border-2 border-[#171717] dark:border-[#4CA7A1] rounded-md shrink-0 shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#001722]">
                     <GraduationCap className="w-6 h-6" />
                   </div>
                   <div>
-                    <p className="text-xs text-stone-600 dark:text-[#F8F3E8]/70 font-bold uppercase">Percobaan Kuis</p>
-                    <p className="text-xl font-extrabold text-[#171717] dark:text-[#F8F3E8] mt-0.5">{attempts.length}</p>
+                    <p className="text-xs text-stone-600 dark:text-[#A6D6C9] font-bold uppercase">Percobaan Kuis</p>
+                    <p className="text-xl font-extrabold text-[#171717] dark:text-[#CEFEF1] mt-0.5">{attempts.length}</p>
                   </div>
                 </div>
 
                 <div className="nb-card p-5 flex items-center gap-4">
-                  <div className="p-3 bg-[#D9AC45] text-[#171717] border-2 border-[#171717] rounded-md shrink-0 shadow-[2px_2px_0px_#171717]">
+                  <div className="p-3 bg-[#4CA7A1] text-[#001722] border-2 border-[#171717] dark:border-[#001722] rounded-md shrink-0 shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#001722]">
                     <FileText className="w-6 h-6" />
                   </div>
                   <div>
-                    <p className="text-xs text-stone-600 dark:text-[#F8F3E8]/70 font-bold uppercase">Status Pembelajaran</p>
-                    <p className="text-xl font-extrabold text-[#171717] dark:text-[#F8F3E8] mt-0.5">
+                    <p className="text-xs text-stone-600 dark:text-[#A6D6C9] font-bold uppercase">Status Pembelajaran</p>
+                    <p className="text-xl font-extrabold text-[#171717] dark:text-[#CEFEF1] mt-0.5">
                       {courses.filter(c => c.isPublished).length} / {courses.length} Pub
                     </p>
                   </div>
@@ -1510,13 +1562,13 @@ export const AdminDashboard: React.FC<{
 
               {/* STRUKTUR KURIKULUM: MAPEL -> BAB -> SESI */}
               <div className="nb-card p-6 space-y-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 border-[#171717] dark:border-[#D9AC45]/30 pb-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 border-[#171717] dark:border-[#4CA7A1] pb-4">
                   <div>
-                    <h3 className="text-lg font-bold text-[#171717] dark:text-[#F8F3E8] font-serif-brand flex items-center gap-2">
-                      <Layers className="w-5 h-5 text-[#D9AC45]" />
+                    <h3 className="text-lg font-bold text-[#171717] dark:text-[#FFFFFF] font-serif-brand flex items-center gap-2">
+                      <Layers className="w-5 h-5 text-[#4CA7A1]" />
                       <span>Struktur Kurikulum: Mapel → Bab → Sesi Pembelajaran</span>
                     </h3>
-                    <p className="text-xs text-stone-600 dark:text-[#F8F3E8]/70 mt-0.5">
+                    <p className="text-xs text-stone-600 dark:text-[#A6D6C9] mt-0.5">
                       Hierarki pembelajaran lengkap dari Mata Pelajaran hingga Sesi & Kuis Evaluasi.
                     </p>
                   </div>
@@ -1524,33 +1576,33 @@ export const AdminDashboard: React.FC<{
                     onClick={() => handleOpenAddSessionModal()}
                     className="px-4 py-2 nb-btn nb-btn-primary text-xs flex items-center gap-1.5 self-start sm:self-center cursor-pointer"
                   >
-                    <Plus className="w-4 h-4 text-[#D9AC45]" />
+                    <Plus className="w-4 h-4 text-[#001722]" />
                     <span>+ Tambah Sesi Saja</span>
                   </button>
                 </div>
 
                 <div className="space-y-4">
                   {courses.length === 0 ? (
-                    <p className="text-xs text-stone-500 text-center py-8">Belum ada mata pelajaran terdaftar.</p>
+                    <p className="text-xs text-stone-500 dark:text-[#A6D6C9] text-center py-8">Belum ada mata pelajaran terdaftar.</p>
                   ) : (
                     courses.map(crs => {
                       const cat = categories.find(c => c.id === crs.categoryId);
                       const sList = allSessionsMap[crs.id] || [];
 
                       return (
-                        <div key={crs.id} className="border-2 border-[#171717] dark:border-[#D9AC45]/40 rounded-md p-4 bg-white/70 dark:bg-[#06251D] shadow-[3px_3px_0px_#171717] space-y-3">
-                          <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-[#171717]/20 dark:border-[#D9AC45]/20 pb-3">
+                        <div key={crs.id} className="border-2 border-[#171717] dark:border-[#4CA7A1] rounded-md p-4 bg-white/70 dark:bg-[#0D2B36] shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#001722] space-y-3">
+                          <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-[#171717]/20 dark:border-[#4CA7A1]/50 pb-3">
                             <div className="flex items-center gap-2.5">
-                              <span className="w-3 h-3 rounded-xs bg-[#D9AC45] border border-[#171717] shrink-0" />
-                              <h4 className="font-bold text-[#171717] dark:text-[#F8F3E8] text-sm sm:text-base">
+                              <span className="w-3 h-3 rounded-xs bg-[#4CA7A1] border border-[#171717] dark:border-[#001722] shrink-0" />
+                              <h4 className="font-bold text-[#171717] dark:text-[#CEFEF1] text-sm sm:text-base">
                                 {crs.title}
                               </h4>
                               {crs.titleAr && (
-                                <span className="font-amiri text-base text-[#D9AC45] font-bold ml-1">
+                                <span className="font-amiri text-base text-[#06251D] dark:text-[#A6D6C9] font-bold ml-1">
                                   {crs.titleAr}
                                 </span>
                               )}
-                              <span className="text-[10px] px-2 py-0.5 rounded-sm bg-[#06251D] text-[#D9AC45] border border-[#171717] font-bold">
+                              <span className="text-[10px] px-2 py-0.5 rounded-sm bg-[#4CA7A1] text-[#001722] border border-[#171717] dark:border-[#001722] font-bold">
                                 Bab: {cat?.name || 'Umum'}
                               </span>
                             </div>
@@ -1558,14 +1610,14 @@ export const AdminDashboard: React.FC<{
                             <div className="flex items-center gap-2">
                               <button
                                 onClick={() => handleOpenAddSessionModal(crs.id)}
-                                className="text-xs text-[#06251D] dark:text-[#D9AC45] hover:underline font-extrabold flex items-center gap-1 cursor-pointer"
+                                className="text-xs text-[#06251D] dark:text-[#4CA7A1] hover:underline font-extrabold flex items-center gap-1 cursor-pointer"
                               >
                                 <Plus className="w-3.5 h-3.5" />
                                 <span>Tambah Sesi</span>
                               </button>
                               <button
                                 onClick={() => setEditingCourse(crs)}
-                                className="p-1.5 text-stone-700 dark:text-[#F8F3E8] hover:text-[#D9AC45] transition"
+                                className="p-1.5 text-stone-700 dark:text-[#CEFEF1] hover:text-[#4CA7A1] transition"
                                 title="Edit Kursus"
                               >
                                 <Edit className="w-3.5 h-3.5" />
@@ -1576,20 +1628,20 @@ export const AdminDashboard: React.FC<{
                           {/* Sessions List in Course */}
                           <div className="pl-2 sm:pl-4 space-y-2">
                             {sList.length === 0 ? (
-                              <p className="text-xs text-stone-500 italic py-1">Belum ada sesi pada mata pelajaran ini.</p>
+                              <p className="text-xs text-stone-500 dark:text-[#A6D6C9] italic py-1">Belum ada sesi pada mata pelajaran ini.</p>
                             ) : (
                               sList.map(s => (
-                                <div key={s.id} className="flex flex-wrap items-center justify-between p-2.5 bg-white dark:bg-[#0B3026] rounded-md border-2 border-[#171717] dark:border-[#D9AC45]/30 text-xs gap-2 shadow-[2px_2px_0px_#171717] hover:border-[#D9AC45] transition">
+                                <div key={s.id} className="flex flex-wrap items-center justify-between p-2.5 bg-white dark:bg-[#1F5F63] rounded-md border-2 border-[#171717] dark:border-[#4CA7A1] text-xs gap-2 shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#001722] hover:border-[#CEFEF1] transition">
                                   <div className="flex items-center gap-2 overflow-hidden">
-                                    <span className="w-6 h-6 rounded-sm bg-[#D9AC45] text-[#171717] border border-[#171717] font-extrabold flex items-center justify-center shrink-0 text-[11px]">
+                                    <span className="w-6 h-6 rounded-sm bg-[#4CA7A1] text-[#001722] border border-[#171717] dark:border-[#001722] font-extrabold flex items-center justify-center shrink-0 text-[11px]">
                                       {s.order}
                                     </span>
                                     <div className="truncate">
-                                      <p className="font-bold text-[#171717] dark:text-[#F8F3E8] truncate">
+                                      <p className="font-bold text-[#171717] dark:text-[#CEFEF1] truncate">
                                         {s.title}
                                       </p>
                                       {s.titleAr && (
-                                        <p className="font-amiri text-xs text-[#D9AC45] font-bold truncate">
+                                        <p className="font-amiri text-xs text-[#06251D] dark:text-[#A6D6C9] font-bold truncate">
                                           {s.titleAr}
                                         </p>
                                       )}
@@ -1598,36 +1650,36 @@ export const AdminDashboard: React.FC<{
 
                                   <div className="flex items-center gap-2 shrink-0">
                                     {s.youtubeUrl && (
-                                      <span className="px-2 py-0.5 rounded-sm bg-[#F04438] text-white border border-[#171717] text-[10px] font-bold flex items-center gap-1">
+                                      <span className="px-2 py-0.5 rounded-sm bg-[#C94A4A] text-white border border-[#171717] text-[10px] font-bold flex items-center gap-1">
                                         <Video className="w-3 h-3" /> YouTube
                                       </span>
                                     )}
                                     {s.pdfUrl && (
-                                      <span className="px-2 py-0.5 rounded-sm bg-[#D9AC45] text-[#171717] border border-[#171717] text-[10px] font-bold flex items-center gap-1">
+                                      <span className="px-2 py-0.5 rounded-sm bg-[#4CA7A1] text-[#001722] border border-[#171717] dark:border-[#001722] text-[10px] font-bold flex items-center gap-1">
                                         <FileText className="w-3 h-3" /> PDF
                                       </span>
                                     )}
                                     {s.googleDriveUrl && (
-                                      <span className="px-2 py-0.5 rounded-sm bg-[#3478F6] text-white border border-[#171717] text-[10px] font-bold flex items-center gap-1">
+                                      <span className="px-2 py-0.5 rounded-sm bg-[#001722] text-[#CEFEF1] border border-[#171717] dark:border-[#4CA7A1] text-[10px] font-bold flex items-center gap-1">
                                         <ExternalLink className="w-3 h-3" /> Drive
                                       </span>
                                     )}
                                     {s.quizId && (
-                                      <span className="px-2 py-0.5 rounded-sm bg-[#06251D] text-[#D9AC45] border border-[#171717] text-[10px] font-extrabold flex items-center gap-1">
+                                      <span className="px-2 py-0.5 rounded-sm bg-[#0D2B36] text-[#CEFEF1] border border-[#171717] dark:border-[#4CA7A1] text-[10px] font-extrabold flex items-center gap-1">
                                         <HelpCircle className="w-3 h-3" /> Kuis Sesi
                                       </span>
                                     )}
 
                                     <button
                                       onClick={() => handleOpenEditSessionModal(s)}
-                                      className="p-1.5 text-stone-700 dark:text-[#F8F3E8] hover:text-[#D9AC45] transition cursor-pointer"
+                                      className="p-1.5 text-stone-700 dark:text-[#CEFEF1] hover:text-[#4CA7A1] transition cursor-pointer"
                                       title="Edit Sesi & Kuis"
                                     >
                                       <Edit className="w-3.5 h-3.5" />
                                     </button>
                                     <button
                                       onClick={() => handleDeleteSession(s)}
-                                      className="p-1.5 text-[#F04438] hover:opacity-80 transition cursor-pointer"
+                                      className="p-1.5 text-[#C94A4A] hover:opacity-80 transition cursor-pointer"
                                       title="Hapus Sesi"
                                     >
                                       <Trash2 className="w-3.5 h-3.5" />
@@ -1646,30 +1698,30 @@ export const AdminDashboard: React.FC<{
 
               {/* AKTIVITAS TERBARU & ATTEMPTS */}
               <div className="nb-card p-6 space-y-4">
-                <h3 className="text-base font-bold text-[#171717] dark:text-[#F8F3E8] font-serif-brand flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-[#D9AC45]" />
+                <h3 className="text-base font-bold text-[#171717] dark:text-[#FFFFFF] font-serif-brand flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-[#4CA7A1]" />
                   <span>Aktivitas Hasil Kuis Santri Terbaru</span>
                 </h3>
 
                 {attempts.length === 0 ? (
-                  <p className="text-xs text-stone-500 py-4 italic">Belum ada pengerjaan kuis oleh santri.</p>
+                  <p className="text-xs text-stone-500 dark:text-[#A6D6C9] py-4 italic">Belum ada pengerjaan kuis oleh santri.</p>
                 ) : (
                   <div className="space-y-2">
                     {attempts.slice(0, 5).map(att => (
-                      <div key={att.id} className="flex items-center justify-between p-3 bg-white dark:bg-[#0B3026] rounded-md text-xs border-2 border-[#171717] dark:border-[#D9AC45]/30 shadow-[2px_2px_0px_#171717]">
+                      <div key={att.id} className="flex items-center justify-between p-3 bg-white dark:bg-[#0D2B36] rounded-md text-xs border-2 border-[#171717] dark:border-[#4CA7A1] shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#001722]">
                         <div>
-                          <p className="font-bold text-[#171717] dark:text-[#F8F3E8]">
+                          <p className="font-bold text-[#171717] dark:text-[#CEFEF1]">
                             {att.userName || att.userEmail}
                           </p>
-                          <p className="text-[10px] text-stone-500 dark:text-[#F8F3E8]/60 font-semibold">
+                          <p className="text-[10px] text-stone-500 dark:text-[#A6D6C9] font-semibold">
                             Disubmit: {new Date(att.submittedAt).toLocaleString('id-ID')}
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className={`px-2.5 py-1 rounded-sm text-xs font-extrabold border-2 border-[#171717] shadow-[2px_2px_0px_#171717] ${
+                          <span className={`px-2.5 py-1 rounded-sm text-xs font-extrabold border-2 border-[#171717] dark:border-[#001722] shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#001722] ${
                             att.passed
-                              ? 'bg-[#06251D] text-[#D9AC45]'
-                              : 'bg-[#F04438] text-white'
+                              ? 'bg-[#4CA7A1] text-[#001722]'
+                              : 'bg-[#C94A4A] text-white'
                           }`}>
                             Skor: {att.score}% ({att.passed ? 'Lulus' : 'Belum Lulus'})
                           </span>
@@ -1688,7 +1740,7 @@ export const AdminDashboard: React.FC<{
           {activeTab === 'courses' && (
             <div className="space-y-6 animate-fade-in">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-bold text-[#171717] dark:text-[#F8F3E8] font-serif-brand">
+                <h2 className="text-lg font-bold text-[#171717] dark:text-[#FFFFFF] font-serif-brand">
                   Daftar Mata Pelajaran ({courses.length})
                 </h2>
                 <button
@@ -1711,7 +1763,7 @@ export const AdminDashboard: React.FC<{
                   })}
                   className="px-4 py-2 nb-btn nb-btn-primary text-xs flex items-center gap-1.5 cursor-pointer"
                 >
-                  <Plus className="w-4 h-4 text-[#D9AC45]" />
+                  <Plus className="w-4 h-4 text-[#001722]" />
                   <span>+ Tambah Mata Pelajaran</span>
                 </button>
               </div>
@@ -1720,38 +1772,38 @@ export const AdminDashboard: React.FC<{
                 {displayedCourses.map(course => (
                   <div key={course.id} className="nb-card overflow-hidden flex flex-col justify-between">
                     <div className="p-5 space-y-3">
-                      <div className="aspect-video w-full rounded-xs bg-[#06251D] overflow-hidden relative border-2 border-[#171717]">
+                      <div className="aspect-video w-full rounded-xs bg-[#001722] overflow-hidden relative border-2 border-[#171717] dark:border-[#4CA7A1]">
                         {course.coverImageUrl ? (
                           <img src={course.coverImageUrl} alt={course.title} className="w-full h-full object-cover" />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center text-[#D9AC45]">
+                          <div className="w-full h-full flex items-center justify-center text-[#4CA7A1]">
                             <BookOpen className="w-8 h-8" />
                           </div>
                         )}
-                        <span className={`absolute top-2 right-2 text-[10px] font-extrabold px-2 py-0.5 rounded-sm border-2 border-[#171717] uppercase tracking-wider ${
-                          course.isPublished ? 'bg-[#D9AC45] text-[#171717]' : 'bg-[#171717] text-white'
+                        <span className={`absolute top-2 right-2 text-[10px] font-extrabold px-2 py-0.5 rounded-sm border-2 border-[#171717] dark:border-[#001722] uppercase tracking-wider ${
+                          course.isPublished ? 'bg-[#4CA7A1] text-[#001722]' : 'bg-[#001722] text-[#A6D6C9] border-[#4CA7A1]'
                         }`}>
                           {course.isPublished ? 'Published' : 'Draft'}
                         </span>
                       </div>
 
                       <div>
-                        <h3 className="font-bold text-[#171717] dark:text-[#F8F3E8] text-base font-serif-brand">
+                        <h3 className="font-bold text-[#171717] dark:text-[#CEFEF1] text-base font-serif-brand">
                           {course.title}
                         </h3>
                         {course.titleAr && (
-                          <p className="font-amiri text-lg text-[#D9AC45] font-bold mt-1">
+                          <p className="font-amiri text-lg text-[#06251D] dark:text-[#A6D6C9] font-bold mt-1">
                             {course.titleAr}
                           </p>
                         )}
-                        <p className="text-xs text-stone-600 dark:text-[#F8F3E8]/70 mt-1 line-clamp-2 font-medium">
+                        <p className="text-xs text-stone-600 dark:text-[#A6D6C9] mt-1 line-clamp-2 font-medium">
                           {course.description}
                         </p>
                       </div>
                     </div>
 
-                    <div className="p-4 border-t-2 border-[#171717] dark:border-[#D9AC45]/30 bg-stone-100/60 dark:bg-[#06251D]/60 flex items-center justify-between">
-                      <span className="text-[11px] font-bold text-stone-700 dark:text-[#F8F3E8]/80">
+                    <div className="p-4 border-t-2 border-[#171717] dark:border-[#4CA7A1] bg-stone-100/60 dark:bg-[#0D2B36] flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-stone-700 dark:text-[#A6D6C9]">
                         {allSessionsMap[course.id]?.length || 0} Sesi
                       </span>
                       <div className="flex items-center gap-2">
@@ -1763,13 +1815,13 @@ export const AdminDashboard: React.FC<{
                         </button>
                         <button
                           onClick={() => setEditingCourse(course)}
-                          className="p-1.5 text-stone-700 dark:text-[#F8F3E8] hover:text-[#D9AC45] transition cursor-pointer"
+                          className="p-1.5 text-stone-700 dark:text-[#CEFEF1] hover:text-[#4CA7A1] transition cursor-pointer"
                         >
                           <Edit className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleDeleteCourse(course)}
-                          className="p-1.5 text-[#F04438] hover:opacity-80 transition cursor-pointer"
+                          className="p-1.5 text-[#C94A4A] hover:opacity-80 transition cursor-pointer"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -1787,7 +1839,7 @@ export const AdminDashboard: React.FC<{
           {activeTab === 'categories' && (
             <div className="space-y-6 animate-fade-in">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-bold text-[#171717] dark:text-[#F8F3E8] font-serif-brand">
+                <h2 className="text-lg font-bold text-[#171717] dark:text-[#FFFFFF] font-serif-brand">
                   Daftar Bab / Modul / Kategori ({categories.length})
                 </h2>
                 <button
@@ -1800,7 +1852,7 @@ export const AdminDashboard: React.FC<{
                   })}
                   className="px-4 py-2 nb-btn nb-btn-primary text-xs flex items-center gap-1.5 cursor-pointer"
                 >
-                  <Plus className="w-4 h-4 text-[#D9AC45]" />
+                  <Plus className="w-4 h-4 text-[#001722]" />
                   <span>+ Tambah Bab / Modul</span>
                 </button>
               </div>
@@ -1808,7 +1860,7 @@ export const AdminDashboard: React.FC<{
               <div className="nb-card overflow-hidden">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
-                    <tr className="bg-[#06251D] text-[#D9AC45] border-b-2 border-[#171717] font-extrabold uppercase tracking-wider">
+                    <tr className="bg-[#06251D] dark:bg-[#001722] text-[#FAF7F0] dark:text-[#CEFEF1] border-b-2 border-[#171717] dark:border-[#4CA7A1] font-extrabold uppercase tracking-wider">
                       <th className="p-3.5">Urutan</th>
                       <th className="p-3.5">Nama Bab / Modul</th>
                       <th className="p-3.5">Nama Arab</th>
@@ -1817,25 +1869,25 @@ export const AdminDashboard: React.FC<{
                       <th className="p-3.5 text-right">Aksi</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y-2 divide-[#171717]/10 dark:divide-[#D9AC45]/20">
+                  <tbody className="divide-y-2 divide-[#171717]/10 dark:divide-[#4CA7A1]/50">
                     {displayedCategories.map(cat => (
-                      <tr key={cat.id} className="hover:bg-[#D9AC45]/10 transition">
-                        <td className="p-3.5 font-extrabold text-[#171717] dark:text-[#F8F3E8]">{cat.order}</td>
-                        <td className="p-3.5 font-bold text-[#171717] dark:text-[#F8F3E8]">{cat.name}</td>
-                        <td className="p-3.5 font-amiri text-base font-bold text-[#06251D] dark:text-[#D9AC45]">{cat.nameAr}</td>
-                        <td className="p-3.5 font-mono text-[11px] text-stone-600 dark:text-[#F8F3E8]/70">{cat.slug}</td>
-                        <td className="p-3.5 text-stone-600 dark:text-[#F8F3E8]/70 max-w-xs truncate">{cat.description}</td>
+                      <tr key={cat.id} className="bg-white dark:bg-[#0D2B36] even:dark:bg-[#1F5F63]/70 hover:bg-[#FAF7F0] dark:hover:bg-[#1F5F63] transition">
+                        <td className="p-3.5 font-extrabold text-[#171717] dark:text-[#CEFEF1]">{cat.order}</td>
+                        <td className="p-3.5 font-bold text-[#171717] dark:text-[#CEFEF1]">{cat.name}</td>
+                        <td className="p-3.5 font-amiri text-base font-bold text-[#06251D] dark:text-[#A6D6C9]">{cat.nameAr}</td>
+                        <td className="p-3.5 font-mono text-[11px] text-stone-600 dark:text-[#A6D6C9]">{cat.slug}</td>
+                        <td className="p-3.5 text-stone-600 dark:text-[#A6D6C9] max-w-xs truncate">{cat.description}</td>
                         <td className="p-3.5 text-right">
                           <div className="flex items-center justify-end gap-2">
                             <button
                               onClick={() => setEditingCategory(cat)}
-                              className="p-1.5 text-stone-700 dark:text-[#F8F3E8] hover:text-[#D9AC45] transition cursor-pointer"
+                              className="p-1.5 text-stone-700 dark:text-[#CEFEF1] hover:text-[#4CA7A1] transition cursor-pointer"
                             >
                               <Edit className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => handleDeleteCategory(cat)}
-                              className="p-1.5 text-[#F04438] hover:opacity-80 transition cursor-pointer"
+                              className="p-1.5 text-[#C94A4A] hover:opacity-80 transition cursor-pointer"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -1856,7 +1908,7 @@ export const AdminDashboard: React.FC<{
             <div className="space-y-6 animate-fade-in">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 nb-card p-4">
                 <div>
-                  <label className="text-xs font-bold text-stone-700 dark:text-[#F8F3E8]/80 block mb-1 uppercase tracking-wider">
+                  <label className="text-xs font-bold text-stone-700 dark:text-[#A6D6C9] block mb-1 uppercase tracking-wider">
                     Pilih Mata Pelajaran:
                   </label>
                   <select
@@ -1874,7 +1926,7 @@ export const AdminDashboard: React.FC<{
                   onClick={() => handleOpenAddSessionModal(selectedCourseId)}
                   className="px-4 py-2 nb-btn nb-btn-primary text-xs flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
                 >
-                  <Plus className="w-4 h-4 text-[#D9AC45]" />
+                  <Plus className="w-4 h-4 text-[#001722]" />
                   <span>+ Tambah Sesi Pembelajaran Baru</span>
                 </button>
               </div>
@@ -1883,7 +1935,7 @@ export const AdminDashboard: React.FC<{
               <div className="nb-card overflow-hidden">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
-                    <tr className="bg-[#06251D] text-[#D9AC45] border-b-2 border-[#171717] font-extrabold uppercase tracking-wider">
+                    <tr className="bg-[#06251D] dark:bg-[#001722] text-[#FAF7F0] dark:text-[#CEFEF1] border-b-2 border-[#171717] dark:border-[#4CA7A1] font-extrabold uppercase tracking-wider">
                       <th className="p-3.5">Urutan</th>
                       <th className="p-3.5">Judul Sesi</th>
                       <th className="p-3.5">Video YouTube</th>
@@ -1892,54 +1944,54 @@ export const AdminDashboard: React.FC<{
                       <th className="p-3.5 text-right">Aksi</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y-2 divide-[#171717]/10 dark:divide-[#D9AC45]/20">
+                  <tbody className="divide-y-2 divide-[#171717]/10 dark:divide-[#4CA7A1]/50">
                     {displayedCourseSessions.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="p-8 text-center text-stone-500 font-semibold">
+                      <tr className="bg-white dark:bg-[#0D2B36]">
+                        <td colSpan={6} className="p-8 text-center text-stone-500 dark:text-[#A6D6C9] font-semibold">
                           Belum ada sesi pembelajaran untuk mata pelajaran ini. Klik "+ Tambah Sesi Pembelajaran Baru".
                         </td>
                       </tr>
                     ) : (
                       displayedCourseSessions.map(s => (
-                        <tr key={s.id} className="hover:bg-[#D9AC45]/10 transition">
-                          <td className="p-3.5 font-extrabold text-[#171717] dark:text-[#F8F3E8]">{s.order}</td>
+                        <tr key={s.id} className="bg-white dark:bg-[#0D2B36] even:dark:bg-[#1F5F63]/70 hover:bg-[#FAF7F0] dark:hover:bg-[#1F5F63] transition">
+                          <td className="p-3.5 font-extrabold text-[#171717] dark:text-[#CEFEF1]">{s.order}</td>
                           <td className="p-3.5">
-                            <p className="font-bold text-[#171717] dark:text-[#F8F3E8]">{s.title}</p>
+                            <p className="font-bold text-[#171717] dark:text-[#CEFEF1]">{s.title}</p>
                             {s.titleAr && (
-                              <p className="font-amiri text-sm text-[#06251D] dark:text-[#D9AC45] font-bold">{s.titleAr}</p>
+                              <p className="font-amiri text-sm text-[#06251D] dark:text-[#A6D6C9] font-bold">{s.titleAr}</p>
                             )}
                           </td>
                           <td className="p-3.5">
                             {s.youtubeUrl ? (
-                              <span className="text-[#06251D] dark:text-[#D9AC45] font-extrabold flex items-center gap-1">
-                                <Check className="w-3.5 h-3.5 text-[#D9AC45]" /> Ada Video
+                              <span className="text-[#06251D] dark:text-[#CEFEF1] font-extrabold flex items-center gap-1">
+                                <Check className="w-3.5 h-3.5 text-[#4CA7A1]" /> Ada Video
                               </span>
                             ) : (
-                              <span className="text-stone-400">-</span>
+                              <span className="text-stone-400 dark:text-[#A6D6C9]">-</span>
                             )}
                           </td>
                           <td className="p-3.5">
                             <div className="space-y-0.5">
                               {s.pdfUrl && (
-                                <span className="text-[#06251D] dark:text-[#D9AC45] font-bold block">
+                                <span className="text-[#06251D] dark:text-[#CEFEF1] font-bold block">
                                   • {s.pdfTitle || 'Naskah PDF'}
                                 </span>
                               )}
                               {s.googleDriveUrl && (
-                                <span className="text-[#3478F6] font-bold block">
+                                <span className="text-[#4CA7A1] font-bold block">
                                   • Drive PDF Link
                                 </span>
                               )}
-                              {!s.pdfUrl && !s.googleDriveUrl && <span className="text-stone-400">-</span>}
+                              {!s.pdfUrl && !s.googleDriveUrl && <span className="text-stone-400 dark:text-[#A6D6C9]">-</span>}
                             </div>
                           </td>
                           <td className="p-3.5">
                             {s.quizId ? (
-                              <span className="px-2 py-0.5 rounded-sm bg-[#06251D] text-[#D9AC45] border border-[#171717] font-extrabold text-[10px]">
+                              <span className="px-2 py-0.5 rounded-sm bg-[#4CA7A1] text-[#001722] border border-[#171717] dark:border-[#001722] font-extrabold text-[10px]">
                                 Kuis Aktif
                               </span>
                             ) : (
-                              <span className="text-stone-400 font-medium">Tidak ada kuis</span>
+                              <span className="text-stone-400 dark:text-[#A6D6C9] font-medium">Tidak ada kuis</span>
                             )}
                           </td>
                           <td className="p-3.5 text-right">
@@ -1952,7 +2004,7 @@ export const AdminDashboard: React.FC<{
                               </button>
                               <button
                                 onClick={() => handleDeleteSession(s)}
-                                className="p-1.5 text-[#F04438] hover:opacity-80 transition cursor-pointer"
+                                className="p-1.5 text-[#C94A4A] hover:opacity-80 transition cursor-pointer"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
@@ -1973,7 +2025,7 @@ export const AdminDashboard: React.FC<{
           {activeTab === 'quizzes' && (
             <div className="space-y-6 animate-fade-in">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-bold text-[#171717] dark:text-[#F8F3E8] font-serif-brand">
+                <h2 className="text-lg font-bold text-[#171717] dark:text-[#FFFFFF] font-serif-brand">
                   Bank Kuis Evaluasi ({quizzes.length})
                 </h2>
                 <button
@@ -1992,7 +2044,7 @@ export const AdminDashboard: React.FC<{
                   })}
                   className="px-4 py-2 nb-btn nb-btn-primary text-xs flex items-center gap-1.5 cursor-pointer"
                 >
-                  <Plus className="w-4 h-4 text-[#D9AC45]" />
+                  <Plus className="w-4 h-4 text-[#001722]" />
                   <span>+ Tambah Kuis Bebas</span>
                 </button>
               </div>
@@ -2005,35 +2057,35 @@ export const AdminDashboard: React.FC<{
                     <div key={q.id} className="nb-card p-5 space-y-4 flex flex-col justify-between">
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-sm bg-[#06251D] text-[#D9AC45] border border-[#171717]">
+                          <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-sm bg-[#4CA7A1] text-[#001722] border border-[#171717] dark:border-[#001722]">
                             {linkedCourse?.title || 'Umum'}
                           </span>
-                          <span className="text-xs font-extrabold text-[#06251D] dark:text-[#D9AC45]">
+                          <span className="text-xs font-extrabold text-[#06251D] dark:text-[#CEFEF1]">
                             Pass: {q.passingScore}%
                           </span>
                         </div>
 
-                        <h3 className="font-bold text-[#171717] dark:text-[#F8F3E8] text-base font-serif-brand">
+                        <h3 className="font-bold text-[#171717] dark:text-[#CEFEF1] text-base font-serif-brand">
                           {q.title}
                         </h3>
 
-                        <p className="text-xs text-stone-600 dark:text-[#F8F3E8]/70 font-semibold">
-                          Jumlah Soal: <strong>{q.questions?.length || 0} Soal</strong>
+                        <p className="text-xs text-stone-600 dark:text-[#A6D6C9] font-semibold">
+                          Jumlah Soal: <strong className="text-[#171717] dark:text-[#CEFEF1]">{q.questions?.length || 0} Soal</strong>
                         </p>
                       </div>
 
-                      <div className="pt-3 border-t-2 border-[#171717]/20 dark:border-[#D9AC45]/20 flex items-center justify-between">
-                        <span className="text-[11px] font-mono text-stone-500 dark:text-[#F8F3E8]/60">ID: {q.id}</span>
+                      <div className="pt-3 border-t-2 border-[#171717]/20 dark:border-[#4CA7A1]/50 flex items-center justify-between">
+                        <span className="text-[11px] font-mono text-stone-500 dark:text-[#A6D6C9]">ID: {q.id}</span>
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => setEditingQuiz(q)}
-                            className="p-1.5 text-stone-700 dark:text-[#F8F3E8] hover:text-[#D9AC45] transition cursor-pointer"
+                            className="p-1.5 text-stone-700 dark:text-[#CEFEF1] hover:text-[#4CA7A1] transition cursor-pointer"
                           >
                             <Edit className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleDeleteQuiz(q)}
-                            className="p-1.5 text-[#F04438] hover:opacity-80 transition cursor-pointer"
+                            className="p-1.5 text-[#C94A4A] hover:opacity-80 transition cursor-pointer"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -2093,14 +2145,14 @@ export const AdminDashboard: React.FC<{
             <div className="space-y-6 animate-fade-in">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-xl font-black text-stone-900 dark:text-white tracking-tight">
+                  <h2 className="text-xl font-black text-stone-900 dark:text-[#FFFFFF] tracking-tight">
                     Daftar Santri / Pengguna Terdaftar ({users.length})
                   </h2>
-                  <p className="text-xs text-stone-600 dark:text-stone-400 mt-1">
+                  <p className="text-xs text-stone-600 dark:text-[#A6D6C9] mt-1">
                     Seluruh akun santri dan pengajar yang terdaftar di sistem.
                   </p>
                 </div>
-                <span className="nb-badge bg-[#D9AC45]/20 text-[#06251D] dark:text-[#D9AC45] border-[#171717] dark:border-[#D9AC45]/50">
+                <span className="nb-badge bg-[#4CA7A1] text-[#001722] border-[#171717] dark:border-[#001722]">
                   {users.length} Akun
                 </span>
               </div>
@@ -2109,28 +2161,28 @@ export const AdminDashboard: React.FC<{
                 <div className="overflow-x-auto w-full">
                   <table className="w-full min-w-[550px] text-left border-collapse text-xs">
                     <thead>
-                      <tr className="bg-stone-100 dark:bg-[#0B3026] border-b-2 border-[#171717] dark:border-[#D9AC45]/30 text-stone-700 dark:text-stone-300 font-black uppercase tracking-wider">
+                      <tr className="bg-[#06251D] dark:bg-[#001722] border-b-2 border-[#171717] dark:border-[#4CA7A1] text-[#FAF7F0] dark:text-[#CEFEF1] font-black uppercase tracking-wider">
                         <th className="p-3.5 whitespace-nowrap">Nama</th>
                         <th className="p-3.5 whitespace-nowrap">Email</th>
                         <th className="p-3.5 whitespace-nowrap">Peran (Role)</th>
                         <th className="p-3.5 whitespace-nowrap">Kunyah / Bio</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y-2 divide-stone-200 dark:divide-stone-800">
+                    <tbody className="divide-y-2 divide-stone-200 dark:divide-[#4CA7A1]/50">
                       {displayedUsers.map(u => (
-                        <tr key={u.id} className="hover:bg-amber-50/50 dark:hover:bg-[#0B3026]/50 transition">
-                          <td className="p-3.5 font-bold text-stone-900 dark:text-white whitespace-nowrap">{u.displayName || 'Santri'}</td>
-                          <td className="p-3.5 font-mono text-stone-600 dark:text-stone-300 break-all">{u.email}</td>
+                        <tr key={u.id} className="bg-white dark:bg-[#0D2B36] even:dark:bg-[#1F5F63]/70 hover:bg-[#FAF7F0] dark:hover:bg-[#1F5F63] transition">
+                          <td className="p-3.5 font-bold text-stone-900 dark:text-[#CEFEF1] whitespace-nowrap">{u.displayName || 'Santri'}</td>
+                          <td className="p-3.5 font-mono text-stone-600 dark:text-[#A6D6C9] break-all">{u.email}</td>
                           <td className="p-3.5 whitespace-nowrap">
                             <span className={`inline-flex px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wide border-2 ${
                               u.role === 'admin' 
-                                ? 'bg-purple-100 text-purple-900 border-[#171717] dark:bg-purple-950 dark:text-purple-200 dark:border-purple-400' 
-                                : 'bg-[#D9AC45]/20 text-[#06251D] border-[#171717] dark:bg-[#D9AC45]/10 dark:text-[#D9AC45] dark:border-[#D9AC45]/50'
+                                ? 'bg-[#4CA7A1] text-[#001722] border-[#171717] dark:border-[#001722]' 
+                                : 'bg-[#FAF7F0] text-[#06251D] border-[#171717] dark:bg-[#001722] dark:text-[#A6D6C9] dark:border-[#4CA7A1]'
                             }`}>
                               {u.role || 'student'}
                             </span>
                           </td>
-                          <td className="p-3.5 text-stone-500 dark:text-stone-400">{u.kunyah || u.bio || '-'}</td>
+                          <td className="p-3.5 text-stone-500 dark:text-[#A6D6C9]">{u.kunyah || u.bio || '-'}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -2147,14 +2199,14 @@ export const AdminDashboard: React.FC<{
             <div className="space-y-6 animate-fade-in">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-xl font-black text-stone-900 dark:text-white tracking-tight">
+                  <h2 className="text-xl font-black text-stone-900 dark:text-[#FFFFFF] tracking-tight">
                     Hasil & Rekapitulasi Nilai Kuis Santri ({attempts.length})
                   </h2>
-                  <p className="text-xs text-stone-600 dark:text-stone-400 mt-1">
+                  <p className="text-xs text-stone-600 dark:text-[#A6D6C9] mt-1">
                     Riwayat pengerjaan evaluasi dan evaluasi kelulusan santri secara real-time.
                   </p>
                 </div>
-                <span className="nb-badge bg-white dark:bg-[#0B3026] text-stone-800 dark:text-stone-200 border-[#171717] dark:border-[#D9AC45]/50">
+                <span className="nb-badge bg-white dark:bg-[#1F5F63] text-stone-800 dark:text-[#CEFEF1] border-[#171717] dark:border-[#4CA7A1]">
                   {attempts.length} Pengerjaan
                 </span>
               </div>
@@ -2163,7 +2215,7 @@ export const AdminDashboard: React.FC<{
                 <div className="overflow-x-auto w-full">
                   <table className="w-full min-w-[550px] text-left border-collapse text-xs">
                     <thead>
-                      <tr className="bg-stone-100 dark:bg-[#0B3026] border-b-2 border-[#171717] dark:border-[#D9AC45]/30 text-stone-700 dark:text-stone-300 font-black uppercase tracking-wider">
+                      <tr className="bg-[#06251D] dark:bg-[#001722] border-b-2 border-[#171717] dark:border-[#4CA7A1] text-[#FAF7F0] dark:text-[#CEFEF1] font-black uppercase tracking-wider">
                         <th className="p-3.5 whitespace-nowrap">Nama Santri</th>
                         <th className="p-3.5 whitespace-nowrap">Email</th>
                         <th className="p-3.5 whitespace-nowrap">Skor</th>
@@ -2171,22 +2223,22 @@ export const AdminDashboard: React.FC<{
                         <th className="p-3.5 whitespace-nowrap">Waktu Submit</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y-2 divide-stone-200 dark:divide-stone-800">
+                    <tbody className="divide-y-2 divide-stone-200 dark:divide-[#4CA7A1]/50">
                       {displayedAttempts.map(att => (
-                        <tr key={att.id} className="hover:bg-amber-50/50 dark:hover:bg-[#0B3026]/50 transition">
-                          <td className="p-3.5 font-bold text-stone-900 dark:text-white whitespace-nowrap">{att.userName || 'Santri'}</td>
-                          <td className="p-3.5 font-mono text-stone-600 dark:text-stone-300 break-all">{att.userEmail}</td>
-                          <td className="p-3.5 font-black text-stone-900 dark:text-white text-sm">{att.score}%</td>
+                        <tr key={att.id} className="bg-white dark:bg-[#0D2B36] even:dark:bg-[#1F5F63]/70 hover:bg-[#FAF7F0] dark:hover:bg-[#1F5F63] transition">
+                          <td className="p-3.5 font-bold text-stone-900 dark:text-[#CEFEF1] whitespace-nowrap">{att.userName || 'Santri'}</td>
+                          <td className="p-3.5 font-mono text-stone-600 dark:text-[#A6D6C9] break-all">{att.userEmail}</td>
+                          <td className="p-3.5 font-black text-stone-900 dark:text-[#CEFEF1] text-sm">{att.score}%</td>
                           <td className="p-3.5 whitespace-nowrap">
                             <span className={`inline-flex px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wide border-2 ${
                               att.passed 
-                                ? 'bg-emerald-100 text-emerald-900 border-[#171717] dark:bg-emerald-950 dark:text-emerald-200 dark:border-emerald-400' 
-                                : 'bg-rose-100 text-rose-900 border-[#171717] dark:bg-rose-950 dark:text-rose-200 dark:border-rose-400'
+                                ? 'bg-[#4CA7A1] text-[#001722] border-[#171717] dark:border-[#001722]' 
+                                : 'bg-[#C94A4A] text-white border-[#171717]'
                             }`}>
                               {att.passed ? 'Lulus' : 'Belum Lulus'}
                             </span>
                           </td>
-                          <td className="p-3.5 text-stone-500 dark:text-stone-400 whitespace-nowrap">{new Date(att.submittedAt).toLocaleString('id-ID')}</td>
+                          <td className="p-3.5 text-stone-500 dark:text-[#A6D6C9] whitespace-nowrap">{new Date(att.submittedAt).toLocaleString('id-ID')}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -2808,30 +2860,60 @@ export const AdminDashboard: React.FC<{
 
                       {/* QUESTIONS EDITOR LIST */}
                       <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <h4 className="font-black text-xs uppercase tracking-wider text-stone-900 dark:text-white">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <h4 className="font-black text-xs uppercase tracking-wider text-stone-900 dark:text-[#E2F4F0]">
                             Daftar Soal Pertanyaan ({sessionFormData.questions.length})
                           </h4>
 
-                          <button
-                            type="button"
-                            onClick={handleAddQuestionToSessionForm}
-                            className="nb-btn nb-btn-gold text-xs py-1.5 px-3 flex items-center gap-1 cursor-pointer"
-                          >
-                            <Plus className="w-3.5 h-3.5" />
-                            <span>+ Tambah Soal</span>
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setQuizImportTarget('session');
+                                setShowQuizImportModal(true);
+                              }}
+                              className="nb-btn nb-btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5 cursor-pointer"
+                              title="Impor kumpulan soal sekaligus dari teks yang disalin"
+                            >
+                              <FileText className="w-3.5 h-3.5 text-[#1D8B94] dark:text-[#4FB8B4]" />
+                              <span>Salin &amp; Tempel Soal</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={handleAddQuestionToSessionForm}
+                              className="nb-btn nb-btn-gold text-xs py-1.5 px-3 flex items-center gap-1 cursor-pointer"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                              <span>+ Tambah Soal</span>
+                            </button>
+                          </div>
                         </div>
 
                         {sessionFormData.questions.length === 0 ? (
-                          <p className="text-xs text-stone-600 dark:text-stone-400 py-4 italic text-center bg-stone-100 dark:bg-[#0B3026] rounded-md border-2 border-dashed border-[#171717] dark:border-[#D9AC45]/40 font-medium">
-                            Belum ada soal ditambahkan. Klik "+ Tambah Soal".
-                          </p>
+                          <div className="p-6 text-center bg-stone-100 dark:bg-[#0A3D4A] rounded-md border-2 border-dashed border-[#171717]/40 dark:border-[#1B6A78] space-y-2">
+                            <p className="text-xs text-stone-600 dark:text-[#B8DAD5] italic font-medium">
+                              Belum ada soal ditambahkan untuk kuis sesi ini.
+                            </p>
+                            <div className="flex items-center justify-center gap-2 pt-1">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setQuizImportTarget('session');
+                                  setShowQuizImportModal(true);
+                                }}
+                                className="nb-btn nb-btn-primary text-xs py-1.5 px-3 flex items-center gap-1 cursor-pointer"
+                              >
+                                <FileText className="w-3.5 h-3.5" />
+                                <span>Salin &amp; Tempel Kumpulan Soal</span>
+                              </button>
+                            </div>
+                          </div>
                         ) : (
                           sessionFormData.questions.map((q, qIndex) => (
-                            <div key={q.id || qIndex} className="p-4 bg-[#F8F3E8] dark:bg-[#0B3026] border-2 border-[#171717] dark:border-[#D9AC45]/40 rounded-md space-y-3 shadow-[2px_2px_0px_#171717]">
-                              <div className="flex items-center justify-between">
-                                <span className="nb-badge bg-white dark:bg-[#06251D] text-[#06251D] dark:text-[#D9AC45] border-[#171717] dark:border-[#D9AC45]">
+                            <div key={q.id || qIndex} className="p-4 sm:p-5 bg-white dark:bg-[#0A3D4A] border-2 border-[#171717] dark:border-[#1B6A78] rounded-md space-y-3.5 shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#02141A]">
+                              <div className="flex items-center justify-between border-b border-[#171717]/15 dark:border-[#1B6A78] pb-2">
+                                <span className="nb-badge bg-[#FAF7F0] dark:bg-[#10606F] text-[#06251D] dark:text-[#E2F4F0] border-[#171717] dark:border-[#1B6A78]">
                                   Soal #{qIndex + 1}
                                 </span>
                                 <button
@@ -2843,27 +2925,62 @@ export const AdminDashboard: React.FC<{
                                 </button>
                               </div>
 
+                              {/* Question Indonesian Text (Multiline Textarea) */}
                               <div>
-                                <label className="text-[11px] font-bold text-stone-700 dark:text-stone-300 block mb-1">
-                                  Pertanyaan (Bahasa Indonesia)
+                                <label className="text-[11px] font-bold text-stone-700 dark:text-[#B8DAD5] block mb-1">
+                                  Pertanyaan (Bahasa Indonesia) *
                                 </label>
-                                <input
-                                  type="text"
+                                <textarea
+                                  rows={2}
                                   value={q.questionText}
                                   onChange={(e) => {
                                     const updated = [...sessionFormData.questions];
                                     updated[qIndex].questionText = e.target.value;
                                     setSessionFormData({ ...sessionFormData, questions: updated });
                                   }}
-                                  className="nb-input font-bold"
+                                  placeholder="Tuliskan pertanyaan soal secara lengkap..."
+                                  className="nb-input w-full p-2.5 text-xs sm:text-sm font-bold leading-relaxed resize-y min-h-[58px]"
+                                />
+                              </div>
+
+                              {/* Question Arabic Text (Multiline Textarea) */}
+                              <div>
+                                <label className="text-[11px] font-bold text-stone-700 dark:text-[#B8DAD5] block mb-1">
+                                  Teks Arab Pertanyaan (Opsional)
+                                </label>
+                                <textarea
+                                  rows={2}
+                                  dir="rtl"
+                                  value={q.questionTextAr || ''}
+                                  onChange={(e) => {
+                                    const updated = [...sessionFormData.questions];
+                                    updated[qIndex].questionTextAr = e.target.value;
+                                    setSessionFormData({ ...sessionFormData, questions: updated });
+                                  }}
+                                  placeholder="نَصُّ السُّؤَالِ بِالْعَرَبِيَّةِ مَعَ الشَّكْلِ..."
+                                  className="nb-input w-full p-2.5 text-xs sm:text-sm font-amiri font-bold text-right leading-relaxed resize-y"
                                 />
                               </div>
 
                               {/* Options */}
                               <div className="space-y-2 pt-1">
-                                <label className="text-[11px] font-bold text-stone-700 dark:text-stone-300 block">
-                                  Pilihan Jawaban & Tentukan Jawaban Benar (Radio):
-                                </label>
+                                <div className="flex items-center justify-between">
+                                  <label className="text-[11px] font-bold text-stone-700 dark:text-[#B8DAD5] block">
+                                    Pilihan Jawaban &amp; Tentukan Jawaban Benar (Radio):
+                                  </label>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const updated = [...sessionFormData.questions];
+                                      const nextLetter = String.fromCharCode(65 + updated[qIndex].options.length);
+                                      updated[qIndex].options.push(`Pilihan ${nextLetter}`);
+                                      setSessionFormData({ ...sessionFormData, questions: updated });
+                                    }}
+                                    className="text-[11px] font-bold text-[#1D8B94] dark:text-[#4FB8B4] hover:underline cursor-pointer"
+                                  >
+                                    + Tambah Opsi
+                                  </button>
+                                </div>
 
                                 {q.options.map((opt, optIdx) => (
                                   <div key={optIdx} className="flex items-center gap-2">
@@ -2876,9 +2993,10 @@ export const AdminDashboard: React.FC<{
                                         updated[qIndex].correctAnswerIndex = optIdx;
                                         setSessionFormData({ ...sessionFormData, questions: updated });
                                       }}
-                                      className="w-4 h-4 accent-[#06251D] border-2 border-[#171717] cursor-pointer"
+                                      className="w-4 h-4 accent-[#1D8B94] cursor-pointer"
+                                      title="Tandai sebagai jawaban benar"
                                     />
-                                    <span className="text-xs font-black text-stone-700 dark:text-stone-300 w-5">
+                                    <span className="text-xs font-black text-stone-700 dark:text-[#E2F4F0] w-5">
                                       {String.fromCharCode(65 + optIdx)}.
                                     </span>
                                     <input
@@ -2889,10 +3007,47 @@ export const AdminDashboard: React.FC<{
                                         updated[qIndex].options[optIdx] = e.target.value;
                                         setSessionFormData({ ...sessionFormData, questions: updated });
                                       }}
-                                      className="flex-1 nb-input py-1.5"
+                                      className="flex-1 nb-input py-1.5 px-2.5 text-xs font-medium"
                                     />
+                                    {q.options.length > 2 && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const updated = [...sessionFormData.questions];
+                                          updated[qIndex].options = updated[qIndex].options.filter((_, i) => i !== optIdx);
+                                          if (updated[qIndex].correctAnswerIndex === optIdx) {
+                                            updated[qIndex].correctAnswerIndex = 0;
+                                          } else if (updated[qIndex].correctAnswerIndex > optIdx) {
+                                            updated[qIndex].correctAnswerIndex -= 1;
+                                          }
+                                          setSessionFormData({ ...sessionFormData, questions: updated });
+                                        }}
+                                        className="p-1 text-stone-400 hover:text-rose-600 dark:text-stone-400 dark:hover:text-rose-400 cursor-pointer"
+                                        title="Hapus opsi"
+                                      >
+                                        <X className="w-3.5 h-3.5" />
+                                      </button>
+                                    )}
                                   </div>
                                 ))}
+                              </div>
+
+                              {/* Explanation */}
+                              <div>
+                                <label className="text-[11px] font-bold text-stone-700 dark:text-[#B8DAD5] block mb-1">
+                                  Pembahasan / Penjelasan Jawaban (Opsional)
+                                </label>
+                                <textarea
+                                  rows={2}
+                                  value={q.explanation || ''}
+                                  onChange={(e) => {
+                                    const updated = [...sessionFormData.questions];
+                                    updated[qIndex].explanation = e.target.value;
+                                    setSessionFormData({ ...sessionFormData, questions: updated });
+                                  }}
+                                  placeholder="Penjelasan rujukan kitab atau alasan jawaban benar..."
+                                  className="nb-input w-full p-2 text-xs font-normal resize-y"
+                                />
                               </div>
                             </div>
                           ))
@@ -3171,16 +3326,16 @@ export const AdminDashboard: React.FC<{
 
       {/* MODAL EDIT INDEPENDENT QUIZ */}
       {editingQuiz && (
-        <div className="fixed inset-0 z-70 bg-stone-900/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
-          <div className="bg-white dark:bg-[#06251D] border-3 border-[#171717] dark:border-[#D9AC45] w-full max-w-2xl rounded-md p-6 space-y-5 shadow-[8px_8px_0px_#171717] my-8">
-            <div className="flex items-center justify-between border-b-2 border-[#171717] dark:border-[#D9AC45]/30 pb-3">
-              <h3 className="font-black text-[#06251D] dark:text-white text-base flex items-center gap-2">
-                <FileQuestion className="w-5 h-5 text-[#D9AC45]" />
+        <div className="fixed inset-0 z-70 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
+          <div className="bg-white dark:bg-[#0A3D4A] border-3 border-[#171717] dark:border-[#1B6A78] w-full max-w-3xl rounded-md p-6 space-y-5 shadow-[8px_8px_0px_#171717] dark:shadow-[8px_8px_0px_#02141A] my-8">
+            <div className="flex items-center justify-between border-b-2 border-[#171717] dark:border-[#1B6A78] pb-3">
+              <h3 className="font-black text-[#06251D] dark:text-[#E2F4F0] text-base flex items-center gap-2">
+                <FileQuestion className="w-5 h-5 text-[#1D8B94] dark:text-[#4FB8B4]" />
                 <span>{editingQuiz.id ? 'Edit Kuis Evaluasi' : 'Tambah Kuis Evaluasi Baru'}</span>
               </h3>
               <button 
                 onClick={() => setEditingQuiz(null)} 
-                className="p-1 text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-white rounded-md border-2 border-transparent hover:border-[#171717] transition"
+                className="p-1 text-stone-500 hover:text-stone-900 dark:text-[#B8DAD5] dark:hover:text-white rounded-md border-2 border-transparent hover:border-[#171717] dark:hover:border-[#1B6A78] transition"
                 aria-label="Tutup modal"
               >
                 <X className="w-5 h-5" />
@@ -3189,8 +3344,8 @@ export const AdminDashboard: React.FC<{
 
             <form onSubmit={handleSaveQuiz} className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
               <div>
-                <label className="text-xs font-black uppercase tracking-wider text-stone-700 dark:text-stone-300 block mb-1.5">
-                  Judul Kuis Evaluasi <span className="text-rose-600">*</span>
+                <label className="text-xs font-black uppercase tracking-wider text-stone-700 dark:text-[#B8DAD5] block mb-1.5">
+                  Judul Kuis Evaluasi <span className="text-rose-600 dark:text-rose-400">*</span>
                 </label>
                 <input
                   type="text"
@@ -3204,8 +3359,8 @@ export const AdminDashboard: React.FC<{
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs font-black uppercase tracking-wider text-stone-700 dark:text-stone-300 block mb-1.5">
-                    Mata Pelajaran <span className="text-rose-600">*</span>
+                  <label className="text-xs font-black uppercase tracking-wider text-stone-700 dark:text-[#B8DAD5] block mb-1.5">
+                    Mata Pelajaran <span className="text-rose-600 dark:text-rose-400">*</span>
                   </label>
                   <select
                     value={editingQuiz.courseId || ''}
@@ -3220,7 +3375,7 @@ export const AdminDashboard: React.FC<{
                 </div>
 
                 <div>
-                  <label className="text-xs font-black uppercase tracking-wider text-stone-700 dark:text-stone-300 block mb-1.5">
+                  <label className="text-xs font-black uppercase tracking-wider text-stone-700 dark:text-[#B8DAD5] block mb-1.5">
                     Passing Grade (%)
                   </label>
                   <input
@@ -3234,25 +3389,164 @@ export const AdminDashboard: React.FC<{
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t-2 border-[#171717] dark:border-[#D9AC45]/30">
+              {/* Questions in independent quiz */}
+              <div className="space-y-4 pt-3 border-t-2 border-[#171717] dark:border-[#1B6A78]">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h4 className="font-black text-xs uppercase tracking-wider text-stone-900 dark:text-[#E2F4F0]">
+                    Daftar Butir Soal ({editingQuiz.questions?.length || 0})
+                  </h4>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setQuizImportTarget('independent');
+                        setShowQuizImportModal(true);
+                      }}
+                      className="nb-btn nb-btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5 cursor-pointer"
+                      title="Salin &amp; Tempel kumpulan soal sekaligus"
+                    >
+                      <FileText className="w-3.5 h-3.5 text-[#1D8B94] dark:text-[#4FB8B4]" />
+                      <span>Salin &amp; Tempel Soal</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newQ: Question = {
+                          id: `q-${Date.now()}`,
+                          questionText: 'Tulis pertanyaan baru...',
+                          type: 'multiple_choice',
+                          options: ['Pilihan A', 'Pilihan B', 'Pilihan C', 'Pilihan D'],
+                          correctAnswerIndex: 0,
+                          points: 10,
+                          explanation: ''
+                        };
+                        setEditingQuiz(prev => ({
+                          ...prev,
+                          questions: [...(prev?.questions || []), newQ]
+                        }));
+                      }}
+                      className="nb-btn nb-btn-gold text-xs py-1.5 px-3 flex items-center gap-1 cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>+ Tambah Soal</span>
+                    </button>
+                  </div>
+                </div>
+
+                {(!editingQuiz.questions || editingQuiz.questions.length === 0) ? (
+                  <div className="p-4 text-center bg-stone-100 dark:bg-[#10606F] rounded-md border-2 border-dashed border-[#171717]/40 dark:border-[#1B6A78]">
+                    <p className="text-xs text-stone-600 dark:text-[#B8DAD5] italic font-medium">
+                      Belum ada butir pertanyaan. Tambah manual atau gunakan "Salin &amp; Tempel Soal".
+                    </p>
+                  </div>
+                ) : (
+                  editingQuiz.questions.map((q, qIndex) => (
+                    <div key={q.id || qIndex} className="p-4 bg-[#FAF7F0] dark:bg-[#10606F] border-2 border-[#171717] dark:border-[#1B6A78] rounded-md space-y-3">
+                      <div className="flex items-center justify-between border-b border-[#171717]/15 dark:border-[#1B6A78] pb-1.5">
+                        <span className="nb-badge bg-white dark:bg-[#0A3D4A] text-[#06251D] dark:text-[#E2F4F0] border-[#171717] dark:border-[#1B6A78]">
+                          Soal #{qIndex + 1}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingQuiz(prev => ({
+                              ...prev,
+                              questions: prev?.questions?.filter((_, i) => i !== qIndex) || []
+                            }));
+                          }}
+                          className="text-xs text-rose-600 dark:text-rose-400 font-bold hover:underline cursor-pointer"
+                        >
+                          Hapus
+                        </button>
+                      </div>
+
+                      <div>
+                        <label className="text-[11px] font-bold text-stone-700 dark:text-[#B8DAD5] block mb-1">
+                          Pertanyaan *
+                        </label>
+                        <textarea
+                          rows={2}
+                          value={q.questionText}
+                          onChange={(e) => {
+                            const updated = [...(editingQuiz.questions || [])];
+                            updated[qIndex].questionText = e.target.value;
+                            setEditingQuiz({ ...editingQuiz, questions: updated });
+                          }}
+                          className="nb-input w-full p-2.5 text-xs font-bold leading-relaxed resize-y"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-bold text-stone-700 dark:text-[#B8DAD5] block">
+                          Pilihan &amp; Jawaban Benar (Radio):
+                        </label>
+                        {q.options.map((opt, optIdx) => (
+                          <div key={optIdx} className="flex items-center gap-2">
+                            <input
+                              type="radio"
+                              name={`editing-correct-${qIndex}`}
+                              checked={q.correctAnswerIndex === optIdx}
+                              onChange={() => {
+                                const updated = [...(editingQuiz.questions || [])];
+                                updated[qIndex].correctAnswerIndex = optIdx;
+                                setEditingQuiz({ ...editingQuiz, questions: updated });
+                              }}
+                              className="w-4 h-4 accent-[#1D8B94] cursor-pointer"
+                            />
+                            <span className="text-xs font-black text-stone-700 dark:text-[#E2F4F0] w-5">
+                              {String.fromCharCode(65 + optIdx)}.
+                            </span>
+                            <input
+                              type="text"
+                              value={opt}
+                              onChange={(e) => {
+                                const updated = [...(editingQuiz.questions || [])];
+                                updated[qIndex].options[optIdx] = e.target.value;
+                                setEditingQuiz({ ...editingQuiz, questions: updated });
+                              }}
+                              className="flex-1 nb-input py-1 px-2.5 text-xs"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t-2 border-[#171717] dark:border-[#1B6A78]">
                 <button
                   type="button"
                   onClick={() => setEditingQuiz(null)}
-                  className="nb-btn nb-btn-secondary text-xs py-2 px-4"
+                  className="nb-btn nb-btn-secondary text-xs py-2 px-4 cursor-pointer"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="nb-btn nb-btn-primary text-xs py-2 px-5"
+                  className="nb-btn nb-btn-primary text-xs py-2 px-5 cursor-pointer"
                 >
-                  Simpan Kuis
+                  Simpan Kuis ({editingQuiz.questions?.length || 0} Soal)
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      {/* MODAL QUIZ IMPORT COPY & PASTE */}
+      <QuizImportModal
+        isOpen={showQuizImportModal}
+        onClose={() => setShowQuizImportModal(false)}
+        existingQuestionsCount={
+          quizImportTarget === 'session'
+            ? sessionFormData.questions.length
+            : (editingQuiz?.questions?.length || 0)
+        }
+        onImportQuestions={handleImportedQuestions}
+      />
 
       {/* CONFIRM MODAL */}
       <ConfirmModal

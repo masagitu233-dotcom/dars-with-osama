@@ -270,7 +270,7 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
       </button>
 
       {/* Hero Header Card */}
-      <div className="nb-card overflow-hidden relative bg-white dark:bg-[#16263D]">
+      <div className="nb-card overflow-hidden relative bg-white dark:bg-[#1F5F63]">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 relative">
           {/* Left Details */}
           <div className="lg:col-span-7 p-6 sm:p-8 md:p-10 flex flex-col justify-between space-y-6">
@@ -278,42 +278,42 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
               {/* Category & Level Badges */}
               <div className="flex flex-wrap items-center gap-2">
                 {category && (
-                  <span className="nb-badge bg-[#123D32] text-[#D6AD52] border-[#292D2B] dark:border-[#34465D]">
+                  <span className="nb-badge bg-[#4CA7A1] text-[#001722] border-[#171717] dark:border-[#001722]">
                     {category.name}
                   </span>
                 )}
-                <span className="nb-badge bg-[#FAF7F0] dark:bg-[#243A56] text-[#292D2B] dark:text-[#F1F4F8] capitalize">
+                <span className="nb-badge bg-[#FAF7F0] dark:bg-[#0D2B36] text-[#171717] dark:text-[#CEFEF1] border-[#171717] dark:border-[#4CA7A1] capitalize">
                   Level: {course.level}
                 </span>
               </div>
 
               {/* Course Titles */}
-              <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-[#292D2B] dark:text-[#F1F4F8] font-serif-brand leading-tight">
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-[#171717] dark:text-white font-serif-brand leading-tight">
                 {course.title}
               </h1>
 
               {course.titleAr && (
-                <p className="font-amiri text-2xl sm:text-3xl font-bold text-[#123D32] dark:text-[#D6AD52] leading-relaxed" dir="rtl">
+                <p className="font-amiri text-xl sm:text-2xl font-bold text-[#123D32] dark:text-[#CEFEF1] leading-[2.0]" dir="rtl">
                   {course.titleAr}
                 </p>
               )}
 
               {/* Description */}
-              <p className="text-[#626A66] dark:text-[#B4C0D0] text-sm md:text-base leading-relaxed">
+              <p className="text-[#525855] dark:text-[#A6D6C9] text-sm md:text-base leading-relaxed">
                 {course.description}
               </p>
 
               {/* Instructor Box */}
-              <div className="p-4 bg-[#FAF7F0] dark:bg-[#243A56] border-2 border-[#292D2B] dark:border-[#34465D] rounded-lg flex items-center justify-between text-xs sm:text-sm">
+              <div className="p-4 bg-[#FAF7F0] dark:bg-[#0D2B36] border-2 border-[#171717] dark:border-[#4CA7A1] rounded-lg flex items-center justify-between text-xs sm:text-sm">
                 <div>
-                  <p className="text-[#626A66] dark:text-[#B4C0D0] text-xs font-bold uppercase tracking-wider">Pensyarah / Pengajar:</p>
-                  <p className="font-extrabold text-[#292D2B] dark:text-[#F1F4F8] text-sm md:text-base mt-0.5">{course.instructor}</p>
+                  <p className="text-[#525855] dark:text-[#A6D6C9] text-xs font-bold uppercase tracking-wider">Pensyarah / Pengajar:</p>
+                  <p className="font-extrabold text-[#171717] dark:text-[#CEFEF1] text-sm md:text-base mt-0.5">{course.instructor}</p>
                   {course.instructorTitle && (
-                    <p className="text-[#626A66] dark:text-[#D6AD52] text-xs font-semibold">{course.instructorTitle}</p>
+                    <p className="text-[#525855] dark:text-[#A6D6C9] text-xs font-semibold">{course.instructorTitle}</p>
                   )}
                 </div>
                 {course.instructorAr && (
-                  <p className="font-amiri text-lg font-bold text-[#123D32] dark:text-[#D6AD52] text-right" dir="rtl">
+                  <p className="font-amiri text-base sm:text-lg font-bold text-[#123D32] dark:text-[#CEFEF1] text-right leading-[1.9]" dir="rtl">
                     {course.instructorAr}
                   </p>
                 )}
@@ -321,7 +321,7 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
             </div>
 
             {/* Action Bar */}
-            <div className="pt-4 border-t-2 border-[#292D2B] dark:border-[#34465D] flex flex-wrap items-center gap-4">
+            <div className="pt-4 border-t-2 border-[#171717] dark:border-[#4CA7A1] flex flex-wrap items-center gap-4">
               {enrollment ? (
                 <button
                   onClick={handleStartOrContinue}
@@ -337,9 +337,9 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
                   className="nb-btn nb-btn-primary px-6 py-3.5 text-sm disabled:opacity-50"
                 >
                   {enrolling ? (
-                    <div className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                    <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
                   ) : (
-                    <Sparkles className="w-5 h-5 text-[#D6AD52]" />
+                    <Sparkles className="w-5 h-5" />
                   )}
                   <span>{enrolling ? 'Mendaftar...' : 'Mulai Belajar Kursus Ini'}</span>
                 </button>
@@ -347,9 +347,9 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
             </div>
           </div>
 
-          {/* Right Cover & Quick Info */}
-          <div className="lg:col-span-5 relative bg-[#FAF7F0] dark:bg-[#16263D] flex flex-col justify-between border-t-2 lg:border-t-0 lg:border-l-2 border-[#292D2B] dark:border-[#34465D]">
-            <div className="relative aspect-[16/10] lg:aspect-auto lg:h-64 w-full overflow-hidden border-b-2 border-[#292D2B] dark:border-[#34465D]">
+          {/* Right Cover & Quick Info (Rincian Program) */}
+          <div className="lg:col-span-5 relative bg-[#FAF7F0] dark:bg-[#1F5F63] flex flex-col justify-between border-t-2 lg:border-t-0 lg:border-l-2 border-[#171717] dark:border-[#4CA7A1]">
+            <div className="relative aspect-[16/10] lg:aspect-auto lg:h-64 w-full overflow-hidden border-b-2 border-[#171717] dark:border-[#4CA7A1]">
               <img
                 src={course.coverImageUrl || 'https://images.unsplash.com/photo-1542816417-0983c9c9ad53?auto=format&fit=crop&w=1200&q=80'}
                 alt={course.title}
@@ -361,29 +361,29 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
             </div>
 
             <div className="p-6 space-y-4">
-              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#123D32] dark:text-[#D6AD52]">Rincian Program</h4>
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#123D32] dark:text-[#CEFEF1]">Rincian Program</h4>
               <div className="space-y-3 text-xs md:text-sm">
-                <div className="flex items-center justify-between text-[#292D2B] dark:text-[#F1F4F8] py-1.5 border-b-2 border-[#292D2B]/15 dark:border-[#34465D]">
-                  <span className="flex items-center gap-2 font-semibold">
-                    <Clock className="w-4 h-4 text-[#123D32] dark:text-[#D6AD52]" />
+                <div className="flex items-center justify-between text-[#171717] dark:text-[#CEFEF1] py-1.5 border-b-2 border-[#171717]/20 dark:border-[#4CA7A1]">
+                  <span className="flex items-center gap-2 font-semibold text-[#525855] dark:text-[#A6D6C9]">
+                    <Clock className="w-4 h-4 text-[#123D32] dark:text-[#4CA7A1]" />
                     <span>Jumlah Sesi:</span>
                   </span>
-                  <span className="font-extrabold">{sessions.length} Sesi Pembelajaran</span>
+                  <span className="font-extrabold text-[#171717] dark:text-[#CEFEF1]">{sessions.length} Sesi Pembelajaran</span>
                 </div>
 
-                <div className="flex items-center justify-between text-[#292D2B] dark:text-[#F1F4F8] py-1.5 border-b-2 border-[#292D2B]/15 dark:border-[#34465D]">
-                  <span className="flex items-center gap-2 font-semibold">
-                    <CheckCircle2 className="w-4 h-4 text-[#123D32] dark:text-[#D6AD52]" />
+                <div className="flex items-center justify-between text-[#171717] dark:text-[#CEFEF1] py-1.5 border-b-2 border-[#171717]/20 dark:border-[#4CA7A1]">
+                  <span className="flex items-center gap-2 font-semibold text-[#525855] dark:text-[#A6D6C9]">
+                    <CheckCircle2 className="w-4 h-4 text-[#123D32] dark:text-[#4CA7A1]" />
                     <span>Batas Nilai Kelulusan:</span>
                   </span>
-                  <span className="font-extrabold">{course.passingGrade}%</span>
+                  <span className="font-extrabold text-[#171717] dark:text-[#CEFEF1]">{course.passingGrade}%</span>
                 </div>
               </div>
 
               {/* Guest Information Notice */}
-              <div className="p-3.5 bg-white dark:bg-[#243A56] border-2 border-[#292D2B] dark:border-[#34465D] rounded-md text-[#292D2B] dark:text-[#F1F4F8] text-xs space-y-1">
-                <p className="font-extrabold text-[#123D32] dark:text-[#D6AD52]">Akses Terbuka untuk Kaum Muslimin:</p>
-                <p className="text-[#626A66] dark:text-[#B4C0D0]">Pengunjung bebas menonton rekaman dan membaca materi. Daftarkan akun untuk menyimpan riwayat nilai dan kemajuan belajar Anda.</p>
+              <div className="p-3.5 bg-white dark:bg-[#0D2B36] border-2 border-[#171717] dark:border-[#4CA7A1] rounded-md text-[#171717] dark:text-[#CEFEF1] text-xs space-y-1">
+                <p className="font-extrabold text-[#123D32] dark:text-[#CEFEF1]">Akses Terbuka untuk Kaum Muslimin:</p>
+                <p className="text-[#525855] dark:text-[#A6D6C9]">Pengunjung bebas menonton rekaman dan membaca materi. Daftarkan akun untuk menyimpan riwayat nilai dan kemajuan belajar Anda.</p>
               </div>
             </div>
           </div>
@@ -394,10 +394,10 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="space-y-1">
-            <h2 className="text-xl sm:text-2xl font-extrabold text-[#292D2B] dark:text-[#F1F4F8] font-serif-brand">
+            <h2 className="text-xl sm:text-2xl font-extrabold text-[#171717] dark:text-[#CEFEF1] font-serif-brand">
               Daftar Sesi Pembelajaran ({sessions.length})
             </h2>
-            <p className="text-xs sm:text-sm text-[#626A66] dark:text-[#B4C0D0]">
+            <p className="text-xs sm:text-sm text-[#525855] dark:text-[#A6D6C9]">
               Klik pada sesi untuk mulai menyimak materi video, naskah PDF, catatan kajian, dan evaluasi kuis.
             </p>
           </div>
@@ -414,37 +414,41 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
                 <div
                   key={session.id}
                   onClick={() => handleSessionItemClick(session)}
-                  className="group nb-card nb-card-interactive p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer bg-white dark:bg-[#16263D]"
+                  className={`group rounded-lg border-2 border-[#171717] dark:border-[#4CA7A1] shadow-[4px_4px_0px_#171717] dark:shadow-[4px_4px_0px_#001722] hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[6px_6px_0px_#171717] dark:hover:shadow-[6px_6px_0px_#001722] transition-all p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer ${
+                    isSessionDone
+                      ? 'bg-[#EFE5D2] dark:bg-[#1F5F63]'
+                      : 'bg-white dark:bg-[#0D2B36]'
+                  }`}
                 >
                   <div className="flex items-start gap-4">
                     {/* Index Box or Completion Checkmark */}
-                    <div className={`w-10 h-10 rounded-md flex items-center justify-center font-extrabold text-sm shrink-0 border-2 border-[#292D2B] transition ${
+                    <div className={`w-10 h-10 rounded-md flex items-center justify-center font-extrabold text-sm shrink-0 border-2 border-[#171717] dark:border-[#4CA7A1] transition ${
                       isSessionDone
-                        ? 'bg-[#D6AD52] text-[#123D32]'
-                        : 'bg-[#FAF7F0] dark:bg-[#243A56] text-[#292D2B] dark:text-[#F1F4F8] group-hover:bg-[#123D32] group-hover:text-[#D6AD52]'
+                        ? 'bg-[#4CA7A1] text-[#001722] dark:border-[#001722]'
+                        : 'bg-[#FAF7F0] dark:bg-[#001722] text-[#171717] dark:text-[#CEFEF1] group-hover:bg-[#123D32] group-hover:text-white dark:group-hover:bg-[#4CA7A1] dark:group-hover:text-[#001722]'
                     }`}>
-                      {isSessionDone ? <CheckCircle2 className="w-5 h-5 text-[#123D32]" /> : idx + 1}
+                      {isSessionDone ? <CheckCircle2 className="w-5 h-5 text-[#001722]" /> : idx + 1}
                     </div>
 
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h4 className="font-extrabold text-sm sm:text-base text-[#292D2B] dark:text-[#F1F4F8] group-hover:text-[#123D32] dark:group-hover:text-[#D6AD52] transition">
+                        <h4 className="font-extrabold text-sm sm:text-base text-[#171717] dark:text-[#CEFEF1] group-hover:text-[#123D32] dark:group-hover:text-white transition">
                           {session.title}
                         </h4>
                         {isSessionDone && (
-                          <span className="nb-badge bg-[#D6AD52] text-[#123D32] text-[10px]">
+                          <span className="nb-badge bg-[#4CA7A1] text-[#001722] border-[#171717] dark:border-[#001722] text-[10px]">
                             Selesai
                           </span>
                         )}
                       </div>
 
                       {session.titleAr && (
-                        <p className="font-amiri text-base font-bold text-[#123D32] dark:text-[#D6AD52] leading-tight" dir="rtl">
+                        <p className="font-amiri text-base font-bold text-[#123D32] dark:text-[#CEFEF1] leading-tight" dir="rtl">
                           {session.titleAr}
                         </p>
                       )}
 
-                      <p className="text-xs text-[#626A66] dark:text-[#B4C0D0] line-clamp-1 max-w-2xl">
+                      <p className="text-xs text-[#525855] dark:text-[#A6D6C9] line-clamp-1 max-w-2xl">
                         {session.description}
                       </p>
 
@@ -455,10 +459,10 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
                             <button
                               type="button"
                               onClick={(e) => handleStartQuizForSession(e, session)}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-900 dark:text-emerald-200 border border-emerald-400 dark:border-emerald-700 text-xs font-bold hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition cursor-pointer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#FAF7F0] dark:bg-[#001722] text-[#123D32] dark:text-[#CEFEF1] border-2 border-[#171717] dark:border-[#4CA7A1] text-xs font-bold hover:bg-[#4CA7A1] hover:text-[#001722] transition cursor-pointer"
                               title={`Kuis sesi ${session.title} telah selesai dan lulus (${quizStatus.bestScore}%). Klik untuk melihat hasil.`}
                             >
-                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                              <CheckCircle2 className="w-3.5 h-3.5 text-[#123D32] dark:text-[#4CA7A1] shrink-0" />
                               <span>Kuis Selesai ({quizStatus.bestScore}%)</span>
                               <span className="text-[10px] underline ml-1 font-extrabold">Lihat Hasil</span>
                             </button>
@@ -466,23 +470,23 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
                             <button
                               type="button"
                               onClick={(e) => handleStartQuizForSession(e, session)}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-amber-50 dark:bg-amber-950/60 text-amber-950 dark:text-amber-200 border border-amber-400 dark:border-amber-700 text-xs font-bold hover:bg-amber-100 dark:hover:bg-amber-900/50 transition cursor-pointer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#FAF7F0] dark:bg-[#001722] text-[#123D32] dark:text-[#CEFEF1] border-2 border-[#171717] dark:border-[#4CA7A1] text-xs font-bold hover:bg-[#1F5F63] transition cursor-pointer"
                               title={`Nilai kuis antum (${quizStatus.bestScore}%) belum memenuhi batas kelulusan (${quizStatus.passingScore}%). Klik untuk mengulang kuis.`}
                             >
-                              <RotateCcw className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400 shrink-0" />
+                              <RotateCcw className="w-3.5 h-3.5 text-[#123D32] dark:text-[#4CA7A1] shrink-0" />
                               <span>Ulangi Kuis ({quizStatus.bestScore}%)</span>
-                              <span className="text-[10px] underline ml-1 font-extrabold">Kerjakan Lagi</span>
+                              <span className="text-[10px] underline ml-1 font-extrabold text-[#4CA7A1]">Kerjakan Lagi</span>
                             </button>
                           ) : (
                             <button
                               type="button"
                               onClick={(e) => handleStartQuizForSession(e, session)}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#FAF7F0] dark:bg-[#101B2D] text-[#123D32] dark:text-[#D6AD52] border border-[#292D2B]/35 dark:border-[#34465D] text-xs font-bold hover:bg-[#D6AD52]/20 dark:hover:bg-[#243A56] transition cursor-pointer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#FAF7F0] dark:bg-[#001722] text-[#123D32] dark:text-[#CEFEF1] border-2 border-[#171717] dark:border-[#4CA7A1] text-xs font-bold hover:bg-[#4CA7A1] hover:text-[#001722] transition cursor-pointer"
                               title={`Kerjakan kuis evaluasi pemahaman untuk sesi ${session.title}`}
                             >
-                              <HelpCircle className="w-3.5 h-3.5 text-[#237A70] dark:text-[#D6AD52] shrink-0" />
+                              <HelpCircle className="w-3.5 h-3.5 text-[#123D32] dark:text-[#4CA7A1] shrink-0" />
                               <span>Kerjakan Kuis</span>
-                              <ChevronRight className="w-3.5 h-3.5 opacity-70" />
+                              <ChevronRight className="w-3.5 h-3.5 opacity-80" />
                             </button>
                           )}
                         </div>
@@ -494,20 +498,20 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
                   {/* Badges & Share Actions on Right */}
                   <div className="flex flex-wrap items-center gap-2 shrink-0 self-end sm:self-center">
                     {session.youtubeUrl && (
-                      <span className="nb-badge bg-[#FAF7F0] dark:bg-[#243A56] text-[#292D2B] dark:text-[#F1F4F8]">
-                        <Video className="w-3.5 h-3.5 text-[#123D32] dark:text-[#D6AD52]" />
+                      <span className="nb-badge bg-[#FAF7F0] dark:bg-[#001722] text-[#171717] dark:text-[#CEFEF1] border-[#171717] dark:border-[#4CA7A1]">
+                        <Video className="w-3.5 h-3.5 text-[#123D32] dark:text-[#4CA7A1]" />
                         <span>Video</span>
                       </span>
                     )}
                     {session.pdfUrl && (
-                      <span className="nb-badge bg-[#FAF7F0] dark:bg-[#243A56] text-[#292D2B] dark:text-[#F1F4F8]">
-                        <FileText className="w-3.5 h-3.5 text-[#D6AD52]" />
+                      <span className="nb-badge bg-[#FAF7F0] dark:bg-[#001722] text-[#171717] dark:text-[#CEFEF1] border-[#171717] dark:border-[#4CA7A1]">
+                        <FileText className="w-3.5 h-3.5 text-[#123D32] dark:text-[#4CA7A1]" />
                         <span>PDF</span>
                       </span>
                     )}
                     {session.quizId && (
-                      <span className="nb-badge bg-[#FAF7F0] dark:bg-[#243A56] text-[#292D2B] dark:text-[#F1F4F8]">
-                        <HelpCircle className="w-3.5 h-3.5 text-[#237A70] dark:text-[#A9C5E8]" />
+                      <span className="nb-badge bg-[#FAF7F0] dark:bg-[#001722] text-[#171717] dark:text-[#CEFEF1] border-[#171717] dark:border-[#4CA7A1]">
+                        <HelpCircle className="w-3.5 h-3.5 text-[#123D32] dark:text-[#4CA7A1]" />
                         <span>Kuis</span>
                       </span>
                     )}
@@ -521,12 +525,12 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
                     >
                       {copiedSessionId === session.id ? (
                         <>
-                          <Check className="w-3.5 h-3.5 text-[#123D32] dark:text-[#D6AD52]" />
+                          <Check className="w-3.5 h-3.5 text-[#123D32] dark:text-[#CEFEF1]" />
                           <span>Disalin</span>
                         </>
                       ) : (
                         <>
-                          <Copy className="w-3.5 h-3.5 text-[#D6AD52]" />
+                          <Copy className="w-3.5 h-3.5 text-[#123D32] dark:text-[#4CA7A1]" />
                           <span>Salin Link</span>
                         </>
                       )}
@@ -539,11 +543,11 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
                       className="nb-btn nb-btn-primary px-2.5 py-1.5 text-[11px]"
                       title={`Bagikan ${session.title}`}
                     >
-                      <Share2 className="w-3.5 h-3.5 text-[#D6AD52]" />
+                      <Share2 className="w-3.5 h-3.5" />
                       <span>Bagikan</span>
                     </button>
 
-                    <span className="p-1.5 text-[#123D32] dark:text-[#D6AD52] group-hover:translate-x-1 transition-all">
+                    <span className="p-1.5 text-[#123D32] dark:text-[#4CA7A1] group-hover:translate-x-1 transition-all">
                       <PlayCircle className="w-6 h-6" />
                     </span>
                   </div>
@@ -552,7 +556,7 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
             })}
           </div>
         ) : (
-          <div className="p-8 nb-card text-center text-[#626A66] dark:text-[#B4C0D0] text-sm">
+          <div className="p-8 nb-card text-center text-[#525855] dark:text-[#A6D6C9] text-sm">
             Belum ada sesi pembelajaran yang dipublikasikan untuk kursus ini.
           </div>
         )}

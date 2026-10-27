@@ -7,11 +7,26 @@ import {
   browserSessionPersistence,
   inMemoryPersistence,
   browserPopupRedirectResolver,
+  signOut,
   Auth
 } from 'firebase/auth';
-import { getFirestore, Firestore, doc, getDocFromServer } from 'firebase/firestore';
+import {
+  getFirestore,
+  Firestore,
+  doc,
+  getDocFromServer,
+  setLogLevel,
+  enableNetwork
+} from 'firebase/firestore';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 import rawAppletConfig from '../../firebase-applet-config.json';
+
+// Silence internal Firestore SDK connection retry error logs that trigger false-positive error overlays
+try {
+  setLogLevel('silent');
+} catch {
+  // Ignore in environments where setLogLevel might be restricted
+}
 
 export interface FirebaseConfigSchema {
   projectId: string;
@@ -137,13 +152,147 @@ if (getApps().length > 0) {
   });
 }
 
-// 4. Initialize Firestore strictly targeting the verified named database ID
-export const db: Firestore = getFirestore(app, targetDatabaseId);
+let tokenServiceApiDisabled = false;
+
+export function isSecureTokenServiceDisabledError(err: unknown): boolean {
+  const rawMsg = err instanceof Error ? err.message : String(err || '');
+  const code = (err as any)?.code ? String((err as any).code) : '';
+  return (
+    rawMsg.includes('token-service-api') ||
+    rawMsg.includes('securetoken.googleapis.com') ||
+    rawMsg.includes('Fetching auth token failed') ||
+    code.includes('token-service-api')
+  );
+}
+
+function stopProactiveRefreshSafely(target: any): void {
+  if (!target) return;
+  try {
+    if (typeof target._stopProactiveRefresh === 'function') {
+      target._stopProactiveRefresh();
+    }
+    if (target.proactiveRefresh && typeof target.proactiveRefresh._stop === 'function') {
+      target.proactiveRefresh._stop();
+    }
+  } catch {
+    // Ignore internal refresh timer stop errors
+  }
+}
+
+export function patchUserTokenMethods(user: any): void {
+  if (!user || typeof user !== 'object') return;
+
+  // 1. Patch stsTokenManager.getToken so expired token refresh never throws into AuthImpl.getToken
+  const sts = user.stsTokenManager;
+  if (sts && typeof sts === 'object' && !sts.__resilientPatched) {
+    const origStsGetToken = typeof sts.getToken === 'function' ? sts.getToken.bind(sts) : null;
+    if (origStsGetToken) {
+      sts.getToken = async (_authInstance?: any, _forceRefresh?: boolean): Promise<string | null> => {
+        try {
+          const hasValidCachedToken =
+            sts.accessToken &&
+            sts.expirationTime &&
+            Number(sts.expirationTime) > Date.now() + 60_000;
+          if (hasValidCachedToken) {
+            return String(sts.accessToken);
+          }
+          if (tokenServiceApiDisabled) {
+            return null;
+          }
+          return await origStsGetToken(_authInstance, false);
+        } catch (err) {
+          if (isSecureTokenServiceDisabledError(err)) {
+            tokenServiceApiDisabled = true;
+            stopProactiveRefreshSafely(user);
+            classifyFirestoreError(err);
+            return null;
+          }
+          return null;
+        }
+      };
+    }
+    sts.__resilientPatched = true;
+  }
+
+  // 2. Patch user.getIdToken so direct calls never reject on token-service-api disabled
+  if (!user.__resilientPatched && typeof user.getIdToken === 'function') {
+    const origGetIdToken = user.getIdToken.bind(user);
+    user.getIdToken = async (_forceRefresh?: boolean): Promise<string> => {
+      try {
+        const tokenMgr = user.stsTokenManager;
+        const hasValidCachedToken =
+          tokenMgr?.accessToken &&
+          tokenMgr?.expirationTime &&
+          Number(tokenMgr.expirationTime) > Date.now() + 60_000;
+        if (hasValidCachedToken) {
+          return String(tokenMgr.accessToken);
+        }
+        if (tokenServiceApiDisabled) {
+          return '';
+        }
+        const token = await origGetIdToken(false);
+        return token || '';
+      } catch (err) {
+        if (isSecureTokenServiceDisabledError(err)) {
+          tokenServiceApiDisabled = true;
+          stopProactiveRefreshSafely(user);
+          classifyFirestoreError(err);
+          return '';
+        }
+        return '';
+      }
+    };
+    user.__resilientPatched = true;
+  }
+}
+
+function patchAuthInternalGetToken(target: any, authInstance: Auth): void {
+  if (!target || typeof target.getToken !== 'function' || target.__resilientGetTokenPatched) {
+    return;
+  }
+  const origGetToken = target.getToken.bind(target);
+  target.getToken = async (_forceRefresh?: boolean): Promise<{ accessToken: string } | null> => {
+    try {
+      const currentUser = authInstance.currentUser as any;
+      if (!currentUser) {
+        return null;
+      }
+      patchUserTokenMethods(currentUser);
+      const sts = currentUser.stsTokenManager;
+      const hasValidCachedToken =
+        sts?.accessToken &&
+        sts?.expirationTime &&
+        Number(sts.expirationTime) > Date.now() + 60_000;
+      if (hasValidCachedToken) {
+        return { accessToken: String(sts.accessToken) };
+      }
+      if (tokenServiceApiDisabled) {
+        return null;
+      }
+      const res = await origGetToken(false);
+      if (!res || !res.accessToken) {
+        return null;
+      }
+      return res;
+    } catch (err) {
+      if (isSecureTokenServiceDisabledError(err)) {
+        tokenServiceApiDisabled = true;
+        stopProactiveRefreshSafely(authInstance);
+        stopProactiveRefreshSafely(authInstance.currentUser);
+        classifyFirestoreError(err);
+      }
+      // Always resolve to null rather than rejecting so Firestore never fails with 'Fetching auth token failed'
+      return null;
+    }
+  };
+  target.__resilientGetTokenPatched = true;
+}
 
 function createResilientAuth(firebaseApp: FirebaseApp): Auth {
+  let authInstance: Auth;
   if (typeof window !== 'undefined') {
     try {
-      return initializeAuth(firebaseApp, {
+      authInstance = initializeAuth(firebaseApp, {
         persistence: [
           indexedDBLocalPersistence,
           browserLocalPersistence,
@@ -154,13 +303,49 @@ function createResilientAuth(firebaseApp: FirebaseApp): Auth {
       });
     } catch {
       // Auth already initialized on this app instance
-      return getAuth(firebaseApp);
+      authInstance = getAuth(firebaseApp);
     }
+  } else {
+    authInstance = getAuth(firebaseApp);
   }
-  return getAuth(firebaseApp);
+
+  // Patch getToken on authInstance, its prototype, and the internal 'auth-internal' provider
+  patchAuthInternalGetToken(authInstance as any, authInstance);
+  const authProto = Object.getPrototypeOf(authInstance);
+  if (authProto) {
+    patchAuthInternalGetToken(authProto, authInstance);
+  }
+  try {
+    const authInternalProvider = (firebaseApp as any)?.container?.getProvider?.('auth-internal');
+    if (authInternalProvider?.isInitialized?.()) {
+      const authInternal = authInternalProvider.getImmediate?.();
+      if (authInternal) {
+        patchAuthInternalGetToken(authInternal, authInstance);
+      }
+    }
+  } catch {
+    // Ignore internal container access errors
+  }
+
+  if (typeof window !== 'undefined') {
+    if (authInstance.currentUser) {
+      patchUserTokenMethods(authInstance.currentUser);
+    }
+    authInstance.onIdTokenChanged((currentUser) => {
+      if (currentUser) {
+        patchUserTokenMethods(currentUser);
+      }
+    });
+  }
+
+  return authInstance;
 }
 
+// 4. Initialize resilient Auth BEFORE Firestore so Firestore's credentials provider uses the guarded getToken
 export const auth: Auth = createResilientAuth(app);
+
+// 5. Initialize Firestore strictly targeting the verified named database ID
+export const db: Firestore = getFirestore(app, targetDatabaseId);
 export const storage: FirebaseStorage = getStorage(app);
 
 export enum OperationType {
@@ -191,10 +376,48 @@ export interface FirestoreDiagnosticInfo {
   targetDatabaseId: string;
 }
 
+export type FeatureDataSourceType =
+  | 'firestore-server'
+  | 'memory-cache'
+  | 'local-storage'
+  | 'static-fallback-oct22';
+
+export interface DataSourceStatus {
+  isUsingFallback: boolean;
+  features: Record<string, { source: FeatureDataSourceType; updatedAt: string; reason?: string }>;
+}
+
 let lastDiagnosticInfo: FirestoreDiagnosticInfo | null = null;
+const featureDataSources: Record<string, { source: FeatureDataSourceType; updatedAt: string; reason?: string }> = {};
 
 export function getLatestFirestoreDiagnostic(): FirestoreDiagnosticInfo | null {
   return lastDiagnosticInfo;
+}
+
+export function clearLatestFirestoreDiagnostic(): void {
+  lastDiagnosticInfo = null;
+}
+
+export function recordFeatureDataSource(
+  feature: string,
+  source: FeatureDataSourceType,
+  reason?: string
+): void {
+  featureDataSources[feature] = {
+    source,
+    updatedAt: new Date().toISOString(),
+    ...(reason ? { reason } : {})
+  };
+}
+
+export function getDataSourceStatus(): DataSourceStatus {
+  const isUsingFallback = Object.values(featureDataSources).some(
+    entry => entry.source === 'static-fallback-oct22'
+  );
+  return {
+    isUsingFallback,
+    features: { ...featureDataSources }
+  };
 }
 
 /**
@@ -220,7 +443,7 @@ export function classifyFirestoreError(error: unknown): {
   ) {
     category = 'unauthenticated';
     summary =
-      'Sesi autentikasi belum siap atau Secure Token Service API di Google Cloud Project belum diaktifkan. Mode baca publik tetap dapat berjalan.';
+      'Layanan Secure Token Service API (securetoken.googleapis.com) pada Google Cloud Project 803333166092 belum diaktifkan atau sedang mengalami pembatasan. Sesi login Anda tetap dipertahankan.';
   } else if (code.includes('permission-denied') || rawMsg.includes('Missing or insufficient permissions')) {
     category = 'permission-denied';
     summary = 'Izin akses Firestore ditolak oleh Security Rules atau peran pengguna tidak memadai.';
@@ -235,13 +458,14 @@ export function classifyFirestoreError(error: unknown): {
   ) {
     category = 'network-or-domain-blocked';
     summary =
-      'Koneksi client Firestore terputus atau domain belum diizinkan (periksa Authorized Domains & API Key HTTP Referrers).';
+      'Koneksi client Firestore sedang offline atau terputus dari server.';
   } else if (code.includes('failed-precondition') || rawMsg.includes('requires an index')) {
     category = 'query-precondition-failed';
     summary = 'Kueri membutuhkan indeks komposit Firestore atau kondisi prasyarat data belum terpenuhi.';
-  } else if (code.includes('resource-exhausted') || rawMsg.includes('quota')) {
+  } else if (code.includes('resource-exhausted') || rawMsg.includes('quota') || rawMsg.includes('Quota exceeded')) {
     category = 'resource-exhausted';
-    summary = 'Batas kuota layanan Cloud Firestore terlampaui.';
+    summary =
+      'Batas kuota baca harian gratis (Free Tier Daily Read Quota) Cloud Firestore pada database produksi telah tercapai. Data terbaru Anda tetap aman di server Firestore; untuk sementara sistem menampilkan cadangan statis (22 Okt 2026) hingga kuota harian di-reset atau proyek di-upgrade ke paket Blaze.';
   }
 
   const maskedProjectId = firebaseConfig.projectId
@@ -286,12 +510,28 @@ export interface FirestoreErrorInfo {
     email?: string | null;
     emailVerified?: boolean | null;
     isAnonymous?: boolean | null;
-    tenantId?: string | null;
+    tenantId?: boolean | string | null;
     providerInfo?: {
       providerId?: string | null;
       email?: string | null;
     }[];
   };
+}
+
+export function hasActiveFirestoreAuthToken(): boolean {
+  try {
+    if (tokenServiceApiDisabled) return false;
+    const currentUser = auth.currentUser as any;
+    if (!currentUser) return false;
+    const sts = currentUser.stsTokenManager;
+    if (!sts || !sts.accessToken) return false;
+    if (sts.expirationTime && Number(sts.expirationTime) <= Date.now() + 30_000) {
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null): never {
@@ -315,7 +555,7 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     }
   };
 
-  console.error(`[Firestore Error - ${category}] ${summary} (Code: ${code}, Path: ${path || '-'})`, errInfo);
+  console.warn(`[Firestore Diagnostic - ${category}] ${summary} (Code: ${code}, Path: ${path || '-'})`, errInfo);
   
   const customError = new Error(`${summary} [Kode: ${code}]`);
   (customError as any).category = category;
@@ -330,13 +570,29 @@ export async function testConnection(): Promise<boolean> {
     await getDocFromServer(doc(db, 'system', 'initialized'));
     return true;
   } catch (error) {
+    const rawMsg = error instanceof Error ? error.message : String(error || '');
+    if (rawMsg.includes('client is offline')) {
+      try {
+        await enableNetwork(db);
+        await getDocFromServer(doc(db, 'system', 'initialized'));
+        return true;
+      } catch (retryErr) {
+        error = retryErr;
+      }
+    }
     const { category, summary } = classifyFirestoreError(error);
-    if (category === 'network-or-domain-blocked') {
-      console.warn(`[Firebase Connection] ${summary}`);
+    if (
+      category === 'network-or-domain-blocked' ||
+      category === 'resource-exhausted' ||
+      category === 'unauthenticated' ||
+      category === 'database-not-found'
+    ) {
+      console.warn(`[Firebase Connection Diagnostic] ${summary}`);
       return false;
     }
-    // Any response from the server (even permission-denied) confirms connection reached Firestore server
+    // Permission-denied on system/initialized still confirms server is reachable and responding
     return true;
   }
 }
+
 

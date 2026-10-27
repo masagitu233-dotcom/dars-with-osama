@@ -3,6 +3,7 @@ import {
   doc,
   getDocs,
   getDoc,
+  getDocFromServer,
   setDoc,
   updateDoc,
   deleteDoc,
@@ -12,7 +13,19 @@ import {
   writeBatch
 } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { db, storage, handleFirestoreError, OperationType, auth, logFirestoreDiagnostic, classifyFirestoreError, firebaseConfig } from './config';
+import {
+  db,
+  storage,
+  handleFirestoreError,
+  OperationType,
+  auth,
+  logFirestoreDiagnostic,
+  classifyFirestoreError,
+  firebaseConfig,
+  recordFeatureDataSource,
+  clearLatestFirestoreDiagnostic,
+  hasActiveFirestoreAuthToken
+} from './config';
 import { Category, Course, Session, Quiz, Enrollment, QuizAttempt, UserProfile, BlogPost, Consultation, ArticleComment, InstructorProfile } from '../types';
 import { SEED_CATEGORIES, SEED_COURSES, SEED_SESSIONS, SEED_QUIZZES } from '../data/seedData';
 import { matchesSessionIdentifier, canAccessSessionPublicly } from '../utils/sessionShareHelper';
@@ -116,21 +129,31 @@ export function invalidateServicesCache(target?: 'categories' | 'courses' | 'ses
 export async function getCategories(forceRefresh = false): Promise<Category[]> {
   const now = Date.now();
   if (!forceRefresh && categoriesCache && now - categoriesCache.timestamp < CACHE_TTL_MS) {
+    recordFeatureDataSource('categories', 'memory-cache');
     return categoriesCache.data;
   }
 
   try {
     const q = query(collection(db, 'categories'), orderBy('order', 'asc'));
     const snapshot = await getDocs(q);
+    if (snapshot.empty && snapshot.metadata?.fromCache) {
+      throw new Error('Client is offline and local cache is empty for categories');
+    }
     const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Category));
     list.sort((a, b) => (a.order || 0) - (b.order || 0));
     categoriesCache = { data: list, timestamp: now };
+    recordFeatureDataSource(
+      'categories',
+      snapshot.metadata?.fromCache ? 'memory-cache' : 'firestore-server'
+    );
     return list;
   } catch (err) {
     logFirestoreDiagnostic({ operation: 'getCategories', collection: 'categories' }, err);
     if (categoriesCache && Array.isArray(categoriesCache.data) && categoriesCache.data.length > 0) {
+      recordFeatureDataSource('categories', 'memory-cache', 'Retained in-memory cache');
       return categoriesCache.data;
     }
+    recordFeatureDataSource('categories', 'static-fallback-oct22', String((err as any)?.code || err));
     return PRODUCTION_CATEGORIES;
   }
 }
@@ -152,12 +175,12 @@ export async function saveCategory(category: Partial<Category> & { name: string;
     await setDoc(doc(db, 'categories', id), data, { merge: true });
 
     try {
-      const vSnap = await getDoc(doc(db, 'categories', id));
+      const vSnap = await getDocFromServer(doc(db, 'categories', id));
       if (vSnap.exists()) {
-        logCrudDiagnostic(`saveCategory Verification [ID: ${id}]`, path, 'success');
+        logCrudDiagnostic(`saveCategory Server Verification [ID: ${id}]`, path, 'success');
       }
     } catch (vErr) {
-      console.warn('[saveCategory] Verification notice:', vErr);
+      console.warn('[saveCategory] Server verification notice (write may be queued or quota restricted):', vErr);
     }
 
     invalidateServicesCache('categories');
@@ -226,55 +249,31 @@ export async function getSessionCountsByCourse(includeUnpublished = false, force
 
   try {
     const countsMap: Record<string, Set<string>> = {};
-    let subScanSucceeded = false;
     let topScanSucceeded = false;
 
-    // 1. Scan courses and check subcollection sessions
-    try {
-      const coursesSnapshot = await getDocs(collection(db, 'courses'));
-      subScanSucceeded = true;
-      if (!coursesSnapshot.empty) {
-        for (const cDoc of coursesSnapshot.docs) {
-          const courseId = cDoc.id;
-          countsMap[courseId] = new Set();
-          try {
-            const subSnapshot = await getDocs(collection(db, 'courses', courseId, 'sessions'));
-            subSnapshot.forEach(d => {
-              const data = d.data();
-              if (includeUnpublished || data.isPublished !== false) {
-                countsMap[courseId].add(d.id);
-              }
-            });
-          } catch (e) {
-            // ignore subcollection read error
-          }
-        }
-      }
-    } catch (e) {
-      logFirestoreDiagnostic({ operation: 'getSessionCountsByCourse (subcollection scan)', collection: 'courses' }, e);
-    }
-
-    // 2. Scan top-level sessions collection
+    // Scan top-level sessions collection first (single collection read to conserve daily read quota)
     try {
       const topSnapshot = await getDocs(collection(db, 'sessions'));
-      topScanSucceeded = true;
-      topSnapshot.forEach(d => {
-        const data = d.data();
-        if (data.courseId) {
-          if (!countsMap[data.courseId]) {
-            countsMap[data.courseId] = new Set();
+      if (!topSnapshot.empty || !topSnapshot.metadata?.fromCache) {
+        topScanSucceeded = true;
+        topSnapshot.forEach(d => {
+          const data = d.data();
+          if (data.courseId) {
+            if (!countsMap[data.courseId]) {
+              countsMap[data.courseId] = new Set();
+            }
+            if (includeUnpublished || data.isPublished !== false) {
+              countsMap[data.courseId].add(d.id);
+            }
           }
-          if (includeUnpublished || data.isPublished !== false) {
-            countsMap[data.courseId].add(d.id);
-          }
-        }
-      });
+        });
+      }
     } catch (e) {
       logFirestoreDiagnostic({ operation: 'getSessionCountsByCourse (top-level scan)', collection: 'sessions' }, e);
     }
 
-    if (!subScanSucceeded && !topScanSucceeded) {
-      sessionCountsCache.set(includeUnpublished, { data: fallbackCounts, timestamp: now });
+    if (!topScanSucceeded) {
+      // Do NOT cache fallbackCounts into sessionCountsCache so live data can be fetched as soon as quota resets
       return fallbackCounts;
     }
 
@@ -287,7 +286,6 @@ export async function getSessionCountsByCourse(includeUnpublished = false, force
     return result;
   } catch (err) {
     logFirestoreDiagnostic({ operation: 'getSessionCountsByCourse (fallback)', collection: 'sessions' }, err);
-    sessionCountsCache.set(includeUnpublished, { data: fallbackCounts, timestamp: now });
     return fallbackCounts;
   }
 }
@@ -306,31 +304,53 @@ function attachCourseSessionCount(c: Course, counts: Record<string, number>): Co
 export async function getCourses(includeUnpublished = false, forceRefresh = false): Promise<Course[]> {
   const now = Date.now();
   if (!forceRefresh && coursesCache && now - coursesCache.timestamp < CACHE_TTL_MS) {
+    recordFeatureDataSource('courses', 'memory-cache');
     const cached = coursesCache.data;
     return includeUnpublished ? cached : cached.filter(c => c.isPublished);
   }
 
   try {
     const snapshot = await getDocs(collection(db, 'courses'));
+    if (snapshot.empty && snapshot.metadata?.fromCache) {
+      throw new Error('Client is offline and local cache is empty for courses');
+    }
     let courses = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Course));
     courses.sort((a, b) => (a.order || 0) - (b.order || 0));
 
-    try {
-      const counts = await getSessionCountsByCourse(includeUnpublished, forceRefresh);
-      courses = courses.map(c => attachCourseSessionCount(c, counts));
-    } catch (e) {
-      console.warn('Failed to attach dynamic session counts:', e);
+    // Only run a full sessions count scan if forceRefresh is requested or courses lack sessionsCount
+    const needsCountScan = forceRefresh || courses.some(c => typeof c.sessionsCount !== 'number');
+    if (needsCountScan) {
+      try {
+        const counts = await getSessionCountsByCourse(includeUnpublished, forceRefresh);
+        courses = courses.map(c => attachCourseSessionCount(c, counts));
+      } catch (e) {
+        console.warn('Failed to attach dynamic session counts:', e);
+      }
+    } else {
+      courses = courses.map(c => attachCourseSessionCount(c, {}));
     }
 
     coursesCache = { data: courses, timestamp: now };
+    recordFeatureDataSource(
+      'courses',
+      snapshot.metadata?.fromCache ? 'memory-cache' : 'firestore-server'
+    );
+    clearLatestFirestoreDiagnostic();
     return includeUnpublished ? courses : courses.filter(c => c.isPublished);
   } catch (err) {
     logFirestoreDiagnostic({ operation: 'getCourses', collection: 'courses' }, err);
     if (coursesCache && Array.isArray(coursesCache.data) && coursesCache.data.length > 0) {
+      recordFeatureDataSource('courses', 'memory-cache', 'Retained in-memory cache');
       const cached = coursesCache.data;
       return includeUnpublished ? cached : cached.filter(c => c.isPublished);
     }
-    const fallbackCounts: Record<string, number> = await getSessionCountsByCourse(includeUnpublished).catch((): Record<string, number> => ({}));
+    recordFeatureDataSource('courses', 'static-fallback-oct22', String((err as any)?.code || err));
+    const fallbackCounts: Record<string, number> = {};
+    for (const s of PRODUCTION_SESSIONS) {
+      if (s.courseId && (includeUnpublished || s.isPublished !== false)) {
+        fallbackCounts[s.courseId] = (fallbackCounts[s.courseId] || 0) + 1;
+      }
+    }
     const enrichedProductionCourses = PRODUCTION_COURSES.map(c => attachCourseSessionCount(c, fallbackCounts));
     return includeUnpublished ? enrichedProductionCourses : enrichedProductionCourses.filter(c => c.isPublished);
   }
@@ -369,12 +389,12 @@ export async function saveCourse(course: Partial<Course> & { title: string; cate
     await setDoc(doc(db, 'courses', id), courseData, { merge: true });
 
     try {
-      const vSnap = await getDoc(doc(db, 'courses', id));
+      const vSnap = await getDocFromServer(doc(db, 'courses', id));
       if (vSnap.exists()) {
-        logCrudDiagnostic(`saveCourse Verification [ID: ${id}]`, path, 'success');
+        logCrudDiagnostic(`saveCourse Server Verification [ID: ${id}]`, path, 'success');
       }
     } catch (vErr) {
-      console.warn('[saveCourse] Verification notice:', vErr);
+      console.warn('[saveCourse] Server verification notice (write may be queued or quota restricted):', vErr);
     }
 
     invalidateServicesCache('courses');
@@ -471,6 +491,7 @@ export async function getSessionsByCourse(courseId: string, includeUnpublished =
   const now = Date.now();
   const cached = sessionsByCourseCache.get(courseId);
   if (!forceRefresh && cached && now - cached.timestamp < CACHE_TTL_MS) {
+    recordFeatureDataSource('sessions', 'memory-cache');
     const list = cached.data;
     return includeUnpublished ? list : list.filter(s => s.isPublished !== false);
   }
@@ -489,10 +510,12 @@ export async function getSessionsByCourse(courseId: string, includeUnpublished =
     try {
       const subCol = collection(db, 'courses', courseId, 'sessions');
       const subSnapshot = await getDocs(subCol);
-      subQuerySucceeded = true;
-      subSnapshot.forEach(d => {
-        subSessions.push({ id: d.id, courseId, ...d.data() } as Session);
-      });
+      if (!subSnapshot.empty || !subSnapshot.metadata?.fromCache) {
+        subQuerySucceeded = true;
+        subSnapshot.forEach(d => {
+          subSessions.push({ id: d.id, courseId, ...d.data() } as Session);
+        });
+      }
     } catch (e) {
       logFirestoreDiagnostic({ operation: 'getSessionsByCourse (subcollection)', path: `courses/${courseId}/sessions` }, e);
     }
@@ -501,28 +524,40 @@ export async function getSessionsByCourse(courseId: string, includeUnpublished =
     try {
       const q = query(collection(db, 'sessions'), where('courseId', '==', courseId));
       const topSnapshot = await getDocs(q);
-      topQuerySucceeded = true;
-      topSnapshot.forEach(d => {
-        topSessions.push({ id: d.id, ...d.data() } as Session);
-      });
+      if (!topSnapshot.empty || !topSnapshot.metadata?.fromCache) {
+        topQuerySucceeded = true;
+        topSnapshot.forEach(d => {
+          topSessions.push({ id: d.id, ...d.data() } as Session);
+        });
+      }
     } catch (e) {
       logFirestoreDiagnostic({ operation: 'getSessionsByCourse (top-level)', collection: 'sessions' }, e);
     }
 
     if (!subQuerySucceeded && !topQuerySucceeded) {
-      sessionsByCourseCache.set(courseId, { data: fallbackSessions, timestamp: now });
+      if (cached && Array.isArray(cached.data) && cached.data.length > 0) {
+        recordFeatureDataSource('sessions', 'memory-cache', 'Retained in-memory cache');
+        return includeUnpublished ? cached.data : cached.data.filter(s => s.isPublished !== false);
+      }
+      // Do NOT pollute sessionsByCourseCache with fallbackSessions!
+      recordFeatureDataSource('sessions', 'static-fallback-oct22', 'Both subcollection and top-level session queries failed');
       return includeUnpublished ? fallbackSessions : fallbackSessions.filter(s => s.isPublished !== false);
     }
 
     const merged = mergeCourseSessions(subSessions, topSessions, true);
     sessionsByCourseCache.set(courseId, { data: merged, timestamp: now });
+    recordFeatureDataSource('sessions', 'firestore-server');
     return includeUnpublished ? merged : merged.filter(s => s.isPublished !== false);
   } catch (err) {
     logFirestoreDiagnostic(
       { operation: 'getSessionsByCourse', collection: 'sessions', path: `courses/${courseId}/sessions` },
       err
     );
-    sessionsByCourseCache.set(courseId, { data: fallbackSessions, timestamp: now });
+    if (cached && Array.isArray(cached.data) && cached.data.length > 0) {
+      recordFeatureDataSource('sessions', 'memory-cache', 'Retained in-memory cache');
+      return includeUnpublished ? cached.data : cached.data.filter(s => s.isPublished !== false);
+    }
+    recordFeatureDataSource('sessions', 'static-fallback-oct22', String((err as any)?.code || err));
     return includeUnpublished ? fallbackSessions : fallbackSessions.filter(s => s.isPublished !== false);
   }
 }
@@ -754,6 +789,16 @@ export async function saveSession(courseId: string, session: Partial<Session> & 
       console.warn('Update course sessionsCount notice:', e);
     }
 
+    // Verify server persistence
+    try {
+      const vSnap = await getDocFromServer(doc(db, 'sessions', id));
+      if (vSnap.exists()) {
+        logCrudDiagnostic(`saveSession Server Verification [ID: ${id}]`, path, 'success');
+      }
+    } catch (vErr) {
+      console.warn('[saveSession] Server verification notice:', vErr);
+    }
+
     invalidateServicesCache('sessions');
     invalidateServicesCache('courses');
     logCrudDiagnostic('saveSession', path, 'success');
@@ -818,11 +863,13 @@ export async function getQuizById(quizId: string): Promise<Quiz | null> {
   try {
     const d = await getDoc(doc(db, 'quizzes', quizId));
     if (d.exists()) {
+      recordFeatureDataSource('quizzes', d.metadata?.fromCache ? 'memory-cache' : 'firestore-server');
       return { id: d.id, ...d.data() } as Quiz;
     }
     return null;
   } catch (error) {
     console.warn('getQuizById live fetch notice:', error);
+    recordFeatureDataSource('quizzes', 'static-fallback-oct22', String((error as any)?.code || error));
     return PRODUCTION_QUIZZES.find(q => q.id === quizId) || null;
   }
 }
@@ -831,9 +878,14 @@ export async function getQuizzesByCourse(courseId: string): Promise<Quiz[]> {
   try {
     const q = query(collection(db, 'quizzes'), where('courseId', '==', courseId));
     const snapshot = await getDocs(q);
+    if (snapshot.empty && snapshot.metadata?.fromCache) {
+      throw new Error('Client is offline and local cache is empty for quizzes');
+    }
+    recordFeatureDataSource('quizzes', snapshot.metadata?.fromCache ? 'memory-cache' : 'firestore-server');
     return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Quiz));
   } catch (err) {
     console.warn('getQuizzesByCourse live fetch notice:', err);
+    recordFeatureDataSource('quizzes', 'static-fallback-oct22', String((err as any)?.code || err));
     return PRODUCTION_QUIZZES.filter(q => q.courseId === courseId);
   }
 }
@@ -841,9 +893,14 @@ export async function getQuizzesByCourse(courseId: string): Promise<Quiz[]> {
 export async function getAllQuizzes(): Promise<Quiz[]> {
   try {
     const snapshot = await getDocs(collection(db, 'quizzes'));
+    if (snapshot.empty && snapshot.metadata?.fromCache) {
+      throw new Error('Client is offline and local cache is empty for all quizzes');
+    }
+    recordFeatureDataSource('quizzes', snapshot.metadata?.fromCache ? 'memory-cache' : 'firestore-server');
     return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Quiz));
   } catch (err) {
     console.warn('getAllQuizzes live fetch notice:', err);
+    recordFeatureDataSource('quizzes', 'static-fallback-oct22', String((err as any)?.code || err));
     return PRODUCTION_QUIZZES;
   }
 }
@@ -867,14 +924,14 @@ export async function saveQuiz(quiz: Partial<Quiz> & { title: string; courseId: 
     };
     await setDoc(doc(db, 'quizzes', id), quizData, { merge: true });
 
-    // Verification read-back
+    // Server verification read-back
     try {
-      const vSnap = await getDoc(doc(db, 'quizzes', id));
+      const vSnap = await getDocFromServer(doc(db, 'quizzes', id));
       if (vSnap.exists()) {
-        logCrudDiagnostic(`saveQuiz Verification [ID: ${id}]`, path, 'success');
+        logCrudDiagnostic(`saveQuiz Server Verification [ID: ${id}]`, path, 'success');
       }
     } catch (vErr) {
-      console.warn('[saveQuiz] Verification notice:', vErr);
+      console.warn('[saveQuiz] Server verification notice:', vErr);
     }
 
     // If quiz has sessionId, update that session's quizId
@@ -1133,34 +1190,79 @@ export async function getAllQuizAttempts(): Promise<QuizAttempt[]> {
 // ==========================================
 // USER PROFILES & ADMIN ROLE
 // ==========================================
+const USER_PROFILE_CACHE_PREFIX = 'dars_user_profile_v1_';
+
+function readCachedUserProfile(userId: string): UserProfile | null {
+  if (typeof window === 'undefined' || !window.localStorage || !userId) return null;
+  try {
+    const raw = localStorage.getItem(`${USER_PROFILE_CACHE_PREFIX}${userId}`);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object' && parsed.id === userId) {
+      return parsed as UserProfile;
+    }
+  } catch {
+    // Ignore localStorage parse errors
+  }
+  return null;
+}
+
+function writeCachedUserProfile(profile: UserProfile): void {
+  if (typeof window === 'undefined' || !window.localStorage || !profile?.id) return;
+  try {
+    localStorage.setItem(`${USER_PROFILE_CACHE_PREFIX}${profile.id}`, JSON.stringify(profile));
+  } catch {
+    // Ignore localStorage write errors
+  }
+}
+
 export async function getUserProfile(userId: string): Promise<UserProfile | null> {
+  const cached = readCachedUserProfile(userId);
+  if (!hasActiveFirestoreAuthToken()) {
+    return cached;
+  }
   try {
     const d = await getDoc(doc(db, 'users', userId));
     if (d.exists()) {
-      return { id: d.id, ...d.data() } as UserProfile;
+      const profile = { id: d.id, ...d.data() } as UserProfile;
+      writeCachedUserProfile(profile);
+      return profile;
     }
-    return null;
+    return cached;
   } catch (error) {
     console.warn('Could not fetch user profile:', error);
-    return null;
+    return cached;
   }
 }
 
 export async function saveUserProfile(profile: UserProfile): Promise<void> {
   const path = `users/${profile.id}`;
+  const cleanProfile = Object.fromEntries(
+    Object.entries(profile).filter(([, val]) => val !== undefined)
+  ) as unknown as UserProfile;
+
+  // Always persist to local cache immediately
+  writeCachedUserProfile(cleanProfile);
+
+  // Do not send an unauthenticated write to Firestore if the auth token is expired/unavailable
+  if (!hasActiveFirestoreAuthToken()) {
+    return;
+  }
+
   try {
-    const cleanProfile = Object.fromEntries(
-      Object.entries(profile).filter(([, val]) => val !== undefined)
-    );
     await setDoc(doc(db, 'users', profile.id), cleanProfile, { merge: true });
   } catch (error) {
-    handleFirestoreError(error, OperationType.WRITE, path);
+    logFirestoreDiagnostic({ operation: 'saveUserProfile', path }, error);
   }
 }
 
 export async function checkIsAdmin(userId: string, email?: string | null): Promise<boolean> {
   if (isPlatformAdminEmail(email)) {
     return true;
+  }
+  const cached = readCachedUserProfile(userId);
+  if (!hasActiveFirestoreAuthToken()) {
+    return cached?.role === 'admin';
   }
   try {
     const adminDoc = await getDoc(doc(db, 'admins', userId));
@@ -1171,13 +1273,16 @@ export async function checkIsAdmin(userId: string, email?: string | null): Promi
     if (userDoc.exists() && userDoc.data()?.role === 'admin') {
       return true;
     }
-  } catch (err) {
-    // If not readable or doesn't exist, check email fallback
+  } catch {
+    // If not readable or doesn't exist, check cached role
   }
-  return false;
+  return cached?.role === 'admin';
 }
 
 export async function bootstrapAdmin(userId: string, email: string): Promise<void> {
+  if (!hasActiveFirestoreAuthToken()) {
+    return;
+  }
   try {
     await setDoc(doc(db, 'admins', userId), {
       id: userId,
@@ -1627,12 +1732,7 @@ export function saveLocalCustomBlogPost(post: BlogPost): void {
     }
     localStorage.setItem(LOCAL_BLOG_STORAGE_KEY, JSON.stringify(existing));
   } catch (err) {
-    // If localStorage quota is exceeded, clear the stale key so frozen old data can never persist
-    try {
-      localStorage.removeItem(LOCAL_BLOG_STORAGE_KEY);
-    } catch {
-      // ignore
-    }
+    // NEVER delete LOCAL_BLOG_STORAGE_KEY on write error — protect existing local articles
     console.warn('[saveLocalCustomBlogPost] Notice writing to local blog storage:', err);
   }
 }
@@ -1678,32 +1778,41 @@ export async function getBlogPosts(includeDrafts = false, forceRefresh = false):
   const now = Date.now();
 
   if (!forceRefresh && blogPostsCache && now - blogPostsCache.timestamp < CACHE_TTL_MS) {
+    recordFeatureDataSource('blogPosts', 'memory-cache');
     return filterProductionBlogPosts(blogPostsCache.data, includeDrafts);
   }
 
   try {
     const snapshot = await getDocs(collection(db, 'blogPosts'));
-    const rawPosts = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as BlogPost));
-    const filtered = filterProductionBlogPosts(rawPosts, true);
-
-    // Clear any stale localStorage blog cache/tombstones so browser localStorage never conflicts with live Firestore
-    if (typeof window !== 'undefined' && window.localStorage) {
-      try {
-        window.localStorage.removeItem(LOCAL_BLOG_STORAGE_KEY);
-        window.localStorage.removeItem(DELETED_BLOG_POSTS_STORAGE_KEY);
-      } catch {
-        // ignore storage cleanup errors
-      }
+    if (snapshot.empty && snapshot.metadata?.fromCache) {
+      throw new Error('Client is offline and local cache is empty for blogPosts');
     }
+    const rawPosts = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as BlogPost));
+    // Preserve and merge any locally backed-up custom blog posts (NEVER delete localStorage!)
+    const localPosts = getLocalCustomBlogPosts();
+    const mergedPosts = mergeBlogPostsLists(rawPosts, localPosts);
+    const filtered = filterProductionBlogPosts(mergedPosts, true);
 
     blogPostsCache = { data: filtered, timestamp: now };
+    recordFeatureDataSource(
+      'blogPosts',
+      snapshot.metadata?.fromCache ? 'memory-cache' : 'firestore-server'
+    );
     return filterProductionBlogPosts(filtered, includeDrafts);
   } catch (err) {
     logFirestoreDiagnostic({ operation: 'getBlogPosts', collection: 'blogPosts' }, err);
     if (blogPostsCache && Array.isArray(blogPostsCache.data) && blogPostsCache.data.length > 0) {
+      recordFeatureDataSource('blogPosts', 'memory-cache', 'Retained in-memory cache');
       return filterProductionBlogPosts(blogPostsCache.data, includeDrafts);
     }
-    return filterProductionBlogPosts(PRODUCTION_BLOG_POSTS, includeDrafts);
+    const localPosts = getLocalCustomBlogPosts();
+    const mergedFallback = mergeBlogPostsLists(localPosts, PRODUCTION_BLOG_POSTS);
+    recordFeatureDataSource(
+      'blogPosts',
+      localPosts.length > 0 ? 'local-storage' : 'static-fallback-oct22',
+      String((err as any)?.code || err)
+    );
+    return filterProductionBlogPosts(mergedFallback, includeDrafts);
   }
 }
 
@@ -1877,17 +1986,20 @@ export async function saveBlogPost(post: Partial<BlogPost> & { title: string }):
     // 1. Write document to Cloud Firestore and await server completion
     await setDoc(doc(db, 'blogPosts', id), data, { merge: true });
 
-    // 2. Perform verification read-back from Firestore
+    // 2. Also keep a protective local backup in localStorage
+    saveLocalCustomBlogPost(data as BlogPost);
+
+    // 3. Perform server verification read-back from Firestore
     try {
-      const verifySnap = await getDoc(doc(db, 'blogPosts', id));
+      const verifySnap = await getDocFromServer(doc(db, 'blogPosts', id));
       if (verifySnap.exists()) {
-        logCrudDiagnostic(`saveBlogPost Verification [ID: ${id}, Status: ${status}, Title: "${post.title}"]`, path, 'success');
+        logCrudDiagnostic(`saveBlogPost Server Verification [ID: ${id}, Status: ${status}, Title: "${post.title}"]`, path, 'success');
       }
     } catch (vErr) {
-      console.warn('[saveBlogPost] Verification read-back notice:', vErr);
+      console.warn('[saveBlogPost] Server verification read-back notice:', vErr);
     }
 
-    // 3. Invalidate in-memory blog cache so subsequent reads fetch authoritative server state
+    // 4. Invalidate in-memory blog cache so subsequent reads fetch authoritative server state
     invalidateServicesCache('blog');
 
     logCrudDiagnostic('saveBlogPost', path, 'success');
@@ -2021,6 +2133,7 @@ export async function getAllConsultationsForAdmin(): Promise<Consultation[]> {
 export async function getPublishedPublicQA(forceRefresh = false): Promise<Consultation[]> {
   const now = Date.now();
   if (!forceRefresh && publicQACache && now - publicQACache.timestamp < CACHE_TTL_MS) {
+    recordFeatureDataSource('consultations', 'memory-cache');
     return publicQACache.data;
   }
 
@@ -2035,16 +2148,22 @@ export async function getPublishedPublicQA(forceRefresh = false): Promise<Consul
       where('isPublished', '==', true)
     );
     const snapshot = await getDocs(q);
+    if (snapshot.empty && snapshot.metadata?.fromCache) {
+      throw new Error('Client is offline and local cache is empty for consultations');
+    }
     const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Consultation));
     list.sort((a, b) => new Date(b.publishedAt || b.createdAt).getTime() - new Date(a.publishedAt || a.createdAt).getTime());
     publicQACache = { data: list, timestamp: now };
+    recordFeatureDataSource('consultations', snapshot.metadata?.fromCache ? 'memory-cache' : 'firestore-server');
     return list;
   } catch (error) {
     logFirestoreDiagnostic({ operation: 'getPublishedPublicQA', collection: 'consultations' }, error);
     if (publicQACache && Array.isArray(publicQACache.data) && publicQACache.data.length > 0) {
+      recordFeatureDataSource('consultations', 'memory-cache', 'Retained in-memory cache');
       return publicQACache.data;
     }
-    publicQACache = { data: fallbackQA, timestamp: now };
+    // Do NOT pollute publicQACache with fallbackQA!
+    recordFeatureDataSource('consultations', 'static-fallback-oct22', String((error as any)?.code || error));
     return fallbackQA;
   }
 }
@@ -2314,10 +2433,12 @@ export async function getInstructorProfile(): Promise<InstructorProfile> {
         ...(data.updatedBy ? { updatedBy: data.updatedBy } : {})
       };
       writeCachedInstructorProfile(merged);
+      recordFeatureDataSource('instructorProfile', snap.metadata?.fromCache ? 'memory-cache' : 'firestore-server');
       return merged;
     }
     // Document does not exist on server: return authentic production profile
     if (PRODUCTION_INSTRUCTOR_PROFILE) {
+      recordFeatureDataSource('instructorProfile', 'static-fallback-oct22');
       return PRODUCTION_INSTRUCTOR_PROFILE;
     }
     return getDefaultInstructorProfile();
@@ -2326,8 +2447,10 @@ export async function getInstructorProfile(): Promise<InstructorProfile> {
     // Use local cache or authentic production profile when offline or quota exhausted
     const cached = readCachedInstructorProfile();
     if (cached) {
+      recordFeatureDataSource('instructorProfile', 'local-storage', 'Loaded from dars_instructor_profile_v1');
       return cached;
     }
+    recordFeatureDataSource('instructorProfile', 'static-fallback-oct22', String((err as any)?.code || err));
     if (PRODUCTION_INSTRUCTOR_PROFILE) {
       return PRODUCTION_INSTRUCTOR_PROFILE;
     }
@@ -2366,12 +2489,12 @@ export async function saveInstructorProfile(
   try {
     await setDoc(doc(db, 'instructorProfiles', DEFAULT_INSTRUCTOR_PROFILE_ID), sanitizedProfile, { merge: true });
     try {
-      const vSnap = await getDoc(doc(db, 'instructorProfiles', DEFAULT_INSTRUCTOR_PROFILE_ID));
+      const vSnap = await getDocFromServer(doc(db, 'instructorProfiles', DEFAULT_INSTRUCTOR_PROFILE_ID));
       if (vSnap.exists()) {
-        logCrudDiagnostic(`saveInstructorProfile Verification [ID: ${DEFAULT_INSTRUCTOR_PROFILE_ID}]`, path, 'success');
+        logCrudDiagnostic(`saveInstructorProfile Server Verification [ID: ${DEFAULT_INSTRUCTOR_PROFILE_ID}]`, path, 'success');
       }
     } catch (vErr) {
-      console.warn('[saveInstructorProfile] Verification notice:', vErr);
+      console.warn('[saveInstructorProfile] Server verification notice:', vErr);
     }
     writeCachedInstructorProfile(sanitizedProfile);
     logCrudDiagnostic('saveInstructorProfile', path, 'success');

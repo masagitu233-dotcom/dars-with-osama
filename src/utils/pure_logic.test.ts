@@ -1955,3 +1955,137 @@ test('Case 49: findFirstUncompletedPrecedingQuizSession mengizinkan akses ke ses
   assert.equal(check.hasBlockingQuiz, false);
 });
 
+// ============================================================================
+// QUIZ BULK IMPORT PARSER TESTS
+// ============================================================================
+
+test('Case 50: parseQuizImportText mengenali beragam format nomor soal (1., 1), Soal 1:, Nomor 1:)', async () => {
+  const { parseQuizImportText } = await import('./quizImportParser.js');
+  const sample = `
+1. Rukun Islam yang kedua adalah?
+A. Syahadat
+B. Shalat
+C. Puasa
+D. Zakat
+Kunci: B
+
+2) Siapakah khulafaur rasyidin yang pertama?
+a. Umar bin Khattab
+b. Abu Bakar Ash-Shiddiq
+c. Utsman bin Affan
+d. Ali bin Abi Thalib
+Jawaban: B
+
+Soal 3: Berapakah jumlah rakaat shalat Zhuhur?
+A) 2
+B) 3
+C) 4
+D) 5
+Kunci: C
+Pembahasan: Shalat Zhuhur dikerjakan sebanyak 4 rakaat bagi mukim.
+`;
+
+  const result = parseQuizImportText(sample);
+  assert.equal(result.totalParsed, 3);
+  assert.equal(result.questions.length, 3);
+
+  // Question 1
+  assert.equal(result.questions[0].originalNumber, 1);
+  assert.ok(result.questions[0].questionText.includes('Rukun Islam yang kedua adalah?'));
+  assert.equal(result.questions[0].options.length, 4);
+  assert.equal(result.questions[0].options[0], 'Syahadat');
+  assert.equal(result.questions[0].options[1], 'Shalat');
+  assert.equal(result.questions[0].detectedKeyLetter, 'B');
+  assert.equal(result.questions[0].correctAnswerIndex, 1);
+  assert.equal(result.questions[0].status, 'valid');
+
+  // Question 2
+  assert.equal(result.questions[1].originalNumber, 2);
+  assert.ok(result.questions[1].questionText.includes('Siapakah khulafaur rasyidin'));
+  assert.equal(result.questions[1].options.length, 4);
+  assert.equal(result.questions[1].detectedKeyLetter, 'B');
+  assert.equal(result.questions[1].correctAnswerIndex, 1);
+  assert.equal(result.questions[1].status, 'valid');
+
+  // Question 3
+  assert.equal(result.questions[2].originalNumber, 3);
+  assert.ok(result.questions[2].questionText.includes('Berapakah jumlah rakaat shalat Zhuhur?'));
+  assert.equal(result.questions[2].detectedKeyLetter, 'C');
+  assert.equal(result.questions[2].correctAnswerIndex, 2);
+  assert.equal(result.questions[2].status, 'valid');
+  assert.ok(result.questions[2].explanation?.includes('4 rakaat bagi mukim'));
+});
+
+test('Case 51: parseQuizImportText mempertahankan teks Arab berharakat dan teks multi-baris', async () => {
+  const { parseQuizImportText } = await import('./quizImportParser.js');
+  const sample = `
+1. Perhatikan lafaz hadits berikut ini:
+مَنْ يُرِدِ اللَّهُ بِهِ خَيْرًا يُفَقِّهْهُ فِي الدِّينِ
+Apakah makna dari potongan hadits di atas?
+A. Barangsiapa yang Allah kehendaki kebaikan baginya, niscaya Allah akan pahamkan dia dalam agama
+B. Menuntut ilmu itu wajib bagi setiap muslim
+C. Amal perbuatan tergantung pada niatnya
+D. Shalat adalah tiang agama
+Kunci: A
+Pembahasan: Hadits riwayat Al-Bukhari dan Muslim tentang keutamaan ilmu fiqih.
+`;
+
+  const result = parseQuizImportText(sample);
+  assert.equal(result.totalParsed, 1);
+  const q = result.questions[0];
+  assert.ok(q.questionText.includes('مَنْ يُرِدِ اللَّهُ بِهِ خَيْرًا يُفَقِّهْهُ فِي الدِّينِ'));
+  assert.ok(q.questionText.includes('Apakah makna dari potongan hadits di atas?'));
+  assert.equal(q.correctAnswerIndex, 0);
+  assert.equal(q.detectedKeyLetter, 'A');
+  assert.equal(q.status, 'valid');
+  assert.ok(q.explanation?.includes('Al-Bukhari dan Muslim'));
+});
+
+test('Case 52: parseQuizImportText menandai soal tanpa kunci jawaban atau opsi yang tidak valid', async () => {
+  const { parseQuizImportText } = await import('./quizImportParser.js');
+  const sample = `
+1. Soal tanpa kunci jawaban
+A. Pilihan satu
+B. Pilihan dua
+
+2. Soal lengkap
+A. Opsi A
+B. Opsi B
+Kunci: A
+`;
+
+  const result = parseQuizImportText(sample);
+  assert.equal(result.totalParsed, 2);
+  assert.equal(result.validCount, 1);
+  assert.equal(result.needsReviewCount, 1);
+
+  assert.equal(result.questions[0].status, 'missing_key');
+  assert.ok(result.questions[0].warningMessage?.includes('Kunci belum terdeteksi'));
+  assert.equal(result.questions[1].status, 'valid');
+});
+
+test('Case 53: convertImportQuestionsToQuestions menghasilkan Question[] yang kompatibel Firestore', async () => {
+  const { parseQuizImportText, convertImportQuestionsToQuestions } = await import('./quizImportParser.js');
+  const sample = `
+1. Apa hukum wudhu sebelum shalat?
+A. Wajib
+B. Sunnah
+C. Makruh
+D. Mubah
+Kunci: A
+`;
+
+  const result = parseQuizImportText(sample);
+  const firestoreQuestions = convertImportQuestionsToQuestions(result.questions);
+
+  assert.equal(firestoreQuestions.length, 1);
+  const fq = firestoreQuestions[0];
+  assert.ok(fq.id.startsWith('q_'));
+  assert.equal(fq.questionText, 'Apa hukum wudhu sebelum shalat?');
+  assert.equal(fq.options.length, 4);
+  assert.equal(fq.correctAnswerIndex, 0);
+  assert.equal(fq.points, 10);
+});
+
+
+

@@ -112,7 +112,15 @@ export const AuthModal: React.FC = () => {
       let message = 'Terjadi kesalahan saat memproses permintaan.';
       const code = err?.code || '';
 
-      if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') {
+      const rawMsg = err instanceof Error ? err.message : String(err || '');
+      if (
+        code.includes('token-service') ||
+        rawMsg.includes('securetoken.googleapis.com') ||
+        rawMsg.includes('token-service-api') ||
+        rawMsg.includes('Fetching auth token failed')
+      ) {
+        message = 'Layanan Secure Token Service API di Google Cloud Project belum diaktifkan oleh pemilik proyek. Akses pembelajaran, silabus, artikel, dan kuis mode tamu tetap dapat digunakan dengan lancar.';
+      } else if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') {
         message = 'Email atau password akun tidak cocok. Harap periksa kembali atau gunakan tombol "Lupa password akun Dars with Osama?".';
       } else if (code === 'auth/email-already-in-use') {
         message = 'Email ini sudah terdaftar. Silakan beralih ke tab "Masuk" atau gunakan tautan "Lupa password akun Dars with Osama?" jika Anda lupa kata sandi.';

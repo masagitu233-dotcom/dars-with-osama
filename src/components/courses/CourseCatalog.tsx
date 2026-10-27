@@ -80,15 +80,15 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-10 space-y-6 sm:space-y-8">
       {/* Catalog Header */}
-      <div className="bg-[#123D32] dark:bg-[#16263D] text-[#FAF7F0] dark:text-[#F1F4F8] border-2 border-[#292D2B] dark:border-[#34465D] rounded-lg p-5 sm:p-8 shadow-[4px_4px_0px_#292D2B] sm:shadow-[6px_6px_0px_#292D2B] dark:shadow-[4px_4px_0px_#101B2D] sm:dark:shadow-[6px_6px_0px_#101B2D] space-y-3">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#D6AD52] border-2 border-[#292D2B] text-[#123D32] text-xs font-extrabold uppercase tracking-wider">
+      <div className="bg-[#123D32] dark:bg-[#1F5F63] text-[#FAF7F0] dark:text-[#CEFEF1] border-2 border-[#171717] dark:border-[#4CA7A1] rounded-lg p-5 sm:p-8 shadow-[4px_4px_0px_#171717] sm:shadow-[6px_6px_0px_#171717] dark:shadow-[4px_4px_0px_#001722] sm:dark:shadow-[6px_6px_0px_#001722] space-y-3">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#4CA7A1] border-2 border-[#171717] dark:border-[#001722] text-[#001722] text-xs font-extrabold uppercase tracking-wider">
           <BookOpen className="w-3.5 h-3.5" />
           <span>Katalog Materi & Kurikulum Resmi</span>
         </div>
         <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white font-serif">
           Daftar Kursus & Syarah Matan
         </h1>
-        <p className="text-[#FAF7F0]/85 dark:text-[#B4C0D0] text-xs sm:text-sm max-w-2xl leading-relaxed">
+        <p className="text-[#FAF7F0]/90 dark:text-[#A6D6C9] text-xs sm:text-sm max-w-2xl leading-relaxed">
           Pilih kurikulum yang ingin Anda pelajari. Seluruh video dan naskah materi terbuka untuk umum tanpa wajib login. Mendaftar akun diperlukan jika ingin menyimpan riwayat progres dan mengerjakan kuis evaluasi.
         </p>
       </div>
@@ -111,7 +111,7 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({
         <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
           {/* Search Input */}
           <div className="relative flex-1">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#123D32] dark:text-[#D6AD52]" />
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#123D32] dark:text-[#4CA7A1]" />
             <input
               type="text"
               value={searchTerm}
@@ -123,7 +123,7 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({
 
           {/* Level Filter Dropdown */}
           <div className="flex items-center gap-2 shrink-0">
-            <Filter className="w-4 h-4 text-[#123D32] dark:text-[#D6AD52] hidden sm:inline" />
+            <Filter className="w-4 h-4 text-[#123D32] dark:text-[#4CA7A1] hidden sm:inline" />
             <select
               value={activeLevel}
               onChange={(e) => setActiveLevel(e.target.value)}
@@ -143,8 +143,8 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({
             onClick={() => setActiveCategory('all')}
             className={`px-3.5 py-2 rounded-md text-xs font-extrabold whitespace-nowrap border-2 transition-all cursor-pointer ${
               activeCategory === 'all'
-                ? 'bg-[#123D32] text-[#D6AD52] border-[#292D2B] dark:bg-[#D6AD52] dark:text-[#123D32] shadow-[3px_3px_0px_#292D2B] dark:shadow-[3px_3px_0px_#101B2D]'
-                : 'bg-[#FAF7F0] dark:bg-[#16263D] text-[#292D2B] dark:text-[#F1F4F8] border-[#292D2B]/40 dark:border-[#34465D] hover:border-[#292D2B]'
+                ? 'bg-[#123D32] text-[#FAF7F0] border-[#171717] dark:bg-[#4CA7A1] dark:text-[#001722] dark:border-[#001722] shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#001722]'
+                : 'bg-[#FAF7F0] dark:bg-[#0D2B36] text-[#171717] dark:text-[#A6D6C9] border-[#171717] dark:border-[#4CA7A1] hover:bg-white dark:hover:bg-[#1F5F63] dark:hover:text-[#CEFEF1]'
             }`}
           >
             Semua Bidang ({courses.length})
@@ -157,12 +157,12 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({
                 onClick={() => setActiveCategory(cat.id)}
                 className={`px-3.5 py-2 rounded-md text-xs font-extrabold whitespace-nowrap border-2 transition-all cursor-pointer flex items-center gap-1.5 ${
                   activeCategory === cat.id
-                    ? 'bg-[#123D32] text-[#D6AD52] border-[#292D2B] dark:bg-[#D6AD52] dark:text-[#123D32] shadow-[3px_3px_0px_#292D2B] dark:shadow-[3px_3px_0px_#101B2D]'
-                    : 'bg-[#FAF7F0] dark:bg-[#16263D] text-[#292D2B] dark:text-[#F1F4F8] border-[#292D2B]/40 dark:border-[#34465D] hover:border-[#292D2B]'
+                    ? 'bg-[#123D32] text-[#FAF7F0] border-[#171717] dark:bg-[#4CA7A1] dark:text-[#001722] dark:border-[#001722] shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#001722]'
+                    : 'bg-[#FAF7F0] dark:bg-[#0D2B36] text-[#171717] dark:text-[#A6D6C9] border-[#171717] dark:border-[#4CA7A1] hover:bg-white dark:hover:bg-[#1F5F63] dark:hover:text-[#CEFEF1]'
                 }`}
               >
                 <span>{cat.name}</span>
-                <span className="text-[10px] opacity-80">({count})</span>
+                <span className="text-[10px] opacity-85">({count})</span>
               </button>
             );
           })}
@@ -196,11 +196,11 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({
         />
       ) : (
         <div className="text-center py-16 nb-card p-8 space-y-4">
-          <BookOpen className="w-12 h-12 text-[#123D32] dark:text-[#D6AD52] mx-auto" />
-          <h3 className="text-lg font-bold font-serif text-[#292D2B] dark:text-[#F1F4F8]">
+          <BookOpen className="w-12 h-12 text-[#123D32] dark:text-[#4CA7A1] mx-auto" />
+          <h3 className="text-lg font-bold font-serif text-[#171717] dark:text-[#CEFEF1]">
             Tidak ada kursus yang cocok
           </h3>
-          <p className="text-sm text-[#626A66] dark:text-[#B4C0D0] max-w-md mx-auto">
+          <p className="text-sm text-[#525855] dark:text-[#A6D6C9] max-w-md mx-auto">
             Coba ubah kata kunci pencarian atau bersihkan filter untuk melihat seluruh materi kursus yang tersedia.
           </p>
           <button
