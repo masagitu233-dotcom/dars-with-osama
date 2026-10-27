@@ -14,7 +14,8 @@ import {
 import confetti from 'canvas-confetti';
 import { Quiz, Course, Session, QuizAttempt } from '../../types';
 import { useAuth } from '../../context/AuthContext';
-import { saveQuizAttempt, getUserQuizAttempts } from '../../firebase/services';
+import { saveQuizAttempt, getUserQuizAttempts, getSessionsByCourse, getQuizById } from '../../firebase/services';
+import { findFirstUncompletedPrecedingQuizSession, SessionQuizStatus } from '../../utils/quizFlowHelper';
 
 interface QuizViewProps {
   quiz: Quiz;
@@ -33,12 +34,66 @@ export const QuizView: React.FC<QuizViewProps> = ({
   onRefreshEnrollment
 }) => {
   const { user, userProfile, loading: authLoading, openGuestModal } = useAuth();
+  const [checkingLock, setCheckingLock] = useState<boolean>(true);
+  const [blockingInfo, setBlockingInfo] = useState<{
+    hasBlockingQuiz: boolean;
+    blockingSession?: Session;
+    blockingQuiz?: Quiz | null;
+    status?: SessionQuizStatus;
+  } | null>(null);
 
-  if (authLoading) {
+  useEffect(() => {
+    if (!user || !course) {
+      setCheckingLock(false);
+      setBlockingInfo(null);
+      return;
+    }
+    let isMounted = true;
+    setCheckingLock(true);
+
+    Promise.all([
+      getSessionsByCourse(course.id),
+      getUserQuizAttempts(user.uid)
+    ]).then(async ([sessions, attempts]) => {
+      if (!isMounted) return;
+      const targetS = session || sessions.find(s => s.quizId === quiz.id || s.id === quiz.sessionId) || sessions[0];
+      if (targetS) {
+        const quizIds = sessions
+          .map(s => s.quizId)
+          .filter((id): id is string => Boolean(id && id.trim().length > 0));
+        const qMap: Record<string, Quiz> = { [quiz.id]: quiz };
+        await Promise.all(
+          quizIds.map(async id => {
+            if (!qMap[id]) {
+              const q = await getQuizById(id);
+              if (q) qMap[id] = q;
+            }
+          })
+        );
+
+        const check = findFirstUncompletedPrecedingQuizSession(sessions, targetS, attempts, qMap);
+        if (check.hasBlockingQuiz) {
+          setBlockingInfo(check);
+        } else {
+          setBlockingInfo(null);
+        }
+      }
+      setCheckingLock(false);
+    }).catch(err => {
+      console.error('Error checking quiz access lock:', err);
+      if (isMounted) setCheckingLock(false);
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.uid, course?.id, quiz.id, session?.id]);
+
+  if (authLoading || checkingLock) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-20 text-center space-y-4">
-        <div className="w-10 h-10 border-3 border-[#123D32] dark:border-[#D6AD52] border-t-transparent rounded-full animate-spin mx-auto" />
-        <p className="text-sm text-[#292D2B] dark:text-[#F1F4F8] font-bold">Memeriksa status akun siswa...</p>
+        <div className="w-10 h-10 border-3 border-[#123D32] dark:border-[#4CA7A1] border-t-transparent rounded-full animate-spin mx-auto" />
+        <p className="text-sm text-[#171717] dark:text-[#CEFEF1] font-bold">Memeriksa status dan urutan kuis...</p>
       </div>
     );
   }
@@ -69,6 +124,36 @@ export const QuizView: React.FC<QuizViewProps> = ({
             className="nb-btn nb-btn-secondary w-full sm:w-auto px-5 py-3.5 text-sm"
           >
             Kembali ke Sesi Materi
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (blockingInfo?.hasBlockingQuiz && blockingInfo.blockingSession) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-16 text-center space-y-6 animate-fade-in-up">
+        <div className="w-16 h-16 mx-auto rounded-lg bg-[#FAF7F0] dark:bg-[#001722] border-2 border-[#171717] dark:border-[#4CA7A1] shadow-[4px_4px_0px_#171717] dark:shadow-[4px_4px_0px_#001722] flex items-center justify-center text-[#123D32] dark:text-[#CEFEF1]">
+          <Lock className="w-8 h-8" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-[#171717] dark:text-[#CEFEF1] font-serif-brand">
+            Akses Kuis Terkunci
+          </h2>
+          <p className="text-[#525855] dark:text-[#A6D6C9] text-sm max-w-lg mx-auto leading-relaxed">
+            Anda belum menyelesaikan atau belum lulus kuis pada sesi sebelumnya (
+            <strong className="text-[#171717] dark:text-[#CEFEF1]">
+              {blockingInfo.blockingSession.title}
+            </strong>
+            ). Silakan selesaikan kuis sesi tersebut terlebih dahulu untuk dapat mengerjakan kuis ini.
+          </p>
+        </div>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+          <button
+            onClick={onBackToSession}
+            className="nb-btn nb-btn-gold px-6 py-3.5 text-sm"
+          >
+            Kembali ke Sesi Pembelajaran
           </button>
         </div>
       </div>

@@ -143,6 +143,27 @@ export const SessionView: React.FC<SessionViewProps> = ({
     return () => clearTimeout(timer);
   }, [session.id]);
 
+  const [initialBlockingSession, setInitialBlockingSession] = useState<Session | null>(null);
+
+  // Check if current session itself is locked due to an uncompleted preceding quiz
+  useEffect(() => {
+    if (!user || !session || !allSessions || allSessions.length === 0) {
+      setInitialBlockingSession(null);
+      return;
+    }
+    const check = findFirstUncompletedPrecedingQuizSession(
+      allSessions,
+      session,
+      userAttempts,
+      quizzesMap
+    );
+    if (check.hasBlockingQuiz && check.blockingSession) {
+      setInitialBlockingSession(check.blockingSession);
+    } else {
+      setInitialBlockingSession(null);
+    }
+  }, [user?.uid, session.id, allSessions, userAttempts, quizzesMap]);
+
   // Block public access to unpublished / draft sessions unless user is admin
   if (!canAccessSessionPublicly(session, course) && !isAdmin) {
     return (
@@ -162,6 +183,43 @@ export const SessionView: React.FC<SessionViewProps> = ({
           <button
             onClick={onBackToCourse}
             className="nb-btn nb-btn-primary px-5 py-3 text-sm"
+          >
+            Kembali ke Kurikulum
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Block access if a preceding session's quiz is incomplete
+  if (initialBlockingSession) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-16 text-center space-y-6 animate-fade-in-up">
+        <div className="w-16 h-16 mx-auto rounded-lg bg-[#FAF7F0] dark:bg-[#001722] border-2 border-[#171717] dark:border-[#4CA7A1] shadow-[4px_4px_0px_#171717] dark:shadow-[4px_4px_0px_#001722] flex items-center justify-center text-[#123D32] dark:text-[#CEFEF1]">
+          <Lock className="w-8 h-8" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-[#171717] dark:text-[#CEFEF1] font-serif-brand">
+            Sesi Pembelajaran Terkunci
+          </h2>
+          <p className="text-[#525855] dark:text-[#A6D6C9] text-sm max-w-lg mx-auto leading-relaxed">
+            Anda belum menyelesaikan atau belum lulus kuis pada sesi sebelumnya (
+            <strong className="text-[#171717] dark:text-[#CEFEF1]">
+              {initialBlockingSession.title}
+            </strong>
+            ). Silakan selesaikan kuis sesi tersebut terlebih dahulu agar dapat membuka dan mempelajari sesi ini.
+          </p>
+        </div>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+          <button
+            onClick={() => onSelectSession(initialBlockingSession)}
+            className="nb-btn nb-btn-gold px-6 py-3.5 text-sm"
+          >
+            Buka Sesi {initialBlockingSession.title}
+          </button>
+          <button
+            onClick={onBackToCourse}
+            className="nb-btn nb-btn-secondary px-5 py-3.5 text-sm"
           >
             Kembali ke Kurikulum
           </button>
@@ -225,6 +283,21 @@ export const SessionView: React.FC<SessionViewProps> = ({
           if (q) onStartQuiz(q, targetSession);
         }
       });
+      return;
+    }
+
+    // Verify preceding sessions in this course do not have uncompleted quizzes
+    const blockCheck = findFirstUncompletedPrecedingQuizSession(
+      allSessions,
+      targetSession,
+      userAttempts,
+      quizzesMap
+    );
+    if (blockCheck.hasBlockingQuiz && blockCheck.blockingSession) {
+      setPendingBlockingSession(blockCheck.blockingSession);
+      setPendingBlockingQuiz(blockCheck.blockingQuiz || null);
+      setPendingQuizStatus(blockCheck.status || null);
+      setQuizWarningModalOpen(true);
       return;
     }
 

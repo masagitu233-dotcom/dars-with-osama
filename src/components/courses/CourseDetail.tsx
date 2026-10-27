@@ -112,6 +112,21 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
       return;
     }
 
+    // Verify preceding sessions in this course do not have uncompleted quizzes
+    const blockCheck = findFirstUncompletedPrecedingQuizSession(
+      sessions,
+      targetSession,
+      userAttempts,
+      quizzesMap
+    );
+    if (blockCheck.hasBlockingQuiz && blockCheck.blockingSession) {
+      setBlockingSessionForModal(blockCheck.blockingSession);
+      setBlockingQuizForModal(blockCheck.blockingQuiz || null);
+      setBlockingQuizStatusForModal(blockCheck.status || null);
+      setQuizWarningModalOpen(true);
+      return;
+    }
+
     let q: Quiz | null = quizzesMap[qId] || null;
     if (!q) {
       q = await getQuizById(qId);
