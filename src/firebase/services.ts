@@ -83,6 +83,26 @@ export function logCrudDiagnostic(op: string, path: string, status: 'start' | 's
   }
 }
 
+async function executeWithFreshAuthRetry<T>(operation: () => Promise<T>): Promise<T> {
+  await ensureFreshFirestoreAuthToken(false);
+  try {
+    return await operation();
+  } catch (err: any) {
+    const code = String(err?.code || '').toLowerCase();
+    const msg = String(err?.message || '').toLowerCase();
+    if (
+      code.includes('permission-denied') ||
+      code.includes('unauthenticated') ||
+      msg.includes('missing or insufficient permissions') ||
+      msg.includes('unauthenticated')
+    ) {
+      await ensureFreshFirestoreAuthToken(true);
+      return await operation();
+    }
+    throw err;
+  }
+}
+
 // ==========================================
 // IN-MEMORY TTL CACHE (High Availability & Read Mitigation)
 // ==========================================
@@ -173,7 +193,7 @@ export async function saveCategory(category: Partial<Category> & { name: string;
       order: Number(category.order) || 1,
       createdAt: category.createdAt || new Date().toISOString()
     };
-    await setDoc(doc(db, 'categories', id), data, { merge: true });
+    await executeWithFreshAuthRetry(() => setDoc(doc(db, 'categories', id), data, { merge: true }));
 
     try {
       const vSnap = await getDocFromServer(doc(db, 'categories', id));
@@ -198,7 +218,7 @@ export async function deleteCategory(id: string): Promise<void> {
   const path = `categories/${id}`;
   logCrudDiagnostic('deleteCategory', path, 'start');
   try {
-    await deleteDoc(doc(db, 'categories', id));
+    await executeWithFreshAuthRetry(() => deleteDoc(doc(db, 'categories', id)));
     invalidateServicesCache('categories');
     logCrudDiagnostic('deleteCategory', path, 'success');
   } catch (error) {
@@ -387,7 +407,7 @@ export async function saveCourse(course: Partial<Course> & { title: string; cate
       createdAt: course.createdAt || new Date().toISOString()
     } as Course;
 
-    await setDoc(doc(db, 'courses', id), courseData, { merge: true });
+    await executeWithFreshAuthRetry(() => setDoc(doc(db, 'courses', id), courseData, { merge: true }));
 
     try {
       const vSnap = await getDocFromServer(doc(db, 'courses', id));
@@ -413,7 +433,7 @@ export async function deleteCourse(courseId: string): Promise<void> {
   logCrudDiagnostic('deleteCourse', path, 'start');
   try {
     // 1. Delete course document from Cloud Firestore
-    await deleteDoc(doc(db, 'courses', courseId));
+    await executeWithFreshAuthRetry(() => deleteDoc(doc(db, 'courses', courseId)));
 
     // 2. Cascading delete subcollection sessions: courses/{courseId}/sessions
     try {
@@ -705,6 +725,8 @@ export async function saveSession(courseId: string, session: Partial<Session> & 
   const path = `courses/${courseId}/sessions/${id}`;
   logCrudDiagnostic('saveSession', path, 'start');
   try {
+    await ensureFreshFirestoreAuthToken();
+
     // Check if this session previously belonged to another course so we can clean up its old subcollection document
     let previousCourseId: string | null = null;
     if (session.id) {
@@ -752,10 +774,19 @@ export async function saveSession(courseId: string, session: Partial<Session> & 
       }
     }
 
-    // 1. Save to subcollection for clean hierarchy
-    await setDoc(doc(db, 'courses', courseId, 'sessions', id), sessionData, { merge: true });
-    // 2. Also save to top-level sessions for flat queries
-    await setDoc(doc(db, 'sessions', id), sessionData, { merge: true });
+    const serializedSize = JSON.stringify(sessionData).length;
+    if (serializedSize > 950000) {
+      throw new Error(
+        `Ukuran dokumen sesi (${Math.round(serializedSize / 1024)} KB) melebihi batas aman 1 MB Cloud Firestore. Harap kurangi ukuran gambar inline di dalam catatan materi atau gunakan tautan berkas eksternal.`
+      );
+    }
+
+    await executeWithFreshAuthRetry(async () => {
+      // 1. Save to subcollection for clean hierarchy
+      await setDoc(doc(db, 'courses', courseId, 'sessions', id), sessionData, { merge: true });
+      // 2. Also save to top-level sessions for flat queries
+      await setDoc(doc(db, 'sessions', id), sessionData, { merge: true });
+    });
 
     // 2b. If moved from a different course, remove orphaned subcollection document from old course
     if (previousCourseId && previousCourseId !== courseId) {
@@ -815,10 +846,12 @@ export async function deleteSession(courseId: string, sessionId: string): Promis
   const path = `courses/${courseId}/sessions/${sessionId}`;
   logCrudDiagnostic('deleteSession', path, 'start');
   try {
-    // 1. Delete from subcollection
-    await deleteDoc(doc(db, 'courses', courseId, 'sessions', sessionId));
-    // 2. Delete from top-level sessions
-    await deleteDoc(doc(db, 'sessions', sessionId));
+    await executeWithFreshAuthRetry(async () => {
+      // 1. Delete from subcollection
+      await deleteDoc(doc(db, 'courses', courseId, 'sessions', sessionId));
+      // 2. Delete from top-level sessions
+      await deleteDoc(doc(db, 'sessions', sessionId));
+    });
 
     // 3. Unlink from any quizzes that reference this sessionId
     try {
@@ -923,7 +956,7 @@ export async function saveQuiz(quiz: Partial<Quiz> & { title: string; courseId: 
       updatedAt: new Date().toISOString(),
       createdAt: quiz.createdAt || new Date().toISOString()
     };
-    await setDoc(doc(db, 'quizzes', id), quizData, { merge: true });
+    await executeWithFreshAuthRetry(() => setDoc(doc(db, 'quizzes', id), quizData, { merge: true }));
 
     // Server verification read-back
     try {
@@ -955,7 +988,7 @@ export async function deleteQuiz(quizId: string): Promise<void> {
   const path = `quizzes/${quizId}`;
   logCrudDiagnostic('deleteQuiz', path, 'start');
   try {
-    await deleteDoc(doc(db, 'quizzes', quizId));
+    await executeWithFreshAuthRetry(() => deleteDoc(doc(db, 'quizzes', quizId)));
     // Clear quizId from any sessions
     const sessions = await getDocs(query(collection(db, 'sessions'), where('quizId', '==', quizId))).catch(() => null);
     if (sessions && !sessions.empty) {
@@ -1017,7 +1050,7 @@ export async function enrollUser(userId: string, courseId: string): Promise<Enro
       progressPercent: 0,
       isCompleted: false
     };
-    await setDoc(doc(db, 'enrollments', enrollmentId), newEnrollment, { merge: true });
+    await executeWithFreshAuthRetry(() => setDoc(doc(db, 'enrollments', enrollmentId), newEnrollment, { merge: true }));
     return newEnrollment;
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
@@ -1093,7 +1126,7 @@ export async function markSessionCompleted(
       ...(isCompleted && !existing?.isCompleted ? { completedAt: new Date().toISOString() } : {})
     };
 
-    await setDoc(doc(db, 'enrollments', enrollmentId), data, { merge: true });
+    await executeWithFreshAuthRetry(() => setDoc(doc(db, 'enrollments', enrollmentId), data, { merge: true }));
     return {
       ...(existing || { enrolledAt: new Date().toISOString() }),
       ...data
@@ -1114,7 +1147,7 @@ export async function saveQuizAttempt(attempt: Omit<QuizAttempt, 'id'>): Promise
       ...attempt,
       id: attemptId
     };
-    await setDoc(doc(db, 'quizAttempts', attemptId), fullAttempt);
+    await executeWithFreshAuthRetry(() => setDoc(doc(db, 'quizAttempts', attemptId), fullAttempt));
 
     // Persist to local cache for instant UI availability & offline resilience
     if (typeof window !== 'undefined' && window.localStorage) {
@@ -1985,7 +2018,7 @@ export async function saveBlogPost(post: Partial<BlogPost> & { title: string }):
 
   try {
     // 1. Write document to Cloud Firestore and await server completion
-    await setDoc(doc(db, 'blogPosts', id), data, { merge: true });
+    await executeWithFreshAuthRetry(() => setDoc(doc(db, 'blogPosts', id), data, { merge: true }));
 
     // 2. Also keep a protective local backup in localStorage
     saveLocalCustomBlogPost(data as BlogPost);
@@ -2017,7 +2050,7 @@ export async function deleteBlogPost(id: string): Promise<void> {
   logCrudDiagnostic('deleteBlogPost', path, 'start');
 
   try {
-    await deleteDoc(doc(db, 'blogPosts', id));
+    await executeWithFreshAuthRetry(() => deleteDoc(doc(db, 'blogPosts', id)));
     removeLocalCustomBlogPost(id);
     invalidateServicesCache('blog');
     logCrudDiagnostic('deleteBlogPost', path, 'success');
@@ -2095,7 +2128,7 @@ export async function createConsultation(data: {
 
   const path = `consultations/${newRef.id}`;
   try {
-    await setDoc(newRef, payload);
+    await executeWithFreshAuthRetry(() => setDoc(newRef, payload));
     invalidateServicesCache('qa');
     return newRef.id;
   } catch (error) {
@@ -2180,13 +2213,15 @@ export async function replyConsultation(
   
   try {
     const docRef = doc(db, 'consultations', consultationId);
-    await updateDoc(docRef, {
-      replyContent: replyContent.trim(),
-      repliedAt: now,
-      repliedBy: 'Ustaz / Admin',
-      status: newStatus,
-      updatedAt: now
-    });
+    await executeWithFreshAuthRetry(() =>
+      updateDoc(docRef, {
+        replyContent: replyContent.trim(),
+        repliedAt: now,
+        repliedBy: 'Ustaz / Admin',
+        status: newStatus,
+        updatedAt: now
+      })
+    );
     invalidateServicesCache('qa');
     logCrudDiagnostic('replyConsultation', path, 'success');
   } catch (error) {
@@ -2206,6 +2241,7 @@ export async function togglePublishConsultation(
 
   try {
     const docRef = doc(db, 'consultations', consultationId);
+    await ensureFreshFirestoreAuthToken();
     const snap = await getDoc(docRef);
     if (snap.exists()) {
       const data = snap.data() as Consultation;
@@ -2215,11 +2251,13 @@ export async function togglePublishConsultation(
       }
     }
 
-    await updateDoc(docRef, {
-      isPublished,
-      publishedAt: isPublished ? now : null,
-      updatedAt: now
-    });
+    await executeWithFreshAuthRetry(() =>
+      updateDoc(docRef, {
+        isPublished,
+        publishedAt: isPublished ? now : null,
+        updatedAt: now
+      })
+    );
     invalidateServicesCache('qa');
     logCrudDiagnostic('togglePublishConsultation', path, 'success');
   } catch (error) {
@@ -2239,10 +2277,12 @@ export async function updateConsultationStatus(
 
   try {
     const docRef = doc(db, 'consultations', consultationId);
-    await updateDoc(docRef, {
-      status,
-      updatedAt: now
-    });
+    await executeWithFreshAuthRetry(() =>
+      updateDoc(docRef, {
+        status,
+        updatedAt: now
+      })
+    );
     invalidateServicesCache('qa');
     logCrudDiagnostic('updateConsultationStatus', path, 'success');
   } catch (error) {
@@ -2349,12 +2389,14 @@ export async function moderateArticleComment(
 
   try {
     const docRef = doc(db, 'articleComments', commentId);
-    await updateDoc(docRef, {
-      status: newStatus,
-      moderatedAt: now,
-      moderatedBy,
-      updatedAt: now
-    });
+    await executeWithFreshAuthRetry(() =>
+      updateDoc(docRef, {
+        status: newStatus,
+        moderatedAt: now,
+        moderatedBy,
+        updatedAt: now
+      })
+    );
     logCrudDiagnostic('moderateArticleComment', path, 'success');
   } catch (error) {
     logCrudDiagnostic('moderateArticleComment', path, 'failed', error);
@@ -2368,7 +2410,7 @@ export async function deleteArticleComment(commentId: string): Promise<void> {
   logCrudDiagnostic('deleteArticleComment', path, 'start');
   try {
     const docRef = doc(db, 'articleComments', commentId);
-    await deleteDoc(docRef);
+    await executeWithFreshAuthRetry(() => deleteDoc(docRef));
     logCrudDiagnostic('deleteArticleComment', path, 'success');
   } catch (error) {
     logCrudDiagnostic('deleteArticleComment', path, 'failed', error);
@@ -2512,7 +2554,7 @@ export async function saveInstructorProfile(
   logCrudDiagnostic('saveInstructorProfile', path, 'start');
 
   try {
-    await setDoc(docRef, sanitizedProfile, { merge: true });
+    await executeWithFreshAuthRetry(() => setDoc(docRef, sanitizedProfile, { merge: true }));
 
     // Read-back verification directly from Cloud Firestore server
     const vSnap = await getDocFromServer(docRef);

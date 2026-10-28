@@ -64,7 +64,7 @@ import {
   seedDefaultBlogPostsIfEmpty,
   invalidateServicesCache
 } from '../../firebase/services';
-import { firebaseConfig, getLatestFirestoreDiagnostic, getDataSourceStatus } from '../../firebase/config';
+import { firebaseConfig, getLatestFirestoreDiagnostic, getDataSourceStatus, ensureFreshFirestoreAuthToken } from '../../firebase/config';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { ConfirmModal } from '../common/ConfirmModal';
@@ -462,6 +462,8 @@ export const AdminDashboard: React.FC<{
 
     setSavingSession(true);
     try {
+      await ensureFreshFirestoreAuthToken();
+
       const sessionTitle = sessionFormData.title.trim()
         ? sessionFormData.title.trim()
         : `Sesi ${sessionFormData.order}`;

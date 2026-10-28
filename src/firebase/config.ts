@@ -162,37 +162,59 @@ const SESSION_EMAIL_CRED_KEY = 'dars_session_auth_cred_v1';
 let silentReauthPromise: Promise<boolean> | null = null;
 
 export function cacheEmailSessionCredentials(email: string, pass: string): void {
-  if (typeof window === 'undefined' || !window.sessionStorage) return;
+  if (typeof window === 'undefined') return;
+  const payload = JSON.stringify({ e: email.trim(), p: pass });
   try {
-    window.sessionStorage.setItem(
-      SESSION_EMAIL_CRED_KEY,
-      JSON.stringify({ e: email.trim(), p: pass })
-    );
+    window.sessionStorage?.setItem(SESSION_EMAIL_CRED_KEY, payload);
   } catch {
     // Ignore sessionStorage errors
+  }
+  try {
+    window.localStorage?.setItem(SESSION_EMAIL_CRED_KEY, payload);
+  } catch {
+    // Ignore localStorage errors
   }
 }
 
 export function clearEmailSessionCredentials(): void {
-  if (typeof window === 'undefined' || !window.sessionStorage) return;
+  if (typeof window === 'undefined') return;
   try {
-    window.sessionStorage.removeItem(SESSION_EMAIL_CRED_KEY);
+    window.sessionStorage?.removeItem(SESSION_EMAIL_CRED_KEY);
   } catch {
     // Ignore sessionStorage errors
   }
+  try {
+    window.localStorage?.removeItem(SESSION_EMAIL_CRED_KEY);
+  } catch {
+    // Ignore localStorage errors
+  }
+}
+
+function readCachedEmailSessionCredentials(): { e: string; p: string } | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw =
+      window.sessionStorage?.getItem(SESSION_EMAIL_CRED_KEY) ||
+      window.localStorage?.getItem(SESSION_EMAIL_CRED_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed?.e && parsed?.p) {
+      return { e: String(parsed.e).trim(), p: String(parsed.p) };
+    }
+  } catch {
+    // Ignore storage read errors
+  }
+  return null;
 }
 
 async function trySilentEmailReauth(authInstance: Auth): Promise<boolean> {
-  if (typeof window === 'undefined' || !window.sessionStorage) return false;
+  const creds = readCachedEmailSessionCredentials();
+  if (!creds) return false;
   if (silentReauthPromise) return silentReauthPromise;
 
   silentReauthPromise = (async () => {
     try {
-      const raw = window.sessionStorage.getItem(SESSION_EMAIL_CRED_KEY);
-      if (!raw) return false;
-      const parsed = JSON.parse(raw);
-      if (!parsed?.e || !parsed?.p) return false;
-      const cred = await signInWithEmailAndPassword(authInstance, parsed.e, parsed.p);
+      const cred = await signInWithEmailAndPassword(authInstance, creds.e, creds.p);
       if (cred?.user) {
         tokenServiceApiDisabled = false;
         patchUserTokenMethods(cred.user);
@@ -595,13 +617,41 @@ export interface FirestoreErrorInfo {
   };
 }
 
-export function hasActiveFirestoreAuthToken(): boolean {
+function getJwtExpirationMs(token: string): number | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const base64Url = parts[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload =
+      typeof atob === 'function'
+        ? atob(base64)
+        : typeof Buffer !== 'undefined'
+        ? Buffer.from(base64, 'base64').toString('utf-8')
+        : '';
+    if (!jsonPayload) return null;
+    const parsed = JSON.parse(jsonPayload);
+    if (typeof parsed?.exp === 'number') {
+      return parsed.exp * 1000;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export function hasActiveFirestoreAuthToken(bufferMs = 120_000): boolean {
   try {
     const currentUser = auth.currentUser as any;
     if (!currentUser) return false;
     const sts = currentUser.stsTokenManager;
-    if (!sts || !sts.accessToken) return false;
-    if (sts.expirationTime && Number(sts.expirationTime) <= Date.now() + 30_000) {
+    if (!sts || !sts.accessToken || typeof sts.accessToken !== 'string') return false;
+    const now = Date.now();
+    if (sts.expirationTime && Number(sts.expirationTime) <= now + bufferMs) {
+      return false;
+    }
+    const jwtExpMs = getJwtExpirationMs(sts.accessToken);
+    if (jwtExpMs !== null && jwtExpMs <= now + bufferMs) {
       return false;
     }
     return true;
@@ -617,16 +667,22 @@ export function hasActiveFirestoreAuthToken(): boolean {
  * (silent email reauth or Google OAuth popup) and cycles the Firestore connection so
  * the write request carries a valid Authorization header.
  */
-export async function ensureFreshFirestoreAuthToken(): Promise<boolean> {
-  try {
-    if ((auth as any)._initializationPromise) {
-      await (auth as any)._initializationPromise;
-    }
-  } catch {
-    // ignore initialization wait errors
+export async function ensureFreshFirestoreAuthToken(forceRefresh = false): Promise<boolean> {
+  if (!forceRefresh && hasActiveFirestoreAuthToken()) {
+    return true;
   }
 
-  if (hasActiveFirestoreAuthToken()) {
+  if (!auth.currentUser) {
+    try {
+      if ((auth as any)._initializationPromise) {
+        await (auth as any)._initializationPromise;
+      }
+    } catch {
+      // ignore initialization wait errors
+    }
+  }
+
+  if (!forceRefresh && hasActiveFirestoreAuthToken()) {
     return true;
   }
 
@@ -635,16 +691,18 @@ export async function ensureFreshFirestoreAuthToken(): Promise<boolean> {
     throw new Error('Akses ditolak: Anda belum login sebagai administrator.');
   }
 
-  // 1. Try silent email/password re-authentication via Identity Toolkit
-  const silentlyRenewed = await trySilentEmailReauth(auth);
-  if (silentlyRenewed && hasActiveFirestoreAuthToken()) {
-    try {
-      await disableNetwork(db);
-      await enableNetwork(db);
-    } catch {
-      // ignore network cycle notices
+  // 1. Try silent email/password re-authentication via Identity Toolkit only if credentials exist
+  if (readCachedEmailSessionCredentials()) {
+    const silentlyRenewed = await trySilentEmailReauth(auth);
+    if (silentlyRenewed && hasActiveFirestoreAuthToken(30_000)) {
+      try {
+        await disableNetwork(db);
+        await enableNetwork(db);
+      } catch {
+        // ignore network cycle notices
+      }
+      return true;
     }
-    return true;
   }
 
   // 2. If running in browser, renew token via Google Identity Toolkit popup
@@ -653,8 +711,13 @@ export async function ensureFreshFirestoreAuthToken(): Promise<boolean> {
     if (currentUser.email) {
       provider.setCustomParameters({ login_hint: currentUser.email });
     }
+    const isGoogleLinked = currentUser.providerData?.some(
+      (p: any) => p?.providerId === 'google.com'
+    );
     try {
-      const cred = await reauthenticateWithPopup(currentUser, provider, browserPopupRedirectResolver);
+      const cred = isGoogleLinked
+        ? await reauthenticateWithPopup(currentUser, provider, browserPopupRedirectResolver)
+        : await signInWithPopup(auth, provider, browserPopupRedirectResolver);
       if (cred?.user) {
         tokenServiceApiDisabled = false;
         patchUserTokenMethods(cred.user);
@@ -671,7 +734,7 @@ export async function ensureFreshFirestoreAuthToken(): Promise<boolean> {
       }
     }
 
-    if (hasActiveFirestoreAuthToken()) {
+    if (hasActiveFirestoreAuthToken(30_000)) {
       try {
         await disableNetwork(db);
         await enableNetwork(db);
