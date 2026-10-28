@@ -1557,10 +1557,6 @@ test('Case 41: getCategories, getCourses, getSessionsByCourse, getBlogPosts, get
   const sessions = await getSessionsByCourse(sampleCourse.id, true, true);
   assert.ok(Array.isArray(sessions) && sessions.length > 0, 'Sesi kursus harus terbaca dari server');
   assert.equal(sampleCourse.sessionsCount, sessions.length, 'sessionsCount pada kursus harus sinkron dengan jumlah sesi aktual');
-
-  const { terminate } = await import('firebase/firestore');
-  const { db } = await import('../firebase/config.js');
-  await terminate(db).catch(() => {});
 });
 
 // Case 42: Alur Kuis - Sesi dengan kuis wajib dikerjakan dan tidak boleh selesai sebelum kuis dikerjakan
@@ -2087,5 +2083,53 @@ Kunci: A
   assert.equal(fq.points, 10);
 });
 
+test('Case 54: saveInstructorProfile menolak operasi tanpa admin terautentikasi (tidak mengembalikan sukses palsu) dan getInstructorProfile membaca langsung dari instructorProfiles/main', async () => {
+  const { saveInstructorProfile, getInstructorProfile } = await import('../firebase/services.js');
+  const { DEFAULT_INSTRUCTOR_PROFILE_ID, sanitizeInstructorProfilePayload } = await import('./instructorProfileHelper.js');
 
+  // 1. Konsistensi ID dokumen: wajib 'main' (instructorProfiles/main)
+  assert.equal(DEFAULT_INSTRUCTOR_PROFILE_ID, 'main');
 
+  // 2. Uji satu field & banyak field pada payload penyimpanan
+  const singleFieldPayload = sanitizeInstructorProfilePayload(
+    { name: 'Osama Nur Samsil, S.H.' },
+    'osamanursamsil@gmail.com'
+  );
+  assert.equal(singleFieldPayload.id, 'main');
+  assert.equal(singleFieldPayload.name, 'Osama Nur Samsil, S.H.');
+  assert.equal(singleFieldPayload.updatedBy, 'osamanursamsil@gmail.com');
+
+  const multiFieldPayload = sanitizeInstructorProfilePayload(
+    {
+      name: 'Osama Nur Samsil, S.H.',
+      role: 'Pengajar & Pengasuh Dars with Osama',
+      title: 'Profil Pengajar Dars with Osama',
+      biography: '<p>Biografi terbaru yang terverifikasi.</p>',
+      mainContent: '<p>Konten utama terbaru.</p>'
+    },
+    'osamanursamsil@gmail.com'
+  );
+  assert.equal(multiFieldPayload.id, 'main');
+  assert.equal(multiFieldPayload.name, 'Osama Nur Samsil, S.H.');
+  assert.equal(multiFieldPayload.role, 'Pengajar & Pengasuh Dars with Osama');
+  assert.equal(multiFieldPayload.title, 'Profil Pengajar Dars with Osama');
+  assert.ok(multiFieldPayload.biography.includes('Biografi terbaru yang terverifikasi.'));
+  assert.ok(multiFieldPayload.mainContent.includes('Konten utama terbaru.'));
+
+  // 3. Uji penolakan bagi non-admin / unauthenticated: wajib melempar Error (tidak boleh mengembalikan sukses palsu)
+  await assert.rejects(
+    async () => {
+      await saveInstructorProfile({ name: 'Percobaan Tanpa Login' });
+    },
+    /Akses ditolak: Anda harus login sebagai administrator/
+  );
+
+  // 4. Uji baca-ulang langsung dari server Cloud Firestore pada instructorProfiles/main
+  const serverProfile = await getInstructorProfile(true);
+  assert.equal(serverProfile.id, 'main');
+  assert.ok(serverProfile.name.includes('Osama Nur Samsil'));
+
+  const { terminate } = await import('firebase/firestore');
+  const { db } = await import('../firebase/config.js');
+  await terminate(db).catch(() => {});
+});

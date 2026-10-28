@@ -24,7 +24,8 @@ import {
   firebaseConfig,
   recordFeatureDataSource,
   clearLatestFirestoreDiagnostic,
-  hasActiveFirestoreAuthToken
+  hasActiveFirestoreAuthToken,
+  ensureFreshFirestoreAuthToken
 } from './config';
 import { Category, Course, Session, Quiz, Enrollment, QuizAttempt, UserProfile, BlogPost, Consultation, ArticleComment, InstructorProfile } from '../types';
 import { SEED_CATEGORIES, SEED_COURSES, SEED_SESSIONS, SEED_QUIZZES } from '../data/seedData';
@@ -2411,27 +2412,44 @@ function writeCachedInstructorProfile(profile: InstructorProfile): void {
   }
 }
 
-export async function getInstructorProfile(): Promise<InstructorProfile> {
+function mapFirestoreDocToInstructorProfile(
+  docId: string,
+  data: Partial<InstructorProfile>
+): InstructorProfile {
+  const defaults = getDefaultInstructorProfile();
+  return {
+    id: docId,
+    name: (data.name ?? defaults.name).trim() || defaults.name,
+    role: (data.role ?? defaults.role).trim() || defaults.role,
+    title: (data.title ?? defaults.title).trim() || defaults.title,
+    biography: sanitizeRichTextHtml(data.biography ?? defaults.biography),
+    mainContent: sanitizeRichTextHtml(data.mainContent ?? defaults.mainContent),
+    photoUrl: data.photoUrl || '',
+    photoCaption: data.photoCaption || '',
+    supportingImages: normalizeSupportingImages(data.supportingImages),
+    sections: normalizeProfileSections(data.sections),
+    updatedAt: data.updatedAt || defaults.updatedAt,
+    ...(data.updatedBy ? { updatedBy: data.updatedBy } : {})
+  };
+}
+
+export async function getInstructorProfile(forceServer = false): Promise<InstructorProfile> {
   const docId = DEFAULT_INSTRUCTOR_PROFILE_ID;
+  const docRef = doc(db, 'instructorProfiles', docId);
   try {
-    const snap = await getDoc(doc(db, 'instructorProfiles', docId));
+    let snap;
+    try {
+      snap = await getDocFromServer(docRef);
+    } catch (serverErr) {
+      if (forceServer) {
+        throw serverErr;
+      }
+      snap = await getDoc(docRef);
+    }
+
     if (snap.exists()) {
       const data = snap.data() as Partial<InstructorProfile>;
-      const defaults = getDefaultInstructorProfile();
-      const merged: InstructorProfile = {
-        id: docId,
-        name: (data.name ?? defaults.name).trim() || defaults.name,
-        role: (data.role ?? defaults.role).trim() || defaults.role,
-        title: (data.title ?? defaults.title).trim() || defaults.title,
-        biography: sanitizeRichTextHtml(data.biography ?? defaults.biography),
-        mainContent: sanitizeRichTextHtml(data.mainContent ?? defaults.mainContent),
-        photoUrl: data.photoUrl || '',
-        photoCaption: data.photoCaption || '',
-        supportingImages: normalizeSupportingImages(data.supportingImages),
-        sections: normalizeProfileSections(data.sections),
-        updatedAt: data.updatedAt || defaults.updatedAt,
-        ...(data.updatedBy ? { updatedBy: data.updatedBy } : {})
-      };
+      const merged = mapFirestoreDocToInstructorProfile(docId, data);
       writeCachedInstructorProfile(merged);
       recordFeatureDataSource('instructorProfile', snap.metadata?.fromCache ? 'memory-cache' : 'firestore-server');
       return merged;
@@ -2444,7 +2462,7 @@ export async function getInstructorProfile(): Promise<InstructorProfile> {
     return getDefaultInstructorProfile();
   } catch (err) {
     logFirestoreDiagnostic({ operation: 'getInstructorProfile', collection: 'instructorProfiles' }, err);
-    // Use local cache or authentic production profile when offline or quota exhausted
+    // Use local cache or authentic production profile only when network is offline or quota is exhausted
     const cached = readCachedInstructorProfile();
     if (cached) {
       recordFeatureDataSource('instructorProfile', 'local-storage', 'Loaded from dars_instructor_profile_v1');
@@ -2466,14 +2484,18 @@ export async function saveInstructorProfile(
     throw new Error('Akses ditolak: Anda harus login sebagai administrator untuk menyimpan Profil Pengajar.');
   }
 
-  const isVerifiedAdmin = await checkIsAdmin(currentUser.uid, currentUser.email);
+  // Ensure Firestore has a valid, non-expired Firebase Auth ID token before writing
+  await ensureFreshFirestoreAuthToken();
+
+  const activeUser = auth.currentUser || currentUser;
+  const isVerifiedAdmin = await checkIsAdmin(activeUser.uid, activeUser.email);
   if (!isVerifiedAdmin) {
     throw new Error('Akses ditolak: Hanya administrator terautentikasi yang berhak mengubah Profil Pengajar.');
   }
 
   const sanitizedProfile = sanitizeInstructorProfilePayload(
     input,
-    currentUser.email || currentUser.uid
+    activeUser.email || activeUser.uid
   );
 
   // Guard against oversized inline Base64 data URLs exceeding Firestore 1MB document limit
@@ -2484,25 +2506,46 @@ export async function saveInstructorProfile(
     );
   }
 
-  const path = `instructorProfiles/${DEFAULT_INSTRUCTOR_PROFILE_ID}`;
+  const docId = DEFAULT_INSTRUCTOR_PROFILE_ID;
+  const path = `instructorProfiles/${docId}`;
+  const docRef = doc(db, 'instructorProfiles', docId);
   logCrudDiagnostic('saveInstructorProfile', path, 'start');
+
   try {
-    await setDoc(doc(db, 'instructorProfiles', DEFAULT_INSTRUCTOR_PROFILE_ID), sanitizedProfile, { merge: true });
-    try {
-      const vSnap = await getDocFromServer(doc(db, 'instructorProfiles', DEFAULT_INSTRUCTOR_PROFILE_ID));
-      if (vSnap.exists()) {
-        logCrudDiagnostic(`saveInstructorProfile Server Verification [ID: ${DEFAULT_INSTRUCTOR_PROFILE_ID}]`, path, 'success');
-      }
-    } catch (vErr) {
-      console.warn('[saveInstructorProfile] Server verification notice:', vErr);
+    await setDoc(docRef, sanitizedProfile, { merge: true });
+
+    // Read-back verification directly from Cloud Firestore server
+    const vSnap = await getDocFromServer(docRef);
+    if (!vSnap.exists()) {
+      throw new Error(
+        `Verifikasi penyimpanan gagal: Dokumen "${path}" tidak ditemukan di server Cloud Firestore setelah operasi setDoc.`
+      );
     }
-    writeCachedInstructorProfile(sanitizedProfile);
+
+    const serverData = vSnap.data() as Partial<InstructorProfile>;
+    if (
+      serverData.updatedAt !== sanitizedProfile.updatedAt ||
+      (serverData.name ?? '').trim() !== sanitizedProfile.name
+    ) {
+      throw new Error(
+        `Verifikasi penyimpanan gagal: Data di server Cloud Firestore (${serverData.updatedAt || 'unknown'}) tidak sesuai dengan data terbaru yang dikirim (${sanitizedProfile.updatedAt}).`
+      );
+    }
+
+    const verifiedProfile = mapFirestoreDocToInstructorProfile(docId, serverData);
+    writeCachedInstructorProfile(verifiedProfile);
+    recordFeatureDataSource('instructorProfile', 'firestore-server');
+    clearLatestFirestoreDiagnostic();
+
+    logCrudDiagnostic(`saveInstructorProfile Server Verification [ID: ${docId}]`, path, 'success');
     logCrudDiagnostic('saveInstructorProfile', path, 'success');
-    return sanitizedProfile;
+    return verifiedProfile;
   } catch (error) {
     logCrudDiagnostic('saveInstructorProfile', path, 'failed', error);
-    handleFirestoreError(error, OperationType.WRITE, path);
-    throw error;
+    if (error instanceof Error && error.message.startsWith('Verifikasi penyimpanan gagal:')) {
+      throw error;
+    }
+    return handleFirestoreError(error, OperationType.WRITE, path);
   }
 }
 

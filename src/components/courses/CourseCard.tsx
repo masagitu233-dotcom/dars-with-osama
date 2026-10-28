@@ -87,13 +87,13 @@ export const CourseCard: React.FC<CourseCardProps> = ({
           </h3>
 
           {course.titleAr && (
-            <p className="font-amiri text-base sm:text-[17px] font-bold text-[#123D32] dark:text-[#CEFEF1] line-clamp-1 leading-[1.85]" dir="rtl">
+            <p className="font-amiri text-base sm:text-[17px] font-bold text-white dark:text-white line-clamp-1 leading-[1.85]" dir="rtl">
               {course.titleAr}
             </p>
           )}
 
           {/* Description */}
-          <p className="text-xs text-[#626A66] dark:text-[#A6D6C9] line-clamp-2 leading-relaxed font-sans">
+          <p className="text-xs text-white dark:text-white line-clamp-2 leading-relaxed font-sans">
             {course.description}
           </p>
         </div>

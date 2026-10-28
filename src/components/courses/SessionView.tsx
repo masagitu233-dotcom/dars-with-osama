@@ -164,6 +164,39 @@ export const SessionView: React.FC<SessionViewProps> = ({
     }
   }, [user?.uid, session.id, allSessions, userAttempts, quizzesMap]);
 
+  // Fetch user's quiz attempts whenever user or enrollment changes
+  useEffect(() => {
+    if (!user) {
+      setUserAttempts([]);
+      return;
+    }
+    getUserQuizAttempts(user.uid).then(attempts => {
+      setUserAttempts(attempts);
+    });
+  }, [user, enrollment]);
+
+  // Pre-load quiz data for any session with a linked quiz
+  useEffect(() => {
+    const quizIdsToFetch = allSessions
+      .map(s => s.quizId)
+      .filter((id): id is string => Boolean(id && id.trim().length > 0));
+
+    if (quizIdsToFetch.length === 0) return;
+
+    Promise.all(
+      quizIdsToFetch.map(async id => {
+        if (quiz && quiz.id === id) return quiz;
+        return getQuizById(id);
+      })
+    ).then(fetched => {
+      const map: Record<string, Quiz> = {};
+      fetched.forEach(q => {
+        if (q) map[q.id] = q;
+      });
+      setQuizzesMap(prev => ({ ...prev, ...map }));
+    });
+  }, [allSessions, quiz]);
+
   // Block public access to unpublished / draft sessions unless user is admin
   if (!canAccessSessionPublicly(session, course) && !isAdmin) {
     return (
@@ -227,39 +260,6 @@ export const SessionView: React.FC<SessionViewProps> = ({
       </div>
     );
   }
-
-  // Fetch user's quiz attempts whenever user or enrollment changes
-  useEffect(() => {
-    if (!user) {
-      setUserAttempts([]);
-      return;
-    }
-    getUserQuizAttempts(user.uid).then(attempts => {
-      setUserAttempts(attempts);
-    });
-  }, [user, enrollment]);
-
-  // Pre-load quiz data for any session with a linked quiz
-  useEffect(() => {
-    const quizIdsToFetch = allSessions
-      .map(s => s.quizId)
-      .filter((id): id is string => Boolean(id && id.trim().length > 0));
-
-    if (quizIdsToFetch.length === 0) return;
-
-    Promise.all(
-      quizIdsToFetch.map(async id => {
-        if (quiz && quiz.id === id) return quiz;
-        return getQuizById(id);
-      })
-    ).then(fetched => {
-      const map: Record<string, Quiz> = {};
-      fetched.forEach(q => {
-        if (q) map[q.id] = q;
-      });
-      setQuizzesMap(prev => ({ ...prev, ...map }));
-    });
-  }, [allSessions, quiz]);
 
   // Compute Prev / Next session
   const currentIndex = allSessions.findIndex(s => s.id === session.id);

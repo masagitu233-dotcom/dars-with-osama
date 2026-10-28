@@ -320,11 +320,15 @@ export const AdminInstructorProfileManager: React.FC<AdminInstructorProfileManag
     setSaving(true);
     setFeedback(null);
     try {
-      const saved = await saveInstructorProfile(formData);
-      setFormData(saved);
+      const verifiedSaved = await saveInstructorProfile(formData);
+      setFormData({
+        ...verifiedSaved,
+        sections: normalizeProfileSections(verifiedSaved.sections),
+        supportingImages: normalizeSupportingImages(verifiedSaved.supportingImages)
+      });
       showFeedback(
         'success',
-        `Profil Pengajar "${saved.name}" berhasil disimpan secara permanen ke Cloud Firestore.`
+        `Profil Pengajar "${verifiedSaved.name}" berhasil disimpan secara permanen ke Cloud Firestore.`
       );
     } catch (err: any) {
       let msg = err?.message || String(err);

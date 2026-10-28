@@ -1298,3 +1298,80 @@ table td {
   font-weight: 700;
   box-shadow: 0 0 0 2px #C6A75E;
 }
+
+/* ==========================================================================
+   INSTRUCTOR PROFILE DARK GREEN PANEL TEXT LEGIBILITY & CONTRAST
+   ========================================================================== */
+
+.instructor-dark-panel-content,
+.instructor-dark-panel-content *,
+.bg-\[\#123D32\] .blog-content,
+.bg-\[\#123D32\] .blog-content *,
+.bg-\[\#123D32\] p,
+.bg-\[\#123D32\] span,
+.bg-\[\#123D32\] li,
+.bg-\[\#123D32\] div {
+  color: #F0EEE8;
+}
+
+.instructor-dark-panel-content strong,
+.instructor-dark-panel-content b,
+.bg-\[\#123D32\] strong,
+.bg-\[\#123D32\] b,
+.bg-\[\#123D32\] .blog-content strong,
+.bg-\[\#123D32\] .blog-content b {
+  color: #F0EEE8 !important;
+  font-weight: 700;
+}
+
+.instructor-dark-panel-content a,
+.bg-\[\#123D32\] a,
+.bg-\[\#123D32\] .blog-content a {
+  color: #C6A75E !important;
+  text-decoration-color: #C6A75E;
+  font-weight: 700;
+}
+
+.instructor-dark-panel-content .text-secondary,
+.instructor-dark-panel-content figcaption,
+.bg-\[\#123D32\] .text-secondary,
+.bg-\[\#123D32\] figcaption,
+.bg-\[\#123D32\] .text-caption {
+  color: #B7BBC7 !important;
+}
+
+/* Neutralize inline dark styles (e.g. style="color: rgb(0,0,0)" or style="color: #171717") inside dark green panels */
+.instructor-dark-panel-content [style*="color: rgb(0, 0, 0)"],
+.instructor-dark-panel-content [style*="color: rgb(23, 23, 23)"],
+.instructor-dark-panel-content [style*="color: rgb(41, 45, 43)"],
+.instructor-dark-panel-content [style*="color:#000"],
+.instructor-dark-panel-content [style*="color: #000"],
+.instructor-dark-panel-content [style*="color:#171717"],
+.instructor-dark-panel-content [style*="color: #171717"],
+.instructor-dark-panel-content [style*="color:#292D2B"],
+.instructor-dark-panel-content [style*="color: #292D2B"],
+.instructor-dark-panel-content [style*="color: black"],
+.bg-\[\#123D32\] [style*="color: rgb(0, 0, 0)"],
+.bg-\[\#123D32\] [style*="color: rgb(23, 23, 23)"],
+.bg-\[\#123D32\] [style*="color: rgb(41, 45, 43)"],
+.bg-\[\#123D32\] [style*="color:#000"],
+.bg-\[\#123D32\] [style*="color: #000"],
+.bg-\[\#123D32\] [style*="color:#171717"],
+.bg-\[\#123D32\] [style*="color: #171717"],
+.bg-\[\#123D32\] [style*="color:#292D2B"],
+.bg-\[\#123D32\] [style*="color: #292D2B"],
+.bg-\[\#123D32\] [style*="color: black"] {
+  color: #F0EEE8 !important;
+}
+
+.instructor-dark-panel-content [style*="color:#C6A75E"],
+.instructor-dark-panel-content [style*="color: #C6A75E"],
+.instructor-dark-panel-content [style*="color:#D6AD52"],
+.instructor-dark-panel-content [style*="color: #D6AD52"],
+.bg-\[\#123D32\] [style*="color:#C6A75E"],
+.bg-\[\#123D32\] [style*="color: #C6A75E"],
+.bg-\[\#123D32\] [style*="color:#D6AD52"],
+.bg-\[\#123D32\] [style*="color: #D6AD52"] {
+  color: #C6A75E !important;
+}
+

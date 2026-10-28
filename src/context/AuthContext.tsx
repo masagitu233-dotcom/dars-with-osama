@@ -12,7 +12,15 @@ import {
   GoogleAuthProvider,
   updateProfile
 } from 'firebase/auth';
-import { auth, testConnection, db, patchUserTokenMethods, isSecureTokenServiceDisabledError } from '../firebase/config';
+import {
+  auth,
+  testConnection,
+  db,
+  patchUserTokenMethods,
+  isSecureTokenServiceDisabledError,
+  cacheEmailSessionCredentials,
+  clearEmailSessionCredentials
+} from '../firebase/config';
 import { enableNetwork } from 'firebase/firestore';
 import { UserProfile } from '../types';
 import { getUserProfile, saveUserProfile, checkIsAdmin, bootstrapAdmin, isPlatformAdminEmail } from '../firebase/services';
@@ -214,7 +222,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const loginWithEmail = async (email: string, pass: string) => {
-    const cred = await signInWithEmailAndPassword(auth, email.trim(), pass);
+    const cleanEmail = email.trim();
+    const cred = await signInWithEmailAndPassword(auth, cleanEmail, pass);
+    cacheEmailSessionCredentials(cleanEmail, pass);
     const authedUser = cred.user;
     patchUserTokenMethods(authedUser);
     setUser(authedUser);
@@ -231,6 +241,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signupWithEmail = async (email: string, pass: string, displayName: string) => {
     const cleanEmail = email.trim();
     const cred = await createUserWithEmailAndPassword(auth, cleanEmail, pass);
+    cacheEmailSessionCredentials(cleanEmail, pass);
     patchUserTokenMethods(cred.user);
     if (displayName) {
       await updateProfile(cred.user, { displayName }).catch(() => {});
@@ -283,6 +294,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
+    clearEmailSessionCredentials();
     await signOut(auth);
     setUser(null);
     setUserProfile(null);

@@ -123,7 +123,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
           >
             مَنْ سَلَكَ طَرِيقًا يَلْتَمِسُ فِيهِ عِلْمًا سَهَّلَ اللَّهُ لَهُ بِهِ طَرِيقًا إِلَى الْجَنَّةِ
           </p>
-          <p className="text-xs sm:text-sm text-[#123D32] dark:text-[#CEFEF1] mt-2 font-bold">
+          <p className="text-xs sm:text-sm text-[#171923] dark:text-white mt-2 font-bold">
             “Barangsiapa menempuh suatu jalan untuk menuntut ilmu, maka Allah akan mudahkan baginya jalan menuju Surga.” (HR. Muslim)
           </p>
         </div>

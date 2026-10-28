@@ -218,21 +218,21 @@ export const InstructorProfileView: React.FC<InstructorProfileViewProps> = ({
 
           {/* Instructor Identity & Biography */}
           <div className="flex-1 text-center md:text-left space-y-4 min-w-0">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#D6AD52] border-2 border-[#292D2B] text-[#292D2B] text-xs font-extrabold uppercase tracking-wider">
-              <UserCheck className="w-3.5 h-3.5" />
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#C6A75E] border-2 border-[#171717] text-[#171923] text-xs font-extrabold uppercase tracking-wider">
+              <UserCheck className="w-3.5 h-3.5 text-[#171923]" />
               <span data-testid="instructor-profile-title">{profile.title || 'Profil Pengajar Dars with Osama'}</span>
             </div>
 
             <div className="space-y-1.5">
               <h1
                 data-testid="instructor-profile-name"
-                className="text-2xl sm:text-4xl font-bold font-serif tracking-tight text-white leading-tight"
+                className="text-2xl sm:text-4xl font-bold font-serif tracking-tight text-[#F0EEE8] leading-tight"
               >
                 {profile.name}
               </h1>
               <p
                 data-testid="instructor-profile-role"
-                className="text-sm sm:text-base font-bold text-[#D6AD52]"
+                className="text-sm sm:text-base font-bold text-[#C6A75E]"
               >
                 {profile.role}
               </p>
@@ -242,7 +242,7 @@ export const InstructorProfileView: React.FC<InstructorProfileViewProps> = ({
             {profile.biography && (
               <div
                 data-testid="instructor-profile-biography"
-                className="pt-2 text-sm sm:text-base text-[#FAF7F0]/90 dark:text-[#F1F4F8]/90 leading-relaxed space-y-3 blog-content"
+                className="pt-2 text-sm sm:text-base text-[#F0EEE8] leading-relaxed space-y-3 blog-content instructor-dark-panel-content"
                 dangerouslySetInnerHTML={{
                   __html: autoWrapArabicText(sanitizeRichTextHtml(profile.biography))
                 }}

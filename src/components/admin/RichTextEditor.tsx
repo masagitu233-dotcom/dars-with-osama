@@ -1069,6 +1069,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         contentEditable
         data-testid="rich-text-editor-body"
         onInput={handleInput}
+        onBlur={handleInput}
         onKeyDown={handleKeyDown}
         onCopy={handleCopy}
         onPaste={handlePaste}

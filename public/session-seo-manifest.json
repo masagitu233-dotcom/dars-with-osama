@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-10-22T19:17:27.405Z",
+  "updatedAt": "2026-10-27T14:41:23.234Z",
   "entries": [
     {
       "course": {
@@ -408,6 +408,33 @@
     },
     {
       "course": {
+        "id": "course-1792197763057",
+        "title": "mutammimah al-ajurumiyah",
+        "titleAr": "",
+        "instructor": "osama nur samsil",
+        "categoryId": "cat-1792197742358",
+        "level": "beginner",
+        "description": "",
+        "coverImageUrl": "https://darswithosama.com/covers/course-1792197763057.jpg",
+        "isPublished": true,
+        "hasCertificate": true,
+        "passingGrade": 75,
+        "order": 1
+      },
+      "session": {
+        "id": "session-1792896959084",
+        "courseId": "course-1792197763057",
+        "title": "Na'ib fa'il",
+        "titleAr": "",
+        "description": "",
+        "order": 16,
+        "youtubeUrl": "",
+        "durationMinutes": 17,
+        "isPublished": true
+      }
+    },
+    {
+      "course": {
         "id": "course-1792229735274",
         "title": "Fiqih taharah",
         "titleAr": "",
@@ -424,7 +451,7 @@
       "session": {
         "id": "session-1792233702298",
         "courseId": "course-1792229735274",
-        "title": "sesi 1: Pengertian Thaharah",
+        "title": "Pengertian Thaharah",
         "titleAr": "",
         "description": "",
         "order": 1,
@@ -457,6 +484,87 @@
         "order": 2,
         "youtubeUrl": "https://youtu.be/AmTA1yVphtk?si=A91_wtnVKIxidHcr",
         "durationMinutes": 20,
+        "isPublished": true
+      }
+    },
+    {
+      "course": {
+        "id": "course-1792229735274",
+        "title": "Fiqih taharah",
+        "titleAr": "",
+        "instructor": "Osama Nur Samsil",
+        "categoryId": "cat-1792229522700",
+        "level": "beginner",
+        "description": "Thaharah atau bersuci merupakan bagian penting dalam kehidupan seorang muslim, sebab kesucian menjadi syarat sah bagi sejumlah ibadah, terutama salat. Dengan memahami tata cara bersuci yang benar, kita dapat menjalankan ibadah dengan lebih yakin, tertib, dan sesuai tuntunan syariat. Melalui pembelajaran yang sistematis dan bertahap, mari kita dalami hukum-hukum thaharah, mulai dari jenis-jenis air, najis, wudu, mandi wajib, hingga tayamum, agar setiap ibadah yang kita lakukan berlandaskan ilmu dan tuntunan yang benar.",
+        "coverImageUrl": "https://darswithosama.com/covers/course-1792229735274.jpg",
+        "isPublished": true,
+        "hasCertificate": true,
+        "passingGrade": 75,
+        "order": 2
+      },
+      "session": {
+        "id": "session-1792896087379",
+        "courseId": "course-1792229735274",
+        "title": "Seputas Air part 2",
+        "titleAr": "",
+        "description": "",
+        "order": 3,
+        "youtubeUrl": "",
+        "durationMinutes": 12,
+        "isPublished": true
+      }
+    },
+    {
+      "course": {
+        "id": "course-1792229735274",
+        "title": "Fiqih taharah",
+        "titleAr": "",
+        "instructor": "Osama Nur Samsil",
+        "categoryId": "cat-1792229522700",
+        "level": "beginner",
+        "description": "Thaharah atau bersuci merupakan bagian penting dalam kehidupan seorang muslim, sebab kesucian menjadi syarat sah bagi sejumlah ibadah, terutama salat. Dengan memahami tata cara bersuci yang benar, kita dapat menjalankan ibadah dengan lebih yakin, tertib, dan sesuai tuntunan syariat. Melalui pembelajaran yang sistematis dan bertahap, mari kita dalami hukum-hukum thaharah, mulai dari jenis-jenis air, najis, wudu, mandi wajib, hingga tayamum, agar setiap ibadah yang kita lakukan berlandaskan ilmu dan tuntunan yang benar.",
+        "coverImageUrl": "https://darswithosama.com/covers/course-1792229735274.jpg",
+        "isPublished": true,
+        "hasCertificate": true,
+        "passingGrade": 75,
+        "order": 2
+      },
+      "session": {
+        "id": "session-1792896349507",
+        "courseId": "course-1792229735274",
+        "title": "Al-Aniah: Wadah",
+        "titleAr": "",
+        "description": "",
+        "order": 4,
+        "youtubeUrl": "",
+        "durationMinutes": 22,
+        "isPublished": true
+      }
+    },
+    {
+      "course": {
+        "id": "course-1792229735274",
+        "title": "Fiqih taharah",
+        "titleAr": "",
+        "instructor": "Osama Nur Samsil",
+        "categoryId": "cat-1792229522700",
+        "level": "beginner",
+        "description": "Thaharah atau bersuci merupakan bagian penting dalam kehidupan seorang muslim, sebab kesucian menjadi syarat sah bagi sejumlah ibadah, terutama salat. Dengan memahami tata cara bersuci yang benar, kita dapat menjalankan ibadah dengan lebih yakin, tertib, dan sesuai tuntunan syariat. Melalui pembelajaran yang sistematis dan bertahap, mari kita dalami hukum-hukum thaharah, mulai dari jenis-jenis air, najis, wudu, mandi wajib, hingga tayamum, agar setiap ibadah yang kita lakukan berlandaskan ilmu dan tuntunan yang benar.",
+        "coverImageUrl": "https://darswithosama.com/covers/course-1792229735274.jpg",
+        "isPublished": true,
+        "hasCertificate": true,
+        "passingGrade": 75,
+        "order": 2
+      },
+      "session": {
+        "id": "session-1793033036867",
+        "courseId": "course-1792229735274",
+        "title": "Ketentuan dan adab buang hajat",
+        "titleAr": "",
+        "description": "",
+        "order": 5,
+        "youtubeUrl": "",
+        "durationMinutes": 30,
         "isPublished": true
       }
     }

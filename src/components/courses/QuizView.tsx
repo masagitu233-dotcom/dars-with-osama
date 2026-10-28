@@ -42,6 +42,29 @@ export const QuizView: React.FC<QuizViewProps> = ({
     status?: SessionQuizStatus;
   } | null>(null);
 
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [answers, setAnswers] = useState<Record<string, number>>({});
+  const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [scoreResult, setScoreResult] = useState<{
+    score: number;
+    passed: boolean;
+    totalPoints: number;
+    maxPoints: number;
+    correctCount: number;
+    totalCount: number;
+  } | null>(null);
+
+  const [pastAttempts, setPastAttempts] = useState<QuizAttempt[]>([]);
+  const [, setLoadingAttempts] = useState(true);
+
+  const [timeLeft, setTimeLeft] = useState<number>(
+    quiz.timeLimitMinutes > 0 ? quiz.timeLimitMinutes * 60 : 0
+  );
+
+  const questions = quiz.questions || [];
+  const currentQuestion = questions[currentQuestionIndex];
+
   useEffect(() => {
     if (!user || !course) {
       setCheckingLock(false);
@@ -88,6 +111,36 @@ export const QuizView: React.FC<QuizViewProps> = ({
       isMounted = false;
     };
   }, [user?.uid, course?.id, quiz.id, session?.id]);
+
+  useEffect(() => {
+    if (!user) return;
+    getUserQuizAttempts(user.uid).then((all) => {
+      const filtered = all.filter(a => a.quizId === quiz.id);
+      setPastAttempts(filtered);
+      setLoadingAttempts(false);
+    });
+  }, [user, quiz.id]);
+
+  const isQuizBlocked =
+    authLoading ||
+    checkingLock ||
+    !user ||
+    Boolean(blockingInfo?.hasBlockingQuiz && blockingInfo.blockingSession);
+
+  useEffect(() => {
+    if (isQuizBlocked || submitted || quiz.timeLimitMinutes <= 0) return;
+
+    if (timeLeft <= 0) {
+      handleAutoSubmit();
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setTimeLeft(prev => prev - 1);
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [timeLeft, submitted, quiz.timeLimitMinutes, isQuizBlocked]);
 
   if (authLoading || checkingLock) {
     return (
@@ -159,53 +212,6 @@ export const QuizView: React.FC<QuizViewProps> = ({
       </div>
     );
   }
-
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, number>>({});
-  const [submitted, setSubmitted] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [scoreResult, setScoreResult] = useState<{
-    score: number;
-    passed: boolean;
-    totalPoints: number;
-    maxPoints: number;
-    correctCount: number;
-    totalCount: number;
-  } | null>(null);
-
-  const [pastAttempts, setPastAttempts] = useState<QuizAttempt[]>([]);
-  const [, setLoadingAttempts] = useState(true);
-
-  const [timeLeft, setTimeLeft] = useState<number>(
-    quiz.timeLimitMinutes > 0 ? quiz.timeLimitMinutes * 60 : 0
-  );
-
-  const questions = quiz.questions || [];
-  const currentQuestion = questions[currentQuestionIndex];
-
-  useEffect(() => {
-    if (!user) return;
-    getUserQuizAttempts(user.uid).then((all) => {
-      const filtered = all.filter(a => a.quizId === quiz.id);
-      setPastAttempts(filtered);
-      setLoadingAttempts(false);
-    });
-  }, [user, quiz.id]);
-
-  useEffect(() => {
-    if (submitted || quiz.timeLimitMinutes <= 0) return;
-
-    if (timeLeft <= 0) {
-      handleAutoSubmit();
-      return;
-    }
-
-    const timer = setInterval(() => {
-      setTimeLeft(prev => prev - 1);
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [timeLeft, submitted, quiz.timeLimitMinutes]);
 
   const handleSelectOption = (questionId: string, optionIndex: number) => {
     if (submitted) return;

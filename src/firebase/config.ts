@@ -7,6 +7,10 @@ import {
   browserSessionPersistence,
   inMemoryPersistence,
   browserPopupRedirectResolver,
+  GoogleAuthProvider,
+  signInWithPopup,
+  reauthenticateWithPopup,
+  signInWithEmailAndPassword,
   signOut,
   Auth
 } from 'firebase/auth';
@@ -16,7 +20,8 @@ import {
   doc,
   getDocFromServer,
   setLogLevel,
-  enableNetwork
+  enableNetwork,
+  disableNetwork
 } from 'firebase/firestore';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 import rawAppletConfig from '../../firebase-applet-config.json';
@@ -153,6 +158,56 @@ if (getApps().length > 0) {
 }
 
 let tokenServiceApiDisabled = false;
+const SESSION_EMAIL_CRED_KEY = 'dars_session_auth_cred_v1';
+let silentReauthPromise: Promise<boolean> | null = null;
+
+export function cacheEmailSessionCredentials(email: string, pass: string): void {
+  if (typeof window === 'undefined' || !window.sessionStorage) return;
+  try {
+    window.sessionStorage.setItem(
+      SESSION_EMAIL_CRED_KEY,
+      JSON.stringify({ e: email.trim(), p: pass })
+    );
+  } catch {
+    // Ignore sessionStorage errors
+  }
+}
+
+export function clearEmailSessionCredentials(): void {
+  if (typeof window === 'undefined' || !window.sessionStorage) return;
+  try {
+    window.sessionStorage.removeItem(SESSION_EMAIL_CRED_KEY);
+  } catch {
+    // Ignore sessionStorage errors
+  }
+}
+
+async function trySilentEmailReauth(authInstance: Auth): Promise<boolean> {
+  if (typeof window === 'undefined' || !window.sessionStorage) return false;
+  if (silentReauthPromise) return silentReauthPromise;
+
+  silentReauthPromise = (async () => {
+    try {
+      const raw = window.sessionStorage.getItem(SESSION_EMAIL_CRED_KEY);
+      if (!raw) return false;
+      const parsed = JSON.parse(raw);
+      if (!parsed?.e || !parsed?.p) return false;
+      const cred = await signInWithEmailAndPassword(authInstance, parsed.e, parsed.p);
+      if (cred?.user) {
+        tokenServiceApiDisabled = false;
+        patchUserTokenMethods(cred.user);
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    } finally {
+      silentReauthPromise = null;
+    }
+  })();
+
+  return silentReauthPromise;
+}
 
 export function isSecureTokenServiceDisabledError(err: unknown): boolean {
   const rawMsg = err instanceof Error ? err.message : String(err || '');
@@ -192,8 +247,9 @@ export function patchUserTokenMethods(user: any): void {
           const hasValidCachedToken =
             sts.accessToken &&
             sts.expirationTime &&
-            Number(sts.expirationTime) > Date.now() + 60_000;
+            Number(sts.expirationTime) > Date.now() + 30_000;
           if (hasValidCachedToken) {
+            tokenServiceApiDisabled = false;
             return String(sts.accessToken);
           }
           if (tokenServiceApiDisabled) {
@@ -223,8 +279,9 @@ export function patchUserTokenMethods(user: any): void {
         const hasValidCachedToken =
           tokenMgr?.accessToken &&
           tokenMgr?.expirationTime &&
-          Number(tokenMgr.expirationTime) > Date.now() + 60_000;
+          Number(tokenMgr.expirationTime) > Date.now() + 30_000;
         if (hasValidCachedToken) {
+          tokenServiceApiDisabled = false;
           return String(tokenMgr.accessToken);
         }
         if (tokenServiceApiDisabled) {
@@ -253,19 +310,35 @@ function patchAuthInternalGetToken(target: any, authInstance: Auth): void {
   const origGetToken = target.getToken.bind(target);
   target.getToken = async (_forceRefresh?: boolean): Promise<{ accessToken: string } | null> => {
     try {
-      const currentUser = authInstance.currentUser as any;
+      if ((authInstance as any)._initializationPromise) {
+        await (authInstance as any)._initializationPromise;
+      }
+      let currentUser = authInstance.currentUser as any;
       if (!currentUser) {
         return null;
       }
       patchUserTokenMethods(currentUser);
-      const sts = currentUser.stsTokenManager;
+      let sts = currentUser.stsTokenManager;
       const hasValidCachedToken =
         sts?.accessToken &&
         sts?.expirationTime &&
-        Number(sts.expirationTime) > Date.now() + 60_000;
+        Number(sts.expirationTime) > Date.now() + 30_000;
       if (hasValidCachedToken) {
+        tokenServiceApiDisabled = false;
         return { accessToken: String(sts.accessToken) };
       }
+
+      // Attempt silent re-authentication via Identity Toolkit if email credentials exist in sessionStorage
+      const silentlyRenewed = await trySilentEmailReauth(authInstance);
+      if (silentlyRenewed && authInstance.currentUser) {
+        currentUser = authInstance.currentUser as any;
+        sts = currentUser?.stsTokenManager;
+        if (sts?.accessToken && sts?.expirationTime && Number(sts.expirationTime) > Date.now() + 30_000) {
+          tokenServiceApiDisabled = false;
+          return { accessToken: String(sts.accessToken) };
+        }
+      }
+
       if (tokenServiceApiDisabled) {
         return null;
       }
@@ -281,7 +354,7 @@ function patchAuthInternalGetToken(target: any, authInstance: Auth): void {
         stopProactiveRefreshSafely(authInstance.currentUser);
         classifyFirestoreError(err);
       }
-      // Always resolve to null rather than rejecting so Firestore never fails with 'Fetching auth token failed'
+      // Always resolve to null rather than rejecting so Firestore read queries never fail with 'Fetching auth token failed'
       return null;
     }
   };
@@ -334,6 +407,10 @@ function createResilientAuth(firebaseApp: FirebaseApp): Auth {
     authInstance.onIdTokenChanged((currentUser) => {
       if (currentUser) {
         patchUserTokenMethods(currentUser);
+        const sts = (currentUser as any)?.stsTokenManager;
+        if (sts?.accessToken && sts?.expirationTime && Number(sts.expirationTime) > Date.now() + 30_000) {
+          tokenServiceApiDisabled = false;
+        }
       }
     });
   }
@@ -520,7 +597,6 @@ export interface FirestoreErrorInfo {
 
 export function hasActiveFirestoreAuthToken(): boolean {
   try {
-    if (tokenServiceApiDisabled) return false;
     const currentUser = auth.currentUser as any;
     if (!currentUser) return false;
     const sts = currentUser.stsTokenManager;
@@ -532,6 +608,83 @@ export function hasActiveFirestoreAuthToken(): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * Ensures Firestore has a valid, non-expired Firebase Auth ID token before performing
+ * a privileged write operation. On projects where securetoken.googleapis.com is disabled,
+ * tokens expire after 1 hour; this helper renews the token via Identity Toolkit
+ * (silent email reauth or Google OAuth popup) and cycles the Firestore connection so
+ * the write request carries a valid Authorization header.
+ */
+export async function ensureFreshFirestoreAuthToken(): Promise<boolean> {
+  try {
+    if ((auth as any)._initializationPromise) {
+      await (auth as any)._initializationPromise;
+    }
+  } catch {
+    // ignore initialization wait errors
+  }
+
+  if (hasActiveFirestoreAuthToken()) {
+    return true;
+  }
+
+  const currentUser = auth.currentUser;
+  if (!currentUser) {
+    throw new Error('Akses ditolak: Anda belum login sebagai administrator.');
+  }
+
+  // 1. Try silent email/password re-authentication via Identity Toolkit
+  const silentlyRenewed = await trySilentEmailReauth(auth);
+  if (silentlyRenewed && hasActiveFirestoreAuthToken()) {
+    try {
+      await disableNetwork(db);
+      await enableNetwork(db);
+    } catch {
+      // ignore network cycle notices
+    }
+    return true;
+  }
+
+  // 2. If running in browser, renew token via Google Identity Toolkit popup
+  if (typeof window !== 'undefined') {
+    const provider = new GoogleAuthProvider();
+    if (currentUser.email) {
+      provider.setCustomParameters({ login_hint: currentUser.email });
+    }
+    try {
+      const cred = await reauthenticateWithPopup(currentUser, provider, browserPopupRedirectResolver);
+      if (cred?.user) {
+        tokenServiceApiDisabled = false;
+        patchUserTokenMethods(cred.user);
+      }
+    } catch {
+      try {
+        const cred = await signInWithPopup(auth, provider, browserPopupRedirectResolver);
+        if (cred?.user) {
+          tokenServiceApiDisabled = false;
+          patchUserTokenMethods(cred.user);
+        }
+      } catch {
+        // Handled by final check below
+      }
+    }
+
+    if (hasActiveFirestoreAuthToken()) {
+      try {
+        await disableNetwork(db);
+        await enableNetwork(db);
+      } catch {
+        // ignore network cycle notices
+      }
+      return true;
+    }
+  }
+
+  throw new Error(
+    'Token autentikasi sesi admin Anda (1 jam) telah kedaluwarsa dan pembaruan token dibatalkan. Silakan keluar (Logout) lalu masuk (Login) kembali agar perubahan dapat disimpan secara permanen ke Cloud Firestore.'
+  );
 }
 
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null): never {
