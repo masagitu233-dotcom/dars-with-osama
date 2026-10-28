@@ -1,7 +1,8 @@
-import React from 'react';
-import { Clock, ArrowRight, CheckCircle2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { Clock, ArrowRight, CheckCircle2, Share2, Check } from 'lucide-react';
 import { Course, Category, Enrollment } from '../../types';
 import { useLanguage } from '../../context/LanguageContext';
+import { buildCourseShareUrl, copyCourseUrlToClipboard } from '../../utils/courseShareHelper';
 
 interface CourseCardProps {
   course: Course;
@@ -23,6 +24,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
   disableAnimation = false
 }) => {
   const { t } = useLanguage();
+  const [copied, setCopied] = useState(false);
 
   const getLevelLabel = (level: string) => {
     switch (level) {
@@ -66,6 +68,36 @@ export const CourseCard: React.FC<CourseCardProps> = ({
           <span className={`px-2.5 py-1 rounded text-[10px] font-extrabold uppercase tracking-wider border-2 shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#001722] ${levelInfo.color}`}>
             {levelInfo.text}
           </span>
+          <button
+            type="button"
+            onClick={async (e) => {
+              e.stopPropagation();
+              const origin = typeof window !== 'undefined' ? window.location.origin : 'https://darswithosama.com';
+              const url = buildCourseShareUrl(course, origin);
+              if (typeof navigator !== 'undefined' && navigator.share) {
+                try {
+                  await navigator.share({
+                    title: course.title,
+                    text: `Yuk, pelajari kurikulum "${course.title}" bersama ${course.instructor}:`,
+                    url
+                  });
+                  return;
+                } catch {
+                  // Fallback
+                }
+              }
+              const ok = await copyCourseUrlToClipboard(url);
+              if (ok) {
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2500);
+              }
+            }}
+            className="w-7 h-7 rounded-md bg-[#FAF7F0] dark:bg-[#001722] text-[#123D32] dark:text-[#CEFEF1] border-2 border-[#171717] dark:border-[#4CA7A1] shadow-[2px_2px_0px_#171717] flex items-center justify-center hover:bg-[#D6AD52] transition cursor-pointer"
+            title="Bagikan Pembelajaran ini"
+            aria-label="Bagikan pembelajaran"
+          >
+            {copied ? <Check className="w-3.5 h-3.5 text-[#123D32]" /> : <Share2 className="w-3.5 h-3.5" />}
+          </button>
         </div>
 
         {/* Category Badge on bottom cover */}

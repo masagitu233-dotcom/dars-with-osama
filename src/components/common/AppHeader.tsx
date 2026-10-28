@@ -4,9 +4,7 @@ import {
   Moon,
   User as UserIcon,
   Settings,
-  LogOut,
-  Search,
-  X
+  LogOut
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -31,9 +29,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   mobileOpen,
   setMobileOpen,
   isCollapsed = false,
-  setIsCollapsed,
-  searchQuery = '',
-  setSearchQuery
+  setIsCollapsed
 }) => {
   const { t } = useLanguage();
   const { theme, toggleTheme } = useTheme();
@@ -52,7 +48,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
     >
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2 sm:gap-3">
         
-        {/* Left: Interactive Logo as Sidebar Toggle & Desktop Search */}
+        {/* Left: Interactive Logo as Sidebar Toggle & Dars Online Direct Link */}
         <div className="flex items-center gap-2 sm:gap-3 min-w-0 shrink">
           {/* Mobile: Logo acts as the unified interactive sidebar toggle button */}
           <button
@@ -98,38 +94,15 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             </button>
           )}
 
-          {/* Desktop Quick Search & Context Pill */}
-          <div className="hidden lg:flex items-center gap-3">
-            <span className="px-2.5 py-1 rounded-md bg-[#123D32] dark:bg-[#1F5F63] text-[#FAF7F0] dark:text-[#CEFEF1] border-2 border-[#171717] dark:border-[#4CA7A1] text-xs uppercase tracking-wider font-extrabold shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#001722] shrink-0">
-              Dars Online
-            </span>
-            {setSearchQuery && (
-              <div className="relative w-64 xl:w-80">
-                <Search className="w-3.5 h-3.5 text-[#626A66] dark:text-[#A6D6C9] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    if (currentView !== 'courses') {
-                      setCurrentView('courses');
-                    }
-                  }}
-                  placeholder="Cari kitab, kursus, atau materi..."
-                  className="w-full pl-8 pr-7 py-1.5 rounded-md bg-[#FAF7F0] dark:bg-[#001722] border-2 border-[#171717] dark:border-[#4CA7A1] text-xs font-bold text-[#171717] dark:text-[#CEFEF1] placeholder-[#626A66]/70 dark:placeholder-[#A6D6C9] focus:outline-none focus:border-[#123D32] dark:focus:border-[#CEFEF1] focus:shadow-[2px_2px_0px_#123D32] dark:focus:shadow-[2px_2px_0px_#001722]"
-                />
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-[#626A66] dark:text-[#A6D6C9] hover:text-[#D9534F] cursor-pointer"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
+          {/* Dars Online Pill Button */}
+          <button
+            type="button"
+            onClick={() => setCurrentView('courses')}
+            title="Katalog Pembelajaran Dars Online"
+            className="hidden sm:inline-flex items-center px-3 py-1 rounded-md bg-[#123D32] dark:bg-[#1F5F63] hover:bg-[#195344] dark:hover:bg-[#287A7F] text-[#FAF7F0] dark:text-[#CEFEF1] border-2 border-[#171717] dark:border-[#4CA7A1] text-xs uppercase tracking-wider font-extrabold shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#001722] shrink-0 cursor-pointer active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition"
+          >
+            Dars Online
+          </button>
         </div>
 
         {/* Right Controls: Theme Toggle & User Auth / Profile */}
@@ -179,7 +152,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
               <button
                 type="button"
                 onClick={openLogoutConfirmModal}
-                className="hidden sm:flex p-2 text-white hover:bg-[#B83D3D] rounded-md border-2 border-[#171717] dark:border-[#A6D6C9] bg-[#D9534F] dark:bg-[#C94A4A] shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#001722] transition cursor-pointer"
+                className="flex p-2 text-white hover:bg-[#B83D3D] rounded-md border-2 border-[#171717] dark:border-[#A6D6C9] bg-[#D9534F] dark:bg-[#C94A4A] shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#001722] transition cursor-pointer"
                 title="Keluar"
               >
                 <LogOut className="w-4 h-4" />

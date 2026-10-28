@@ -83,9 +83,9 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (searchInput.trim()) {
-      onSearch(searchInput);
-      onExplore();
+    const clean = searchInput.trim().replace(/\s+/g, ' ');
+    if (clean) {
+      onSearch(clean);
     }
   };
 

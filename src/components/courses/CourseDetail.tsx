@@ -19,7 +19,9 @@ import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { enrollUser, getQuizById, getUserQuizAttempts } from '../../firebase/services';
 import { SessionShareModal } from './SessionShareModal';
+import { CourseShareModal } from './CourseShareModal';
 import { buildSessionShareUrl } from '../../utils/sessionShareHelper';
+import { buildCourseShareUrl, copyCourseUrlToClipboard } from '../../utils/courseShareHelper';
 import {
   evaluateSessionQuizStatus,
   findFirstUncompletedPrecedingQuizSession,
@@ -54,6 +56,8 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
   const [enrolling, setEnrolling] = useState(false);
   const [copiedSessionId, setCopiedSessionId] = useState<string | null>(null);
   const [sharingSession, setSharingSession] = useState<Session | null>(null);
+  const [courseShareModalOpen, setCourseShareModalOpen] = useState<boolean>(false);
+  const [copiedCourseUrl, setCopiedCourseUrl] = useState<boolean>(false);
   const [userAttempts, setUserAttempts] = useState<QuizAttempt[]>([]);
   const [quizzesMap, setQuizzesMap] = useState<Record<string, Quiz>>({});
   const [quizWarningModalOpen, setQuizWarningModalOpen] = useState(false);
@@ -194,23 +198,34 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
     }
   };
 
-  const handleSessionItemClick = (targetSession: Session) => {
-    // If authenticated, verify preceding sessions in this course do not have uncompleted quizzes
-    if (user) {
-      const blockCheck = findFirstUncompletedPrecedingQuizSession(
-        sessions,
-        targetSession,
-        userAttempts,
-        quizzesMap
-      );
-      if (blockCheck.hasBlockingQuiz && blockCheck.blockingSession) {
-        setBlockingSessionForModal(blockCheck.blockingSession);
-        setBlockingQuizForModal(blockCheck.blockingQuiz || null);
-        setBlockingQuizStatusForModal(blockCheck.status || null);
-        setQuizWarningModalOpen(true);
+  const handleShareCourse = async () => {
+    const origin =
+      typeof window !== 'undefined' ? window.location.origin : 'https://darswithosama.com';
+    const url = buildCourseShareUrl(course, origin);
+
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({
+          title: `${course.title} - Dars with Osama`,
+          text: `Yuk, pelajari kurikulum "${course.title}" bersama ${course.instructor} di platform Dars with Osama:`,
+          url
+        });
         return;
+      } catch {
+        // Fallback to clipboard copy + modal
       }
     }
+
+    const success = await copyCourseUrlToClipboard(url);
+    if (success) {
+      setCopiedCourseUrl(true);
+      setTimeout(() => setCopiedCourseUrl(false), 3000);
+    }
+    setCourseShareModalOpen(true);
+  };
+
+  const handleSessionItemClick = (targetSession: Session) => {
+    // Authenticated students and visitors are permitted to watch videos across all sessions
     onSelectSession(targetSession);
   };
 
@@ -359,6 +374,21 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
                   <span>{enrolling ? 'Mendaftar...' : 'Mulai Belajar Kursus Ini'}</span>
                 </button>
               )}
+
+              {/* Bagikan Pembelajaran Button */}
+              <button
+                type="button"
+                onClick={handleShareCourse}
+                className="nb-btn nb-btn-secondary px-5 py-3.5 text-sm flex items-center gap-2 cursor-pointer"
+                title="Bagikan tautan permanen kurikulum pembelajaran ini"
+              >
+                {copiedCourseUrl ? (
+                  <Check className="w-4 h-4 text-[#123D32] dark:text-[#CEFEF1]" />
+                ) : (
+                  <Share2 className="w-4 h-4 text-[#123D32] dark:text-[#4CA7A1]" />
+                )}
+                <span>{copiedCourseUrl ? 'Link Disalin!' : 'Bagikan Pembelajaran'}</span>
+              </button>
             </div>
           </div>
 
@@ -576,6 +606,13 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
           </div>
         )}
       </div>
+
+      {/* Course Share Modal */}
+      <CourseShareModal
+        isOpen={courseShareModalOpen}
+        onClose={() => setCourseShareModalOpen(false)}
+        course={course}
+      />
 
       {/* Session Share Modal */}
       {sharingSession && (

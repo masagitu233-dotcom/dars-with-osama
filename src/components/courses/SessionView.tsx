@@ -22,12 +22,14 @@ import { Course, Session, Quiz, Enrollment, QuizAttempt } from '../../types';
 import { YouTubeEmbed } from '../common/YouTubeEmbed';
 import { PDFViewerModal } from '../common/PDFViewerModal';
 import { SessionShareModal } from './SessionShareModal';
+import { CourseShareModal } from './CourseShareModal';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { markSessionCompleted, getQuizById, getUserQuizAttempts } from '../../firebase/services';
 import { autoWrapArabicText, renderFormattedContentHtml } from '../../utils/arabicFontHelper';
 import { useSessionSEO } from '../../hooks/useSessionSEO';
 import { buildSessionShareData, canAccessSessionPublicly } from '../../utils/sessionShareHelper';
+import { buildCourseShareUrl, copyCourseUrlToClipboard } from '../../utils/courseShareHelper';
 import {
   canCompleteSession,
   canAdvanceToNextSession,
@@ -69,6 +71,8 @@ export const SessionView: React.FC<SessionViewProps> = ({
   const [markingDone, setMarkingDone] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [courseShareModalOpen, setCourseShareModalOpen] = useState(false);
+  const [copiedCourseLink, setCopiedCourseLink] = useState(false);
   const [isPlaylistOpen, setIsPlaylistOpen] = useState(true);
   const [userAttempts, setUserAttempts] = useState<QuizAttempt[]>([]);
   const [quizzesMap, setQuizzesMap] = useState<Record<string, Quiz>>({});
@@ -128,6 +132,28 @@ export const SessionView: React.FC<SessionViewProps> = ({
     setShareModalOpen(true);
   };
 
+  const handleShareCourse = async () => {
+    const courseUrl = buildCourseShareUrl(course, origin);
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({
+          title: `${course.title} - Dars with Osama`,
+          text: `Yuk, pelajari kurikulum "${course.title}" bersama ${course.instructor} di platform Dars with Osama:`,
+          url: courseUrl
+        });
+        return;
+      } catch {
+        // Fallback to modal
+      }
+    }
+    const success = await copyCourseUrlToClipboard(courseUrl);
+    if (success) {
+      setCopiedCourseLink(true);
+      setTimeout(() => setCopiedCourseLink(false), 3000);
+    }
+    setCourseShareModalOpen(true);
+  };
+
   // Ensure active session is kept in view inside playlist container when session changes
   const playlistScrollRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
@@ -142,27 +168,6 @@ export const SessionView: React.FC<SessionViewProps> = ({
     }, 150);
     return () => clearTimeout(timer);
   }, [session.id]);
-
-  const [initialBlockingSession, setInitialBlockingSession] = useState<Session | null>(null);
-
-  // Check if current session itself is locked due to an uncompleted preceding quiz
-  useEffect(() => {
-    if (!user || !session || !allSessions || allSessions.length === 0) {
-      setInitialBlockingSession(null);
-      return;
-    }
-    const check = findFirstUncompletedPrecedingQuizSession(
-      allSessions,
-      session,
-      userAttempts,
-      quizzesMap
-    );
-    if (check.hasBlockingQuiz && check.blockingSession) {
-      setInitialBlockingSession(check.blockingSession);
-    } else {
-      setInitialBlockingSession(null);
-    }
-  }, [user?.uid, session.id, allSessions, userAttempts, quizzesMap]);
 
   // Fetch user's quiz attempts whenever user or enrollment changes
   useEffect(() => {
@@ -216,43 +221,6 @@ export const SessionView: React.FC<SessionViewProps> = ({
           <button
             onClick={onBackToCourse}
             className="nb-btn nb-btn-primary px-5 py-3 text-sm"
-          >
-            Kembali ke Kurikulum
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // Block access if a preceding session's quiz is incomplete
-  if (initialBlockingSession) {
-    return (
-      <div className="max-w-3xl mx-auto px-4 py-16 text-center space-y-6 animate-fade-in-up">
-        <div className="w-16 h-16 mx-auto rounded-lg bg-[#FAF7F0] dark:bg-[#001722] border-2 border-[#171717] dark:border-[#4CA7A1] shadow-[4px_4px_0px_#171717] dark:shadow-[4px_4px_0px_#001722] flex items-center justify-center text-[#123D32] dark:text-[#CEFEF1]">
-          <Lock className="w-8 h-8" />
-        </div>
-        <div className="space-y-2">
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-[#171717] dark:text-[#CEFEF1] font-serif-brand">
-            Sesi Pembelajaran Terkunci
-          </h2>
-          <p className="text-[#525855] dark:text-[#A6D6C9] text-sm max-w-lg mx-auto leading-relaxed">
-            Anda belum menyelesaikan atau belum lulus kuis pada sesi sebelumnya (
-            <strong className="text-[#171717] dark:text-[#CEFEF1]">
-              {initialBlockingSession.title}
-            </strong>
-            ). Silakan selesaikan kuis sesi tersebut terlebih dahulu agar dapat membuka dan mempelajari sesi ini.
-          </p>
-        </div>
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-          <button
-            onClick={() => onSelectSession(initialBlockingSession)}
-            className="nb-btn nb-btn-gold px-6 py-3.5 text-sm"
-          >
-            Buka Sesi {initialBlockingSession.title}
-          </button>
-          <button
-            onClick={onBackToCourse}
-            className="nb-btn nb-btn-secondary px-5 py-3.5 text-sm"
           >
             Kembali ke Kurikulum
           </button>
@@ -323,7 +291,25 @@ export const SessionView: React.FC<SessionViewProps> = ({
       return;
     }
 
-    // 1. Mandatory quiz validation before marking session complete
+    // 1. Strict sequential validation: Verify preceding sessions in course have passed their quizzes
+    const precedingQuizCheck = findFirstUncompletedPrecedingQuizSession(
+      allSessions,
+      session,
+      userAttempts,
+      quizzesMap
+    );
+    if (precedingQuizCheck.hasBlockingQuiz && precedingQuizCheck.blockingSession) {
+      showToast(
+        `Anda masih memiliki kuis yang belum diselesaikan pada sesi sebelumnya (${precedingQuizCheck.blockingSession.title}). Silakan selesaikan kuis sesi tersebut terlebih dahulu.`
+      );
+      setPendingBlockingSession(precedingQuizCheck.blockingSession);
+      setPendingBlockingQuiz(precedingQuizCheck.blockingQuiz || null);
+      setPendingQuizStatus(precedingQuizCheck.status || null);
+      setQuizWarningModalOpen(true);
+      return;
+    }
+
+    // 2. Mandatory current session quiz validation before marking session complete
     const quizValidation = canCompleteSession(session, quiz, userAttempts);
     if (!quizValidation.allowed) {
       showToast(
@@ -356,40 +342,24 @@ export const SessionView: React.FC<SessionViewProps> = ({
 
   const handleNextSessionClick = () => {
     if (!nextSession) return;
-    const blockCheck = findFirstUncompletedPrecedingQuizSession(
-      allSessions,
-      nextSession,
-      userAttempts,
-      quizzesMap
-    );
-    if (blockCheck.hasBlockingQuiz && blockCheck.blockingSession) {
-      setPendingBlockingSession(blockCheck.blockingSession);
-      setPendingBlockingQuiz(blockCheck.blockingQuiz || null);
-      setPendingQuizStatus(blockCheck.status || null);
-      setQuizWarningModalOpen(true);
-      return;
-    }
+    // Authenticated students can watch all video sessions without quiz gate
     onSelectSession(nextSession);
   };
 
   const handlePlaylistSelectSession = (targetSession: Session) => {
     if (targetSession.id === session.id) return;
-    // Check if any preceding session before targetSession has an uncompleted quiz
-    const blockCheck = findFirstUncompletedPrecedingQuizSession(
-      allSessions,
-      targetSession,
-      userAttempts,
-      quizzesMap
-    );
-    if (blockCheck.hasBlockingQuiz && blockCheck.blockingSession) {
-      setPendingBlockingSession(blockCheck.blockingSession);
-      setPendingBlockingQuiz(blockCheck.blockingQuiz || null);
-      setPendingQuizStatus(blockCheck.status || null);
-      setQuizWarningModalOpen(true);
-      return;
-    }
+    // Authenticated students can watch all video sessions without quiz gate
     onSelectSession(targetSession);
   };
+
+  const precedingCheck = findFirstUncompletedPrecedingQuizSession(
+    allSessions,
+    session,
+    userAttempts,
+    quizzesMap
+  );
+  const currentQuizCheck = canCompleteSession(session, quiz, userAttempts);
+  const isCompletionEligible = !precedingCheck.hasBlockingQuiz && currentQuizCheck.allowed;
 
   const playlistMarginClass = isPlaylistOpen ? 'lg:mr-[340px] xl:mr-[400px]' : 'mr-0';
 
@@ -442,7 +412,22 @@ export const SessionView: React.FC<SessionViewProps> = ({
             title="Bagikan sesi pembelajaran ini"
           >
             <Share2 className="w-3.5 h-3.5" />
-            <span>Bagikan</span>
+            <span>Bagikan Sesi</span>
+          </button>
+
+          {/* Bagikan Pembelajaran / Kurikulum Utuh Button */}
+          <button
+            type="button"
+            onClick={handleShareCourse}
+            className="nb-btn nb-btn-secondary px-3 py-1.5 text-xs flex items-center gap-1.5"
+            title="Bagikan tautan kurikulum pembelajaran secara keseluruhan"
+          >
+            {copiedCourseLink ? (
+              <Check className="w-3.5 h-3.5 text-[#123D32] dark:text-[#CEFEF1]" />
+            ) : (
+              <BookOpen className="w-3.5 h-3.5 text-[#123D32] dark:text-[#4CA7A1]" />
+            )}
+            <span>{copiedCourseLink ? 'Link Kursus Disalin!' : 'Bagikan Kursus'}</span>
           </button>
 
           {prevSession && (
@@ -497,41 +482,16 @@ export const SessionView: React.FC<SessionViewProps> = ({
               <div className="w-8 h-8 border-3 border-[#123D32] dark:border-[#4CA7A1] border-t-transparent rounded-full animate-spin" />
               <p className="text-xs text-[#525855] dark:text-[#A6D6C9] font-bold">Memeriksa status akun siswa...</p>
             </div>
-          ) : !user ? (
-            <div className="w-full aspect-video rounded-lg bg-[#123D32] dark:bg-[#1F5F63] border-2 border-[#171717] dark:border-[#4CA7A1] shadow-[4px_4px_0px_#171717] dark:shadow-[4px_4px_0px_#001722] text-[#FAF7F0] dark:text-[#CEFEF1] flex flex-col items-center justify-center p-4 sm:p-6 text-center space-y-2.5 sm:space-y-3 relative overflow-hidden max-lg:max-h-[min(36dvh,calc(100dvh-var(--app-header-height,57px)-11rem))] max-lg:mx-auto">
-              <div className="inline-flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-md bg-[#4CA7A1] border-2 border-[#171717] dark:border-[#001722] text-[#001722]">
-                <Lock className="w-5 h-5 sm:w-6 sm:h-6" />
-              </div>
-              <div className="space-y-1 max-w-md px-2">
-                <h3 className="text-xs sm:text-base font-extrabold text-white font-serif-brand">
-                  Video Pembelajaran Khusus Siswa Terdaftar
-                </h3>
-                <p className="text-[11px] sm:text-xs text-[#FAF7F0]/90 dark:text-[#A6D6C9] leading-relaxed line-clamp-2 sm:line-clamp-none">
-                  Silakan masuk ke akun Dars with Osama untuk mulai belajar, memutar video syarah lengkap, menyimak naskah materi, dan mengikuti evaluasi pemahaman.
-                </p>
-              </div>
-              <div className="flex items-center gap-2 pt-0.5">
-                <button
-                  type="button"
-                  onClick={() => openAuthModal('login', { type: 'session', courseId: course.id, sessionId: session.id })}
-                  className="nb-btn nb-btn-gold px-3.5 sm:px-4 py-2 text-xs min-h-[36px]"
-                >
-                  Masuk Sekarang
-                </button>
-                <button
-                  type="button"
-                  onClick={() => openAuthModal('register', { type: 'session', courseId: course.id, sessionId: session.id })}
-                  className="nb-btn nb-btn-secondary px-3.5 sm:px-4 py-2 text-xs min-h-[36px]"
-                >
-                  Daftar Akun Baru
-                </button>
-              </div>
-            </div>
           ) : (
             <YouTubeEmbed
               url={session.youtubeUrl}
               title={session.title}
               className="max-lg:max-h-[min(36dvh,calc(100dvh-var(--app-header-height,57px)-11rem))] max-lg:mx-auto"
+              isGuest={!user}
+              sessionId={session.id}
+              courseId={course.id}
+              onOpenLogin={() => openAuthModal('login', { type: 'session', courseId: course.id, sessionId: session.id })}
+              onOpenRegister={() => openAuthModal('register', { type: 'session', courseId: course.id, sessionId: session.id })}
             />
           )}
         </div>
@@ -561,18 +521,39 @@ export const SessionView: React.FC<SessionViewProps> = ({
                 <button
                   onClick={handleToggleComplete}
                   disabled={markingDone}
+                  title={
+                    isCompleted
+                      ? 'Sesi ini telah diselesaikan'
+                      : !isCompletionEligible
+                      ? (precedingCheck.hasBlockingQuiz
+                          ? `Selesaikan kuis sesi sebelumnya (${precedingCheck.blockingSession?.title}) terlebih dahulu`
+                          : currentQuizCheck.reason || 'Kuis sesi ini harus diselesaikan terlebih dahulu')
+                      : 'Tandai sesi ini selesai'
+                  }
                   className={`nb-btn px-4 py-2 text-xs disabled:opacity-50 ${
                     isCompleted
                       ? 'nb-btn-gold'
-                      : 'nb-btn-primary'
+                      : isCompletionEligible
+                      ? 'nb-btn-primary'
+                      : 'nb-btn-secondary opacity-95'
                   }`}
                 >
                   {markingDone ? (
                     <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  ) : isCompleted ? (
+                    <CheckCircle2 className="w-4 h-4" />
+                  ) : !isCompletionEligible ? (
+                    <Lock className="w-3.5 h-3.5 text-[#D6AD52]" />
                   ) : (
                     <CheckCircle2 className="w-4 h-4" />
                   )}
-                  <span>{isCompleted ? 'Telah Diselesaikan' : 'Tandai Selesai Sesi Ini'}</span>
+                  <span>
+                    {isCompleted
+                      ? 'Telah Diselesaikan'
+                      : !isCompletionEligible
+                      ? 'Kuis Wajib Belum Selesai'
+                      : 'Tandai Selesai Sesi Ini'}
+                  </span>
                 </button>
               </div>
             </div>
@@ -937,6 +918,13 @@ export const SessionView: React.FC<SessionViewProps> = ({
         onClose={() => setPdfModalOpen(false)}
         pdfUrl={session.pdfUrl}
         pdfTitle={session.pdfTitle || session.title}
+      />
+
+      {/* Course Share Modal */}
+      <CourseShareModal
+        isOpen={courseShareModalOpen}
+        onClose={() => setCourseShareModalOpen(false)}
+        course={course}
       />
 
       {/* Session Share Modal */}

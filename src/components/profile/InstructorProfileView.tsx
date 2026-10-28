@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   ArrowLeft,
   BookOpen,
@@ -11,7 +11,14 @@ import {
   Sparkles,
   UserCheck,
   Image as ImageIcon,
-  X
+  X,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
+  Maximize2,
+  ExternalLink,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { InstructorProfile, InstructorProfileImage } from '../../types';
 import { getInstructorProfile } from '../../firebase/services';
@@ -19,6 +26,8 @@ import { getDefaultInstructorProfile, normalizeProfileSections, normalizeSupport
 import { sanitizeRichTextHtml } from '../../utils/richTextHelper';
 import { autoWrapArabicText } from '../../utils/arabicFontHelper';
 import { useAuth } from '../../context/AuthContext';
+import { ResilientGoogleDriveImage } from '../common/ResilientGoogleDriveImage';
+import { resolveDisplayImageUrl, getGoogleDriveViewerUrl, isGoogleDriveUrl } from '../../utils/googleDriveHelper';
 
 interface InstructorProfileViewProps {
   profileData?: InstructorProfile;
@@ -41,6 +50,16 @@ export const InstructorProfileView: React.FC<InstructorProfileViewProps> = ({
   const [copied, setCopied] = useState<boolean>(false);
   const [photoError, setPhotoError] = useState<boolean>(false);
   const [selectedLightboxImage, setSelectedLightboxImage] = useState<InstructorProfileImage | null>(null);
+  const [lightboxZoom, setLightboxZoom] = useState<number>(1);
+  const [lightboxMode, setLightboxMode] = useState<'fit' | 'scroll'>('fit');
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+  const [dragStart, setDragStart] = useState<{ x: number; y: number; scrollLeft: number; scrollTop: number }>({
+    x: 0,
+    y: 0,
+    scrollLeft: 0,
+    scrollTop: 0
+  });
+  const lightboxScrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (profileData) {
@@ -118,6 +137,125 @@ export const InstructorProfileView: React.FC<InstructorProfileViewProps> = ({
   const orderedSections = normalizeProfileSections(profile.sections);
   const orderedImages = normalizeSupportingImages(profile.supportingImages);
 
+  // Reset zoom & scroll position whenever modal image changes
+  useEffect(() => {
+    setLightboxZoom(1);
+    setLightboxMode('fit');
+    if (lightboxScrollRef.current) {
+      lightboxScrollRef.current.scrollTop = 0;
+      lightboxScrollRef.current.scrollLeft = 0;
+    }
+  }, [selectedLightboxImage?.id]);
+
+  // Lock body scroll and bind keyboard navigation (Esc, Arrow keys)
+  useEffect(() => {
+    if (!selectedLightboxImage) return;
+
+    const originalOverflow = document.body.style.overflow;
+    const originalPaddingRight = document.body.style.paddingRight;
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+
+    document.body.style.overflow = 'hidden';
+    if (scrollbarWidth > 0) {
+      document.body.style.paddingRight = `${scrollbarWidth}px`;
+    }
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setSelectedLightboxImage(null);
+      } else if (e.key === 'ArrowRight') {
+        if (!selectedLightboxImage || orderedImages.length <= 1) return;
+        const currentIndex = orderedImages.findIndex(img => img.id === selectedLightboxImage.id);
+        if (currentIndex !== -1) {
+          const nextIndex = (currentIndex + 1) % orderedImages.length;
+          setSelectedLightboxImage(orderedImages[nextIndex]);
+        }
+      } else if (e.key === 'ArrowLeft') {
+        if (!selectedLightboxImage || orderedImages.length <= 1) return;
+        const currentIndex = orderedImages.findIndex(img => img.id === selectedLightboxImage.id);
+        if (currentIndex !== -1) {
+          const prevIndex = (currentIndex - 1 + orderedImages.length) % orderedImages.length;
+          setSelectedLightboxImage(orderedImages[prevIndex]);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      document.body.style.paddingRight = originalPaddingRight;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [selectedLightboxImage, orderedImages]);
+
+  const handleNextImage = () => {
+    if (!selectedLightboxImage || orderedImages.length <= 1) return;
+    const currentIndex = orderedImages.findIndex(img => img.id === selectedLightboxImage.id);
+    if (currentIndex === -1) return;
+    const nextIndex = (currentIndex + 1) % orderedImages.length;
+    setSelectedLightboxImage(orderedImages[nextIndex]);
+  };
+
+  const handlePrevImage = () => {
+    if (!selectedLightboxImage || orderedImages.length <= 1) return;
+    const currentIndex = orderedImages.findIndex(img => img.id === selectedLightboxImage.id);
+    if (currentIndex === -1) return;
+    const prevIndex = (currentIndex - 1 + orderedImages.length) % orderedImages.length;
+    setSelectedLightboxImage(orderedImages[prevIndex]);
+  };
+
+  const handleZoomIn = () => {
+    setLightboxZoom(prev => Math.min(3.0, Number((prev + 0.25).toFixed(2))));
+  };
+
+  const handleZoomOut = () => {
+    setLightboxZoom(prev => Math.max(0.75, Number((prev - 0.25).toFixed(2))));
+  };
+
+  const handleResetZoom = () => {
+    setLightboxZoom(1);
+    setLightboxMode('fit');
+    if (lightboxScrollRef.current) {
+      lightboxScrollRef.current.scrollTop = 0;
+      lightboxScrollRef.current.scrollLeft = 0;
+    }
+  };
+
+  const handleToggleMode = () => {
+    setLightboxMode(prev => (prev === 'fit' ? 'scroll' : 'fit'));
+    setLightboxZoom(1);
+    if (lightboxScrollRef.current) {
+      lightboxScrollRef.current.scrollTop = 0;
+      lightboxScrollRef.current.scrollLeft = 0;
+    }
+  };
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!lightboxScrollRef.current) return;
+    if (e.button !== 0) return;
+    setIsDragging(true);
+    setDragStart({
+      x: e.clientX,
+      y: e.clientY,
+      scrollLeft: lightboxScrollRef.current.scrollLeft,
+      scrollTop: lightboxScrollRef.current.scrollTop
+    });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isDragging || !lightboxScrollRef.current) return;
+    e.preventDefault();
+    const dx = e.clientX - dragStart.x;
+    const dy = e.clientY - dragStart.y;
+    lightboxScrollRef.current.scrollLeft = dragStart.scrollLeft - dx;
+    lightboxScrollRef.current.scrollTop = dragStart.scrollTop - dy;
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
   const initials = (profile.name || 'Osama Nur Samsil')
     .split(/\s+/)
     .filter(Boolean)
@@ -190,7 +328,7 @@ export const InstructorProfileView: React.FC<InstructorProfileViewProps> = ({
               {profile.photoUrl && !photoError ? (
                 <img
                   data-testid="instructor-profile-photo"
-                  src={profile.photoUrl}
+                  src={resolveDisplayImageUrl(profile.photoUrl)}
                   alt={profile.name}
                   onError={() => setPhotoError(true)}
                   className="w-full h-full object-cover"
@@ -327,11 +465,11 @@ export const InstructorProfileView: React.FC<InstructorProfileViewProps> = ({
               {sec.imageUrl && (
                 <figure className="space-y-2">
                   <div className="rounded-md overflow-hidden bg-[#123D32] dark:bg-[#16263D] border-2 border-[#292D2B] dark:border-[#D6AD52]/60 max-h-[460px] flex items-center justify-center">
-                    <img
+                    <ResilientGoogleDriveImage
                       src={sec.imageUrl}
                       alt={sec.imageCaption || sec.title || 'Gambar Bagian Profil'}
-                      className="w-full h-auto max-h-[460px] object-cover"
-                      loading="lazy"
+                      aspectRatioClass="w-full max-h-[460px]"
+                      isAdmin={isAdmin}
                     />
                   </div>
                   {sec.imageCaption && (
@@ -379,11 +517,13 @@ export const InstructorProfileView: React.FC<InstructorProfileViewProps> = ({
                 className="group nb-card-interactive overflow-hidden flex flex-col justify-between cursor-pointer"
               >
                 <div className="aspect-video w-full overflow-hidden bg-[#123D32] dark:bg-[#16263D] border-b-2 border-[#292D2B] dark:border-[#D6AD52]/60">
-                  <img
+                  <ResilientGoogleDriveImage
                     src={img.url}
                     alt={img.caption || profile.name}
-                    className="w-full h-full object-cover group-hover:scale-103 transition-transform duration-300"
-                    loading="lazy"
+                    isAdmin={isAdmin}
+                    showAdminDiagnostic={isAdmin}
+                    aspectRatioClass="aspect-video"
+                    imageClassName="group-hover:scale-103 transition-transform duration-300"
                   />
                 </div>
                 {img.caption && (
@@ -397,40 +537,204 @@ export const InstructorProfileView: React.FC<InstructorProfileViewProps> = ({
         </section>
       )}
 
-      {/* LIGHTBOX MODAL FOR SUPPORTING IMAGES */}
+      {/* CERTIFICATE / SUPPORTING IMAGE LIGHTBOX MODAL */}
       {selectedLightboxImage && (
         <div
+          data-testid="certificate-modal-backdrop"
           onClick={() => setSelectedLightboxImage(null)}
-          className="fixed inset-0 z-70 bg-black/85 flex items-center justify-center p-4 animate-fade-in"
+          className="fixed inset-0 z-70 bg-black/85 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 md:p-6 animate-fade-in overscroll-none"
         >
           <div
+            data-testid="certificate-modal-dialog"
             onClick={(e) => e.stopPropagation()}
-            className="bg-[#FAF7F0] dark:bg-[#243A56] border-2 border-[#292D2B] dark:border-[#D6AD52] rounded-lg overflow-hidden max-w-3xl w-full shadow-[6px_6px_0px_#292D2B]"
+            className="bg-[#FAF7F0] dark:bg-[#1A283C] border-2 border-[#292D2B] dark:border-[#D6AD52] rounded-lg overflow-hidden max-w-5xl w-full max-h-[94dvh] sm:max-h-[90vh] flex flex-col shadow-[8px_8px_0px_#292D2B] dark:shadow-[8px_8px_0px_#000000]"
           >
-            <div className="p-4 bg-[#123D32] dark:bg-[#16263D] text-white border-b-2 border-[#292D2B] dark:border-[#D6AD52]/60 flex items-center justify-between">
-              <span className="text-xs font-bold text-[#D6AD52] truncate">
-                {selectedLightboxImage.caption || profile.name}
-              </span>
-              <button
-                type="button"
-                onClick={() => setSelectedLightboxImage(null)}
-                className="p-1.5 rounded bg-[#243A56] border border-[#D6AD52] text-[#FAF7F0] hover:bg-[#D6AD52] hover:text-[#292D2B] cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="bg-[#292D2B] flex items-center justify-center max-h-[75vh] overflow-hidden">
-              <img
-                src={selectedLightboxImage.url}
-                alt={selectedLightboxImage.caption || profile.name}
-                className="max-h-[75vh] w-auto object-contain"
-              />
-            </div>
-            {selectedLightboxImage.caption && (
-              <div className="p-4 text-center text-xs sm:text-sm font-bold text-[#292D2B] dark:text-[#F1F4F8]">
-                {selectedLightboxImage.caption}
+            {/* Top Header Control Bar */}
+            <div className="p-3 sm:p-4 bg-[#123D32] dark:bg-[#16263D] text-[#FAF7F0] border-b-2 border-[#292D2B] dark:border-[#D6AD52]/60 flex items-center justify-between gap-3 shrink-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded bg-[#C6A75E] text-[#171923] text-[10px] font-extrabold uppercase tracking-wider shrink-0">
+                  Sertifikat / Dokumen
+                </span>
+                <h3 className="text-xs sm:text-sm font-bold text-[#D6AD52] truncate">
+                  {selectedLightboxImage.caption || profile.name}
+                </h3>
               </div>
-            )}
+
+              {/* Controls Toolbar */}
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                {/* Zoom Out */}
+                <button
+                  type="button"
+                  data-testid="cert-zoom-out"
+                  onClick={handleZoomOut}
+                  disabled={lightboxZoom <= 0.75}
+                  title="Perkecil (-)"
+                  className="p-1.5 sm:p-2 rounded bg-[#243A56] hover:bg-[#345275] text-[#FAF7F0] border border-[#D6AD52]/60 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition shadow-xs"
+                >
+                  <ZoomOut className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#D6AD52]" />
+                </button>
+
+                {/* Zoom Level Indicator / Reset */}
+                <button
+                  type="button"
+                  data-testid="cert-zoom-reset"
+                  onClick={handleResetZoom}
+                  title="Reset Ukuran (100%)"
+                  className="px-2 py-1 sm:px-2.5 sm:py-1 rounded bg-[#243A56] hover:bg-[#345275] text-[#D6AD52] border border-[#D6AD52]/60 text-[11px] font-extrabold cursor-pointer transition min-w-[48px] text-center"
+                >
+                  {Math.round(lightboxZoom * 100)}%
+                </button>
+
+                {/* Zoom In */}
+                <button
+                  type="button"
+                  data-testid="cert-zoom-in"
+                  onClick={handleZoomIn}
+                  disabled={lightboxZoom >= 3.0}
+                  title="Perbesar (+)"
+                  className="p-1.5 sm:p-2 rounded bg-[#243A56] hover:bg-[#345275] text-[#FAF7F0] border border-[#D6AD52]/60 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition shadow-xs"
+                >
+                  <ZoomIn className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#D6AD52]" />
+                </button>
+
+                {/* Mode Toggle: Fit vs Scroll View */}
+                <button
+                  type="button"
+                  data-testid="cert-mode-toggle"
+                  onClick={handleToggleMode}
+                  title={lightboxMode === 'fit' ? 'Beralih ke Ukuran Bebas Gulir' : 'Beralih ke Ukuran Pas Layar'}
+                  className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1.5 rounded bg-[#243A56] hover:bg-[#345275] text-[#FAF7F0] border border-[#D6AD52]/60 text-[11px] font-bold cursor-pointer transition"
+                >
+                  {lightboxMode === 'fit' ? (
+                    <>
+                      <Maximize2 className="w-3.5 h-3.5 text-[#D6AD52]" />
+                      <span>Gulir Penuh</span>
+                    </>
+                  ) : (
+                    <>
+                      <RotateCcw className="w-3.5 h-3.5 text-[#D6AD52]" />
+                      <span>Pas Layar</span>
+                    </>
+                  )}
+                </button>
+
+                {/* External Link */}
+                <a
+                  href={isGoogleDriveUrl(selectedLightboxImage.url) ? getGoogleDriveViewerUrl(selectedLightboxImage.url) : selectedLightboxImage.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="Buka Berkas di Tab Baru / Google Drive"
+                  className="p-1.5 sm:p-2 rounded bg-[#243A56] hover:bg-[#345275] text-[#FAF7F0] border border-[#D6AD52]/60 cursor-pointer transition shadow-xs"
+                >
+                  <ExternalLink className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#D6AD52]" />
+                </a>
+
+                {/* Close Button */}
+                <button
+                  type="button"
+                  data-testid="cert-modal-close"
+                  onClick={() => setSelectedLightboxImage(null)}
+                  title="Tutup Modal (Esc)"
+                  className="p-1.5 sm:p-2 rounded bg-[#243A56] hover:bg-[#F04438] text-[#FAF7F0] border border-[#D6AD52] transition cursor-pointer shadow-xs ml-1"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Certificate Preview Scroll Area */}
+            <div
+              ref={lightboxScrollRef}
+              data-testid="certificate-preview-scroll-area"
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+              className={`flex-1 min-h-[260px] overflow-auto overscroll-contain bg-[#171923] dark:bg-[#0D1520] p-3 sm:p-6 flex items-center justify-center relative touch-pan-x touch-pan-y select-none transition-colors ${
+                isDragging ? 'cursor-grabbing' : lightboxZoom > 1 || lightboxMode === 'scroll' ? 'cursor-grab' : 'cursor-default'
+              }`}
+              style={{
+                WebkitOverflowScrolling: 'touch'
+              }}
+            >
+              {/* Prev Image Button */}
+              {orderedImages.length > 1 && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handlePrevImage();
+                  }}
+                  aria-label="Gambar Sebelumnya"
+                  className="absolute left-2 sm:left-4 z-20 p-2 rounded-full bg-[#123D32]/90 hover:bg-[#123D32] text-[#D6AD52] border-2 border-[#D6AD52] shadow-md transition cursor-pointer"
+                >
+                  <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+                </button>
+              )}
+
+              {/* Next Image Button */}
+              {orderedImages.length > 1 && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleNextImage();
+                  }}
+                  aria-label="Gambar Berikutnya"
+                  className="absolute right-2 sm:right-4 z-20 p-2 rounded-full bg-[#123D32]/90 hover:bg-[#123D32] text-[#D6AD52] border-2 border-[#D6AD52] shadow-md transition cursor-pointer"
+                >
+                  <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
+                </button>
+              )}
+
+              {/* Zoomable Image Wrapper */}
+              <div
+                className="transition-transform duration-150 ease-out flex items-center justify-center"
+                style={{
+                  transform: `scale(${lightboxZoom})`,
+                  transformOrigin: 'center center'
+                }}
+              >
+                <ResilientGoogleDriveImage
+                  src={selectedLightboxImage.url}
+                  alt={selectedLightboxImage.caption || profile.name}
+                  isAdmin={isAdmin}
+                  showAdminDiagnostic={isAdmin}
+                  aspectRatioClass=""
+                  overflowClass="overflow-visible"
+                  forceFillParent={false}
+                  objectFit="contain"
+                  className="flex items-center justify-center"
+                  imageClassName={`transition-all duration-200 object-contain rounded shadow-xl border border-[#292D2B]/50 dark:border-[#D6AD52]/40 ${
+                    lightboxMode === 'scroll'
+                      ? 'w-full max-w-none min-w-[620px] sm:min-w-[850px] h-auto'
+                      : 'max-w-full max-h-[64vh] sm:max-h-[70vh] w-auto h-auto'
+                  }`}
+                />
+              </div>
+            </div>
+
+            {/* Bottom Caption & Navigation Bar */}
+            <div className="p-3 sm:p-4 bg-[#FAF7F0] dark:bg-[#16263D] border-t-2 border-[#292D2B] dark:border-[#D6AD52]/60 text-xs text-[#292D2B] dark:text-[#F1F4F8] flex flex-col sm:flex-row items-center justify-between gap-2 shrink-0">
+              <div className="text-center sm:text-left font-bold min-w-0">
+                {selectedLightboxImage.caption ? (
+                  <p className="truncate max-w-lg">{selectedLightboxImage.caption}</p>
+                ) : (
+                  <p className="italic text-[#626A66] dark:text-[#B4C0D0]">Dokumentasi &amp; Sertifikat Pengajar</p>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3 text-[11px] text-[#626A66] dark:text-[#B4C0D0] shrink-0 font-medium">
+                <span className="hidden md:inline">
+                  💡 Geser/scroll gambar untuk melihat seluruh bagian sertifikat
+                </span>
+                {orderedImages.length > 1 && (
+                  <span className="px-2 py-0.5 rounded bg-[#FAF7F0] dark:bg-[#243A56] border border-[#292D2B]/20 dark:border-[#D6AD52]/40 font-bold text-[#123D32] dark:text-[#D6AD52]">
+                    {orderedImages.findIndex(img => img.id === selectedLightboxImage.id) + 1} / {orderedImages.length}
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}

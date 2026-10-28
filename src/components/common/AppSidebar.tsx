@@ -5,20 +5,16 @@ import {
   FileText,
   GraduationCap,
   ShieldAlert,
-  LogOut,
-  Settings,
-  User as UserIcon,
-  Sun,
-  Moon,
   Sparkles,
   X,
   HelpCircle,
   MessageSquare,
   UserCheck,
-  Info
+  Info,
+  PanelLeftClose,
+  PanelLeftOpen
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
-import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { LogoSymbol } from './Logo';
 
@@ -42,15 +38,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   setIsCollapsed
 }) => {
   const { t } = useLanguage();
-  const { theme, toggleTheme } = useTheme();
-  const {
-    user,
-    userProfile,
-    isAdmin,
-    openAuthModal,
-    openLogoutConfirmModal,
-    openProfileModal
-  } = useAuth();
+  const { user, isAdmin, openAuthModal } = useAuth();
 
   const effectiveCollapsed = isCollapsed && !mobileOpen;
 
@@ -265,98 +253,102 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
             })}
           </div>
 
-          {/* Personal & Admin Area */}
-          {(user || isAdmin) && (
-            <div className="space-y-2 pt-3 border-t-2 border-[#171717]/15 dark:border-[#1F5F63]">
+          {/* Student Dashboard & Admin Navigation */}
+          <div className="space-y-2 pt-3 border-t-2 border-[#171717]/15 dark:border-[#1F5F63]">
+            {!effectiveCollapsed && (
+              <p className="px-2 text-[10px] font-extrabold uppercase tracking-[0.18em] text-[#123D32] dark:text-[#A6D6C9] mb-2">
+                Ruang Siswa
+              </p>
+            )}
+
+            <button
+              type="button"
+              data-testid="nav-student-dashboard"
+              onClick={() => {
+                if (user) {
+                  handleNavClick('student-dashboard');
+                } else {
+                  openAuthModal('login');
+                }
+              }}
+              title={effectiveCollapsed ? 'Dashboard Siswa' : undefined}
+              className={`w-full flex items-center ${
+                effectiveCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2.5'
+              } rounded-md text-left transition-all duration-150 cursor-pointer group border-2 ${
+                isStudentDashboardActive
+                  ? 'bg-[#D6AD52] text-[#171717] font-extrabold border-[#171717] dark:bg-[#1F5F63] dark:text-[#CEFEF1] dark:border-[#4CA7A1] shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#001722]'
+                  : 'bg-white dark:bg-[#0D2B36] hover:bg-[#EFE5D2] dark:hover:bg-[#1F5F63] text-[#171717] dark:text-[#A6D6C9] dark:hover:text-[#CEFEF1] border-[#171717]/40 dark:border-[#4CA7A1]'
+              }`}
+            >
+              <div
+                className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 border-2 ${
+                  isStudentDashboardActive
+                    ? 'bg-[#123D32] text-[#D6AD52] border-[#171717] dark:bg-[#4CA7A1] dark:text-[#001722] dark:border-[#CEFEF1]'
+                    : 'bg-[#EFE5D2] dark:bg-[#001722] text-[#123D32] dark:text-[#A6D6C9] border-[#171717]/30 dark:border-[#4CA7A1]'
+                }`}
+              >
+                <GraduationCap className="w-4 h-4" />
+              </div>
               {!effectiveCollapsed && (
-                <p className="px-2 text-[10px] font-extrabold uppercase tracking-[0.18em] text-[#123D32] dark:text-[#A6D6C9] mb-2">
-                  Ruang Pengguna
-                </p>
-              )}
-
-              {user && (
-                <button
-                  type="button"
-                  onClick={() => handleNavClick('student-dashboard')}
-                  title={effectiveCollapsed ? 'Dashboard Siswa' : undefined}
-                  className={`w-full flex items-center ${
-                    effectiveCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2.5'
-                  } rounded-md text-left transition-all duration-150 cursor-pointer group border-2 ${
-                    isStudentDashboardActive
-                      ? 'bg-[#D6AD52] text-[#171717] font-extrabold border-[#171717] dark:bg-[#1F5F63] dark:text-[#CEFEF1] dark:border-[#4CA7A1] shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#001722]'
-                      : 'bg-white dark:bg-[#0D2B36] hover:bg-[#EFE5D2] dark:hover:bg-[#1F5F63] text-[#171717] dark:text-[#A6D6C9] dark:hover:text-[#CEFEF1] border-[#171717]/40 dark:border-[#4CA7A1]'
-                  }`}
-                >
-                  <div
-                    className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 border-2 ${
+                <div className="overflow-hidden flex-1">
+                  <p className="text-xs font-extrabold truncate leading-tight">
+                    Dashboard Siswa
+                  </p>
+                  <p
+                    className={`text-[10px] truncate mt-0.5 font-semibold ${
                       isStudentDashboardActive
-                        ? 'bg-[#123D32] text-[#D6AD52] border-[#171717] dark:bg-[#4CA7A1] dark:text-[#001722] dark:border-[#CEFEF1]'
-                        : 'bg-[#EFE5D2] dark:bg-[#001722] text-[#123D32] dark:text-[#A6D6C9] border-[#171717]/30 dark:border-[#4CA7A1]'
+                        ? 'text-[#171717]/80 dark:text-[#A6D6C9]'
+                        : 'text-[#626A66] dark:text-[#A6D6C9]/85'
                     }`}
                   >
-                    <GraduationCap className="w-4 h-4" />
-                  </div>
-                  {!effectiveCollapsed && (
-                    <div className="overflow-hidden flex-1">
-                      <p className="text-xs font-extrabold truncate leading-tight">
-                        Dashboard Siswa
-                      </p>
-                      <p
-                        className={`text-[10px] truncate mt-0.5 font-semibold ${
-                          isStudentDashboardActive
-                            ? 'text-[#171717]/80 dark:text-[#A6D6C9]'
-                            : 'text-[#626A66] dark:text-[#A6D6C9]/85'
-                        }`}
-                      >
-                        Progres, Nilai &amp; Sertifikat
-                      </p>
-                    </div>
-                  )}
-                </button>
+                    {user ? 'Progres, Nilai & Sertifikat' : 'Masuk untuk Melihat Progres'}
+                  </p>
+                </div>
               )}
+            </button>
 
-              {isAdmin && (
-                <button
-                  type="button"
-                  onClick={() => handleNavClick('admin-dashboard')}
-                  title={effectiveCollapsed ? 'Admin Panel' : undefined}
-                  className={`w-full flex items-center ${
-                    effectiveCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2.5'
-                  } rounded-md text-left transition-all duration-150 cursor-pointer group border-2 ${
+            {isAdmin && (
+              <button
+                type="button"
+                data-testid="nav-admin-dashboard"
+                onClick={() => handleNavClick('admin-dashboard')}
+                title={effectiveCollapsed ? 'Admin Panel' : undefined}
+                className={`w-full flex items-center ${
+                  effectiveCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2.5'
+                } rounded-md text-left transition-all duration-150 cursor-pointer group border-2 ${
+                  isAdminDashboardActive
+                    ? 'bg-[#D6AD52] text-[#171717] font-extrabold border-[#171717] dark:bg-[#1F5F63] dark:text-[#CEFEF1] dark:border-[#4CA7A1] shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#001722]'
+                    : 'bg-white dark:bg-[#0D2B36] hover:bg-[#EFE5D2] dark:hover:bg-[#1F5F63] text-[#123D32] dark:text-[#A6D6C9] dark:hover:text-[#CEFEF1] border-[#171717]/40 dark:border-[#4CA7A1]'
+                }`}
+              >
+                <div
+                  className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 border-2 ${
                     isAdminDashboardActive
-                      ? 'bg-[#D6AD52] text-[#171717] font-extrabold border-[#171717] dark:bg-[#1F5F63] dark:text-[#CEFEF1] dark:border-[#4CA7A1] shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#001722]'
-                      : 'bg-white dark:bg-[#0D2B36] hover:bg-[#EFE5D2] dark:hover:bg-[#1F5F63] text-[#123D32] dark:text-[#A6D6C9] dark:hover:text-[#CEFEF1] border-[#171717]/40 dark:border-[#4CA7A1]'
+                      ? 'bg-[#123D32] text-[#D6AD52] border-[#171717] dark:bg-[#4CA7A1] dark:text-[#001722] dark:border-[#CEFEF1]'
+                      : 'bg-[#EFE5D2] dark:bg-[#001722] text-[#123D32] dark:text-[#A6D6C9] border-[#171717]/30 dark:border-[#4CA7A1]'
                   }`}
                 >
-                  <div
-                    className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 border-2 ${
-                      isAdminDashboardActive
-                        ? 'bg-[#123D32] text-[#D6AD52] border-[#171717] dark:bg-[#4CA7A1] dark:text-[#001722] dark:border-[#CEFEF1]'
-                        : 'bg-[#EFE5D2] dark:bg-[#001722] text-[#123D32] dark:text-[#A6D6C9] border-[#171717]/30 dark:border-[#4CA7A1]'
-                    }`}
-                  >
-                    <ShieldAlert className="w-4 h-4" />
+                  <ShieldAlert className="w-4 h-4" />
+                </div>
+                {!effectiveCollapsed && (
+                  <div className="overflow-hidden flex-1">
+                    <p className="text-xs font-extrabold truncate leading-tight">
+                      Admin Panel
+                    </p>
+                    <p
+                      className={`text-[10px] truncate mt-0.5 font-semibold ${
+                        isAdminDashboardActive
+                          ? 'text-[#171717]/80 dark:text-[#A6D6C9]'
+                          : 'text-[#626A66] dark:text-[#A6D6C9]/85'
+                      }`}
+                    >
+                      Kelola Materi &amp; Artikel
+                    </p>
                   </div>
-                  {!effectiveCollapsed && (
-                    <div className="overflow-hidden flex-1">
-                      <p className="text-xs font-extrabold truncate leading-tight">
-                        Admin Panel
-                      </p>
-                      <p
-                        className={`text-[10px] truncate mt-0.5 font-semibold ${
-                          isAdminDashboardActive
-                            ? 'text-[#171717]/80 dark:text-[#A6D6C9]'
-                            : 'text-[#626A66] dark:text-[#A6D6C9]/85'
-                        }`}
-                      >
-                        Kelola Materi &amp; Artikel
-                      </p>
-                    </div>
-                  )}
-                </button>
-              )}
-            </div>
-          )}
+                )}
+              </button>
+            )}
+          </div>
 
           {/* Callout Quote Card & Welcome Info when Expanded */}
           {!effectiveCollapsed && (
@@ -388,95 +380,41 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
           )}
         </div>
 
-        {/* Bottom Controls: Theme Toggle & User Account */}
-        <div className="p-3 border-t-2 border-[#171717] dark:border-[#1F5F63] bg-[#EFE5D2] dark:bg-[#001722] space-y-2.5 shrink-0">
-          {/* Quick Theme Switcher */}
+        {/* Bottom Section: Desktop Collapse/Expand Toggle & Mobile Platform Identity (Duplicates removed) */}
+        <div className="p-3 border-t-2 border-[#171717] dark:border-[#1F5F63] bg-[#EFE5D2] dark:bg-[#001722] shrink-0">
+          {/* Desktop Collapse/Expand Control */}
           <button
             type="button"
-            onClick={toggleTheme}
-            className={`w-full flex items-center ${
+            onClick={handleToggleCollapse}
+            aria-label={effectiveCollapsed ? 'Perluas Sidebar' : 'Ciutkan Sidebar'}
+            title={effectiveCollapsed ? 'Perluas Sidebar' : 'Ciutkan Sidebar'}
+            className={`hidden lg:flex w-full items-center ${
               effectiveCollapsed ? 'justify-center py-2.5' : 'justify-between px-3 py-2'
-            } rounded-md bg-white dark:bg-[#0D2B36] hover:bg-[#D6AD52] dark:hover:bg-[#1F5F63] text-[#171717] dark:text-[#CEFEF1] border-2 border-[#171717] dark:border-[#4CA7A1] text-xs font-extrabold transition cursor-pointer group shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#001722]`}
-            title={theme === 'dark' ? 'Beralih ke Mode Terang' : 'Beralih ke Mode Gelap'}
+            } rounded-md bg-white dark:bg-[#0D2B36] hover:bg-[#D6AD52] dark:hover:bg-[#1F5F63] text-[#171717] dark:text-[#CEFEF1] border-2 border-[#171717] dark:border-[#4CA7A1] text-xs font-extrabold transition cursor-pointer shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#001722] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none`}
           >
-            <div className="flex items-center gap-2.5">
-              {theme === 'dark' ? (
-                <Sun className="w-4 h-4 text-[#4CA7A1] group-hover:text-[#CEFEF1]" />
+            <div className="flex items-center gap-2">
+              {effectiveCollapsed ? (
+                <PanelLeftOpen className="w-4 h-4 text-[#123D32] dark:text-[#4CA7A1]" />
               ) : (
-                <Moon className="w-4 h-4 text-[#123D32]" />
-              )}
-              {!effectiveCollapsed && (
-                <span>{theme === 'dark' ? 'Mode Terang' : 'Mode Gelap'}</span>
+                <>
+                  <PanelLeftClose className="w-4 h-4 text-[#123D32] dark:text-[#4CA7A1]" />
+                  <span>Ciutkan Navigasi</span>
+                </>
               )}
             </div>
             {!effectiveCollapsed && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded-sm bg-[#D6AD52] dark:bg-[#4CA7A1] text-[#171717] dark:text-[#001722] font-extrabold uppercase border border-[#171717] dark:border-[#A6D6C9]">
-                {theme === 'dark' ? 'Dark' : 'Light'}
+              <span className="text-[9px] font-sans font-extrabold uppercase tracking-widest text-[#237A70] dark:text-[#A6D6C9]">
+                CIUTKAN
               </span>
             )}
           </button>
 
-          {/* User Profile or Login Button */}
-          {user ? (
-            <div className="space-y-2">
-              <div
-                onClick={openProfileModal}
-                title="Pengaturan Profil"
-                className={`flex items-center ${
-                  effectiveCollapsed ? 'justify-center' : 'justify-between gap-2'
-                } p-2 rounded-md bg-white dark:bg-[#0D2B36] hover:bg-[#FAF7F0] dark:hover:bg-[#1F5F63] border-2 border-[#171717] dark:border-[#4CA7A1] cursor-pointer transition shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#001722]`}
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-8 h-8 rounded-sm bg-[#D6AD52] dark:bg-[#4CA7A1] text-[#171717] dark:text-[#001722] font-extrabold text-xs flex items-center justify-center uppercase shrink-0 overflow-hidden border border-[#171717] dark:border-[#A6D6C9]">
-                    {userProfile?.photoURL || user.photoURL ? (
-                      <img
-                        src={userProfile?.photoURL || user.photoURL || ''}
-                        alt={userProfile?.displayName || 'User'}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      (userProfile?.displayName || user.displayName || user.email || 'U')[0]
-                    )}
-                  </div>
-                  {!effectiveCollapsed && (
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-extrabold text-[#171717] dark:text-[#CEFEF1] truncate">
-                        {userProfile?.displayName || user.displayName || 'Penuntut Ilmu'}
-                      </p>
-                      <p className="text-[10px] text-[#626A66] dark:text-[#A6D6C9] truncate font-medium">
-                        {user.email}
-                      </p>
-                    </div>
-                  )}
-                </div>
-                {!effectiveCollapsed && <Settings className="w-3.5 h-3.5 text-[#626A66] dark:text-[#A6D6C9] shrink-0" />}
-              </div>
-
-              <button
-                type="button"
-                onClick={openLogoutConfirmModal}
-                title="Keluar"
-                className={`w-full flex items-center justify-center ${
-                  effectiveCollapsed ? 'py-2' : 'gap-2 py-2 px-3'
-                } rounded-md bg-[#D9534F] dark:bg-[#C94A4A] hover:bg-[#C9433F] dark:hover:bg-[#B83D3D] text-white border-2 border-[#171717] dark:border-[#A6D6C9] shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#001722] text-xs font-extrabold transition cursor-pointer`}
-              >
-                <LogOut className="w-3.5 h-3.5 shrink-0" />
-                {!effectiveCollapsed && <span>Keluar</span>}
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => openAuthModal('login')}
-              title="Masuk Akun"
-              className={`w-full flex items-center justify-center ${
-                effectiveCollapsed ? 'py-2.5' : 'gap-2 py-2.5 px-4'
-              } rounded-md bg-[#D6AD52] dark:bg-[#4CA7A1] hover:bg-[#c29a3e] dark:hover:bg-[#5BB7B1] text-[#171717] dark:text-[#001722] font-extrabold text-xs border-2 border-[#171717] dark:border-[#A6D6C9] shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#001722] transition cursor-pointer active:translate-x-[1px] active:translate-y-[1px] active:shadow-none`}
-            >
-              <UserIcon className="w-4 h-4 shrink-0 text-[#171717] dark:text-[#001722]" />
-              {!effectiveCollapsed && <span>Masuk Akun</span>}
-            </button>
-          )}
+          {/* Minimal Brand Footer on Mobile */}
+          <div className="lg:hidden text-center py-1">
+            <p className="text-[10px] font-bold text-[#626A66] dark:text-[#A6D6C9]">
+              Dars with Osama • Platform Ilmu Syar'i
+            </p>
+          </div>
         </div>
       </aside>
     </>

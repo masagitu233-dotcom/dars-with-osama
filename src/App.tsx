@@ -40,12 +40,14 @@ import { BlogDetailView } from './components/blog/BlogDetailView';
 import { StudentConsultationView } from './components/consultation/StudentConsultationView';
 import { PublicQAView } from './components/consultation/PublicQAView';
 import { InstructorProfileView } from './components/profile/InstructorProfileView';
+import { SearchResultsView } from './components/search/SearchResultsView';
 import { Course, Category, Session, Quiz, Enrollment, BlogPost } from './types';
 import AOS from 'aos';
 import 'aos/dist/aos.css';
 import {
   getCategories,
   getCourses,
+  getCourseById,
   getSessionsByCourse,
   resolveSessionFromRoute,
   getQuizById,
@@ -229,6 +231,11 @@ function MainApp() {
         setSearchQuery(route.searchQuery);
       }
 
+      if (route.view === 'search') {
+        setCurrentView('search');
+        return;
+      }
+
       if (route.view === 'blog-detail') {
         const slugOrId = route.blogPostSlug || route.blogPostId;
         if (postsList.length > 0) {
@@ -259,10 +266,14 @@ function MainApp() {
       }
 
       if (route.view === 'course-detail') {
-        if (coursesList.length > 0 && route.courseId) {
+        if (route.courseId) {
           const foundCourse = coursesList.find(c => c.id === route.courseId);
           if (foundCourse) {
             setSelectedCourse(foundCourse);
+          } else {
+            getCourseById(route.courseId).then(c => {
+              if (c) setSelectedCourse(c);
+            });
           }
         }
         setCurrentView('course-detail');
@@ -400,7 +411,7 @@ function MainApp() {
       navigateTo({
         view,
         filterCategoryId: view === 'courses' ? filterCategoryIdRef.current : 'all',
-        searchQuery: view === 'courses' ? searchQueryRef.current : ''
+        searchQuery: view === 'courses' || view === 'search' ? searchQueryRef.current : ''
       });
     },
     [navigateTo]
@@ -557,7 +568,16 @@ function MainApp() {
         (window.location.pathname.startsWith('/session/') ||
           new URLSearchParams(window.location.search).has('session') ||
           new URLSearchParams(window.location.search).has('sessionId'));
+
+      const directRouteCourseId = typeof window !== 'undefined'
+        ? parseUrlToRouteState(window.location.pathname, window.location.search)?.courseId
+        : null;
+
       setSelectedCourse(prev => {
+        if (directRouteCourseId) {
+          const directMatched = crss.find(c => c.id === directRouteCourseId);
+          if (directMatched) return directMatched;
+        }
         if (prev) {
           const updatedCourse = crss.find(c => c.id === prev.id);
           if (updatedCourse) return updatedCourse;
@@ -809,8 +829,6 @@ function MainApp() {
                 setMobileOpen={setMobileMenuOpen}
                 isCollapsed={isSidebarCollapsed}
                 setIsCollapsed={setIsSidebarCollapsed}
-                searchQuery={searchQuery}
-                setSearchQuery={setSearchQuery}
                 onOpenWelcomeModal={handleOpenWelcomeModal}
               />
 
@@ -851,8 +869,10 @@ function MainApp() {
                         navigateTo({ view: 'courses' });
                       }}
                       onSearch={(query) => {
-                        setSearchQuery(query);
+                        const clean = query.trim();
+                        setSearchQuery(clean);
                         setFilterCategoryId('all');
+                        navigateTo({ view: 'search', searchQuery: clean });
                       }}
                       onSelectCategory={(catId) => {
                         setFilterCategoryId(catId);
@@ -1117,6 +1137,47 @@ function MainApp() {
                       onEditInAdmin={() => {
                         setAdminInitialTab('instructor-profile');
                         navigateTo({ view: 'admin-dashboard' });
+                      }}
+                    />
+                  )}
+
+                  {/* VIEW 12: SEARCH RESULTS */}
+                  {currentView === 'search' && (
+                    <SearchResultsView
+                      query={searchQuery}
+                      courses={courses}
+                      categories={categories}
+                      blogPosts={blogPosts}
+                      onSelectCourse={handleSelectCourse}
+                      onSelectSession={(course, session) => {
+                        setSelectedCourse(course);
+                        setSelectedSession(session);
+                        loadCourseSessions(course.id, false, false);
+                        navigateTo({
+                          view: 'session-view',
+                          courseId: course.id,
+                          sessionId: session.id
+                        });
+                      }}
+                      onSelectBlogPost={(post) => {
+                        handleSelectBlogPost(post);
+                      }}
+                      onSelectQA={(qaId) => {
+                        setTargetQaId(qaId);
+                        navigateTo({ view: 'public-qa', qaId });
+                      }}
+                      onBackToHome={() => {
+                        navigateTo({ view: 'home' });
+                      }}
+                      onExploreCourses={() => {
+                        navigateTo({ view: 'courses' });
+                      }}
+                      onExploreBlog={() => {
+                        navigateTo({ view: 'blog' });
+                      }}
+                      onSearchChange={(newQuery) => {
+                        setSearchQuery(newQuery);
+                        navigateTo({ view: 'search', searchQuery: newQuery });
                       }}
                     />
                   )}

@@ -133,7 +133,18 @@ export function parseUrlToRouteState(pathname: string, search: string): DarsRout
     };
   }
 
-  if (urlView === 'course-detail') {
+  if (cleanPath.startsWith('/course/')) {
+    const rawCourse = cleanPath.slice('/course/'.length).replace(/\/+$/, '');
+    const courseId = rawCourse ? decodeURIComponent(rawCourse) : urlCourseId;
+    return {
+      view: 'course-detail',
+      courseId: courseId || null,
+      filterCategoryId,
+      searchQuery
+    };
+  }
+
+  if (urlView === 'course-detail' || (urlCourseId && !urlSessionParam && (!urlView || urlView === 'courses'))) {
     return {
       view: 'course-detail',
       courseId: urlCourseId,
@@ -150,6 +161,14 @@ export function parseUrlToRouteState(pathname: string, search: string): DarsRout
       quizId: urlQuizId,
       filterCategoryId,
       searchQuery
+    };
+  }
+
+  if (cleanPath === '/search' || urlView === 'search') {
+    return {
+      view: 'search',
+      searchQuery,
+      filterCategoryId
     };
   }
 
@@ -265,6 +284,15 @@ export function buildUrlFromRouteState(route: DarsRouteState): string {
     case 'admin-dashboard':
       return '/?view=admin-dashboard';
 
+    case 'search': {
+      const params = new URLSearchParams();
+      params.set('view', 'search');
+      if (route.searchQuery && route.searchQuery.trim()) {
+        params.set('q', route.searchQuery.trim());
+      }
+      return `/?${params.toString()}`;
+    }
+
     default:
       return `/?view=${encodeURIComponent(route.view)}`;
   }
@@ -278,6 +306,8 @@ export function isSameRouteState(a: DarsRouteState, b: DarsRouteState): boolean 
   if (a.view !== b.view) return false;
 
   switch (a.view) {
+    case 'search':
+      return (a.searchQuery || '').trim().toLowerCase() === (b.searchQuery || '').trim().toLowerCase();
     case 'blog-detail': {
       const aKey = a.blogPostSlug || a.blogPostId || '';
       const bKey = b.blogPostSlug || b.blogPostId || '';

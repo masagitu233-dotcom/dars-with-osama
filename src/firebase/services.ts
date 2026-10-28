@@ -1064,22 +1064,55 @@ export async function isSessionQuizSatisfied(
 ): Promise<{ satisfied: boolean; reason?: string; quiz?: Quiz | null }> {
   try {
     const session = await getSessionById(sessionId, courseId);
-    if (!session || !session.quizId) {
+    if (!session) {
       return { satisfied: true };
     }
 
-    const quiz = await getQuizById(session.quizId);
-    if (!quiz || quiz.isPublished === false) {
-      return { satisfied: true, quiz: quiz || null };
+    const attempts = await getUserQuizAttempts(userId);
+
+    // 1. Strict sequential validation: verify all preceding sessions in this course have satisfied quizzes
+    try {
+      const courseSessions = await getSessionsByCourse(courseId);
+      if (courseSessions && courseSessions.length > 0) {
+        const sorted = [...courseSessions].sort((a, b) => (a.order || 0) - (b.order || 0));
+        const targetIdx = sorted.findIndex(s => s.id === sessionId);
+        if (targetIdx > 0) {
+          const preceding = sorted.slice(0, targetIdx);
+          for (const prev of preceding) {
+            if (prev.quizId && prev.quizId.trim().length > 0) {
+              const prevQuiz = await getQuizById(prev.quizId);
+              if (prevQuiz && prevQuiz.isPublished !== false) {
+                const prevCheck = canCompleteSession(prev, prevQuiz, attempts);
+                if (!prevCheck.allowed) {
+                  return {
+                    satisfied: false,
+                    reason: `Kuis pada sesi sebelumnya (${prev.title}) belum diselesaikan atau belum lulus. Pembelajaran harus diselesaikan secara berurutan.`,
+                    quiz: prevQuiz
+                  };
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Preceding session quiz validation check skipped:', e);
     }
 
-    const attempts = await getUserQuizAttempts(userId);
-    const check = canCompleteSession(session, quiz, attempts);
-    return {
-      satisfied: check.allowed,
-      reason: check.reason,
-      quiz
-    };
+    // 2. Validate current session quiz
+    if (session.quizId && session.quizId.trim().length > 0) {
+      const quiz = await getQuizById(session.quizId);
+      if (quiz && quiz.isPublished !== false) {
+        const check = canCompleteSession(session, quiz, attempts);
+        return {
+          satisfied: check.allowed,
+          reason: check.reason,
+          quiz
+        };
+      }
+    }
+
+    return { satisfied: true };
   } catch (err) {
     console.warn('isSessionQuizSatisfied verification notice:', err);
     return { satisfied: true };

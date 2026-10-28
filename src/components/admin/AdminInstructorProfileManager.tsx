@@ -36,6 +36,8 @@ import {
 import { RichTextEditor } from './RichTextEditor';
 import { InstructorProfileView } from '../profile/InstructorProfileView';
 import { ConfirmModal } from '../common/ConfirmModal';
+import { ResilientGoogleDriveImage } from '../common/ResilientGoogleDriveImage';
+import { isGoogleDriveUrl, getGoogleDriveViewerUrl } from '../../utils/googleDriveHelper';
 
 interface AdminInstructorProfileManagerProps {
   onOpenPublicProfile?: () => void;
@@ -470,10 +472,12 @@ export const AdminInstructorProfileManager: React.FC<AdminInstructorProfileManag
               <div className="p-4 bg-[#FAF7F0] dark:bg-[#243A56] rounded-lg border-2 border-[#292D2B] dark:border-[#34465D] flex flex-col items-center space-y-3">
                 <div className="w-36 h-36 rounded-lg overflow-hidden bg-[#123D32] dark:bg-[#101B2D] text-[#D6AD52] border-2 border-[#292D2B] shadow-[4px_4px_0px_#292D2B] flex items-center justify-center">
                   {formData.photoUrl ? (
-                    <img
+                    <ResilientGoogleDriveImage
                       src={formData.photoUrl}
                       alt={formData.name}
-                      className="w-full h-full object-cover"
+                      aspectRatioClass="w-full h-full"
+                      isAdmin={true}
+                      showAdminDiagnostic={true}
                     />
                   ) : (
                     <span className="font-serif-brand text-3xl font-extrabold">ON</span>
@@ -768,6 +772,12 @@ export const AdminInstructorProfileManager: React.FC<AdminInstructorProfileManag
                     + URL
                   </button>
                 </div>
+                {isGoogleDriveUrl(newSupportingUrl) && (
+                  <p className="text-[10px] text-[#123D32] dark:text-[#D6AD52] font-bold mt-1 flex items-center gap-1">
+                    <CheckCircle className="w-3 h-3 text-[#123D32] dark:text-[#D6AD52]" />
+                    <span>Tautan Google Drive terdeteksi. Sistem akan mengonversi ke format gambar langsung.</span>
+                  </p>
+                )}
               </div>
 
               <div>
@@ -795,7 +805,13 @@ export const AdminInstructorProfileManager: React.FC<AdminInstructorProfileManag
                     className="rounded-lg border-2 border-[#292D2B] dark:border-[#34465D] bg-[#FAF7F0] dark:bg-[#243A56] overflow-hidden flex flex-col justify-between shadow-[3px_3px_0px_#292D2B] dark:shadow-[3px_3px_0px_#34465D]"
                   >
                     <div className="aspect-video w-full bg-white dark:bg-[#16263D] overflow-hidden border-b-2 border-[#292D2B] dark:border-[#34465D]">
-                      <img src={img.url} alt={img.caption || 'Pendukung'} className="w-full h-full object-cover" />
+                      <ResilientGoogleDriveImage
+                        src={img.url}
+                        alt={img.caption || 'Pendukung'}
+                        isAdmin={true}
+                        showAdminDiagnostic={true}
+                        aspectRatioClass="aspect-video"
+                      />
                     </div>
                     <div className="p-3 space-y-2">
                       <input
@@ -813,6 +829,21 @@ export const AdminInstructorProfileManager: React.FC<AdminInstructorProfileManag
                         placeholder="Keterangan gambar..."
                         className="nb-input w-full px-2.5 py-1.5 text-xs"
                       />
+
+                      {isGoogleDriveUrl(img.url) && (
+                        <div className="flex items-center justify-between text-[10px] text-[#626A66] dark:text-[#B4C0D0] pt-0.5">
+                          <span className="font-extrabold text-[#123D32] dark:text-[#D6AD52]">Google Drive</span>
+                          <a
+                            href={getGoogleDriveViewerUrl(img.url)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 hover:underline text-[#243A56] dark:text-[#D6AD52] font-bold"
+                          >
+                            <ExternalLink className="w-2.5 h-2.5" />
+                            <span>Buka Link Asli</span>
+                          </a>
+                        </div>
+                      )}
 
                       <div className="flex items-center justify-between gap-2">
                         <label className="nb-btn nb-btn-secondary flex-1 text-center py-1.5 px-2 text-[11px] justify-center">
@@ -899,6 +930,11 @@ export const AdminInstructorProfileManager: React.FC<AdminInstructorProfileManag
                       placeholder="Atau tempel URL gambar..."
                       className="nb-input w-full px-3 py-1.5 text-xs"
                     />
+                    {isGoogleDriveUrl(editingSection.imageUrl) && (
+                      <p className="text-[10px] text-[#123D32] dark:text-[#D6AD52] font-bold">
+                        ✓ Tautan Google Drive terdeteksi.
+                      </p>
+                    )}
                     <input
                       type="text"
                       value={editingSection.imageCaption || ''}
@@ -910,7 +946,13 @@ export const AdminInstructorProfileManager: React.FC<AdminInstructorProfileManag
                   <div className="aspect-video rounded-md bg-white dark:bg-[#16263D] overflow-hidden flex items-center justify-center relative border-2 border-[#292D2B] dark:border-[#34465D]">
                     {editingSection.imageUrl ? (
                       <>
-                        <img src={editingSection.imageUrl} alt="Bagian" className="w-full h-full object-cover" />
+                        <ResilientGoogleDriveImage
+                          src={editingSection.imageUrl}
+                          alt="Bagian"
+                          aspectRatioClass="w-full h-full"
+                          isAdmin={true}
+                          showAdminDiagnostic={true}
+                        />
                         <button
                           type="button"
                           onClick={() => setEditingSection(prev => (prev ? { ...prev, imageUrl: '' } : null))}

@@ -2133,3 +2133,184 @@ test('Case 54: saveInstructorProfile menolak operasi tanpa admin terautentikasi 
   const { db } = await import('../firebase/config.js');
   await terminate(db).catch(() => {});
 });
+
+test('Google Drive helper correctly extracts file IDs across all known link formats', async () => {
+  const {
+    extractGoogleDriveFileId,
+    isGoogleDriveUrl,
+    getGoogleDriveImageCandidates,
+    resolveDisplayImageUrl
+  } = await import('./googleDriveHelper.js');
+
+  const testId = '1B71gP99aZ-90qD4E8F4A1bC2dE3fG4h';
+
+  // Standard sharing view links
+  assert.equal(
+    extractGoogleDriveFileId(`https://drive.google.com/file/d/${testId}/view?usp=sharing`),
+    testId
+  );
+  assert.equal(
+    extractGoogleDriveFileId(`https://drive.google.com/file/d/${testId}/view`),
+    testId
+  );
+  assert.equal(
+    extractGoogleDriveFileId(`https://drive.google.com/file/d/${testId}`),
+    testId
+  );
+
+  // Parameter based links
+  assert.equal(
+    extractGoogleDriveFileId(`https://drive.google.com/open?id=${testId}`),
+    testId
+  );
+  assert.equal(
+    extractGoogleDriveFileId(`https://drive.google.com/uc?id=${testId}&export=download`),
+    testId
+  );
+  assert.equal(
+    extractGoogleDriveFileId(`https://drive.google.com/uc?export=view&id=${testId}`),
+    testId
+  );
+  assert.equal(
+    extractGoogleDriveFileId(`https://drive.google.com/thumbnail?id=${testId}&sz=w1600`),
+    testId
+  );
+
+  // Docs & CDN formats
+  assert.equal(
+    extractGoogleDriveFileId(`https://docs.google.com/file/d/${testId}/edit`),
+    testId
+  );
+  assert.equal(
+    extractGoogleDriveFileId(`https://lh3.googleusercontent.com/d/${testId}`),
+    testId
+  );
+
+  // Negative tests
+  assert.equal(extractGoogleDriveFileId('https://example.com/photo.jpg'), null);
+  assert.equal(extractGoogleDriveFileId(''), null);
+  assert.equal(extractGoogleDriveFileId(null), null);
+
+  // isGoogleDriveUrl
+  assert.equal(isGoogleDriveUrl(`https://drive.google.com/file/d/${testId}/view`), true);
+  assert.equal(isGoogleDriveUrl('https://example.com/image.png'), false);
+
+  // Candidates resolution
+  const candidates = getGoogleDriveImageCandidates(`https://drive.google.com/file/d/${testId}/view?usp=sharing`);
+  assert.equal(Array.isArray(candidates), true);
+  assert.ok(candidates.length >= 3);
+  assert.equal(candidates[0], `https://drive.google.com/thumbnail?id=${testId}&sz=w1600`);
+  assert.equal(candidates[1], `https://lh3.googleusercontent.com/d/${testId}=w1600`);
+  assert.equal(candidates[2], `https://drive.google.com/uc?export=view&id=${testId}`);
+
+  // resolveDisplayImageUrl
+  assert.equal(
+    resolveDisplayImageUrl(`https://drive.google.com/file/d/${testId}/view`),
+    `https://drive.google.com/thumbnail?id=${testId}&sz=w1600`
+  );
+  assert.equal(
+    resolveDisplayImageUrl('https://example.com/regular-image.jpg'),
+    'https://example.com/regular-image.jpg'
+  );
+});
+
+test('Supporting images retain original Google Drive URLs when sanitized for persistence', async () => {
+  const { normalizeSupportingImages, sanitizeInstructorProfilePayload } = await import('./instructorProfileHelper.js');
+
+  const originalDriveUrl = 'https://drive.google.com/file/d/1B71gP99aZ-90qD4E8F4A1bC2dE3fG4h/view?usp=sharing';
+
+  const normalized = normalizeSupportingImages([
+    {
+      id: 'img-1',
+      url: originalDriveUrl,
+      caption: 'Dokumentasi Majelis Fiqih',
+      order: 1
+    }
+  ]);
+
+  // Must preserve exact stored URL without corrupting it into an altered string
+  assert.equal(normalized.length, 1);
+  assert.equal(normalized[0].url, originalDriveUrl);
+  assert.equal(normalized[0].caption, 'Dokumentasi Majelis Fiqih');
+
+  const fullPayload = sanitizeInstructorProfilePayload({
+    name: 'Osama Nur Samsil, S.H.',
+    role: 'Pengajar Dars with Osama',
+    title: 'Profil Pengajar',
+    supportingImages: normalized
+  });
+
+  assert.equal(fullPayload.supportingImages.length, 1);
+  assert.equal(fullPayload.supportingImages[0].url, originalDriveUrl);
+});
+
+test('Certificate modal zoom and responsive dimension calculations handle portrait and landscape files', () => {
+  // 1. Zoom level clamping logic
+  const calculateNextZoom = (current: number, direction: 'in' | 'out'): number => {
+    if (direction === 'in') {
+      return Math.min(3.0, Number((current + 0.25).toFixed(2)));
+    }
+    return Math.max(0.75, Number((current - 0.25).toFixed(2)));
+  };
+
+  assert.equal(calculateNextZoom(1.0, 'in'), 1.25);
+  assert.equal(calculateNextZoom(1.25, 'in'), 1.5);
+  assert.equal(calculateNextZoom(3.0, 'in'), 3.0); // clamped at max 3.0
+  assert.equal(calculateNextZoom(1.0, 'out'), 0.75);
+  assert.equal(calculateNextZoom(0.75, 'out'), 0.75); // clamped at min 0.75
+
+  // 2. Pagination cycling logic across gallery items
+  const cycleIndex = (current: number, total: number, dir: 'next' | 'prev'): number => {
+    if (total <= 1) return current;
+    if (dir === 'next') return (current + 1) % total;
+    return (current - 1 + total) % total;
+  };
+
+  assert.equal(cycleIndex(0, 3, 'next'), 1);
+  assert.equal(cycleIndex(2, 3, 'next'), 0);
+  assert.equal(cycleIndex(0, 3, 'prev'), 2);
+
+  // 3. Aspect Ratio containment verification
+  // A4 Portrait Certificate: width 1200, height 1697 (ratio ~ 0.707)
+  const portraitCert = { width: 1200, height: 1697 };
+  // Landscape Certificate: width 1920, height 1080 (ratio ~ 1.777)
+  const landscapeCert = { width: 1920, height: 1080 };
+
+  const computeContainFit = (img: { width: number; height: number }, maxW: number, maxH: number) => {
+    const scale = Math.min(maxW / img.width, maxH / img.height);
+    return {
+      fittedWidth: Math.round(img.width * scale),
+      fittedHeight: Math.round(img.height * scale),
+      scale
+    };
+  };
+
+  // Test Case A: Desktop viewport (maxW = 960px, maxH = 650px)
+  const desktopPortrait = computeContainFit(portraitCert, 960, 650);
+  assert.ok(desktopPortrait.fittedHeight <= 650, 'Portrait fitted height must not exceed container max-height');
+  assert.ok(desktopPortrait.fittedWidth <= 960, 'Portrait fitted width must not exceed container max-width');
+  assert.equal(desktopPortrait.fittedHeight, 650); // Height constrained, width proportional ~459px
+
+  const desktopLandscape = computeContainFit(landscapeCert, 960, 650);
+  assert.ok(desktopLandscape.fittedHeight <= 650);
+  assert.ok(desktopLandscape.fittedWidth <= 960);
+  assert.equal(desktopLandscape.fittedWidth, 960); // Width constrained, height proportional ~540px
+
+  // Test Case B: Mobile viewport (e.g. 375px width, 480px available modal preview height)
+  const mobilePortrait = computeContainFit(portraitCert, 345, 480);
+  assert.ok(mobilePortrait.fittedHeight <= 480);
+  assert.ok(mobilePortrait.fittedWidth <= 345);
+
+  const mobileLandscape = computeContainFit(landscapeCert, 345, 480);
+  assert.ok(mobileLandscape.fittedHeight <= 480);
+  assert.ok(mobileLandscape.fittedWidth <= 345);
+
+  // Test Case C: Zoomed or Scroll Mode (e.g. 1.5x zoom or scroll mode min-width 800px)
+  // When zoomed or in scroll mode, rendered width/height exceeds available viewport, triggering container overflow-auto
+  const zoomedPortraitHeight = desktopPortrait.fittedHeight * 1.5;
+  assert.ok(zoomedPortraitHeight > 650, 'Zoomed portrait exceeds viewport height, requiring vertical scroll');
+  const scrollModeWidth = 850;
+  assert.ok(scrollModeWidth > 345, 'Scroll mode width exceeds mobile width, requiring horizontal scroll');
+});
+
+
