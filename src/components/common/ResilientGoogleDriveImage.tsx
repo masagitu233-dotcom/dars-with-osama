@@ -10,6 +10,7 @@ import {
 export interface ResilientGoogleDriveImageProps {
   src: string;
   alt: string;
+  fallbackSrc?: string;
   className?: string;
   imageClassName?: string;
   isAdmin?: boolean;
@@ -38,6 +39,7 @@ export interface ResilientGoogleDriveImageProps {
 export const ResilientGoogleDriveImage: React.FC<ResilientGoogleDriveImageProps> = ({
   src,
   alt,
+  fallbackSrc,
   className = '',
   imageClassName = '',
   isAdmin = false,
@@ -55,8 +57,16 @@ export const ResilientGoogleDriveImage: React.FC<ResilientGoogleDriveImageProps>
   onClick
 }) => {
   const isDrive = useMemo(() => isGoogleDriveUrl(src), [src]);
-  const candidates = useMemo(() => getGoogleDriveImageCandidates(src), [src]);
   const fileId = useMemo(() => extractGoogleDriveFileId(src), [src]);
+
+  const candidates = useMemo(() => {
+    const list = getGoogleDriveImageCandidates(src);
+    // If fallbackSrc is provided and caller is not asking for admin diagnostic, add fallbackSrc to candidate chain
+    if (fallbackSrc && fallbackSrc.trim() && !list.includes(fallbackSrc.trim()) && !showAdminDiagnostic && !isAdmin) {
+      list.push(fallbackSrc.trim());
+    }
+    return list;
+  }, [src, fallbackSrc, showAdminDiagnostic, isAdmin]);
 
   const [candidateIndex, setCandidateIndex] = useState<number>(0);
   const [hasFailedAll, setHasFailedAll] = useState<boolean>(false);

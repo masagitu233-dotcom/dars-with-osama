@@ -134,3 +134,259 @@ export function getGoogleDriveViewerUrl(fileIdOrUrl: string): string {
   const fileId = extractGoogleDriveFileId(fileIdOrUrl) || fileIdOrUrl.trim();
   return `https://drive.google.com/file/d/${fileId}/view?usp=sharing`;
 }
+
+export interface ArticleImageValidationResult {
+  isValid: boolean;
+  isGoogleDrive: boolean;
+  fileId: string | null;
+  directUrl: string;
+  originalUrl: string;
+  warning?: string;
+  error?: string;
+}
+
+/**
+ * Validates an image URL for an article (thumbnail or inline image).
+ * Differentiates Google Drive sharing/preview URLs from direct renderable image endpoints.
+ */
+export function validateArticleImageSource(rawUrl: string | null | undefined): ArticleImageValidationResult {
+  if (!rawUrl || typeof rawUrl !== 'string') {
+    return {
+      isValid: false,
+      isGoogleDrive: false,
+      fileId: null,
+      directUrl: '',
+      originalUrl: '',
+      error: 'URL gambar tidak boleh kosong.'
+    };
+  }
+
+  const trimmed = rawUrl.trim();
+  if (!trimmed) {
+    return {
+      isValid: false,
+      isGoogleDrive: false,
+      fileId: null,
+      directUrl: '',
+      originalUrl: '',
+      error: 'URL gambar tidak boleh kosong.'
+    };
+  }
+
+  const isDrive = isGoogleDriveUrl(trimmed);
+  if (isDrive) {
+    const fileId = extractGoogleDriveFileId(trimmed);
+    if (!fileId) {
+      return {
+        isValid: false,
+        isGoogleDrive: true,
+        fileId: null,
+        directUrl: '',
+        originalUrl: trimmed,
+        error: 'Format tautan Google Drive tidak valid atau ID berkas tidak ditemukan. Pastikan tautan berbentuk https://drive.google.com/file/d/FILE_ID/view.'
+      };
+    }
+
+    const directUrl = resolveDisplayImageUrl(trimmed);
+    return {
+      isValid: true,
+      isGoogleDrive: true,
+      fileId,
+      directUrl,
+      originalUrl: trimmed,
+      warning: 'Pastikan setelan berbagi di Google Drive telah diatur ke "Siapa saja yang memiliki link" (Anyone with the link) agar gambar dapat tampil untuk seluruh pengunjung.'
+    };
+  }
+
+  // Non-Google Drive URL
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      return {
+        isValid: true,
+        isGoogleDrive: false,
+        fileId: null,
+        directUrl: trimmed,
+        originalUrl: trimmed
+      };
+    }
+  } catch {
+    // If relative or data URL
+    if (trimmed.startsWith('/') || trimmed.startsWith('data:image/')) {
+      return {
+        isValid: true,
+        isGoogleDrive: false,
+        fileId: null,
+        directUrl: trimmed,
+        originalUrl: trimmed
+      };
+    }
+  }
+
+  return {
+    isValid: false,
+    isGoogleDrive: false,
+    fileId: null,
+    directUrl: '',
+    originalUrl: trimmed,
+    error: 'Format URL tidak valid. Gunakan tautan yang diawali http:// atau https://.'
+  };
+}
+
+/**
+ * Normalizes all <img> elements inside article HTML content:
+ * - Detects Google Drive sharing links in src
+ * - Converts them automatically to high-resolution direct image endpoints
+ * - Stores the original URL in data-original-src for data preservation
+ * - Injects data-drive-id for runtime fallback cascading
+ * - Ensures responsive styling: w-full h-auto max-w-full rounded-lg border-2 border-[#171717] dark:border-[#4CA7A1]
+ * - Ensures lazy loading
+ */
+export function normalizeArticleHtmlImages(rawHtml: string): string {
+  if (!rawHtml || typeof rawHtml !== 'string') return '';
+
+  return rawHtml.replace(/<img\b([^>]*)\/?>/gi, (_fullMatch, rawAttrs: string) => {
+    // Extract src
+    const srcMatch = rawAttrs.match(/src\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i);
+    const rawSrc = srcMatch ? (srcMatch[1] ?? srcMatch[2] ?? srcMatch[3] ?? '') : '';
+    const decodedSrc = rawSrc.replace(/&amp;/g, '&');
+
+    if (!decodedSrc) {
+      return '';
+    }
+
+    // Extract alt
+    const altMatch = rawAttrs.match(/alt\s*=\s*(?:"([^"]*)"|'([^']*)')/i);
+    const altText = altMatch ? (altMatch[1] ?? altMatch[2] ?? '') : 'Gambar Artikel';
+
+    // Extract caption / title if present
+    const titleMatch = rawAttrs.match(/title\s*=\s*(?:"([^"]*)"|'([^']*)')/i);
+    const titleAttr = titleMatch ? ` title="${titleMatch[1] ?? titleMatch[2] ?? ''}"` : '';
+
+    // Check if Google Drive
+    const isDrive = isGoogleDriveUrl(decodedSrc);
+    const fileId = extractGoogleDriveFileId(decodedSrc);
+
+    let finalSrc = decodedSrc;
+    let driveAttrs = '';
+
+    if (isDrive && fileId) {
+      finalSrc = `https://drive.google.com/thumbnail?id=${fileId}&sz=w1600`;
+      driveAttrs = ` data-drive-id="${fileId}" data-original-src="${decodedSrc.replace(/"/g, '&quot;')}"`;
+    }
+
+    // Check existing classes or apply responsive classes
+    const classMatch = rawAttrs.match(/class\s*=\s*(?:"([^"]*)"|'([^']*)')/i);
+    let classVal = classMatch ? (classMatch[1] ?? classMatch[2] ?? '') : '';
+
+    if (!classVal) {
+      classVal = 'w-full h-auto max-w-full rounded-lg border-2 border-[#171717] dark:border-[#4CA7A1] my-2 shadow-xs';
+    } else {
+      // Ensure max-w-full and h-auto are present for mobile responsiveness
+      if (!classVal.includes('max-w-full')) classVal += ' max-w-full';
+      if (!classVal.includes('h-auto')) classVal += ' h-auto';
+    }
+
+    return `<img src="${finalSrc.replace(/"/g, '&quot;')}" alt="${altText.replace(/"/g, '&quot;')}" class="${classVal.replace(/"/g, '&quot;')}" loading="lazy"${driveAttrs}${titleAttr} />`;
+  });
+}
+
+/**
+ * Extracts metadata for all images found inside article HTML content.
+ */
+export function extractArticleImages(html: string): Array<{
+  src: string;
+  isDrive: boolean;
+  fileId: string | null;
+  alt: string;
+}> {
+  if (!html || typeof html !== 'string') return [];
+  const results: Array<{ src: string; isDrive: boolean; fileId: string | null; alt: string }> = [];
+
+  const regex = /<img\b([^>]*)\/?>/gi;
+  let match: RegExpExecArray | null;
+
+  while ((match = regex.exec(html)) !== null) {
+    const rawAttrs = match[1] || '';
+    const srcMatch = rawAttrs.match(/src\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i);
+    const rawSrc = srcMatch ? (srcMatch[1] ?? srcMatch[2] ?? srcMatch[3] ?? '').replace(/&amp;/g, '&') : '';
+
+    const altMatch = rawAttrs.match(/alt\s*=\s*(?:"([^"]*)"|'([^']*)')/i);
+    const alt = altMatch ? (altMatch[1] ?? altMatch[2] ?? '') : '';
+
+    if (rawSrc) {
+      results.push({
+        src: rawSrc,
+        isDrive: isGoogleDriveUrl(rawSrc),
+        fileId: extractGoogleDriveFileId(rawSrc),
+        alt
+      });
+    }
+  }
+
+  return results;
+}
+
+/**
+ * Tests in the browser if an image URL can be loaded successfully.
+ * Attempts candidate URLs sequentially if candidate is Google Drive.
+ */
+export async function testLoadImage(
+  rawUrl: string,
+  timeoutMs = 7000
+): Promise<{ success: boolean; resolvedUrl?: string; error?: string }> {
+  if (typeof window === 'undefined' || typeof Image === 'undefined') {
+    return { success: true, resolvedUrl: rawUrl };
+  }
+
+  const candidates = getGoogleDriveImageCandidates(rawUrl);
+  if (candidates.length === 0) {
+    return { success: false, error: 'URL tidak valid.' };
+  }
+
+  for (const candidate of candidates) {
+    const outcome = await new Promise<boolean>((resolve) => {
+      const img = new Image();
+      let finished = false;
+
+      const timer = setTimeout(() => {
+        if (!finished) {
+          finished = true;
+          img.onload = null;
+          img.onerror = null;
+          resolve(false);
+        }
+      }, timeoutMs);
+
+      img.onload = () => {
+        if (!finished) {
+          finished = true;
+          clearTimeout(timer);
+          resolve(true);
+        }
+      };
+
+      img.onerror = () => {
+        if (!finished) {
+          finished = true;
+          clearTimeout(timer);
+          resolve(false);
+        }
+      };
+
+      img.src = candidate;
+    });
+
+    if (outcome) {
+      return { success: true, resolvedUrl: candidate };
+    }
+  }
+
+  const isDrive = isGoogleDriveUrl(rawUrl);
+  const errorMsg = isDrive
+    ? 'Gambar tidak dapat dimuat dari Google Drive. Pastikan setelan berbagi di Google Drive telah diatur ke "Siapa saja yang memiliki link" (Anyone with the link).'
+    : 'Gambar tidak dapat dimuat dari tautan yang diberikan. Periksa kembali keabsahan URL.';
+
+  return { success: false, error: errorMsg };
+}
+

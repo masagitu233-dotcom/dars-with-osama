@@ -22,6 +22,8 @@ import { useQASEO } from '../../hooks/useQASEO';
 import { ServiceDisruptionBanner } from '../common/ServiceDisruptionBanner';
 import { canAttemptRetry, DEFAULT_RETRY_COOLDOWN_SECONDS } from '../../utils/serviceDisruptionHelper';
 import { ReadingFontControls, useReadingFontSize } from '../common/ReadingFontControls';
+import { FeatureShareModal } from '../common/FeatureShareModal';
+import { TANYA_JAWAB_SHARE_CONFIG } from '../../utils/featureShareHelper';
 
 interface PublicQAViewProps {
   onNavigateToConsultation: () => void;
@@ -50,6 +52,7 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
   const [isRetrying, setIsRetrying] = useState<boolean>(false);
 
   const [shareModalOpen, setShareModalOpen] = useState<boolean>(false);
+  const [featureShareModalOpen, setFeatureShareModalOpen] = useState<boolean>(false);
   const [selectedQaForShare, setSelectedQaForShare] = useState<Consultation | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -170,13 +173,24 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
             Kumpulan pertanyaan dan jawaban resmi seputar kajian, kitab turats, serta fiqih pembelajaran yang telah disetujui dan diverifikasi oleh Ustaz & Pembimbing Dars with Osama.
           </p>
 
-          <div className="pt-2 flex flex-wrap items-center gap-4">
+          <div className="pt-2 flex flex-wrap items-center gap-3">
             <button
               onClick={handleAskQuestion}
               className="px-5 py-2.5 text-xs font-extrabold uppercase tracking-wider rounded-md border-2 border-[#171717] dark:border-[#001722] bg-[#4CA7A1] hover:bg-[#5EBEB7] text-[#001722] shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#001722] transition-all inline-flex items-center gap-2 cursor-pointer"
             >
               <Send className="w-4 h-4" />
               <span>Ajukan Pertanyaan Baru</span>
+            </button>
+
+            <button
+              type="button"
+              data-testid="share-qa-page-btn"
+              onClick={() => setFeatureShareModalOpen(true)}
+              className="px-5 py-2.5 text-xs font-extrabold uppercase tracking-wider rounded-md border-2 border-[#171717] dark:border-[#001722] bg-[#D6AD52] hover:bg-[#E5BE65] text-[#171923] shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#001722] transition-all inline-flex items-center gap-2 cursor-pointer"
+              title="Bagikan tautan halaman utama Tanya Jawab"
+            >
+              <Share2 className="w-4 h-4 text-[#171923]" />
+              <span>Bagikan Tanya Jawab</span>
             </button>
 
             <div className="flex items-center gap-1.5 text-xs text-[#CEFEF1] font-bold">
@@ -503,11 +517,18 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
         </button>
       </div>
 
-      {/* SHARE MODAL */}
+      {/* INDIVIDUAL QA SHARE MODAL */}
       <ShareQAModal
         isOpen={shareModalOpen}
         onClose={() => setShareModalOpen(false)}
         consultation={selectedQaForShare}
+      />
+
+      {/* MAIN FEATURE SHARE MODAL (TANYA JAWAB) */}
+      <FeatureShareModal
+        isOpen={featureShareModalOpen}
+        onClose={() => setFeatureShareModalOpen(false)}
+        config={TANYA_JAWAB_SHARE_CONFIG}
       />
     </div>
   );

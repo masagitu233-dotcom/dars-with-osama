@@ -186,6 +186,35 @@ export function parseUrlToRouteState(pathname: string, search: string): DarsRout
     };
   }
 
+  if (
+    cleanPath === '/artikel' ||
+    cleanPath === '/artikel/' ||
+    cleanPath === '/blog' ||
+    cleanPath === '/blog/' ||
+    urlView === 'blog'
+  ) {
+    return {
+      view: 'blog',
+      filterCategoryId,
+      searchQuery
+    };
+  }
+
+  if (
+    cleanPath === '/tanya-jawab' ||
+    cleanPath === '/tanya-jawab/' ||
+    cleanPath === '/qa' ||
+    cleanPath === '/qa/' ||
+    urlView === 'public-qa'
+  ) {
+    return {
+      view: 'public-qa',
+      qaId: urlQaId,
+      filterCategoryId,
+      searchQuery
+    };
+  }
+
   if (urlView) {
     return {
       view: urlView,

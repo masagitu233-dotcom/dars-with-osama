@@ -2313,4 +2313,173 @@ test('Certificate modal zoom and responsive dimension calculations handle portra
   assert.ok(scrollModeWidth > 345, 'Scroll mode width exceeds mobile width, requiring horizontal scroll');
 });
 
+test('Feature sharing configuration for Artikel Ilmiah produces exact required narration and direct main page URL', async () => {
+  const {
+    ARTIKEL_ILMIAH_SHARE_CONFIG,
+    getFeatureShareUrl,
+    formatFeatureShareMessage,
+    getWhatsAppShareUrl
+  } = await import('./featureShareHelper.js');
 
+  const expectedNarration =
+    'Mari menambah wawasan dan memperluas pemahaman terhadap berbagai persoalan keislaman melalui artikel-artikel ilmiah di Dars with Osama. Silakan kunjungi dan baca berbagai pembahasannya melalui tautan berikut:';
+
+  assert.equal(ARTIKEL_ILMIAH_SHARE_CONFIG.id, 'blog');
+  assert.equal(ARTIKEL_ILMIAH_SHARE_CONFIG.title, 'Artikel Ilmiah');
+  assert.equal(ARTIKEL_ILMIAH_SHARE_CONFIG.narration, expectedNarration);
+
+  // Uji tautan mengarah langsung ke halaman utama Artikel Ilmiah, bukan ke artikel tertentu
+  const origin = 'https://darswithosama.com';
+  const blogUrl = getFeatureShareUrl('blog', origin);
+  assert.equal(blogUrl, 'https://darswithosama.com/?view=blog');
+  assert.equal(blogUrl.includes('/article/'), false);
+
+  // Uji fungsi salin pesan ajakan (narasi + tautan)
+  const fullCopyMessage = formatFeatureShareMessage(ARTIKEL_ILMIAH_SHARE_CONFIG.narration, blogUrl);
+  assert.ok(fullCopyMessage.startsWith(expectedNarration));
+  assert.ok(fullCopyMessage.endsWith(blogUrl));
+  assert.ok(fullCopyMessage.includes('\n\nhttps://darswithosama.com/?view=blog'));
+
+  // Uji fungsi bagikan WhatsApp terpisah
+  const waUrl = getWhatsAppShareUrl(ARTIKEL_ILMIAH_SHARE_CONFIG.narration, blogUrl);
+  assert.ok(waUrl.startsWith('https://api.whatsapp.com/send?text='));
+  assert.ok(waUrl.includes(encodeURIComponent(expectedNarration)));
+  assert.ok(waUrl.includes(encodeURIComponent(blogUrl)));
+});
+
+test('Feature sharing configuration for Tanya Jawab produces exact required narration and direct main page URL', async () => {
+  const {
+    TANYA_JAWAB_SHARE_CONFIG,
+    getFeatureShareUrl,
+    formatFeatureShareMessage,
+    getWhatsAppShareUrl
+  } = await import('./featureShareHelper.js');
+
+  const expectedNarration =
+    'Memiliki pertanyaan seputar persoalan keislaman? Mari manfaatkan Ruang Tanya Jawab Dars with Osama untuk menyampaikan pertanyaan, membaca berbagai pembahasan, dan mengambil manfaat dari jawaban yang tersedia. Kunjungi melalui tautan berikut:';
+
+  assert.equal(TANYA_JAWAB_SHARE_CONFIG.id, 'public-qa');
+  assert.equal(TANYA_JAWAB_SHARE_CONFIG.title, 'Tanya Jawab');
+  assert.equal(TANYA_JAWAB_SHARE_CONFIG.narration, expectedNarration);
+
+  // Uji tautan mengarah langsung ke halaman utama Tanya Jawab, bukan ke pertanyaan/jawaban tertentu
+  const origin = 'https://darswithosama.com';
+  const qaUrl = getFeatureShareUrl('public-qa', origin);
+  assert.equal(qaUrl, 'https://darswithosama.com/?view=public-qa');
+  assert.equal(qaUrl.includes('/qa/'), false);
+
+  // Uji fungsi salin pesan ajakan (narasi + tautan)
+  const fullCopyMessage = formatFeatureShareMessage(TANYA_JAWAB_SHARE_CONFIG.narration, qaUrl);
+  assert.ok(fullCopyMessage.startsWith(expectedNarration));
+  assert.ok(fullCopyMessage.endsWith(qaUrl));
+  assert.ok(fullCopyMessage.includes('\n\nhttps://darswithosama.com/?view=public-qa'));
+
+  // Uji fungsi bagikan WhatsApp terpisah
+  const waUrl = getWhatsAppShareUrl(TANYA_JAWAB_SHARE_CONFIG.narration, qaUrl);
+  assert.ok(waUrl.startsWith('https://api.whatsapp.com/send?text='));
+  assert.ok(waUrl.includes(encodeURIComponent(expectedNarration)));
+  assert.ok(waUrl.includes(encodeURIComponent(qaUrl)));
+});
+
+test('Direct feature URLs for Artikel Ilmiah and Tanya Jawab parse correctly to their respective views', async () => {
+  const { parseUrlToRouteState } = await import('./navigationHistory.js');
+
+  // Query parameter based routes (universal across all hosts)
+  const blogQueryRoute = parseUrlToRouteState('/', '?view=blog');
+  assert.equal(blogQueryRoute.view, 'blog');
+
+  const qaQueryRoute = parseUrlToRouteState('/', '?view=public-qa');
+  assert.equal(qaQueryRoute.view, 'public-qa');
+
+  // Clean path based routes
+  const artikelPathRoute = parseUrlToRouteState('/artikel', '');
+  assert.equal(artikelPathRoute.view, 'blog');
+
+  const blogPathRoute = parseUrlToRouteState('/blog', '');
+  assert.equal(blogPathRoute.view, 'blog');
+
+  const tanyaJawabPathRoute = parseUrlToRouteState('/tanya-jawab', '');
+  assert.equal(tanyaJawabPathRoute.view, 'public-qa');
+
+  const qaPathRoute = parseUrlToRouteState('/qa', '');
+  assert.equal(qaPathRoute.view, 'public-qa');
+});
+
+test('validateArticleImageSource recognizes Google Drive links, extracts file ID, and provides direct endpoint', async () => {
+  const { validateArticleImageSource } = await import('./googleDriveHelper.js');
+
+  const testFileId = '1C89vW99aZ-90qD4E8F4A1bC2dE3fG4x';
+
+  // 1. Valid Google Drive sharing URL
+  const driveResult = validateArticleImageSource(`https://drive.google.com/file/d/${testFileId}/view?usp=sharing`);
+  assert.equal(driveResult.isValid, true);
+  assert.equal(driveResult.isGoogleDrive, true);
+  assert.equal(driveResult.fileId, testFileId);
+  assert.equal(driveResult.directUrl, `https://drive.google.com/thumbnail?id=${testFileId}&sz=w1600`);
+  assert.ok(driveResult.warning?.includes('Siapa saja yang memiliki link'));
+
+  // 2. Valid standard HTTPS image URL
+  const standardResult = validateArticleImageSource('https://images.unsplash.com/photo-1542816417-0983c9c9ad53?auto=format');
+  assert.equal(standardResult.isValid, true);
+  assert.equal(standardResult.isGoogleDrive, false);
+  assert.equal(standardResult.fileId, null);
+  assert.equal(standardResult.directUrl, 'https://images.unsplash.com/photo-1542816417-0983c9c9ad53?auto=format');
+
+  // 3. Invalid Google Drive link with missing ID
+  const invalidDrive = validateArticleImageSource('https://drive.google.com/file/d//view');
+  assert.equal(invalidDrive.isValid, false);
+  assert.equal(invalidDrive.isGoogleDrive, true);
+  assert.ok(invalidDrive.error?.includes('Format tautan Google Drive tidak valid'));
+
+  // 4. Empty or invalid URL
+  assert.equal(validateArticleImageSource('').isValid, false);
+  assert.equal(validateArticleImageSource('   ').isValid, false);
+  assert.equal(validateArticleImageSource('not-a-valid-url').isValid, false);
+});
+
+test('normalizeArticleHtmlImages converts Google Drive inline images to direct endpoints and preserves original attributes', async () => {
+  const { normalizeArticleHtmlImages, extractArticleImages } = await import('./googleDriveHelper.js');
+
+  const fileId1 = '1B71gP99aZ-90qD4E8F4A1bC2dE3fG4h';
+  const fileId2 = '2C82hQ00bA-11rE5F9G5B2cD3eF4gH5i';
+
+  const rawHtml = `
+    <p>Pengantar materi keilmuan syar'i.</p>
+    <figure class="my-6">
+      <img src="https://drive.google.com/file/d/${fileId1}/view?usp=sharing" alt="Manuskrip Fiqih" class="w-full h-auto rounded-lg border-2" />
+      <figcaption>Manuskrip Fiqih Kuno</figcaption>
+    </figure>
+    <p>Pembahasan bagian kedua dengan gambar eksternal:</p>
+    <img src="https://images.unsplash.com/photo-example.jpg" alt="Kitab Terbuka" />
+    <p>Pembahasan ketiga dengan link Google Drive parameter:</p>
+    <img src="https://drive.google.com/open?id=${fileId2}" alt="Diagram Sanad" />
+  `;
+
+  const normalized = normalizeArticleHtmlImages(rawHtml);
+
+  // 1. Google Drive image 1 should be converted to direct thumbnail endpoint
+  assert.ok(normalized.includes(`src="https://drive.google.com/thumbnail?id=${fileId1}&sz=w1600"`));
+  assert.ok(normalized.includes(`data-drive-id="${fileId1}"`));
+  assert.ok(normalized.includes(`data-original-src="https://drive.google.com/file/d/${fileId1}/view?usp=sharing"`));
+  assert.ok(normalized.includes('loading="lazy"'));
+  assert.ok(normalized.includes('max-w-full'));
+
+  // 2. Standard image should preserve its src and get responsive classes
+  assert.ok(normalized.includes('src="https://images.unsplash.com/photo-example.jpg"'));
+  assert.ok(normalized.includes('max-w-full'));
+  assert.ok(normalized.includes('loading="lazy"'));
+
+  // 3. Google Drive image 2 should also be converted to direct thumbnail endpoint
+  assert.ok(normalized.includes(`src="https://drive.google.com/thumbnail?id=${fileId2}&sz=w1600"`));
+  assert.ok(normalized.includes(`data-drive-id="${fileId2}"`));
+
+  // 4. extractArticleImages extracts all 3 images with proper flags
+  const extracted = extractArticleImages(normalized);
+  assert.equal(extracted.length, 3);
+  assert.equal(extracted[0].isDrive, true);
+  assert.equal(extracted[0].fileId, fileId1);
+  assert.equal(extracted[1].isDrive, false);
+  assert.equal(extracted[1].fileId, null);
+  assert.equal(extracted[2].isDrive, true);
+  assert.equal(extracted[2].fileId, fileId2);
+});

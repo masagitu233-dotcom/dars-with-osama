@@ -39,6 +39,13 @@ import {
   TextAlignOption,
   BlockFormatOption
 } from '../../utils/richTextHelper';
+import { ResilientGoogleDriveImage } from '../common/ResilientGoogleDriveImage';
+import {
+  isGoogleDriveUrl,
+  extractGoogleDriveFileId,
+  resolveDisplayImageUrl,
+  getGoogleDriveViewerUrl
+} from '../../utils/googleDriveHelper';
 
 interface RichTextEditorProps {
   value: string;
@@ -486,8 +493,15 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   const handleInsertImage = () => {
     restoreSelection();
     if (imageUrl) {
+      const trimmedUrl = imageUrl.trim();
       const safeCaption = escapeHtml(imageCaption || '');
-      const imgHtml = `<figure class="my-6 max-w-full"><img src="${escapeHtml(imageUrl)}" alt="${safeCaption || 'Gambar Artikel'}" class="w-full h-auto rounded-lg border-2 border-[#171717]" />${safeCaption ? `<figcaption class="text-center text-xs text-[#171717]/70 dark:text-[#F8F3E8]/70 mt-2 font-bold">${safeCaption}</figcaption>` : ''}</figure><p><br></p>`;
+      const isDrive = isGoogleDriveUrl(trimmedUrl);
+      const fileId = extractGoogleDriveFileId(trimmedUrl);
+
+      const directSrc = isDrive && fileId ? resolveDisplayImageUrl(trimmedUrl) : trimmedUrl;
+      const driveAttrs = isDrive && fileId ? ` data-drive-id="${fileId}" data-original-src="${escapeHtml(trimmedUrl)}"` : '';
+
+      const imgHtml = `<figure class="my-6 max-w-full"><img src="${escapeHtml(directSrc)}"${driveAttrs} alt="${safeCaption || 'Gambar Artikel'}" class="w-full h-auto max-w-full rounded-lg border-2 border-[#171717] dark:border-[#4CA7A1]" loading="lazy" />${safeCaption ? `<figcaption class="text-center text-xs text-[#171717]/70 dark:text-[#F8F3E8]/70 mt-2 font-bold">${safeCaption}</figcaption>` : ''}</figure><p><br></p>`;
       execCommand('insertHTML', imgHtml);
       setImageUrl('');
       setImageCaption('');
@@ -1270,16 +1284,46 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
               <div>
                 <label className="text-xs font-extrabold text-[#171717] dark:text-[#F8F3E8] block mb-1">
-                  URL Gambar Langsung:
+                  Atau Masukkan Tautan / URL Gambar:
                 </label>
                 <input
                   type="url"
                   data-testid="rte-image-url-input"
                   value={imageUrl}
                   onChange={(e) => setImageUrl(e.target.value)}
-                  placeholder="https://images.unsplash.com/photo-..."
-                  className="nb-input w-full px-3.5 py-2.5 text-xs"
+                  placeholder="https://drive.google.com/file/d/... atau https://images.unsplash.com/..."
+                  className="nb-input w-full px-3.5 py-2.5 text-xs font-medium"
                 />
+                <p className="text-[11px] text-[#171717]/70 dark:text-[#F8F3E8]/70 mt-1">
+                  Mendukung tautan Google Drive publik, URL hosting gambar eksternal, atau unggahan berkas.
+                </p>
+                {imageUrl && isGoogleDriveUrl(imageUrl) && (
+                  <div className="mt-2 p-2.5 rounded-md bg-[#FAF7F0] dark:bg-[#1A283C] border-2 border-[#123D32] dark:border-[#D6AD52] text-xs space-y-1 animate-fade-in">
+                    <div className="flex items-center gap-1.5 font-bold text-[#123D32] dark:text-[#D6AD52]">
+                      <span>✓ Tautan Google Drive Terdeteksi</span>
+                      {extractGoogleDriveFileId(imageUrl) && (
+                        <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-white dark:bg-[#102C2B] border border-[#171717]">
+                          ID: {extractGoogleDriveFileId(imageUrl)}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-[#525855] dark:text-[#A6D6C9] leading-tight">
+                      Sistem akan mengonversi URL preview Drive menjadi sumber gambar berkualitas tinggi secara otomatis. Pastikan setelan berbagi di Google Drive telah diatur ke: <strong>&quot;Siapa saja yang memiliki link&quot;</strong>.
+                    </p>
+                    {extractGoogleDriveFileId(imageUrl) && (
+                      <div className="pt-1">
+                        <a
+                          href={getGoogleDriveViewerUrl(imageUrl)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-[10px] font-bold text-[#123D32] dark:text-[#D6AD52] underline hover:opacity-80"
+                        >
+                          Buka berkas di Google Drive ↗
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div>
@@ -1297,8 +1341,20 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
               </div>
 
               {imageUrl && (
-                <div className="aspect-video w-full rounded-md bg-white overflow-hidden border-2 border-[#171717] relative">
-                  <img src={imageUrl} alt="Preview" className="w-full h-full object-cover" />
+                <div className="space-y-1.5">
+                  <span className="text-[11px] font-bold text-[#171717]/80 dark:text-[#F8F3E8]/80 block">
+                    Pratinjau Tampilan Gambar:
+                  </span>
+                  <div className="aspect-video w-full rounded-md bg-white dark:bg-[#0D1520] overflow-hidden border-2 border-[#171717] relative">
+                    <ResilientGoogleDriveImage
+                      src={imageUrl}
+                      alt={imageCaption || 'Pratinjau Gambar'}
+                      aspectRatioClass="aspect-video"
+                      imageClassName="w-full h-full object-cover"
+                      isAdmin={true}
+                      showAdminDiagnostic={true}
+                    />
+                  </div>
                 </div>
               )}
             </div>

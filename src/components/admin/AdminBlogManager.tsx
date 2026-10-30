@@ -28,6 +28,15 @@ import { ConfirmModal } from '../common/ConfirmModal';
 import { resolveAudioSourceCandidates, describeAudioPlaybackError } from '../../utils/articleAudioHelper';
 import { sanitizeRichTextHtml } from '../../utils/richTextHelper';
 import { autoWrapArabicText } from '../../utils/arabicFontHelper';
+import { ResilientGoogleDriveImage } from '../common/ResilientGoogleDriveImage';
+import {
+  isGoogleDriveUrl,
+  extractGoogleDriveFileId,
+  resolveDisplayImageUrl,
+  getGoogleDriveViewerUrl,
+  validateArticleImageSource,
+  normalizeArticleHtmlImages
+} from '../../utils/googleDriveHelper';
 
 interface AdminBlogManagerProps {
   posts: BlogPost[];
@@ -285,6 +294,19 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
       return;
     }
 
+    const coverUrl = (formData.coverImageUrl || '').trim();
+    if (coverUrl) {
+      const coverValidation = validateArticleImageSource(coverUrl);
+      if (!coverValidation.isValid) {
+        setFeedback({
+          type: 'error',
+          text: `Gambar sampul tidak valid: ${coverValidation.error || 'Periksa kembali URL gambar.'}`
+        });
+        if (modalBodyRef.current) modalBodyRef.current.scrollTo({ top: 300, behavior: 'smooth' });
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       const parsedTags = tagInput
@@ -292,9 +314,13 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
         .map(t => t.trim())
         .filter(Boolean);
 
+      const normalizedContent = normalizeArticleHtmlImages(rawContent);
+
       await saveBlogPost({
         ...formData,
         title: titleText,
+        coverImageUrl: coverUrl,
+        content: normalizedContent,
         tags: parsedTags,
         status
       });
@@ -523,7 +549,13 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
                       <div className="flex items-center gap-3">
                         <div className="w-14 h-10 rounded-md bg-[#FAF7F0] dark:bg-[#001722] overflow-hidden shrink-0 border-2 border-[#171717] dark:border-[#4CA7A1]">
                           {post.coverImageUrl ? (
-                            <img src={post.coverImageUrl} alt={post.title} className="w-full h-full object-cover" />
+                            <ResilientGoogleDriveImage
+                              src={post.coverImageUrl}
+                              alt={post.title}
+                              aspectRatioClass=""
+                              className="w-full h-full"
+                              imageClassName="w-full h-full object-cover"
+                            />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center text-[#123D32] dark:text-[#4CA7A1]">
                               <FileText className="w-4 h-4" />
@@ -773,14 +805,28 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
 
               {/* Gambar Sampul */}
               <div className="p-4 bg-[#F8F3E8] dark:bg-[#06251D] rounded-lg border-2 border-[#171717] dark:border-[#D9AC45]/50 space-y-3">
-                <label className="text-xs font-extrabold text-[#171717] dark:text-[#F8F3E8] block">
-                  Gambar Sampul Artikel (Cover Image)
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-extrabold text-[#171717] dark:text-[#F8F3E8] block">
+                    Gambar Sampul Artikel (Cover Image)
+                  </label>
+                  <span className="text-[10px] text-[#525855] dark:text-[#A6D6C9] font-bold">
+                    Rasio 16:9 disarankan
+                  </span>
+                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                <div className="p-2.5 rounded bg-white dark:bg-[#102C2B] border border-[#171717]/20 text-[11px] text-[#525855] dark:text-[#A6D6C9] leading-relaxed">
+                  💡 <strong>Metode sumber gambar yang didukung:</strong>
+                  <ul className="list-disc list-inside mt-1 space-y-0.5 text-[10.5px]">
+                    <li><strong>Unggah Berkas Langsung (Firebase Storage)</strong>: Paling stabil dan direkomendasikan untuk situs publik.</li>
+                    <li><strong>Tautan Google Drive</strong>: Pastikan akses file di Google Drive telah disetel ke <em>&quot;Siapa saja yang memiliki link&quot;</em>. Sistem otomatis mengonversi ke tautan gambar langsung.</li>
+                    <li><strong>URL Gambar Publik</strong>: Tautan gambar langsung (.jpg, .png, .webp).</li>
+                  </ul>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
                   <div className="space-y-2">
                     <label className="text-[11px] font-bold text-[#171717]/80 dark:text-[#F8F3E8]/80 block">
-                      Unggah Berkas Gambar Sampul:
+                      1. Unggah Berkas Gambar Sampul (Direkomendasikan):
                     </label>
                     <input
                       type="file"
@@ -793,25 +839,63 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
                     )}
 
                     <label className="text-[11px] font-bold text-[#171717]/80 dark:text-[#F8F3E8]/80 block pt-2">
-                      Atau Masukkan URL Sampul Langsung:
+                      2. Atau Masukkan Tautan / URL Sampul:
                     </label>
                     <input
                       type="url"
                       value={formData.coverImageUrl || ''}
                       onChange={(e) => setFormData(prev => ({ ...prev, coverImageUrl: e.target.value }))}
-                      placeholder="https://images.unsplash.com/photo-..."
-                      className="nb-input w-full px-3 py-2 text-xs"
+                      placeholder="https://drive.google.com/file/d/... atau https://images.unsplash.com/..."
+                      className="nb-input w-full px-3 py-2 text-xs font-medium"
                     />
-                  </div>
 
-                  <div className="aspect-video w-full rounded-md bg-white dark:bg-[#214743] overflow-hidden relative border-2 border-[#171717] dark:border-[#B8E8D8]">
-                    {formData.coverImageUrl ? (
-                      <img src={formData.coverImageUrl} alt="Sampul" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-[#525856] dark:text-[#B9C9C5] text-xs font-bold">
-                        Belum ada sampul
+                    {formData.coverImageUrl && isGoogleDriveUrl(formData.coverImageUrl) && (
+                      <div className="p-2 rounded bg-amber-50 dark:bg-[#16263D] border border-[#D6AD52] text-[11px] space-y-1 animate-fade-in">
+                        <div className="flex items-center gap-1.5 font-bold text-[#123D32] dark:text-[#D6AD52]">
+                          <span>✓ Tautan Google Drive Terdeteksi</span>
+                          {extractGoogleDriveFileId(formData.coverImageUrl) && (
+                            <span className="font-mono text-[9px] px-1 py-0.2 rounded bg-white dark:bg-[#102C2B] border border-[#171717]">
+                              ID: {extractGoogleDriveFileId(formData.coverImageUrl)}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-[#525855] dark:text-[#A6D6C9]">
+                          Sistem akan memuat gambar resolusi tinggi langsung. Pastikan izin file disetel ke <strong>&quot;Siapa saja yang memiliki link&quot;</strong>.
+                        </p>
+                        {extractGoogleDriveFileId(formData.coverImageUrl) && (
+                          <a
+                            href={getGoogleDriveViewerUrl(formData.coverImageUrl)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-[10px] font-bold text-[#123D32] dark:text-[#D6AD52] underline hover:opacity-80 pt-0.5"
+                          >
+                            Buka di Google Drive ↗
+                          </a>
+                        )}
                       </div>
                     )}
+                  </div>
+
+                  <div className="space-y-1">
+                    <span className="text-[11px] font-bold text-[#171717]/80 dark:text-[#F8F3E8]/80 block">
+                      Pratinjau Sampul:
+                    </span>
+                    <div className="aspect-video w-full rounded-md bg-white dark:bg-[#214743] overflow-hidden relative border-2 border-[#171717] dark:border-[#B8E8D8]">
+                      {formData.coverImageUrl ? (
+                        <ResilientGoogleDriveImage
+                          src={formData.coverImageUrl}
+                          alt="Sampul"
+                          aspectRatioClass="aspect-video"
+                          imageClassName="w-full h-full object-cover"
+                          isAdmin={true}
+                          showAdminDiagnostic={true}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-[#525855] dark:text-[#B9C9C5] text-xs font-bold">
+                          Belum ada sampul
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

@@ -132,6 +132,14 @@ function MainApp() {
         p === '/profil-pengajar/' ||
         p === '/profil' ||
         p === '/pengajar' ||
+        p === '/artikel' ||
+        p === '/artikel/' ||
+        p === '/blog' ||
+        p === '/blog/' ||
+        p === '/tanya-jawab' ||
+        p === '/tanya-jawab/' ||
+        p === '/qa' ||
+        p === '/qa/' ||
         s.has('session') ||
         s.has('sessionId') ||
         s.has('view') ||

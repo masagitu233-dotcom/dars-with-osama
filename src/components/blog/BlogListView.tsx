@@ -5,12 +5,16 @@ import {
   Clock,
   Calendar,
   ChevronRight,
-  Sparkles
+  Sparkles,
+  Share2
 } from 'lucide-react';
 import { BlogPost } from '../../types';
 import { autoWrapArabicText } from '../../utils/arabicFontHelper';
 import { ServiceDisruptionBanner } from '../common/ServiceDisruptionBanner';
 import { ReadingFontControls, useReadingFontSize } from '../common/ReadingFontControls';
+import { FeatureShareModal } from '../common/FeatureShareModal';
+import { ARTIKEL_ILMIAH_SHARE_CONFIG } from '../../utils/featureShareHelper';
+import { ResilientGoogleDriveImage } from '../common/ResilientGoogleDriveImage';
 
 interface BlogListViewProps {
   posts: BlogPost[];
@@ -33,6 +37,7 @@ export const BlogListView: React.FC<BlogListViewProps> = ({
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [shareModalOpen, setShareModalOpen] = useState<boolean>(false);
   const fontControl = useReadingFontSize();
 
   // Extract unique categories from posts
@@ -73,9 +78,9 @@ export const BlogListView: React.FC<BlogListViewProps> = ({
             Temukan artikel ilmiah, rangkuman tazkiyatun nufs, panduan tadabbur Al-Qur'an, serta catatan keilmuan Islam untuk membina pembaca setia.
           </p>
 
-          {/* SEARCH BAR */}
-          <div className="pt-2">
-            <div className="relative flex items-center max-w-lg bg-white dark:bg-[#001722] border-2 border-[#171717] dark:border-[#4CA7A1] rounded-md shadow-[4px_4px_0px_#171717] dark:shadow-[4px_4px_0px_#001722]">
+          {/* SEARCH BAR & SHARE BUTTON */}
+          <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <div className="relative flex items-center flex-1 max-w-lg bg-white dark:bg-[#001722] border-2 border-[#171717] dark:border-[#4CA7A1] rounded-md shadow-[4px_4px_0px_#171717] dark:shadow-[4px_4px_0px_#001722]">
               <Search className="w-4 h-4 absolute left-3.5 text-[#123D32] dark:text-[#4CA7A1]" />
               <input
                 type="text"
@@ -85,6 +90,17 @@ export const BlogListView: React.FC<BlogListViewProps> = ({
                 className="w-full pl-10 pr-4 py-3 bg-transparent text-xs sm:text-sm font-semibold text-[#171717] dark:text-[#CEFEF1] placeholder:text-[#525855] dark:placeholder:text-[#A6D6C9] focus:outline-none"
               />
             </div>
+
+            <button
+              type="button"
+              data-testid="share-blog-page-btn"
+              onClick={() => setShareModalOpen(true)}
+              className="px-4 py-3 text-xs font-extrabold uppercase tracking-wider rounded-md border-2 border-[#171717] dark:border-[#001722] bg-[#D6AD52] hover:bg-[#E5BE65] text-[#171923] shadow-[4px_4px_0px_#171717] dark:shadow-[4px_4px_0px_#001722] transition-all inline-flex items-center justify-center gap-2 cursor-pointer shrink-0"
+              title="Bagikan tautan halaman utama Artikel Ilmiah"
+            >
+              <Share2 className="w-4 h-4 text-[#171923]" />
+              <span>Bagikan Artikel Ilmiah</span>
+            </button>
           </div>
         </div>
       </div>
@@ -130,12 +146,14 @@ export const BlogListView: React.FC<BlogListViewProps> = ({
             className="nb-card-interactive overflow-hidden group cursor-pointer grid grid-cols-1 lg:grid-cols-12"
           >
             <div className="lg:col-span-7 aspect-video lg:aspect-auto relative overflow-hidden bg-[#123D32] dark:bg-[#0D2B36] border-b-2 lg:border-b-0 lg:border-r-2 border-[#171717] dark:border-[#4CA7A1]">
-              <img
+              <ResilientGoogleDriveImage
                 src={featuredPost.coverImageUrl || 'https://images.unsplash.com/photo-1532012197267-da84d127e765?q=80&w=1200&auto=format&fit=crop'}
+                fallbackSrc="https://images.unsplash.com/photo-1532012197267-da84d127e765?q=80&w=1200&auto=format&fit=crop"
                 alt={featuredPost.title}
-                className="w-full h-full object-cover group-hover:scale-103 transition duration-300"
+                aspectRatioClass="w-full h-full aspect-video lg:aspect-auto"
+                imageClassName="w-full h-full object-cover group-hover:scale-103 transition duration-300"
               />
-              <span className="absolute top-4 left-4 px-3 py-1 bg-[#4CA7A1] text-[#001722] font-extrabold text-xs uppercase tracking-wider rounded border-2 border-[#171717] dark:border-[#001722] shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#001722] flex items-center gap-1.5">
+              <span className="absolute top-4 left-4 px-3 py-1 bg-[#4CA7A1] text-[#001722] font-extrabold text-xs uppercase tracking-wider rounded border-2 border-[#171717] dark:border-[#001722] shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#001722] flex items-center gap-1.5 z-10">
                 <Sparkles className="w-3.5 h-3.5" /> Artikel Unggulan
               </span>
             </div>
@@ -272,12 +290,14 @@ export const BlogListView: React.FC<BlogListViewProps> = ({
                 <div>
                   {/* Image cover */}
                   <div className="aspect-video w-full bg-[#123D32] dark:bg-[#0D2B36] overflow-hidden relative border-b-2 border-[#171717] dark:border-[#4CA7A1]">
-                    <img
+                    <ResilientGoogleDriveImage
                       src={post.coverImageUrl || 'https://images.unsplash.com/photo-1532012197267-da84d127e765?q=80&w=1200&auto=format&fit=crop'}
+                      fallbackSrc="https://images.unsplash.com/photo-1532012197267-da84d127e765?q=80&w=1200&auto=format&fit=crop"
                       alt={post.title}
-                      className="w-full h-full object-cover group-hover:scale-103 transition duration-300"
+                      aspectRatioClass="aspect-video"
+                      imageClassName="w-full h-full object-cover group-hover:scale-103 transition duration-300"
                     />
-                    <span className="absolute top-2.5 left-2.5 text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded bg-[#4CA7A1] text-[#001722] border-2 border-[#171717] dark:border-[#001722] shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#001722]">
+                    <span className="absolute top-2.5 left-2.5 text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded bg-[#4CA7A1] text-[#001722] border-2 border-[#171717] dark:border-[#001722] shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#001722] z-10">
                       {post.category}
                     </span>
                   </div>
@@ -335,6 +355,13 @@ export const BlogListView: React.FC<BlogListViewProps> = ({
           </div>
         )}
       </div>
+
+      {/* FEATURE SHARE MODAL (ARTIKEL ILMIAH) */}
+      <FeatureShareModal
+        isOpen={shareModalOpen}
+        onClose={() => setShareModalOpen(false)}
+        config={ARTIKEL_ILMIAH_SHARE_CONFIG}
+      />
     </div>
   );
 };

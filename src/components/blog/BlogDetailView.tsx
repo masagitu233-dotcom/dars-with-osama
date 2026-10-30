@@ -19,6 +19,15 @@ import { useArticleSEO } from '../../hooks/useArticleSEO';
 import { ArticleAudioPlayer } from './ArticleAudioPlayer';
 import { ArticleCommentsSection } from './ArticleCommentsSection';
 import { ReadingFontControls, useReadingFontSize } from '../common/ReadingFontControls';
+import { ResilientGoogleDriveImage } from '../common/ResilientGoogleDriveImage';
+import {
+  normalizeArticleHtmlImages,
+  getGoogleDriveImageCandidates,
+  getGoogleDriveViewerUrl,
+  extractGoogleDriveFileId,
+  isGoogleDriveUrl
+} from '../../utils/googleDriveHelper';
+import { useAuth } from '../../context/AuthContext';
 
 interface BlogDetailViewProps {
   post: BlogPost;
@@ -94,6 +103,82 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
       setShareModalOpen(true);
     }
   };
+
+  const { userProfile } = useAuth();
+  const isAdmin = userProfile?.role === 'admin';
+  const contentBodyRef = React.useRef<HTMLDivElement>(null);
+
+  // Resilient handling for inline images in article content:
+  // Auto-fallbacks across Google Drive endpoints and displays an actionable card if all fail
+  useEffect(() => {
+    if (!contentBodyRef.current) return;
+    const container = contentBodyRef.current;
+    const images = Array.from(container.querySelectorAll('img'));
+
+    const cleanups: Array<() => void> = [];
+
+    images.forEach((img) => {
+      const src = img.getAttribute('src') || '';
+      const driveId = img.getAttribute('data-drive-id') || extractGoogleDriveFileId(src);
+      const isDrive = isGoogleDriveUrl(src) || Boolean(driveId);
+
+      if (!isDrive && !src) return;
+
+      const candidates = isDrive ? getGoogleDriveImageCandidates(src) : [src];
+      let currentIndex = 0;
+
+      const handleError = () => {
+        currentIndex++;
+        if (currentIndex < candidates.length) {
+          img.src = candidates[currentIndex];
+        } else {
+          // All candidate endpoints failed. Replace or append diagnostic guidance.
+          img.style.display = 'none';
+
+          const existingNotice = img.parentElement?.querySelector('.inline-drive-fallback-notice');
+          if (!existingNotice) {
+            const fallbackDiv = document.createElement('div');
+            fallbackDiv.className = 'inline-drive-fallback-notice my-4 p-4 rounded-md bg-[#FAF7F0] dark:bg-[#1A283C] border-2 border-dashed border-[#D6AD52] text-xs text-[#171717] dark:text-[#F8F3E8] space-y-2 select-none shadow-xs';
+
+            const viewerUrl = driveId ? getGoogleDriveViewerUrl(driveId) : src;
+            const headingText = isDrive
+              ? 'Gambar Google Drive Tidak Dapat Dimuat'
+              : 'Gambar Sisipan Tidak Dapat Dimuat';
+            const reasonText = isDrive
+              ? (isAdmin
+                  ? 'Akses berkas di Google Drive masih dibatasi (Restricted). Silakan buka Google Drive > Bagikan > Ubah ke "Siapa saja yang memiliki link" (Anyone with the link).'
+                  : 'Akses berkas dibatasi oleh pemilik di Google Drive.')
+              : 'Tautan gambar tidak dapat diakses atau berkas tidak tersedia.';
+
+            fallbackDiv.innerHTML = `
+              <div class="flex items-center gap-2 font-extrabold text-[#123D32] dark:text-[#D6AD52]">
+                <span>⚠️ ${headingText}</span>
+              </div>
+              <p class="text-[11px] text-[#525855] dark:text-[#A6D6C9] leading-relaxed">
+                ${reasonText}
+              </p>
+              ${
+                viewerUrl
+                  ? `<div class="pt-1"><a href="${viewerUrl}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-[#123D32] hover:bg-[#1C4D40] text-[#D6AD52] border border-[#171717] dark:border-[#D6AD52] text-xs font-bold transition">Buka Berkas di Google Drive ↗</a></div>`
+                  : ''
+              }
+            `;
+
+            if (img.parentElement) {
+              img.parentElement.appendChild(fallbackDiv);
+            }
+          }
+        }
+      };
+
+      img.addEventListener('error', handleError);
+      cleanups.push(() => img.removeEventListener('error', handleError));
+    });
+
+    return () => {
+      cleanups.forEach(fn => fn());
+    };
+  }, [post.content, isAdmin]);
 
   return (
     <div className="max-w-4xl mx-auto px-2.5 sm:px-6 lg:px-8 space-y-5 sm:space-y-8 py-4 sm:py-6 pb-16 animate-fade-in font-sans">
@@ -218,10 +303,13 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
         {post.coverImageUrl && (
           <figure className="space-y-2">
             <div className="aspect-video w-full rounded-md overflow-hidden bg-[#123D32] dark:bg-[#0D2B36] border-2 border-[#171717] dark:border-[#4CA7A1]">
-              <img
+              <ResilientGoogleDriveImage
                 src={post.coverImageUrl}
                 alt={post.title}
-                className="w-full h-full object-cover"
+                aspectRatioClass="aspect-video"
+                imageClassName="w-full h-full object-cover"
+                isAdmin={isAdmin}
+                showAdminDiagnostic={isAdmin}
               />
             </div>
             {post.coverImageCaption && (
@@ -234,9 +322,14 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
 
         {/* MAIN BODY HTML CONTENT — Calm reading zone */}
         <div
+          ref={contentBodyRef}
           data-testid="article-body-content"
           className="prose dark:prose-invert max-w-none sm:max-w-[68ch] mx-auto text-[#171717] dark:text-[#CEFEF1] leading-relaxed space-y-3.5 sm:space-y-4 font-sans blog-content"
-          dangerouslySetInnerHTML={{ __html: autoWrapArabicText(sanitizeRichTextHtml(post.content)) }}
+          dangerouslySetInnerHTML={{
+            __html: autoWrapArabicText(
+              normalizeArticleHtmlImages(sanitizeRichTextHtml(post.content))
+            )
+          }}
         />
 
         {/* ARABIC CONTENT SECTION (IF PRESENT) */}

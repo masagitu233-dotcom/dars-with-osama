@@ -31,6 +31,7 @@ import { Category, Course, Session, Quiz, Enrollment, QuizAttempt, UserProfile, 
 import { SEED_CATEGORIES, SEED_COURSES, SEED_SESSIONS, SEED_QUIZZES } from '../data/seedData';
 import { matchesSessionIdentifier, canAccessSessionPublicly } from '../utils/sessionShareHelper';
 import { sanitizeRichTextHtml } from '../utils/richTextHelper';
+import { normalizeArticleHtmlImages } from '../utils/googleDriveHelper';
 import {
   DEFAULT_INSTRUCTOR_PROFILE_ID,
   getDefaultInstructorProfile,
@@ -1991,7 +1992,8 @@ export async function saveBlogPost(post: Partial<BlogPost> & { title: string }):
   }
 
   const sanitizedContent = sanitizeRichTextHtml(post.content || '');
-  const wordCount = sanitizedContent.replace(/<[^>]*>/g, ' ').split(/\s+/).filter(Boolean).length;
+  const normalizedContent = normalizeArticleHtmlImages(sanitizedContent);
+  const wordCount = normalizedContent.replace(/<[^>]*>/g, ' ').split(/\s+/).filter(Boolean).length;
   const readingTimeMinutes = Math.max(1, Math.ceil(wordCount / 180));
 
   const now = new Date().toISOString();
@@ -2012,7 +2014,7 @@ export async function saveBlogPost(post: Partial<BlogPost> & { title: string }):
     titleAr: post.titleAr || '',
     slug: finalSlug,
     excerpt: post.excerpt || '',
-    content: sanitizedContent,
+    content: normalizedContent,
     contentAr: post.contentAr || '',
     coverImageUrl: post.coverImageUrl || '',
     coverImageCaption: post.coverImageCaption || '',

@@ -11,6 +11,7 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { BlogPost } from '../../types';
+import { ResilientGoogleDriveImage } from '../common/ResilientGoogleDriveImage';
 
 interface ArticleShareModalProps {
   isOpen: boolean;
@@ -118,10 +119,13 @@ export const ArticleShareModal: React.FC<ArticleShareModalProps> = ({
           {/* ARTICLE PREVIEW CARD */}
           <div className="p-3.5 rounded-md bg-white dark:bg-[#16263D] border-2 border-[#292D2B] dark:border-[#D6AD52]/60 flex gap-3.5 items-center shadow-[3px_3px_0px_#292D2B]">
             {post.coverImageUrl ? (
-              <img
+              <ResilientGoogleDriveImage
                 src={post.coverImageUrl}
                 alt={post.title}
-                className="w-20 h-20 rounded-md object-cover shrink-0 border-2 border-[#292D2B] dark:border-[#D6AD52]"
+                aspectRatioClass=""
+                forceFillParent={false}
+                imageClassName="w-20 h-20 rounded-md object-cover shrink-0 border-2 border-[#292D2B] dark:border-[#D6AD52]"
+                className="w-20 h-20 shrink-0"
               />
             ) : (
               <div className="w-20 h-20 rounded-md bg-[#123D32] dark:bg-[#16263D] text-[#D6AD52] font-bold text-xl flex items-center justify-center shrink-0 border-2 border-[#292D2B]">

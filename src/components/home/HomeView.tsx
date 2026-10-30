@@ -23,6 +23,7 @@ import { useAuth } from '../../context/AuthContext';
 import { getPublishedPublicQA } from '../../firebase/services';
 import { classifyFirestoreError } from '../../firebase/config';
 import { canAttemptRetry, DEFAULT_RETRY_COOLDOWN_SECONDS } from '../../utils/serviceDisruptionHelper';
+import { ResilientGoogleDriveImage } from '../common/ResilientGoogleDriveImage';
 import AOS from 'aos';
 
 gsap.registerPlugin(ScrollTrigger);
@@ -140,15 +141,15 @@ const HomeArticleCard: React.FC<{
     >
       <div>
         <div className="relative aspect-video w-full overflow-hidden bg-[#123D32] dark:bg-[#0D2B36] border-b-2 border-[#171717] dark:border-[#4CA7A1]">
-          <img
-            src={displayImg}
+          <ResilientGoogleDriveImage
+            src={post.coverImageUrl || fallbackImg}
+            fallbackSrc={fallbackImg}
             alt={post.title}
-            onError={() => setImgError(true)}
-            className="w-full h-full object-cover group-hover:scale-103 transition-transform duration-300"
-            loading="lazy"
+            aspectRatioClass="aspect-video"
+            imageClassName="w-full h-full object-cover group-hover:scale-103 transition-transform duration-300"
           />
           {post.category && (
-            <span className="absolute top-3 left-3 px-2.5 py-1 bg-[#D6AD52] dark:bg-[#4CA7A1] text-[#171717] dark:text-[#001722] font-extrabold text-[10px] uppercase tracking-wider rounded border-2 border-[#171717] dark:border-[#A6D6C9] shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#001722]">
+            <span className="absolute top-3 left-3 px-2.5 py-1 bg-[#D6AD52] dark:bg-[#4CA7A1] text-[#171717] dark:text-[#001722] font-extrabold text-[10px] uppercase tracking-wider rounded border-2 border-[#171717] dark:border-[#A6D6C9] shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#001722] z-10">
               {post.category}
             </span>
           )}
