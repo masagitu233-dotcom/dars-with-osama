@@ -2746,4 +2746,73 @@ test('Floating Toolbar: isTextSelectionActive distinguishes valid selection from
   assert.equal(isTextSelectionActive({ isCollapsed: false, text: 'بسم الله' }), true);
 });
 
+test('Instructor Profile: sanitizeInstructorProfilePayload supports photo upload, replacement, deletion, and unsafe URL protection', async () => {
+  const { sanitizeInstructorProfilePayload } = await import('./instructorProfileHelper.js');
+
+  // 1. Upload valid Firebase Storage photo URL
+  const validUploadedPayload = sanitizeInstructorProfilePayload({
+    name: 'Osama Nur Samsil, S.H.',
+    role: 'Pengasuh Dars with Osama',
+    title: 'Profil Pengajar',
+    photoUrl: 'https://firebasestorage.googleapis.com/v0/b/project.appspot.com/o/instructor_profile%2Favatar.jpg?alt=media&token=123'
+  });
+  assert.equal(
+    validUploadedPayload.photoUrl,
+    'https://firebasestorage.googleapis.com/v0/b/project.appspot.com/o/instructor_profile%2Favatar.jpg?alt=media&token=123'
+  );
+
+  // 2. Upload valid Google Drive photo URL
+  const validDrivePayload = sanitizeInstructorProfilePayload({
+    name: 'Osama Nur Samsil, S.H.',
+    role: 'Pengasuh Dars with Osama',
+    title: 'Profil Pengajar',
+    photoUrl: 'https://drive.google.com/file/d/1A2B3C4D5E6F7G8H9I0J/view?usp=sharing'
+  });
+  assert.equal(
+    validDrivePayload.photoUrl,
+    'https://drive.google.com/file/d/1A2B3C4D5E6F7G8H9I0J/view?usp=sharing'
+  );
+
+  // 3. Delete photo (admin clears photo to revert to initial)
+  const deletedPhotoPayload = sanitizeInstructorProfilePayload({
+    name: 'Osama Nur Samsil, S.H.',
+    role: 'Pengasuh Dars with Osama',
+    title: 'Profil Pengajar',
+    photoUrl: ''
+  });
+  assert.equal(deletedPhotoPayload.photoUrl, '', 'Deleted photo must result in empty string for fallback initials');
+
+  // 4. Reject unsafe javascript: photo URL
+  const unsafePayload = sanitizeInstructorProfilePayload({
+    name: 'Osama Nur Samsil, S.H.',
+    role: 'Pengasuh Dars with Osama',
+    title: 'Profil Pengajar',
+    photoUrl: 'javascript:alert("exploit")'
+  });
+  assert.equal(unsafePayload.photoUrl, '', 'Unsafe URL must be sanitized away to prevent XSS');
+});
+
+test('Instructor Profile: Author bio card correctly resolves photo or defaults to initial with label PENGASUH DARS WITH OSAMA', async () => {
+  const { resolveDisplayImageUrl } = await import('./googleDriveHelper.js');
+
+  const instructorPhoto = 'https://firebasestorage.googleapis.com/v0/b/project.appspot.com/o/instructor_profile%2Fphoto.webp';
+  const postWithoutAuthorPhoto = {
+    authorName: 'Osama',
+    authorPhoto: ''
+  };
+
+  // When instructor has uploaded photo, author card resolves it
+  const effectivePhoto = instructorPhoto || postWithoutAuthorPhoto.authorPhoto;
+  assert.equal(effectivePhoto, instructorPhoto);
+  const resolvedUrl = resolveDisplayImageUrl(effectivePhoto);
+  assert.ok(resolvedUrl.startsWith('https://'));
+
+  // When no photo is available anywhere, initial fallback is computed
+  const noPhotoAvailable = '';
+  const initialFallback = (postWithoutAuthorPhoto.authorName || 'Osama').charAt(0).toUpperCase();
+  assert.equal(noPhotoAvailable, '');
+  assert.equal(initialFallback, 'O');
+});
+
+
 

@@ -11,7 +11,7 @@ import {
   BookOpen
 } from 'lucide-react';
 import { BlogPost } from '../../types';
-import { incrementBlogPostViews } from '../../firebase/services';
+import { incrementBlogPostViews, getInstructorProfile } from '../../firebase/services';
 import { autoWrapArabicText } from '../../utils/arabicFontHelper';
 import { sanitizeRichTextHtml } from '../../utils/richTextHelper';
 import { ArticleShareModal } from './ArticleShareModal';
@@ -27,7 +27,8 @@ import {
   getGoogleDriveImageCandidates,
   getGoogleDriveViewerUrl,
   extractGoogleDriveFileId,
-  isGoogleDriveUrl
+  isGoogleDriveUrl,
+  resolveDisplayImageUrl
 } from '../../utils/googleDriveHelper';
 import { useAuth } from '../../context/AuthContext';
 
@@ -109,6 +110,37 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
   const { userProfile } = useAuth();
   const isAdmin = userProfile?.role === 'admin';
   const contentBodyRef = React.useRef<HTMLDivElement>(null);
+
+  // Instructor profile photo state: sync with instructorProfiles/main & localStorage cache
+  const [instructorPhoto, setInstructorPhoto] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('dars_instructor_profile_v1');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed?.photoUrl) return parsed.photoUrl;
+        }
+      } catch {}
+    }
+    return post.authorPhoto || '';
+  });
+  const [authorPhotoError, setAuthorPhotoError] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    getInstructorProfile()
+      .then((profile) => {
+        if (mounted && profile?.photoUrl) {
+          setInstructorPhoto(profile.photoUrl);
+        }
+      })
+      .catch((err) => {
+        console.warn('Notice: Error loading instructor profile photo:', err);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   // Automatically process article content to inject unique heading IDs and generate Table of Contents
   const { processedHtml: processedContent, items: tocItems } = React.useMemo(() => {
@@ -393,21 +425,30 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
         )}
 
         {/* AUTHOR BIO CARD */}
-        <div className="p-5 sm:p-6 bg-[#FAF7F0] dark:bg-[#0D2B36] rounded-md border-2 border-[#171717] dark:border-[#4CA7A1] flex flex-col sm:flex-row items-center sm:items-start gap-4">
-          <div className="w-14 h-14 rounded-md bg-[#001722] text-[#CEFEF1] font-bold text-xl flex items-center justify-center shrink-0 border-2 border-[#171717] dark:border-[#4CA7A1] overflow-hidden">
-            {post.authorPhoto ? (
-              <img src={post.authorPhoto} alt={post.authorName} className="w-full h-full object-cover" />
+        <div className="p-5 sm:p-6 bg-[#FAF7F0] dark:bg-[#0D2B36] rounded-md border-2 border-[#171717] dark:border-[#4CA7A1] flex flex-col sm:flex-row items-center sm:items-start gap-4 shadow-xs">
+          <div className="w-14 h-14 rounded-md bg-[#001722] text-[#CEFEF1] font-bold text-xl flex items-center justify-center shrink-0 border-2 border-[#171717] dark:border-[#4CA7A1] overflow-hidden relative">
+            {(instructorPhoto || post.authorPhoto) && !authorPhotoError ? (
+              <img
+                data-testid="article-author-photo"
+                src={resolveDisplayImageUrl(instructorPhoto || post.authorPhoto || '')}
+                alt={post.authorName || 'Osama'}
+                onError={() => setAuthorPhotoError(true)}
+                className="w-full h-full object-cover object-top sm:object-center"
+                loading="lazy"
+              />
             ) : (
-              <span>{post.authorName.charAt(0)}</span>
+              <span data-testid="article-author-initial" className="select-none font-serif font-bold text-xl">
+                {(post.authorName || 'Osama').charAt(0).toUpperCase()}
+              </span>
             )}
           </div>
-          <div className="text-center sm:text-left space-y-1.5">
+          <div className="text-center sm:text-left space-y-1.5 flex-1 min-w-0">
             <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
               <h4 className="font-bold font-serif text-[#171717] dark:text-[#CEFEF1] text-base">
-                {post.authorName}
+                {post.authorName || 'Osama'}
               </h4>
-              <span className="px-2.5 py-0.5 rounded bg-[#4CA7A1] text-[#001722] border border-[#171717] dark:border-[#001722] text-[10px] font-extrabold uppercase">
-                {post.authorRole || 'Pengasuh & Pengajar'}
+              <span className="px-2.5 py-0.5 rounded bg-[#4CA7A1] text-[#001722] border border-[#171717] dark:border-[#001722] text-[10px] font-extrabold uppercase tracking-wide">
+                PENGASUH DARS WITH OSAMA
               </span>
             </div>
             <p className="text-xs text-[#525855] dark:text-[#A6D6C9] leading-relaxed">

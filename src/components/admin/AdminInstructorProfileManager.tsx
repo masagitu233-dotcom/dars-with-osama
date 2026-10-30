@@ -37,7 +37,7 @@ import { RichTextEditor } from './RichTextEditor';
 import { InstructorProfileView } from '../profile/InstructorProfileView';
 import { ConfirmModal } from '../common/ConfirmModal';
 import { ResilientGoogleDriveImage } from '../common/ResilientGoogleDriveImage';
-import { isGoogleDriveUrl, getGoogleDriveViewerUrl } from '../../utils/googleDriveHelper';
+import { isGoogleDriveUrl, getGoogleDriveViewerUrl, resolveDisplayImageUrl } from '../../utils/googleDriveHelper';
 
 interface AdminInstructorProfileManagerProps {
   onOpenPublicProfile?: () => void;
@@ -470,22 +470,24 @@ export const AdminInstructorProfileManager: React.FC<AdminInstructorProfileManag
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Photo Upload & Preview Column */}
               <div className="p-4 bg-[#FAF7F0] dark:bg-[#243A56] rounded-lg border-2 border-[#292D2B] dark:border-[#34465D] flex flex-col items-center space-y-3">
-                <div className="w-36 h-36 rounded-lg overflow-hidden bg-[#123D32] dark:bg-[#101B2D] text-[#D6AD52] border-2 border-[#292D2B] shadow-[4px_4px_0px_#292D2B] flex items-center justify-center">
+                <div className="w-36 h-36 rounded-lg overflow-hidden bg-[#123D32] dark:bg-[#101B2D] text-[#D6AD52] border-2 border-[#292D2B] shadow-[4px_4px_0px_#292D2B] flex items-center justify-center relative">
                   {formData.photoUrl ? (
-                    <ResilientGoogleDriveImage
-                      src={formData.photoUrl}
-                      alt={formData.name}
-                      aspectRatioClass="w-full h-full"
-                      isAdmin={true}
-                      showAdminDiagnostic={true}
+                    <img
+                      data-testid="profile-photo-preview"
+                      src={resolveDisplayImageUrl(formData.photoUrl)}
+                      alt={formData.name || 'Foto Profil Pengasuh'}
+                      className="w-full h-full object-cover object-top sm:object-center"
                     />
                   ) : (
-                    <span className="font-serif-brand text-3xl font-extrabold">ON</span>
+                    <div className="flex flex-col items-center justify-center select-none text-center">
+                      <span className="font-serif-brand text-3xl font-extrabold">ON</span>
+                      <span className="text-[9px] uppercase tracking-wider text-[#D6AD52]/80 mt-1 font-bold">Inisial Nama</span>
+                    </div>
                   )}
                 </div>
 
                 <div className="w-full space-y-2 text-center">
-                  <label className="nb-btn nb-btn-primary w-full px-3 py-2 text-xs justify-center">
+                  <label className="nb-btn nb-btn-primary w-full px-3 py-2 text-xs justify-center cursor-pointer">
                     <Upload className="w-3.5 h-3.5 text-[#D6AD52]" />
                     <span>{formData.photoUrl ? 'Ganti Foto Profil' : 'Unggah Foto Profil'}</span>
                     <input
@@ -511,7 +513,7 @@ export const AdminInstructorProfileManager: React.FC<AdminInstructorProfileManag
                       className="nb-btn nb-btn-danger w-full px-3 py-1.5 text-xs justify-center"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
-                      <span>Hapus Foto Profil</span>
+                      <span>Hapus Foto (Gunakan Inisial)</span>
                     </button>
                   )}
                 </div>

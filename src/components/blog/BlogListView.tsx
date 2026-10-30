@@ -15,6 +15,8 @@ import { ReadingFontControls, useReadingFontSize } from '../common/ReadingFontCo
 import { FeatureShareModal } from '../common/FeatureShareModal';
 import { ARTIKEL_ILMIAH_SHARE_CONFIG } from '../../utils/featureShareHelper';
 import { ResilientGoogleDriveImage } from '../common/ResilientGoogleDriveImage';
+import { getInstructorProfile } from '../../firebase/services';
+import { resolveDisplayImageUrl } from '../../utils/googleDriveHelper';
 
 interface BlogListViewProps {
   posts: BlogPost[];
@@ -39,6 +41,34 @@ export const BlogListView: React.FC<BlogListViewProps> = ({
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [shareModalOpen, setShareModalOpen] = useState<boolean>(false);
   const fontControl = useReadingFontSize();
+
+  const [instructorPhoto, setInstructorPhoto] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('dars_instructor_profile_v1');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed?.photoUrl) return parsed.photoUrl;
+        }
+      } catch {}
+    }
+    return '';
+  });
+  const [featuredPhotoError, setFeaturedPhotoError] = useState(false);
+
+  React.useEffect(() => {
+    let mounted = true;
+    getInstructorProfile()
+      .then((profile) => {
+        if (mounted && profile?.photoUrl) {
+          setInstructorPhoto(profile.photoUrl);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   // Extract unique categories from posts
   const categories = Array.from(
@@ -191,9 +221,14 @@ export const BlogListView: React.FC<BlogListViewProps> = ({
 
               <div className="pt-4 border-t-2 border-[#171717] dark:border-[#4CA7A1] flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-md bg-[#001722] text-[#CEFEF1] font-bold text-xs flex items-center justify-center border-2 border-[#171717] dark:border-[#4CA7A1] overflow-hidden">
-                    {featuredPost.authorPhoto ? (
-                      <img src={featuredPost.authorPhoto} alt={featuredPost.authorName} className="w-full h-full object-cover" />
+                  <div className="w-9 h-9 rounded-md bg-[#001722] text-[#CEFEF1] font-bold text-xs flex items-center justify-center border-2 border-[#171717] dark:border-[#4CA7A1] overflow-hidden shrink-0">
+                    {(featuredPost.authorPhoto || instructorPhoto) && !featuredPhotoError ? (
+                      <img
+                        src={resolveDisplayImageUrl(featuredPost.authorPhoto || instructorPhoto)}
+                        alt={featuredPost.authorName}
+                        onError={() => setFeaturedPhotoError(true)}
+                        className="w-full h-full object-cover object-top sm:object-center"
+                      />
                     ) : (
                       <span>{featuredPost.authorName.charAt(0)}</span>
                     )}
