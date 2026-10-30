@@ -2595,3 +2595,155 @@ test('Table of Contents handles HTML with nested tags inside Heading 1 cleanly',
   assert.equal(toc[1].text, "Bab 2: Macam-Macam I'rab");
 });
 
+test('Floating Toolbar: calculateFloatingToolbarPosition places toolbar ABOVE selection when headroom exists', async () => {
+  const { calculateFloatingToolbarPosition } = await import('./floatingToolbarHelper.js');
+
+  const selectionRect = {
+    top: 300,
+    bottom: 330,
+    left: 400,
+    right: 500,
+    width: 100,
+    height: 30
+  };
+
+  const toolbarDimensions = { width: 500, height: 44 };
+  const viewportDimensions = { width: 1200, height: 800 };
+
+  const result = calculateFloatingToolbarPosition(
+    selectionRect,
+    toolbarDimensions,
+    viewportDimensions,
+    { minTopBoundary: 70, padding: 12, offset: 8 }
+  );
+
+  assert.equal(result.isVisible, true);
+  assert.equal(result.placement, 'top');
+  // top = 300 - (44 + 8) = 248
+  assert.equal(result.top, 248);
+  // center = 400 + 50 = 450, left = 450 - 250 = 200
+  assert.equal(result.left, 200);
+});
+
+test('Floating Toolbar: calculateFloatingToolbarPosition flips BELOW selection when close to top sticky header', async () => {
+  const { calculateFloatingToolbarPosition } = await import('./floatingToolbarHelper.js');
+
+  const selectionRect = {
+    top: 85,
+    bottom: 115,
+    left: 200,
+    right: 320,
+    width: 120,
+    height: 30
+  };
+
+  const toolbarDimensions = { width: 450, height: 44 };
+  const viewportDimensions = { width: 1000, height: 800 };
+
+  const result = calculateFloatingToolbarPosition(
+    selectionRect,
+    toolbarDimensions,
+    viewportDimensions,
+    { minTopBoundary: 70, padding: 12, offset: 8 }
+  );
+
+  assert.equal(result.isVisible, true);
+  assert.equal(result.placement, 'bottom');
+  // top = bottom + offset = 115 + 8 = 123
+  assert.equal(result.top, 123);
+});
+
+test('Floating Toolbar: calculateFloatingToolbarPosition clamps left and right boundaries within screen', async () => {
+  const { calculateFloatingToolbarPosition } = await import('./floatingToolbarHelper.js');
+
+  // Near left edge
+  const leftSelection = {
+    top: 200,
+    bottom: 230,
+    left: 10,
+    right: 50,
+    width: 40,
+    height: 30
+  };
+
+  const toolbarDimensions = { width: 400, height: 44 };
+  const viewportDimensions = { width: 500, height: 800 };
+
+  const leftResult = calculateFloatingToolbarPosition(
+    leftSelection,
+    toolbarDimensions,
+    viewportDimensions,
+    { padding: 16 }
+  );
+  assert.equal(leftResult.left, 16, 'Left edge must be clamped to padding');
+
+  // Near right edge
+  const rightSelection = {
+    top: 200,
+    bottom: 230,
+    left: 460,
+    right: 490,
+    width: 30,
+    height: 30
+  };
+
+  const rightResult = calculateFloatingToolbarPosition(
+    rightSelection,
+    toolbarDimensions,
+    viewportDimensions,
+    { padding: 16 }
+  );
+  // maxLeft = 500 - 400 - 16 = 84
+  assert.equal(rightResult.left, 84, 'Right edge must be clamped to screen width - padding');
+});
+
+test('Floating Toolbar: calculateFloatingToolbarPosition hides when selection is scrolled out of viewport', async () => {
+  const { calculateFloatingToolbarPosition } = await import('./floatingToolbarHelper.js');
+
+  // Scrolled completely above top
+  const outAbove = {
+    top: -100,
+    bottom: 60,
+    left: 100,
+    right: 200,
+    width: 100,
+    height: 30
+  };
+
+  const resAbove = calculateFloatingToolbarPosition(
+    outAbove,
+    { width: 300, height: 40 },
+    { width: 1000, height: 800 },
+    { minTopBoundary: 70 }
+  );
+  assert.equal(resAbove.isVisible, false);
+
+  // Scrolled completely below viewport
+  const outBelow = {
+    top: 850,
+    bottom: 880,
+    left: 100,
+    right: 200,
+    width: 100,
+    height: 30
+  };
+
+  const resBelow = calculateFloatingToolbarPosition(
+    outBelow,
+    { width: 300, height: 40 },
+    { width: 1000, height: 800 }
+  );
+  assert.equal(resBelow.isVisible, false);
+});
+
+test('Floating Toolbar: isTextSelectionActive distinguishes valid selection from collapsed or whitespace', async () => {
+  const { isTextSelectionActive } = await import('./floatingToolbarHelper.js');
+
+  assert.equal(isTextSelectionActive(null), false);
+  assert.equal(isTextSelectionActive({ isCollapsed: true, text: 'Hello' }), false);
+  assert.equal(isTextSelectionActive({ isCollapsed: false, text: '   \n  ' }), false);
+  assert.equal(isTextSelectionActive({ isCollapsed: false, text: 'Kalam dan Isim' }), true);
+  assert.equal(isTextSelectionActive({ isCollapsed: false, text: 'بسم الله' }), true);
+});
+
+

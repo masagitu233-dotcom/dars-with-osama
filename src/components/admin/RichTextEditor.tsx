@@ -1,4 +1,6 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
+import { FloatingContextualToolbar } from './FloatingContextualToolbar';
+import { calculateFloatingToolbarPosition } from '../../utils/floatingToolbarHelper';
 import {
   Bold,
   Italic,
@@ -159,6 +161,16 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   const [activeTableInfo, setActiveTableInfo] = useState<{ table: HTMLTableElement; cell: HTMLTableCellElement } | null>(null);
   const [activeLinkElement, setActiveLinkElement] = useState<HTMLAnchorElement | null>(null);
 
+  // Floating Contextual Toolbar states
+  const [floatingToolbarVisible, setFloatingToolbarVisible] = useState(false);
+  const [floatingToolbarPosition, setFloatingToolbarPosition] = useState<{
+    top: number;
+    left: number;
+    placement: 'top' | 'bottom';
+  }>({ top: 0, left: 0, placement: 'top' });
+  const floatingToolbarRef = useRef<HTMLDivElement>(null);
+  const isMouseDownInsideEditorRef = useRef(false);
+
   const saveSelection = () => {
     const sel = window.getSelection();
     if (sel && sel.rangeCount > 0 && editorRef.current?.contains(sel.anchorNode)) {
@@ -176,6 +188,66 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       }
     }
   };
+
+  const updateFloatingToolbar = useCallback(() => {
+    if (!editorRef.current) {
+      setFloatingToolbarVisible(false);
+      return;
+    }
+
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0 || sel.isCollapsed) {
+      setFloatingToolbarVisible(false);
+      return;
+    }
+
+    // Selection must be contained within this editor
+    if (
+      !editorRef.current.contains(sel.anchorNode) ||
+      !editorRef.current.contains(sel.focusNode)
+    ) {
+      setFloatingToolbarVisible(false);
+      return;
+    }
+
+    const text = sel.toString();
+    if (!text || !text.trim()) {
+      setFloatingToolbarVisible(false);
+      return;
+    }
+
+    // Save range
+    savedRangeRef.current = sel.getRangeAt(0).cloneRange();
+
+    const range = sel.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+
+    if (rect.height === 0 || rect.bottom < 60 || rect.top > window.innerHeight) {
+      setFloatingToolbarVisible(false);
+      return;
+    }
+
+    const toolbarWidth = floatingToolbarRef.current?.offsetWidth || 560;
+    const toolbarHeight = floatingToolbarRef.current?.offsetHeight || 44;
+
+    const pos = calculateFloatingToolbarPosition(
+      rect,
+      { width: toolbarWidth, height: toolbarHeight },
+      { width: window.innerWidth, height: window.innerHeight },
+      { minTopBoundary: 70, padding: 12, offset: 8 }
+    );
+
+    if (pos.isVisible) {
+      setFloatingToolbarPosition({
+        top: pos.top,
+        left: pos.left,
+        placement: pos.placement
+      });
+      setFloatingToolbarVisible(true);
+    } else {
+      setFloatingToolbarVisible(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (editorRef.current && editorRef.current.innerHTML !== value) {
@@ -271,9 +343,47 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   useEffect(() => {
     const handleSelectionChange = () => {
       updateActiveStates();
+      if (!isMouseDownInsideEditorRef.current) {
+        const sel = window.getSelection();
+        if (!sel || sel.isCollapsed || !editorRef.current?.contains(sel.anchorNode)) {
+          setFloatingToolbarVisible(false);
+        }
+      }
     };
     document.addEventListener('selectionchange', handleSelectionChange);
     return () => document.removeEventListener('selectionchange', handleSelectionChange);
+  }, []);
+
+  // Recalculate floating position when scrolling or resizing
+  useEffect(() => {
+    const handleScrollOrResize = () => {
+      if (floatingToolbarVisible) {
+        updateFloatingToolbar();
+      }
+    };
+    window.addEventListener('scroll', handleScrollOrResize, true);
+    window.addEventListener('resize', handleScrollOrResize);
+    return () => {
+      window.removeEventListener('scroll', handleScrollOrResize, true);
+      window.removeEventListener('resize', handleScrollOrResize);
+    };
+  }, [floatingToolbarVisible, updateFloatingToolbar]);
+
+  // Hide floating toolbar when clicking outside editor and floating toolbar
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (
+        editorRef.current &&
+        !editorRef.current.contains(target) &&
+        floatingToolbarRef.current &&
+        !floatingToolbarRef.current.contains(target)
+      ) {
+        setFloatingToolbarVisible(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const emitChange = () => {
@@ -420,6 +530,12 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
           }
         }
       }
+    }
+  };
+
+  const handleKeyUp = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (['Shift', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'a', 'A'].includes(e.key)) {
+      updateFloatingToolbar();
     }
   };
 
@@ -1085,11 +1201,72 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         onInput={handleInput}
         onBlur={handleInput}
         onKeyDown={handleKeyDown}
+        onKeyUp={handleKeyUp}
+        onMouseDown={() => {
+          isMouseDownInsideEditorRef.current = true;
+        }}
+        onMouseUp={() => {
+          isMouseDownInsideEditorRef.current = false;
+          updateFloatingToolbar();
+        }}
+        onDoubleClick={() => {
+          isMouseDownInsideEditorRef.current = false;
+          setTimeout(updateFloatingToolbar, 10);
+        }}
         onCopy={handleCopy}
         onPaste={handlePaste}
         style={{ minHeight }}
         className="p-4 focus:outline-hidden text-sm sm:text-base text-[#171717] dark:text-[#F8F3E8] leading-relaxed max-w-none prose dark:prose-invert rich-editor-content"
         data-placeholder={placeholder}
+      />
+
+      {/* Floating Contextual Toolbar */}
+      <FloatingContextualToolbar
+        visible={floatingToolbarVisible}
+        position={floatingToolbarPosition}
+        activeStates={activeStates}
+        activeBlock={activeBlock}
+        activeAlign={activeAlign}
+        activeLinkElement={activeLinkElement}
+        onApplyBlockFormat={(fmt) => {
+          applyBlockFormat(fmt);
+          setTimeout(updateFloatingToolbar, 10);
+        }}
+        onExecCommand={(cmd, val) => {
+          execCommand(cmd, val);
+          setTimeout(updateFloatingToolbar, 10);
+        }}
+        onApplyAlignment={(aln) => {
+          applyAlignment(aln);
+          setTimeout(updateFloatingToolbar, 10);
+        }}
+        onOpenLinkModal={handleOpenLinkModal}
+        onUnlink={() => {
+          handleUnlink();
+          setTimeout(updateFloatingToolbar, 10);
+        }}
+        onOpenImageModal={() => {
+          saveSelection();
+          setShowImageModal(true);
+        }}
+        onOpenTableModal={() => {
+          saveSelection();
+          setShowTableModal(true);
+        }}
+        onInsertArabicBlock={() => {
+          insertArabicBlock();
+          setTimeout(updateFloatingToolbar, 10);
+        }}
+        onUndo={() => {
+          execCommand('undo');
+          setTimeout(updateFloatingToolbar, 10);
+        }}
+        onResetFormat={() => {
+          execCommand('removeFormat');
+          applyBlockFormat('p');
+          setTimeout(updateFloatingToolbar, 10);
+        }}
+        toolbarRef={floatingToolbarRef}
       />
 
       {/* Table Creation Modal */}
