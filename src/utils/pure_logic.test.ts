@@ -2483,3 +2483,115 @@ test('normalizeArticleHtmlImages converts Google Drive inline images to direct e
   assert.equal(extracted[2].isDrive, true);
   assert.equal(extracted[2].fileId, fileId2);
 });
+
+test('extractTableOfContents and injectHeadingIdsIntoHtml detect only Heading 1, excluding H2, H3, and normal paragraphs', async () => {
+  const { extractTableOfContents, injectHeadingIdsIntoHtml } = await import('./tableOfContentsHelper.js');
+
+  const articleHtml = `
+    <p>Pengantar singkat artikel sebelum masuk ke pokok bahasan.</p>
+    <h1>1. Keutamaan Menuntut Ilmu Syar'i</h1>
+    <p>Ilmu adalah lentera bagi setiap muslim.</p>
+    <h2>Sub-pembahasan A (Dalil Al-Qur'an)</h2>
+    <p>Ayat-ayat seputar ilmu.</p>
+    <h3>Rincian Tafsir Ayat</h3>
+    <p>Keterangan para ulama mufassir.</p>
+    <h1>2. Adab Penuntut Ilmu Terhadap Guru</h1>
+    <p>Menghormati ahlul 'ilmi.</p>
+    <h2>Sub-pembahasan B (Kisah Salaf)</h2>
+    <p>Kisah Imam Syafi'i dan Imam Malik.</p>
+    <h1>3. Buah Manis Dari Pengamalan Ilmu</h1>
+    <p>Ilmu yang berbuah amal shaleh.</p>
+  `;
+
+  const toc = extractTableOfContents(articleHtml);
+
+  // Must only contain 3 Heading 1 items
+  assert.equal(toc.length, 3);
+  assert.equal(toc[0].text, "1. Keutamaan Menuntut Ilmu Syar'i");
+  assert.equal(toc[1].text, "2. Adab Penuntut Ilmu Terhadap Guru");
+  assert.equal(toc[2].text, "3. Buah Manis Dari Pengamalan Ilmu");
+
+  // H2 and H3 must NOT be present
+  assert.ok(!toc.some(item => item.text.includes("Sub-pembahasan")));
+  assert.ok(!toc.some(item => item.text.includes("Rincian Tafsir")));
+
+  // Injected HTML verification
+  const { processedHtml, items } = injectHeadingIdsIntoHtml(articleHtml);
+  assert.equal(items.length, 3);
+  assert.ok(processedHtml.includes(`id="${items[0].id}"`));
+  assert.ok(processedHtml.includes(`id="${items[1].id}"`));
+  assert.ok(processedHtml.includes(`id="${items[2].id}"`));
+  assert.ok(processedHtml.includes('scroll-mt-24'));
+});
+
+test('Table of Contents generates collision-free unique IDs for duplicate Heading 1 titles and handles Arabic text', async () => {
+  const { extractTableOfContents, injectHeadingIdsIntoHtml } = await import('./tableOfContentsHelper.js');
+
+  const duplicateHeadingHtml = `
+    <h1>Faedah Kajian</h1>
+    <p>Faedah pertama.</p>
+    <h1>Faedah Kajian</h1>
+    <p>Faedah kedua dengan judul yang persis sama.</p>
+    <h1>Faedah Kajian</h1>
+    <p>Faedah ketiga.</p>
+    <h1>فَضْلُ العِلْمِ وَالعَمَلِ</h1>
+    <p>Naskah dalam bahasa Arab.</p>
+  `;
+
+  const { processedHtml, items } = injectHeadingIdsIntoHtml(duplicateHeadingHtml);
+
+  assert.equal(items.length, 4);
+
+  // Check unique IDs for identical headings
+  assert.equal(items[0].id, 'faedah-kajian');
+  assert.equal(items[1].id, 'faedah-kajian-2');
+  assert.equal(items[2].id, 'faedah-kajian-3');
+
+  // Check Arabic heading preserves unicode slug or resolves properly
+  assert.ok(items[3].id.length > 0);
+  assert.ok(!items[3].id.includes(' '));
+
+  // IDs in the set must be strictly unique
+  const idSet = new Set(items.map(i => i.id));
+  assert.equal(idSet.size, 4);
+
+  // Each ID must exist in processedHtml
+  items.forEach(item => {
+    assert.ok(processedHtml.includes(`id="${item.id}"`));
+  });
+});
+
+test('Table of Contents returns empty array and does not modify HTML when article has no Heading 1', async () => {
+  const { extractTableOfContents, injectHeadingIdsIntoHtml } = await import('./tableOfContentsHelper.js');
+
+  const noH1Html = `
+    <p>Artikel narasi biasa tanpa Heading 1.</p>
+    <h2>Sub-judul saja</h2>
+    <p>Isi artikel lanjutan.</p>
+    <h3>Rincian poin</h3>
+    <p>Penutup tulisan.</p>
+  `;
+
+  const toc = extractTableOfContents(noH1Html);
+  assert.equal(toc.length, 0);
+
+  const { processedHtml, items } = injectHeadingIdsIntoHtml(noH1Html);
+  assert.equal(items.length, 0);
+  assert.equal(processedHtml, noH1Html);
+});
+
+test('Table of Contents handles HTML with nested tags inside Heading 1 cleanly', async () => {
+  const { extractTableOfContents } = await import('./tableOfContentsHelper.js');
+
+  const formattedH1Html = `
+    <h1><b>Bab 1:</b> <span>Pengertian</span> &amp; Syarat Kalam</h1>
+    <p>Pembahasan materi.</p>
+    <h1 style="text-align: center;"><span style="color: green;">Bab 2:</span> Macam-Macam I'rab</h1>
+  `;
+
+  const toc = extractTableOfContents(formattedH1Html);
+  assert.equal(toc.length, 2);
+  assert.equal(toc[0].text, "Bab 1: Pengertian & Syarat Kalam");
+  assert.equal(toc[1].text, "Bab 2: Macam-Macam I'rab");
+});
+

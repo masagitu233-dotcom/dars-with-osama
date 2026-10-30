@@ -1375,3 +1375,25 @@ table td {
   color: #C6A75E !important;
 }
 
+/* Heading target highlight when navigated from Table of Contents */
+@keyframes headingTargetPulse {
+  0% {
+    background-color: rgba(214, 173, 82, 0.4);
+    box-shadow: 0 0 0 4px rgba(214, 173, 82, 0.25);
+  }
+  50% {
+    background-color: rgba(214, 173, 82, 0.2);
+    box-shadow: 0 0 0 2px rgba(214, 173, 82, 0.15);
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: none;
+  }
+}
+
+.heading-target-flash {
+  animation: headingTargetPulse 1.6s ease-out;
+  border-radius: 4px;
+}
+
+

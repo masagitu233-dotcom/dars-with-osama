@@ -20,6 +20,8 @@ import { ArticleAudioPlayer } from './ArticleAudioPlayer';
 import { ArticleCommentsSection } from './ArticleCommentsSection';
 import { ReadingFontControls, useReadingFontSize } from '../common/ReadingFontControls';
 import { ResilientGoogleDriveImage } from '../common/ResilientGoogleDriveImage';
+import { ArticleTableOfContents } from './ArticleTableOfContents';
+import { injectHeadingIdsIntoHtml } from '../../utils/tableOfContentsHelper';
 import {
   normalizeArticleHtmlImages,
   getGoogleDriveImageCandidates,
@@ -107,6 +109,34 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
   const { userProfile } = useAuth();
   const isAdmin = userProfile?.role === 'admin';
   const contentBodyRef = React.useRef<HTMLDivElement>(null);
+
+  // Automatically process article content to inject unique heading IDs and generate Table of Contents
+  const { processedHtml: processedContent, items: tocItems } = React.useMemo(() => {
+    const raw = post.content || '';
+    const sanitized = sanitizeRichTextHtml(raw);
+    const normalizedImages = normalizeArticleHtmlImages(sanitized);
+    return injectHeadingIdsIntoHtml(normalizedImages);
+  }, [post.content]);
+
+  // Handle deep-link anchor scroll on load or refresh (e.g. url#heading-id)
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.hash) {
+      const hashId = decodeURIComponent(window.location.hash.replace('#', ''));
+      if (hashId) {
+        const timer = setTimeout(() => {
+          const el = document.getElementById(hashId);
+          if (el) {
+            const headerOffset = 88;
+            const pos = el.getBoundingClientRect().top + window.pageYOffset - headerOffset;
+            window.scrollTo({ top: Math.max(0, pos), behavior: 'smooth' });
+            el.classList.add('heading-target-flash');
+            setTimeout(() => el.classList.remove('heading-target-flash'), 1600);
+          }
+        }, 350);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [post.id]);
 
   // Resilient handling for inline images in article content:
   // Auto-fallbacks across Google Drive endpoints and displays an actionable card if all fail
@@ -320,15 +350,18 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
           </figure>
         )}
 
+        {/* DAFTAR ISI OTOMATIS (TABLE OF CONTENTS) */}
+        {tocItems.length > 0 && (
+          <ArticleTableOfContents items={tocItems} />
+        )}
+
         {/* MAIN BODY HTML CONTENT — Calm reading zone */}
         <div
           ref={contentBodyRef}
           data-testid="article-body-content"
           className="prose dark:prose-invert max-w-none sm:max-w-[68ch] mx-auto text-[#171717] dark:text-[#CEFEF1] leading-relaxed space-y-3.5 sm:space-y-4 font-sans blog-content"
           dangerouslySetInnerHTML={{
-            __html: autoWrapArabicText(
-              normalizeArticleHtmlImages(sanitizeRichTextHtml(post.content))
-            )
+            __html: autoWrapArabicText(processedContent)
           }}
         />
 
