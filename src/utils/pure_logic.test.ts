@@ -2843,6 +2843,55 @@ test('Mobile Carousel: Calculates peek width and active index correctly for hori
   assert.equal(calculateActiveIndex(2000, viewportWidth, totalCourses), 3);
 });
 
+// Case 79: Mobile Carousel Touch Gesture Direction & Velocity Threshold
+test('Mobile Carousel: Distinguishes horizontal touch swipe from vertical page scroll and calculates threshold', () => {
+  // Function mimicking touch movement vector detection
+  const detectGestureDirection = (diffX: number, diffY: number): 'horizontal' | 'vertical' | 'undecided' => {
+    if (Math.abs(diffX) <= 5 && Math.abs(diffY) <= 5) return 'undecided';
+    return Math.abs(diffX) >= Math.abs(diffY) ? 'horizontal' : 'vertical';
+  };
+
+  // 1. Horizontal swipe motion
+  assert.equal(detectGestureDirection(-45, 10), 'horizontal');
+  assert.equal(detectGestureDirection(50, -5), 'horizontal');
+
+  // 2. Vertical page scroll motion
+  assert.equal(detectGestureDirection(5, -60), 'vertical');
+  assert.equal(detectGestureDirection(-8, 80), 'vertical');
+
+  // 3. Tiny touch jitter (undecided)
+  assert.equal(detectGestureDirection(2, 3), 'undecided');
+
+  // Target card decision based on swipe distance and velocity
+  const decideSwipeTarget = (
+    currentIndex: number,
+    diffX: number,
+    elapsedMs: number,
+    totalItems: number
+  ): number => {
+    const velocity = Math.abs(diffX) / (elapsedMs || 1);
+    if (diffX < -35 || (diffX < -15 && velocity > 0.35)) {
+      return Math.min(currentIndex + 1, totalItems - 1);
+    } else if (diffX > 35 || (diffX > 15 && velocity > 0.35)) {
+      return Math.max(currentIndex - 1, 0);
+    }
+    return currentIndex;
+  };
+
+  // Swiped left by 50px -> advance from index 0 to 1
+  assert.equal(decideSwipeTarget(0, -50, 150, 4), 1);
+  // Flick left quickly with high velocity (20px in 40ms = velocity 0.5) -> advance
+  assert.equal(decideSwipeTarget(0, -20, 40, 4), 1);
+  // Swiped right by 50px -> back from index 1 to 0
+  assert.equal(decideSwipeTarget(1, 50, 150, 4), 0);
+  // Insufficient swipe (10px in 200ms) -> remains at current index
+  assert.equal(decideSwipeTarget(1, 10, 200, 4), 1);
+  // Bounds check at ends
+  assert.equal(decideSwipeTarget(3, -80, 100, 4), 3, 'Cannot scroll past end');
+  assert.equal(decideSwipeTarget(0, 80, 100, 4), 0, 'Cannot scroll before start');
+});
+
+
 
 
 
