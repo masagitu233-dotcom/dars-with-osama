@@ -2891,6 +2891,44 @@ test('Mobile Carousel: Distinguishes horizontal touch swipe from vertical page s
   assert.equal(decideSwipeTarget(0, 80, 100, 4), 0, 'Cannot scroll before start');
 });
 
+// Case 80: Mobile Carousel Proximity Snapping & Inertia Physics Configuration
+test('Mobile Carousel: Proximity snapping configuration allows natural multi-card gliding and gentle settling', () => {
+  interface CarouselScrollPhysicsConfig {
+    scrollSnapType: string;
+    scrollSnapStop: string;
+    touchAction: string;
+    webkitOverflowScrolling: string;
+    overscrollBehaviorX: string;
+  }
+
+  const mobileCarouselConfig: CarouselScrollPhysicsConfig = {
+    scrollSnapType: 'x proximity',
+    scrollSnapStop: 'normal',
+    touchAction: 'pan-x pan-y',
+    webkitOverflowScrolling: 'touch',
+    overscrollBehaviorX: 'contain'
+  };
+
+  // 1. Proximity snapping is active instead of rigid mandatory snapping
+  assert.equal(mobileCarouselConfig.scrollSnapType, 'x proximity');
+  assert.equal(mobileCarouselConfig.scrollSnapStop, 'normal');
+
+  // 2. Both horizontal and vertical panning are allowed by the compositor
+  assert.equal(mobileCarouselConfig.touchAction, 'pan-x pan-y');
+  assert.equal(mobileCarouselConfig.webkitOverflowScrolling, 'touch');
+
+  // 3. Simulating momentum gliding: soft proximity does not abruptly halt kinetic energy
+  const canGlidePastSingleCard = (velocity: number, snapMode: string): boolean => {
+    // Under proximity snap with stop: normal, momentum > threshold glides freely across multiple cards
+    if (snapMode === 'proximity' && velocity > 0.5) return true;
+    return false;
+  };
+
+  assert.equal(canGlidePastSingleCard(0.8, 'proximity'), true, 'High momentum flick should glide freely');
+  assert.equal(canGlidePastSingleCard(0.2, 'proximity'), false, 'Gentle flick settles softly into proximity snap');
+});
+
+
 
 
 

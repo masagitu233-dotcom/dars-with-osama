@@ -18,36 +18,34 @@ export const MobileCarousel: React.FC<MobileCarouselProps> = ({
   const [activeIndex, setActiveIndex] = useState(0);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
   const [dragSuppressed, setDragSuppressed] = useState(false);
+
+  // Mouse drag state for desktop testing
+  const [isMouseDown, setIsMouseDown] = useState(false);
+  const mouseState = useRef<{ startX: number; startScrollLeft: number; hasMoved: boolean }>({
+    startX: 0,
+    startScrollLeft: 0,
+    hasMoved: false
+  });
+
+  // Touch tracking solely for click suppression after deliberate swipe gestures
+  const touchTracking = useRef<{ startX: number; startY: number; hasMoved: boolean }>({
+    startX: 0,
+    startY: 0,
+    hasMoved: false
+  });
 
   const itemCount = React.Children.count(children);
 
-  // Gesture tracking refs
-  const touchState = useRef<{
-    startX: number;
-    startY: number;
-    startScrollLeft: number;
-    startTime: number;
-    isMoving: boolean;
-    isHorizontal: boolean | null;
-  }>({
-    startX: 0,
-    startY: 0,
-    startScrollLeft: 0,
-    startTime: 0,
-    isMoving: false,
-    isHorizontal: null
-  });
-
+  // Smooth active index tracking via passive scroll observer
   const updateScrollState = useCallback(() => {
     const el = containerRef.current;
     if (!el) return;
     const { scrollLeft, scrollWidth, clientWidth } = el;
-    setCanScrollLeft(scrollLeft > 10);
-    setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10);
+    setCanScrollLeft(scrollLeft > 15);
+    setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 15);
 
-    // Calculate which card is currently most in view
+    // Accurately determine the card closest to the visible viewport start
     if (clientWidth > 0 && itemCount > 0) {
       const items = Array.from(el.children) as HTMLElement[];
       const containerLeft = el.getBoundingClientRect().left;
@@ -93,6 +91,7 @@ export const MobileCarousel: React.FC<MobileCarouselProps> = ({
     };
   }, [updateScrollState]);
 
+  // Programmatic scroll (used by arrow buttons & dots)
   const scrollToCard = useCallback((index: number) => {
     const el = containerRef.current;
     if (!el) return;
@@ -120,131 +119,79 @@ export const MobileCarousel: React.FC<MobileCarouselProps> = ({
     scrollToCard(activeIndex + 1);
   };
 
-  // --- TOUCH SWIPE HANDLERS ---
+  // --- NATIVE TOUCH HANDLERS (Non-blocking, purely for click suppression) ---
   const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
     const touch = e.touches[0];
-    const el = containerRef.current;
-    if (!el) return;
-
-    touchState.current = {
+    touchTracking.current = {
       startX: touch.clientX,
       startY: touch.clientY,
-      startScrollLeft: el.scrollLeft,
-      startTime: Date.now(),
-      isMoving: false,
-      isHorizontal: null
+      hasMoved: false
     };
   };
 
   const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
-    const el = containerRef.current;
-    if (!el) return;
-
     const touch = e.touches[0];
-    const diffX = touch.clientX - touchState.current.startX;
-    const diffY = touch.clientY - touchState.current.startY;
+    const diffX = Math.abs(touch.clientX - touchTracking.current.startX);
+    const diffY = Math.abs(touch.clientY - touchTracking.current.startY);
 
-    // Detect gesture direction once threshold is crossed
-    if (touchState.current.isHorizontal === null) {
-      if (Math.abs(diffX) > 5 || Math.abs(diffY) > 5) {
-        touchState.current.isHorizontal = Math.abs(diffX) >= Math.abs(diffY);
-      }
-    }
-
-    // If horizontal swipe is identified, move container directly with finger
-    if (touchState.current.isHorizontal === true) {
-      touchState.current.isMoving = true;
-      el.scrollLeft = touchState.current.startScrollLeft - diffX;
+    // If movement exceeds minimal threshold, mark as deliberate gesture
+    if (diffX > 10 || diffY > 10) {
+      touchTracking.current.hasMoved = true;
     }
   };
 
-  const handleTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
-    const el = containerRef.current;
-    if (!el) return;
-
-    if (touchState.current.isMoving && touchState.current.isHorizontal === true) {
-      const touch = e.changedTouches[0];
-      const diffX = touch.clientX - touchState.current.startX;
-      const elapsed = Date.now() - touchState.current.startTime;
-      const velocity = Math.abs(diffX) / (elapsed || 1);
-
-      // Prevent accidental card tap right after swipe
+  const handleTouchEnd = () => {
+    if (touchTracking.current.hasMoved) {
       setDragSuppressed(true);
       setTimeout(() => setDragSuppressed(false), 200);
-
-      // If swipe velocity or distance is strong enough, advance or backtrack
-      if (diffX < -35 || (diffX < -15 && velocity > 0.35)) {
-        scrollToCard(activeIndex + 1);
-      } else if (diffX > 35 || (diffX > 15 && velocity > 0.35)) {
-        scrollToCard(activeIndex - 1);
-      } else {
-        // Re-snap to nearest card
-        updateScrollState();
-      }
     }
-
-    touchState.current.isMoving = false;
-    touchState.current.isHorizontal = null;
+    touchTracking.current.hasMoved = false;
   };
 
-  // --- MOUSE DRAG HANDLERS (for desktop testing / trackpad) ---
+  // --- MOUSE DRAG HANDLERS (for desktop / responsive emulator testing) ---
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    // Only trigger for primary mouse button
     if (e.button !== 0) return;
     const el = containerRef.current;
     if (!el) return;
 
-    setIsDragging(true);
-    touchState.current = {
+    setIsMouseDown(true);
+    mouseState.current = {
       startX: e.clientX,
-      startY: e.clientY,
       startScrollLeft: el.scrollLeft,
-      startTime: Date.now(),
-      isMoving: false,
-      isHorizontal: true
+      hasMoved: false
     };
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!isDragging) return;
+    if (!isMouseDown) return;
     const el = containerRef.current;
     if (!el) return;
 
-    const diffX = e.clientX - touchState.current.startX;
+    const diffX = e.clientX - mouseState.current.startX;
     if (Math.abs(diffX) > 5) {
-      touchState.current.isMoving = true;
-      el.scrollLeft = touchState.current.startScrollLeft - diffX;
+      mouseState.current.hasMoved = true;
+      el.scrollLeft = mouseState.current.startScrollLeft - diffX;
     }
   };
 
-  const handleMouseUp = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!isDragging) return;
-    setIsDragging(false);
-
-    if (touchState.current.isMoving) {
-      const diffX = e.clientX - touchState.current.startX;
+  const handleMouseUp = () => {
+    if (!isMouseDown) return;
+    setIsMouseDown(false);
+    if (mouseState.current.hasMoved) {
       setDragSuppressed(true);
       setTimeout(() => setDragSuppressed(false), 200);
-
-      if (diffX < -40) {
-        scrollToCard(activeIndex + 1);
-      } else if (diffX > 40) {
-        scrollToCard(activeIndex - 1);
-      } else {
-        updateScrollState();
-      }
     }
-    touchState.current.isMoving = false;
+    mouseState.current.hasMoved = false;
   };
 
   const handleMouseLeave = () => {
-    if (isDragging) {
-      setIsDragging(false);
-      touchState.current.isMoving = false;
+    if (isMouseDown) {
+      setIsMouseDown(false);
+      mouseState.current.hasMoved = false;
     }
   };
 
-  // Prevent click from bubbling to cards when completing a swipe gesture
+  // Prevent accidental card click after a deliberate drag/swipe
   const handleClickCapture = (e: React.MouseEvent) => {
     if (dragSuppressed) {
       e.stopPropagation();
@@ -272,22 +219,25 @@ export const MobileCarousel: React.FC<MobileCarouselProps> = ({
         onMouseLeave={handleMouseLeave}
         onClickCapture={handleClickCapture}
         onDragStart={(e) => e.preventDefault()}
-        className={`flex sm:grid overflow-x-auto overflow-y-hidden sm:overflow-visible pb-3 pt-1 px-1 sm:px-0 gap-4 sm:gap-6 snap-x snap-mandatory scroll-smooth no-scrollbar -mx-2 px-2 sm:mx-0 ${
-          isDragging ? 'cursor-grabbing select-none' : 'cursor-grab sm:cursor-auto'
+        className={`flex sm:grid overflow-x-auto overflow-y-hidden sm:overflow-visible pb-3 pt-1 px-1 sm:px-0 gap-4 sm:gap-6 snap-x snap-proximity scroll-smooth no-scrollbar -mx-2 px-2 sm:mx-0 ${
+          isMouseDown ? 'cursor-grabbing select-none' : 'cursor-grab sm:cursor-auto'
         } ${desktopGridClass}`}
         style={{
           WebkitOverflowScrolling: 'touch',
           touchAction: 'pan-x pan-y',
-          overscrollBehaviorX: 'contain'
+          overscrollBehaviorX: 'contain',
+          scrollSnapType: 'x proximity',
+          scrollBehavior: 'smooth'
         }}
       >
         {React.Children.map(children, (child, idx) => (
           <div
             key={idx}
-            className="w-[84vw] max-w-[340px] shrink-0 snap-start sm:w-auto sm:max-w-none sm:shrink sm:snap-none h-auto sm:h-full flex flex-col select-none sm:select-auto"
+            className="w-[84vw] max-w-[340px] shrink-0 snap-start sm:w-auto sm:max-w-none sm:shrink sm:snap-none h-auto sm:h-full flex flex-col"
             style={{
-              WebkitUserDrag: 'none'
-            } as React.CSSProperties}
+              scrollSnapAlign: 'start',
+              scrollSnapStop: 'normal'
+            }}
           >
             {child}
           </div>
