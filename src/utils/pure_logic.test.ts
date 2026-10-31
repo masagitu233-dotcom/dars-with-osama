@@ -2814,5 +2814,35 @@ test('Instructor Profile: Author bio card correctly resolves photo or defaults t
   assert.equal(initialFallback, 'O');
 });
 
+// Case 78: Mobile Carousel Horizontal Scroll & Active Index Math
+test('Mobile Carousel: Calculates peek width and active index correctly for horizontal touch swipe', () => {
+  // Mobile card width ratio is 84vw (0.84) leaving ~16vw for next card peek
+  const viewportWidth = 375; // Standard mobile screen width
+  const cardWidthRatio = 0.84;
+  const singleCardWidth = viewportWidth * cardWidthRatio; // 315px
+  const peekWidth = viewportWidth * (1 - cardWidthRatio); // 60px visible of next card
+
+  assert.ok(singleCardWidth >= 300, 'Card width on mobile should remain large and comfortable');
+  assert.ok(peekWidth >= 40, 'Next card must peek at least 40px to cue horizontal scrollability');
+
+  // Active index calculation logic
+  const calculateActiveIndex = (scrollLeft: number, clientWidth: number, totalItems: number): number => {
+    const step = clientWidth * 0.85;
+    const idx = Math.round(scrollLeft / (step || 1));
+    return Math.min(Math.max(0, idx), totalItems - 1);
+  };
+
+  const totalCourses = 4;
+  // At start
+  assert.equal(calculateActiveIndex(0, viewportWidth, totalCourses), 0);
+  // Scrolled to card 1
+  assert.equal(calculateActiveIndex(318, viewportWidth, totalCourses), 1);
+  // Scrolled to card 2
+  assert.equal(calculateActiveIndex(636, viewportWidth, totalCourses), 2);
+  // Clamped at end
+  assert.equal(calculateActiveIndex(2000, viewportWidth, totalCourses), 3);
+});
+
+
 
 

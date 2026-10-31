@@ -18,6 +18,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Category, Course, Enrollment, BlogPost, Consultation } from '../../types';
 import { HeroSection } from './HeroSection';
 import { CourseCard } from '../courses/CourseCard';
+import { MobileCarousel } from '../common/MobileCarousel';
 import { useSmoothScroll } from '../../context/SmoothScrollContext';
 import { useAuth } from '../../context/AuthContext';
 import { getPublishedPublicQA } from '../../firebase/services';
@@ -60,14 +61,14 @@ const HomeQACard: React.FC<{
   return (
     <div
       onClick={onReadMore}
-      className="nb-card-interactive p-5 flex flex-col justify-between group cursor-pointer text-left space-y-4 h-full bg-white dark:bg-[#1F5F63] border-2 border-[#171717] dark:border-[#4CA7A1]"
+      className="nb-card-interactive p-4 sm:p-5 flex flex-col justify-between group cursor-pointer text-left space-y-3.5 sm:space-y-4 h-full bg-white dark:bg-[#1F5F63] border-2 border-[#171717] dark:border-[#4CA7A1]"
     >
-      <div className="space-y-3">
+      <div className="space-y-2.5 sm:space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="nb-badge bg-[#123D32] text-[#D6AD52] dark:bg-[#4CA7A1] dark:text-[#001722] border-[#171717] dark:border-[#A6D6C9]">
+          <span className="nb-badge bg-[#123D32] text-[#D6AD52] dark:bg-[#4CA7A1] dark:text-[#001722] border-[#171717] dark:border-[#A6D6C9] text-[10px] sm:text-[11px] px-2 sm:px-2.5 py-0.5">
             Tanya Jawab Syar'i
           </span>
-          <span className="text-[11px] font-bold text-[#525856] dark:text-[#A6D6C9]">
+          <span className="text-[11px] font-bold text-[#525855] dark:text-[#A6D6C9]">
             {item.publishedAt
               ? new Date(item.publishedAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
               : 'Terbit'}
@@ -78,14 +79,14 @@ const HomeQACard: React.FC<{
           {item.title}
         </h3>
 
-        <p className="text-xs text-[#525856] dark:text-[#A6D6C9] line-clamp-2 leading-relaxed">
+        <p className="text-xs text-[#525855] dark:text-[#A6D6C9] line-clamp-2 leading-relaxed">
           <strong className="font-bold text-[#171717] dark:text-[#CEFEF1]">Pertanyaan: </strong>
           {shortQuestion}
         </p>
 
         {shortAnswer && (
           <div className="p-3 rounded-md bg-[#FAF7F0] dark:bg-[#0D2B36] border-2 border-[#171717] dark:border-[#4CA7A1] text-xs text-[#171717] dark:text-[#CEFEF1] leading-relaxed line-clamp-2">
-            <strong className="font-bold text-[#123D32] dark:text-[#4CA7A1]">Jawaban Ustaz: </strong>
+            <strong className="font-bold text-[#123D32] dark:text-[#4CA7A1]">Jawaban: </strong>
             {shortAnswer}
           </div>
         )}
@@ -95,13 +96,13 @@ const HomeQACard: React.FC<{
         <span className="inline-flex items-center gap-1.5 font-extrabold text-[#123D32] dark:text-[#CEFEF1] group-hover:dark:text-white">
           <span>Baca Jawaban Lengkap</span>
           {!user ? (
-            <Lock className="w-3.5 h-3.5 text-[#D6AD52] dark:text-[#4CA7A1] ml-1" />
+            <Lock className="w-3.5 h-3.5 text-[#D6AD52] dark:text-[#4CA7A1] ml-1 shrink-0" />
           ) : (
-            <ArrowRight className="w-3.5 h-3.5 text-[#123D32] dark:text-[#4CA7A1] transition-transform group-hover:translate-x-1" />
+            <ArrowRight className="w-3.5 h-3.5 text-[#123D32] dark:text-[#4CA7A1] transition-transform group-hover:translate-x-1 shrink-0" />
           )}
         </span>
         {!user && (
-          <span className="text-[10px] font-extrabold text-[#171717] dark:text-[#001722] bg-[#D6AD52] dark:bg-[#4CA7A1] px-2 py-0.5 rounded border border-[#171717] dark:border-[#A6D6C9]">
+          <span className="text-[10px] font-extrabold text-[#171717] dark:text-[#001722] bg-[#D6AD52] dark:bg-[#4CA7A1] px-2 py-0.5 rounded border border-[#171717] dark:border-[#A6D6C9] shrink-0">
             Login
           </span>
         )}
@@ -156,13 +157,13 @@ const HomeArticleCard: React.FC<{
         </div>
 
         <div className="p-4 sm:p-5 space-y-2.5 text-left">
-          <div className="flex items-center gap-3 text-[11px] text-[#525856] dark:text-[#A6D6C9] font-bold">
+          <div className="flex items-center gap-2.5 sm:gap-3 text-[11px] text-[#525855] dark:text-[#A6D6C9] font-bold">
             <span className="flex items-center gap-1">
               <Calendar className="w-3.5 h-3.5 text-[#123D32] dark:text-[#4CA7A1]" />
-              <span>{formattedDate}</span>
+              <span className="truncate">{formattedDate}</span>
             </span>
             {post.readingTimeMinutes > 0 && (
-              <span className="flex items-center gap-1">
+              <span className="flex items-center gap-1 shrink-0">
                 <Clock className="w-3.5 h-3.5 text-[#123D32] dark:text-[#A6D6C9]" />
                 <span>{post.readingTimeMinutes} mnt baca</span>
               </span>
@@ -173,7 +174,7 @@ const HomeArticleCard: React.FC<{
             {post.title}
           </h3>
 
-          <p className="text-xs text-[#525856] dark:text-[#A6D6C9] line-clamp-2 leading-relaxed">
+          <p className="text-xs text-[#525855] dark:text-[#A6D6C9] line-clamp-2 leading-relaxed">
             {post.excerpt}
           </p>
         </div>
@@ -319,19 +320,21 @@ export const HomeView: React.FC<HomeViewProps> = ({
             </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+          <MobileCarousel
+            desktopGridClass="sm:grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 sm:gap-5"
+            ariaLabel="Materi Pembelajaran Pilihan"
+          >
             {courses.slice(0, 4).map((course) => (
-              <div key={course.id} className="h-full">
-                <CourseCard
-                  course={course}
-                  category={categories.find((c) => c.id === course.categoryId)}
-                  enrollment={enrollmentsMap[course.id] || null}
-                  onSelect={onSelectCourse}
-                  disableAnimation={true}
-                />
-              </div>
+              <CourseCard
+                key={course.id}
+                course={course}
+                category={categories.find((c) => c.id === course.categoryId)}
+                enrollment={enrollmentsMap[course.id] || null}
+                onSelect={onSelectCourse}
+                disableAnimation={true}
+              />
             ))}
-          </div>
+          </MobileCarousel>
         </div>
       </section>
 
@@ -365,22 +368,24 @@ export const HomeView: React.FC<HomeViewProps> = ({
           </div>
 
           {publishedArticles.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            <MobileCarousel
+              desktopGridClass="sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-5"
+              ariaLabel="Artikel Ilmiah Terbaru"
+            >
               {publishedArticles.slice(0, 3).map((article) => (
-                <div key={article.id} className="h-full">
-                  <HomeArticleCard
-                    post={article}
-                    onSelect={(post) => {
-                      if (onSelectBlogPost) {
-                        onSelectBlogPost(post);
-                      } else {
-                        handleGo('blog');
-                      }
-                    }}
-                  />
-                </div>
+                <HomeArticleCard
+                  key={article.id}
+                  post={article}
+                  onSelect={(post) => {
+                    if (onSelectBlogPost) {
+                      onSelectBlogPost(post);
+                    } else {
+                      handleGo('blog');
+                    }
+                  }}
+                />
               ))}
-            </div>
+            </MobileCarousel>
           ) : (
             <div className="p-8 text-center bg-[#FAF7F0] dark:bg-[#0D2B36] border-2 border-dashed border-[#171717] dark:border-[#4CA7A1] rounded-md space-y-3">
               <BookMarked className="w-8 h-8 text-[#123D32] dark:text-[#4CA7A1] mx-auto" />
@@ -435,16 +440,18 @@ export const HomeView: React.FC<HomeViewProps> = ({
           </div>
 
           {publishedQA.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            <MobileCarousel
+              desktopGridClass="sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-5"
+              ariaLabel="Tanya Jawab Pilihan"
+            >
               {publishedQA.slice(0, 3).map((item) => (
-                <div key={item.id} className="h-full">
-                  <HomeQACard
-                    item={item}
-                    onReadMore={() => handleReadQA(item.id)}
-                  />
-                </div>
+                <HomeQACard
+                  key={item.id}
+                  item={item}
+                  onReadMore={() => handleReadQA(item.id)}
+                />
               ))}
-            </div>
+            </MobileCarousel>
           ) : qaError ? (
             <div className="p-8 text-center bg-[#0D2B36] border-2 border-[#171717] dark:border-[#4CA7A1] rounded-md space-y-3">
               <HelpCircle className="w-8 h-8 text-[#123D32] dark:text-[#4CA7A1] mx-auto" />

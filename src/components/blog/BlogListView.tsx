@@ -17,6 +17,7 @@ import { ARTIKEL_ILMIAH_SHARE_CONFIG } from '../../utils/featureShareHelper';
 import { ResilientGoogleDriveImage } from '../common/ResilientGoogleDriveImage';
 import { getInstructorProfile } from '../../firebase/services';
 import { resolveDisplayImageUrl } from '../../utils/googleDriveHelper';
+import { MobileCarousel } from '../common/MobileCarousel';
 
 interface BlogListViewProps {
   posts: BlogPost[];
@@ -283,9 +284,9 @@ export const BlogListView: React.FC<BlogListViewProps> = ({
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="flex sm:grid overflow-x-auto sm:overflow-visible pb-3 pt-1 gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3 no-scrollbar -mx-2 px-2 sm:mx-0">
             {[1, 2, 3].map(i => (
-              <div key={i} className="nb-card p-4 animate-pulse space-y-3">
+              <div key={i} className="w-[84vw] max-w-[340px] shrink-0 sm:w-auto sm:shrink nb-card p-4 animate-pulse space-y-3">
                 <div className="aspect-video bg-[#171717]/10 dark:bg-[#0D2B36] rounded-md" />
                 <div className="h-4 bg-[#171717]/10 dark:bg-[#0D2B36] rounded w-3/4" />
                 <div className="h-3 bg-[#171717]/10 dark:bg-[#0D2B36] rounded w-1/2" />
@@ -315,12 +316,15 @@ export const BlogListView: React.FC<BlogListViewProps> = ({
             </div>
           )
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <MobileCarousel
+            desktopGridClass="sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-6"
+            ariaLabel="Daftar Artikel Ilmiah"
+          >
             {(selectedCategory === 'all' && !searchQuery ? regularPosts : filteredPosts).map((post) => (
               <div
                 key={post.id}
                 onClick={() => onSelectArticle(post)}
-                className="nb-card-interactive overflow-hidden flex flex-col justify-between group cursor-pointer"
+                className="nb-card-interactive overflow-hidden flex flex-col justify-between group cursor-pointer h-full"
               >
                 <div>
                   {/* Image cover */}
@@ -338,16 +342,16 @@ export const BlogListView: React.FC<BlogListViewProps> = ({
                   </div>
 
                   {/* Title & Metadata */}
-                  <div className="p-5 space-y-2.5">
+                  <div className="p-4 sm:p-5 space-y-2.5">
                     <div className="flex items-center gap-2 text-[11px] text-[#525855] dark:text-[#A6D6C9] font-bold">
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3.5 h-3.5 text-[#123D32] dark:text-[#A6D6C9]" />
-                        {new Date(post.publishedAt || post.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        <span className="truncate">{new Date(post.publishedAt || post.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                       </span>
                       <span>•</span>
-                      <span className="flex items-center gap-1">
+                      <span className="flex items-center gap-1 shrink-0">
                         <Clock className="w-3.5 h-3.5 text-[#123D32] dark:text-[#A6D6C9]" />
-                        {post.readingTimeMinutes} min
+                        <span>{post.readingTimeMinutes} min</span>
                       </span>
                     </div>
 
@@ -364,30 +368,30 @@ export const BlogListView: React.FC<BlogListViewProps> = ({
 
                     <p
                       style={fontControl.style}
-                      className="reading-scalable-text text-[#525855] dark:text-[#A6D6C9] line-clamp-2 leading-relaxed"
+                      className="reading-scalable-text text-[#525855] dark:text-[#A6D6C9] text-xs line-clamp-2 leading-relaxed"
                       dangerouslySetInnerHTML={{ __html: autoWrapArabicText(post.excerpt) }}
                     />
                   </div>
                 </div>
 
                 {/* Footer info */}
-                <div className="px-5 py-3.5 border-t-2 border-[#171717] dark:border-[#4CA7A1] bg-[#FAF7F0] dark:bg-[#0D2B36] flex items-center justify-between text-xs">
+                <div className="px-4 sm:px-5 py-3 sm:py-3.5 border-t-2 border-[#171717] dark:border-[#4CA7A1] bg-[#FAF7F0] dark:bg-[#0D2B36] flex items-center justify-between text-xs">
                   <div className="flex items-center gap-2">
                     <div className="w-6 h-6 rounded bg-[#001722] text-[#CEFEF1] border border-[#171717] dark:border-[#4CA7A1] font-bold text-[10px] flex items-center justify-center shrink-0">
                       {post.authorName.charAt(0)}
                     </div>
-                    <span className="font-bold text-[#171717] dark:text-[#A6D6C9] text-xs">
+                    <span className="font-bold text-[#171717] dark:text-[#A6D6C9] text-xs truncate max-w-[120px] sm:max-w-none">
                       {post.authorName}
                     </span>
                   </div>
 
-                  <span className="px-2.5 py-0.5 rounded border border-[#171717] dark:border-[#4CA7A1] text-[#123D32] dark:text-[#4CA7A1] font-extrabold text-[11px] flex items-center gap-0.5 group-hover:bg-[#123D32] group-hover:text-white dark:group-hover:bg-[#4CA7A1] dark:group-hover:text-[#001722] transition">
+                  <span className="px-2.5 py-0.5 rounded border border-[#171717] dark:border-[#4CA7A1] text-[#123D32] dark:text-[#4CA7A1] font-extrabold text-[11px] flex items-center gap-0.5 group-hover:bg-[#123D32] group-hover:text-white dark:group-hover:bg-[#4CA7A1] dark:group-hover:text-[#001722] transition shrink-0">
                     Baca Artikel <ChevronRight className="w-3.5 h-3.5" />
                   </span>
                 </div>
               </div>
             ))}
-          </div>
+          </MobileCarousel>
         )}
       </div>
 

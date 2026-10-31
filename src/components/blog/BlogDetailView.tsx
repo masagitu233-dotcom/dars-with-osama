@@ -22,6 +22,7 @@ import { ReadingFontControls, useReadingFontSize } from '../common/ReadingFontCo
 import { ResilientGoogleDriveImage } from '../common/ResilientGoogleDriveImage';
 import { ArticleTableOfContents } from './ArticleTableOfContents';
 import { injectHeadingIdsIntoHtml } from '../../utils/tableOfContentsHelper';
+import { MobileCarousel } from '../common/MobileCarousel';
 import {
   normalizeArticleHtmlImages,
   getGoogleDriveImageCandidates,
@@ -498,31 +499,34 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
             <span>Artikel Terkait Lainnya</span>
           </h3>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <MobileCarousel
+            desktopGridClass="sm:grid sm:grid-cols-3 sm:gap-4"
+            ariaLabel="Artikel Terkait Lainnya"
+          >
             {relatedArticles.map(rel => (
               <div
                 key={rel.id}
                 onClick={() => onSelectArticle(rel)}
-                className="nb-card-interactive p-4 space-y-2 cursor-pointer group flex flex-col justify-between"
+                className="nb-card-interactive p-4 space-y-2.5 cursor-pointer group flex flex-col justify-between h-full"
               >
                 <div className="space-y-2">
-                  <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-[#4CA7A1] text-[#001722] border border-[#171717] dark:border-[#001722]">
+                  <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-[#4CA7A1] text-[#001722] border border-[#171717] dark:border-[#001722] inline-block">
                     {rel.category}
                   </span>
-                  <h4 className="font-bold font-serif text-[#171717] dark:text-[#CEFEF1] text-xs sm:text-sm line-clamp-2 group-hover:text-[#123D32] dark:group-hover:text-white transition">
+                  <h4 className="font-bold font-serif text-[#171717] dark:text-[#CEFEF1] text-sm line-clamp-2 group-hover:text-[#123D32] dark:group-hover:text-white transition leading-snug">
                     {rel.title}
                   </h4>
-                  <p className="text-[11px] text-[#525855] dark:text-[#A6D6C9] line-clamp-2">
+                  <p className="text-xs text-[#525855] dark:text-[#A6D6C9] line-clamp-2 leading-relaxed">
                     {rel.excerpt}
                   </p>
                 </div>
-                <div className="pt-2 border-t border-[#171717] dark:border-[#4CA7A1] text-[11px] font-bold text-[#525855] dark:text-[#A6D6C9] flex items-center justify-between">
+                <div className="pt-2.5 border-t border-[#171717] dark:border-[#4CA7A1] text-xs font-bold text-[#525855] dark:text-[#A6D6C9] flex items-center justify-between">
                   <span>{rel.readingTimeMinutes} min baca</span>
                   <span className="text-[#123D32] dark:text-[#4CA7A1] font-extrabold group-hover:translate-x-1 transition">Baca Artikel →</span>
                 </div>
               </div>
             ))}
-          </div>
+          </MobileCarousel>
         </div>
       )}
 

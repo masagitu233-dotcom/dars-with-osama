@@ -6,6 +6,7 @@ import { Course, Category, Enrollment } from '../../types';
 import { CourseCard } from './CourseCard';
 import { useLanguage } from '../../context/LanguageContext';
 import { ServiceDisruptionBanner } from '../common/ServiceDisruptionBanner';
+import { MobileCarousel } from '../common/MobileCarousel';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -169,20 +170,24 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({
         </div>
       </div>
 
-      {/* Course Grid */}
+      {/* Course Grid & Mobile Carousel */}
       {filteredCourses.length > 0 ? (
-        <div ref={gridRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredCourses.map((course) => (
-            <div key={course.id} className="h-full">
+        <div ref={gridRef}>
+          <MobileCarousel
+            desktopGridClass="sm:grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 sm:gap-6"
+            ariaLabel="Katalog Pembelajaran"
+          >
+            {filteredCourses.map((course) => (
               <CourseCard
+                key={course.id}
                 course={course}
                 category={categoryMap.get(course.categoryId)}
                 enrollment={enrollments[course.id] || null}
                 onSelect={onSelectCourse}
                 disableAnimation={true}
               />
-            </div>
-          ))}
+            ))}
+          </MobileCarousel>
         </div>
       ) : loadError && courses.length === 0 ? (
         <ServiceDisruptionBanner
