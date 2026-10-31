@@ -510,12 +510,25 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
                 className="nb-card-interactive p-4 space-y-2.5 cursor-pointer group flex flex-col justify-between h-full"
               >
                 <div className="space-y-2">
-                  <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-[#4CA7A1] text-[#001722] border border-[#171717] dark:border-[#001722] inline-block">
-                    {rel.category}
-                  </span>
                   <h4 className="font-bold font-serif text-[#171717] dark:text-[#CEFEF1] text-sm line-clamp-2 group-hover:text-[#123D32] dark:group-hover:text-white transition leading-snug">
                     {rel.title}
                   </h4>
+                  {rel.category && (
+                    <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                      {rel.category
+                        .split(',')
+                        .map((c) => c.trim())
+                        .filter(Boolean)
+                        .map((catName, idx) => (
+                          <span
+                            key={idx}
+                            className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded bg-[#4CA7A1] text-[#001722] border border-[#171717] dark:border-[#001722] shadow-[1.5px_1.5px_0px_#171717] dark:shadow-[1.5px_1.5px_0px_#001722] inline-block"
+                          >
+                            {catName}
+                          </span>
+                        ))}
+                    </div>
+                  )}
                   <p className="text-xs text-[#525855] dark:text-[#A6D6C9] line-clamp-2 leading-relaxed">
                     {rel.excerpt}
                   </p>

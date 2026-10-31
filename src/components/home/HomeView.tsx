@@ -149,11 +149,6 @@ const HomeArticleCard: React.FC<{
             aspectRatioClass="aspect-video"
             imageClassName="w-full h-full object-cover group-hover:scale-103 transition-transform duration-300"
           />
-          {post.category && (
-            <span className="absolute top-3 left-3 px-2.5 py-1 bg-[#D6AD52] dark:bg-[#4CA7A1] text-[#171717] dark:text-[#001722] font-extrabold text-[10px] uppercase tracking-wider rounded border-2 border-[#171717] dark:border-[#A6D6C9] shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#001722] z-10">
-              {post.category}
-            </span>
-          )}
         </div>
 
         <div className="p-4 sm:p-5 space-y-2.5 text-left">
@@ -173,6 +168,24 @@ const HomeArticleCard: React.FC<{
           <h3 className="font-serif font-bold text-base sm:text-lg text-[#171717] dark:text-[#CEFEF1] line-clamp-2 group-hover:text-[#123D32] dark:group-hover:text-white transition-colors leading-snug">
             {post.title}
           </h3>
+
+          {/* Category Badge(s) in Info Area */}
+          {post.category && (
+            <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+              {post.category
+                .split(',')
+                .map((c) => c.trim())
+                .filter(Boolean)
+                .map((catName, idx) => (
+                  <span
+                    key={idx}
+                    className="px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider bg-[#4CA7A1] text-[#001722] border border-[#171717] dark:border-[#001722] shadow-[1.5px_1.5px_0px_#171717] dark:shadow-[1.5px_1.5px_0px_#001722] inline-block"
+                  >
+                    {catName}
+                  </span>
+                ))}
+            </div>
+          )}
 
           <p className="text-xs text-[#525855] dark:text-[#A6D6C9] line-clamp-2 leading-relaxed">
             {post.excerpt}

@@ -336,9 +336,6 @@ export const BlogListView: React.FC<BlogListViewProps> = ({
                       aspectRatioClass="aspect-video"
                       imageClassName="w-full h-full object-cover group-hover:scale-103 transition duration-300"
                     />
-                    <span className="absolute top-2.5 left-2.5 text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded bg-[#4CA7A1] text-[#001722] border-2 border-[#171717] dark:border-[#001722] shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#001722] z-10">
-                      {post.category}
-                    </span>
                   </div>
 
                   {/* Title & Metadata */}
@@ -364,6 +361,24 @@ export const BlogListView: React.FC<BlogListViewProps> = ({
                       <p className="font-amiri text-sm sm:text-base text-[#123D32] dark:text-[#CEFEF1] font-bold truncate leading-[1.85]" dir="rtl">
                         {post.titleAr}
                       </p>
+                    )}
+
+                    {/* Category Badge(s) in Info Area */}
+                    {post.category && (
+                      <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                        {post.category
+                          .split(',')
+                          .map((c) => c.trim())
+                          .filter(Boolean)
+                          .map((catName, idx) => (
+                            <span
+                              key={idx}
+                              className="px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider bg-[#4CA7A1] text-[#001722] border border-[#171717] dark:border-[#001722] shadow-[1.5px_1.5px_0px_#171717] dark:shadow-[1.5px_1.5px_0px_#001722] inline-block"
+                            >
+                              {catName}
+                            </span>
+                          ))}
+                      </div>
                     )}
 
                     <p

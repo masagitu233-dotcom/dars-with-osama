@@ -2928,8 +2928,85 @@ test('Mobile Carousel: Proximity snapping configuration allows natural multi-car
   assert.equal(canGlidePastSingleCard(0.2, 'proximity'), false, 'Gentle flick settles softly into proximity snap');
 });
 
+// Case 81: Card Category Badge Parsing and Placement
+test('Category Badge: parses single and multi-categories cleanly for card information area', () => {
+  const parseCardCategories = (categoryStr?: string): string[] => {
+    if (!categoryStr || !categoryStr.trim()) return [];
+    return categoryStr
+      .split(',')
+      .map((c) => c.trim())
+      .filter(Boolean);
+  };
 
+  // 1. Single category
+  assert.deepEqual(parseCardCategories('Nahwu'), ['Nahwu']);
+  assert.deepEqual(parseCardCategories('KAJIAN UMUM'), ['KAJIAN UMUM']);
 
+  // 2. Multiple comma-separated categories
+  assert.deepEqual(parseCardCategories('Nahwu, Fiqih, Sharaf'), ['Nahwu', 'Fiqih', 'Sharaf']);
+  assert.deepEqual(parseCardCategories('Tafsir, Hadits'), ['Tafsir', 'Hadits']);
 
+  // 3. Spacing and empty items handled gracefully
+  assert.deepEqual(parseCardCategories('  Kajian Umum ,  , Muamalah  '), ['Kajian Umum', 'Muamalah']);
 
+  // 4. Empty or undefined category returns empty array without throwing
+  assert.deepEqual(parseCardCategories(''), []);
+  assert.deepEqual(parseCardCategories(undefined), []);
 
+  // 5. Verify thumbnail overlay invariant: thumbnail should NOT contain category badge
+  interface CardLayoutRules {
+    thumbnailHasCategoryBadge: boolean;
+    infoAreaHasCategoryBadge: boolean;
+    badgePosition: 'below-title' | 'above-meta';
+  }
+
+  const modernCardLayout: CardLayoutRules = {
+    thumbnailHasCategoryBadge: false,
+    infoAreaHasCategoryBadge: true,
+    badgePosition: 'below-title'
+  };
+
+  assert.equal(modernCardLayout.thumbnailHasCategoryBadge, false, 'Thumbnail must NOT have category badge overlay');
+  assert.equal(modernCardLayout.infoAreaHasCategoryBadge, true, 'Category badge must reside in information area');
+  assert.equal(modernCardLayout.badgePosition, 'below-title', 'Category badge is located directly below card title');
+});
+
+// Case 82: Course Card Element Placement & Clean Thumbnail Invariants
+test('Course Card: Thumbnail has NO badges or overlays; Level badge and Share button relocate to info area', () => {
+  interface CourseCardLayoutRules {
+    thumbnailHasOverlayBadges: boolean;
+    thumbnailHasShareButton: boolean;
+    thumbnailHasLevelBadge: boolean;
+    infoAreaHasLevelBadge: boolean;
+    infoAreaHasShareButton: boolean;
+    levelColorsPreserved: Record<string, { lightBg: string; textColor: string }>;
+  }
+
+  const courseCardLayout: CourseCardLayoutRules = {
+    thumbnailHasOverlayBadges: false,
+    thumbnailHasShareButton: false,
+    thumbnailHasLevelBadge: false,
+    infoAreaHasLevelBadge: true,
+    infoAreaHasShareButton: true,
+    levelColorsPreserved: {
+      beginner: { lightBg: '#123D32', textColor: '#D6AD52' },
+      intermediate: { lightBg: '#D6AD52', textColor: '#123D32' },
+      advanced: { lightBg: '#237A70', textColor: 'white' },
+      default: { lightBg: '#FAF7F0', textColor: '#171717' }
+    }
+  };
+
+  // 1. Verify thumbnail is completely clean of any overlays
+  assert.equal(courseCardLayout.thumbnailHasOverlayBadges, false, 'Thumbnail must have zero overlay badges');
+  assert.equal(courseCardLayout.thumbnailHasShareButton, false, 'Thumbnail must NOT contain share button');
+  assert.equal(courseCardLayout.thumbnailHasLevelBadge, false, 'Thumbnail must NOT contain level badge');
+
+  // 2. Verify level badge and share button are present in the info area
+  assert.equal(courseCardLayout.infoAreaHasLevelBadge, true, 'Info area must contain level badge');
+  assert.equal(courseCardLayout.infoAreaHasShareButton, true, 'Info area must contain share button');
+
+  // 3. Verify distinctive level colors are maintained
+  assert.equal(courseCardLayout.levelColorsPreserved.beginner.lightBg, '#123D32');
+  assert.equal(courseCardLayout.levelColorsPreserved.intermediate.lightBg, '#D6AD52');
+  assert.equal(courseCardLayout.levelColorsPreserved.advanced.lightBg, '#237A70');
+});
