@@ -824,7 +824,7 @@ export const AdminDashboard: React.FC<{
   };
 
   return (
-    <div className="min-h-screen bg-[#FAF7F0] dark:bg-[#0D2B36] text-charcoal dark:text-[#CEFEF1] flex flex-col lg:flex-row font-sans transition-colors duration-200">
+    <div className="min-h-screen bg-neo-grid text-charcoal dark:text-[#CEFEF1] flex flex-col lg:flex-row font-sans transition-colors duration-200">
       {/* ========================================================= */}
       {/* MOBILE TOP BAR (Logo acts as Sidebar Toggle) */}
       {/* ========================================================= */}
@@ -847,14 +847,6 @@ export const AdminDashboard: React.FC<{
               Admin Panel {sidebarOpen ? '• Tutup' : '• Menu'}
             </span>
           </div>
-        </button>
-
-        <button
-          onClick={() => setTheme(effectiveTheme === 'dark' ? 'light' : 'dark')}
-          className="p-2 bg-[#EFE5D2] dark:bg-[#1F5F63] text-[#237A70] dark:text-[#CEFEF1] border-2 border-charcoal dark:border-[#4CA7A1] rounded-md hover:bg-[#4CA7A1] hover:text-[#001722] transition cursor-pointer"
-          title="Toggle Dark Mode"
-        >
-          {effectiveTheme === 'dark' ? <Sun className="w-4 h-4 text-[#CEFEF1]" /> : <Moon className="w-4 h-4" />}
         </button>
       </div>
 
@@ -1255,22 +1247,6 @@ export const AdminDashboard: React.FC<{
                 <Download className="w-4 h-4 text-[#0B6B50] dark:text-[#4CA7A1] shrink-0" />
                 {!sidebarCollapsed && <span className="truncate">Ekspor Laporan (CSV)</span>}
               </button>
-
-              <button
-                onClick={() => setTheme(effectiveTheme === 'dark' ? 'light' : 'dark')}
-                title={`Mode Tampilan (${effectiveTheme === 'dark' ? 'Gelap' : 'Terang'})`}
-                className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3.5 py-2.5'} rounded-md text-xs font-extrabold bg-[#F5EFE2]/60 dark:bg-[#0D2B36] text-[#171717] dark:text-[#A6D6C9] hover:bg-[#F5EFE2] dark:hover:bg-[#1F5F63] dark:hover:text-[#CEFEF1] border-2 border-[#171717]/40 dark:border-[#4CA7A1] transition cursor-pointer`}
-              >
-                <div className="flex items-center gap-3 truncate">
-                  {effectiveTheme === 'dark' ? <Sun className="w-4 h-4 text-[#4CA7A1] shrink-0" /> : <Moon className="w-4 h-4 text-[#0B6B50] shrink-0" />}
-                  {!sidebarCollapsed && <span className="truncate">Mode Tampilan</span>}
-                </div>
-                {!sidebarCollapsed && (
-                  <span className="text-[10px] font-extrabold uppercase text-[#0B6B50] dark:text-[#CEFEF1] shrink-0">
-                    {effectiveTheme === 'dark' ? 'Gelap' : 'Terang'}
-                  </span>
-                )}
-              </button>
             </div>
 
             {/* GROUP 5: PENGATURAN */}
@@ -1410,71 +1386,22 @@ export const AdminDashboard: React.FC<{
             </div>
           )}
 
-          {/* HEADER SECTION WITH BREADCRUMB & QUICK ACTION BUTTONS */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b-2 border-[#171717] dark:border-[#4CA7A1]">
-            <div>
-              <div className="flex items-center gap-2 text-xs text-stone-600 dark:text-[#A6D6C9] font-bold uppercase tracking-wider mb-1">
+          {/* HEADER SECTION WITH OLIVE GREEN FRAME */}
+          <div className="p-5 sm:p-6 rounded-md bg-[#4D694E] border-2 border-[#171717] shadow-[4px_4px_0px_#171717]">
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2 text-xs text-[#FFF3D5]/90 font-bold uppercase tracking-wider">
                 <span>Admin</span>
-                <ChevronRight className="w-3.5 h-3.5 text-[#4CA7A1]" />
-                <span className="text-[#06251D] dark:text-[#CEFEF1] font-extrabold capitalize">
+                <ChevronRight className="w-3.5 h-3.5 text-[#FFF3D5]" />
+                <span className="text-[#FFF3D5] font-extrabold capitalize">
                   {activeTab === 'dashboard' ? 'Dashboard Overview' : activeTab}
                 </span>
               </div>
-              <h1 className="text-xl sm:text-2xl font-bold text-[#171717] dark:text-[#FFFFFF] font-serif-brand tracking-tight">
+              <h1 className="text-xl sm:text-2xl font-bold text-[#FFF3D5] font-serif-brand tracking-tight">
                 Dashboard Administrasi Dars with Osama
               </h1>
-              <p className="text-stone-600 dark:text-[#A6D6C9] text-xs sm:text-sm mt-0.5 font-medium">
+              <p className="text-[#E8E9DD] text-xs sm:text-sm font-medium leading-relaxed">
                 Kelola kurikulum ilmu, sesi pembelajaran, kuis evaluasi, dan pemantauan santri.
               </p>
-            </div>
-
-            {/* Quick Action Buttons */}
-            <div className="flex flex-wrap items-center gap-2.5">
-              <button
-                onClick={() => setEditingCourse({
-                  title: '',
-                  titleAr: '',
-                  instructor: '',
-                  instructorTitle: '',
-                  instructorAr: '',
-                  categoryId: categories[0]?.id || '',
-                  level: 'beginner',
-                  description: '',
-                  descriptionAr: '',
-                  coverImageUrl: '',
-                  isPublished: true,
-                  hasCertificate: true,
-                  passingGrade: 75,
-                  totalDuration: '5 Sesi',
-                  order: courses.length + 1
-                })}
-                className="px-3.5 py-2 nb-btn nb-btn-secondary text-xs flex items-center gap-1.5"
-              >
-                <Plus className="w-3.5 h-3.5 text-[#06251D] dark:text-[#4CA7A1]" />
-                <span>+ Mata Pelajaran</span>
-              </button>
-
-              <button
-                onClick={() => setEditingCategory({
-                  name: '',
-                  nameAr: '',
-                  slug: '',
-                  description: '',
-                  order: categories.length + 1
-                })}
-                className="px-3.5 py-2 nb-btn nb-btn-secondary text-xs flex items-center gap-1.5"
-              >
-                <Plus className="w-3.5 h-3.5 text-[#06251D] dark:text-[#4CA7A1]" />
-                <span>+ Bab / Modul</span>
-              </button>
-
-              <button
-                onClick={() => handleOpenAddSessionModal()}
-                className="px-4 py-2 nb-btn nb-btn-primary text-xs flex items-center gap-1.5"
-              >
-                <Plus className="w-4 h-4 text-[#001722]" />
-                <span>+ Sesi Baru</span>
-              </button>
             </div>
           </div>
 

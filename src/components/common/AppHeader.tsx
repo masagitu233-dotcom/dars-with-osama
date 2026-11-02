@@ -1,13 +1,10 @@
 import React from 'react';
 import {
-  Sun,
-  Moon,
   User as UserIcon,
   Settings,
   LogOut
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
-import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { LogoSymbol } from './Logo';
 
@@ -32,7 +29,6 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   setIsCollapsed
 }) => {
   const { t } = useLanguage();
-  const { theme, toggleTheme } = useTheme();
   const {
     user,
     userProfile,
@@ -105,23 +101,10 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           </button>
         </div>
 
-        {/* Right Controls: Theme Toggle & User Auth / Profile */}
+        {/* Right Controls: User Auth / Profile */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           
-          {/* Theme Toggle (Light / Dark) */}
-          <button
-            type="button"
-            onClick={toggleTheme}
-            aria-label={theme === 'dark' ? 'Beralih ke Mode Terang' : 'Beralih ke Mode Gelap'}
-            title={theme === 'dark' ? 'Mode Terang' : 'Mode Gelap'}
-            className="p-2 rounded-md border-2 border-[#171717] dark:border-[#4CA7A1] bg-[#EFE5D2] dark:bg-[#1F5F63] text-[#171717] dark:text-[#CEFEF1] shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#001722] hover:-translate-y-0.5 active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition cursor-pointer"
-          >
-            {theme === 'dark' ? (
-              <Sun className="w-4 h-4 text-[#CEFEF1]" />
-            ) : (
-              <Moon className="w-4 h-4 text-[#123D32]" />
-            )}
-          </button>
+          {/* User Profile or Login CTA */}
 
           {/* User Profile or Login CTA */}
           {user ? (

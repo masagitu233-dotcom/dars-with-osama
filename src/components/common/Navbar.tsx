@@ -6,9 +6,6 @@ import {
   ShieldAlert,
   User,
   LogOut,
-  Sun,
-  Moon,
-  Monitor,
   Globe,
   Menu,
   X,
@@ -17,7 +14,6 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
-import { useTheme } from '../../context/ThemeContext';
 import { ProfileSettingsModal } from './ProfileSettingsModal';
 import { Logo } from './Logo';
 
@@ -30,11 +26,9 @@ interface NavbarProps {
 export const Navbar: React.FC<NavbarProps> = ({ currentView, setCurrentView }) => {
   const { user, userProfile, isAdmin, openLogoutConfirmModal, openAuthModal, openProfileModal, firebaseConnected } = useAuth();
   const { language, toggleLanguage, t } = useLanguage();
-  const { theme, effectiveTheme, setTheme } = useTheme();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
-  const [themeDropdownOpen, setThemeDropdownOpen] = useState(false);
   const [imgError, setImgError] = useState(false);
 
   const avatarURL = userProfile?.photoURL || user?.photoURL || '';
@@ -144,68 +138,6 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, setCurrentView }) =
                 {language === 'id' ? 'العربية (AR)' : 'Bahasa (ID)'}
               </span>
             </button>
-
-            {/* Theme Switcher */}
-            <div className="relative">
-              <button
-                onClick={() => setThemeDropdownOpen(!themeDropdownOpen)}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 dark:bg-stone-800/80 dark:hover:bg-stone-700/80 border border-stone-200 dark:border-stone-700/60 text-stone-700 dark:text-stone-200 transition text-xs font-semibold cursor-pointer active:scale-95"
-                title="Pengaturan Tema / Theme Settings"
-              >
-                {theme === 'light' ? (
-                  <Sun className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
-                ) : theme === 'dark' ? (
-                  <Moon className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                ) : (
-                  <Monitor className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
-                )}
-                <span className="capitalize">{theme === 'light' ? 'Terang' : theme === 'dark' ? 'Gelap' : 'Sistem'}</span>
-                <ChevronDown className={`w-3 h-3 text-stone-500 dark:text-stone-400 transition-transform duration-200 ${themeDropdownOpen ? 'rotate-180' : ''}`} />
-              </button>
-
-              {themeDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-40 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl shadow-xl dark:shadow-2xl py-1.5 text-stone-800 dark:text-stone-200 z-50 animate-modal-in">
-                  <button
-                    onClick={() => {
-                      setTheme('light');
-                      setThemeDropdownOpen(false);
-                    }}
-                    className={`w-full text-left px-3.5 py-2 text-xs flex items-center gap-2.5 transition cursor-pointer ${
-                      theme === 'light' ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-semibold' : 'hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-700 dark:text-stone-300'
-                    }`}
-                  >
-                    <Sun className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
-                    <span>Mode Terang</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setTheme('dark');
-                      setThemeDropdownOpen(false);
-                    }}
-                    className={`w-full text-left px-3.5 py-2 text-xs flex items-center gap-2.5 transition cursor-pointer ${
-                      theme === 'dark' ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-semibold' : 'hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-700 dark:text-stone-300'
-                    }`}
-                  >
-                    <Moon className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                    <span>Mode Gelap</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setTheme('system');
-                      setThemeDropdownOpen(false);
-                    }}
-                    className={`w-full text-left px-3.5 py-2 text-xs flex items-center gap-2.5 transition cursor-pointer ${
-                      theme === 'system' ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-semibold' : 'hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-700 dark:text-stone-300'
-                    }`}
-                  >
-                    <Monitor className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
-                    <span>Ikuti Sistem</span>
-                  </button>
-                </div>
-              )}
-            </div>
 
             {user ? (
               <div className="relative">
@@ -369,41 +301,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, setCurrentView }) =
               </button>
             )}
           </nav>
-          {/* Mobile Theme Switcher Group */}
-          <div className="pt-2 border-t border-stone-200 dark:border-stone-800">
-            <p className="text-[11px] font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wider mb-2 px-1">Pilihan Mode Tampilan</p>
-            <div className="flex items-center bg-stone-100 dark:bg-stone-800/80 p-1 rounded-xl border border-stone-200 dark:border-stone-700/70 justify-between gap-1">
-              <button
-                onClick={() => setTheme('light')}
-                className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer ${
-                  theme === 'light' ? 'bg-emerald-600 text-white shadow' : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white'
-                }`}
-              >
-                <Sun className="w-3.5 h-3.5 text-amber-400" />
-                <span>Terang</span>
-              </button>
 
-              <button
-                onClick={() => setTheme('dark')}
-                className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer ${
-                  theme === 'dark' ? 'bg-emerald-600 text-white shadow' : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white'
-                }`}
-              >
-                <Moon className="w-3.5 h-3.5 text-emerald-300" />
-                <span>Gelap</span>
-              </button>
-
-              <button
-                onClick={() => setTheme('system')}
-                className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer ${
-                  theme === 'system' ? 'bg-emerald-600 text-white shadow' : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white'
-                }`}
-              >
-                <Monitor className="w-3.5 h-3.5 text-sky-400" />
-                <span>Sistem</span>
-              </button>
-            </div>
-          </div>
 
           <div className="border-t border-stone-200 dark:border-stone-800 pt-3">
             {user ? (
