@@ -301,9 +301,21 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
 
       {/* Hero Header Card */}
       <div className="nb-card overflow-hidden relative bg-[#FFF5E9] border-2 border-[#171717] shadow-[6px_6px_0px_#171717] text-[#0F3D3A]">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 relative">
-          {/* Left Details */}
-          <div className="lg:col-span-7 p-6 sm:p-8 md:p-10 flex flex-col justify-between space-y-6">
+        <div className="flex flex-col lg:grid lg:grid-cols-12 gap-0 relative">
+          {/* 1. Thumbnail Cover Image (Mobile: #1 after Back Button; Desktop: Top Right Column) */}
+          <div className="order-1 lg:order-none lg:col-span-5 lg:col-start-8 lg:row-start-1 relative aspect-[16/10] lg:aspect-auto lg:h-64 w-full overflow-hidden border-b-2 lg:border-b-2 lg:border-l-2 border-[#171717]">
+            <img
+              src={course.coverImageUrl || 'https://images.unsplash.com/photo-1542816417-0983c9c9ad53?auto=format&fit=crop&w=1200&q=80'}
+              alt={course.title}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1542816417-0983c9c9ad53?auto=format&fit=crop&w=1200&q=80';
+              }}
+            />
+          </div>
+
+          {/* 2. Left Details (Mobile: #2 after Cover Image; Desktop: Left Column) */}
+          <div className="order-2 lg:order-none lg:col-span-7 lg:col-start-1 lg:row-span-2 p-6 sm:p-8 md:p-10 flex flex-col justify-between space-y-6">
             <div className="space-y-4">
               {/* Category & Level Badges */}
               <div className="flex flex-wrap items-center gap-2">
@@ -318,32 +330,32 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
               </div>
 
               {/* Course Titles */}
-              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-[#171717] dark:text-white font-serif-brand leading-tight">
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-[#0F3D3A] font-serif-brand leading-tight">
                 {course.title}
               </h1>
 
               {course.titleAr && (
-                <p className="font-amiri text-xl sm:text-2xl font-bold text-[#123D32] dark:text-[#CEFEF1] leading-[2.0]" dir="rtl">
+                <p className="font-amiri text-xl sm:text-2xl font-bold text-[#6C151E] leading-[2.0]" dir="rtl">
                   {course.titleAr}
                 </p>
               )}
 
               {/* Description */}
-              <p className="text-[#525855] dark:text-[#A6D6C9] text-sm md:text-base leading-relaxed">
+              <p className="text-[#171717]/80 text-sm md:text-base leading-relaxed">
                 {course.description}
               </p>
 
               {/* Instructor Box */}
-              <div className="p-4 bg-[#FAF7F0] dark:bg-[#0D2B36] border-2 border-[#171717] dark:border-[#4CA7A1] rounded-lg flex items-center justify-between text-xs sm:text-sm">
+              <div className="p-4 bg-[#FAF7F0] border-2 border-[#171717] rounded-lg flex items-center justify-between text-xs sm:text-sm text-[#0F3D3A]">
                 <div>
-                  <p className="text-[#525855] dark:text-[#A6D6C9] text-xs font-bold uppercase tracking-wider">Pensyarah / Pengajar:</p>
-                  <p className="font-extrabold text-[#171717] dark:text-[#CEFEF1] text-sm md:text-base mt-0.5">{course.instructor}</p>
+                  <p className="text-[#0F3D3A]/70 text-xs font-bold uppercase tracking-wider">Pensyarah / Pengajar:</p>
+                  <p className="font-extrabold text-[#0F3D3A] text-sm md:text-base mt-0.5">{course.instructor}</p>
                   {course.instructorTitle && (
-                    <p className="text-[#525855] dark:text-[#A6D6C9] text-xs font-semibold">{course.instructorTitle}</p>
+                    <p className="text-[#0F3D3A]/80 text-xs font-semibold">{course.instructorTitle}</p>
                   )}
                 </div>
                 {course.instructorAr && (
-                  <p className="font-amiri text-base sm:text-lg font-bold text-[#123D32] dark:text-[#CEFEF1] text-right leading-[1.9]" dir="rtl">
+                  <p className="font-amiri text-base sm:text-lg font-bold text-[#6C151E] text-right leading-[1.9]" dir="rtl">
                     {course.instructorAr}
                   </p>
                 )}
@@ -351,7 +363,7 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
             </div>
 
             {/* Action Bar */}
-            <div className="pt-4 border-t-2 border-[#171717] dark:border-[#4CA7A1] flex flex-wrap items-center gap-4">
+            <div className="pt-4 border-t-2 border-[#171717] flex flex-wrap items-center gap-4">
               {enrollment ? (
                 <button
                   onClick={handleStartOrContinue}
@@ -383,53 +395,42 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
                 title="Bagikan tautan permanen kurikulum pembelajaran ini"
               >
                 {copiedCourseUrl ? (
-                  <Check className="w-4 h-4 text-[#123D32] dark:text-[#CEFEF1]" />
+                  <Check className="w-4 h-4 text-[#0F3D3A]" />
                 ) : (
-                  <Share2 className="w-4 h-4 text-[#123D32] dark:text-[#4CA7A1]" />
+                  <Share2 className="w-4 h-4 text-[#0F3D3A]" />
                 )}
                 <span>{copiedCourseUrl ? 'Link Disalin!' : 'Bagikan Pembelajaran'}</span>
               </button>
             </div>
           </div>
 
-          {/* Right Cover & Quick Info (Rincian Program) */}
-          <div className="lg:col-span-5 relative bg-[#FAF7F0] dark:bg-[#1F5F63] flex flex-col justify-between border-t-2 lg:border-t-0 lg:border-l-2 border-[#171717] dark:border-[#4CA7A1]">
-            <div className="relative aspect-[16/10] lg:aspect-auto lg:h-64 w-full overflow-hidden border-b-2 border-[#171717] dark:border-[#4CA7A1]">
-              <img
-                src={course.coverImageUrl || 'https://images.unsplash.com/photo-1542816417-0983c9c9ad53?auto=format&fit=crop&w=1200&q=80'}
-                alt={course.title}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1542816417-0983c9c9ad53?auto=format&fit=crop&w=1200&q=80';
-                }}
-              />
-            </div>
-
-            <div className="p-6 space-y-4">
-              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#123D32] dark:text-[#CEFEF1]">Rincian Program</h4>
+          {/* 3. Quick Info & Rincian Program (Mobile: #3 after Left Details & Action Bar; Desktop: Bottom Right Column) */}
+          <div className="order-3 lg:order-none lg:col-span-5 lg:col-start-8 lg:row-start-2 p-6 space-y-4 bg-[#FAF7F0] border-t-2 lg:border-l-2 border-[#171717] text-[#0F3D3A] flex flex-col justify-between">
+            <div className="space-y-4">
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#0F3D3A]">Rincian Program</h4>
               <div className="space-y-3 text-xs md:text-sm">
-                <div className="flex items-center justify-between text-[#171717] dark:text-[#CEFEF1] py-1.5 border-b-2 border-[#171717]/20 dark:border-[#4CA7A1]">
-                  <span className="flex items-center gap-2 font-semibold text-[#525855] dark:text-[#A6D6C9]">
-                    <Clock className="w-4 h-4 text-[#123D32] dark:text-[#4CA7A1]" />
+                <div className="flex items-center justify-between text-[#0F3D3A] py-1.5 border-b-2 border-[#171717]/20">
+                  <span className="flex items-center gap-2 font-semibold text-[#0F3D3A]/80">
+                    <Clock className="w-4 h-4 text-[#0F3D3A]" />
                     <span>Jumlah Sesi:</span>
                   </span>
-                  <span className="font-extrabold text-[#171717] dark:text-[#CEFEF1]">{sessions.length} Sesi Pembelajaran</span>
+                  <span className="font-extrabold text-[#0F3D3A]">{sessions.length} Sesi Pembelajaran</span>
                 </div>
 
-                <div className="flex items-center justify-between text-[#171717] dark:text-[#CEFEF1] py-1.5 border-b-2 border-[#171717]/20 dark:border-[#4CA7A1]">
-                  <span className="flex items-center gap-2 font-semibold text-[#525855] dark:text-[#A6D6C9]">
-                    <CheckCircle2 className="w-4 h-4 text-[#123D32] dark:text-[#4CA7A1]" />
+                <div className="flex items-center justify-between text-[#0F3D3A] py-1.5 border-b-2 border-[#171717]/20">
+                  <span className="flex items-center gap-2 font-semibold text-[#0F3D3A]/80">
+                    <CheckCircle2 className="w-4 h-4 text-[#0F3D3A]" />
                     <span>Batas Nilai Kelulusan:</span>
                   </span>
-                  <span className="font-extrabold text-[#171717] dark:text-[#CEFEF1]">{course.passingGrade}%</span>
+                  <span className="font-extrabold text-[#0F3D3A]">{course.passingGrade}%</span>
                 </div>
               </div>
+            </div>
 
-              {/* Guest Information Notice */}
-              <div className="p-3.5 bg-white dark:bg-[#0D2B36] border-2 border-[#171717] dark:border-[#4CA7A1] rounded-md text-[#171717] dark:text-[#CEFEF1] text-xs space-y-1">
-                <p className="font-extrabold text-[#123D32] dark:text-[#CEFEF1]">Akses Terbuka untuk Kaum Muslimin:</p>
-                <p className="text-[#525855] dark:text-[#A6D6C9]">Pengunjung bebas menonton rekaman dan membaca materi. Daftarkan akun untuk menyimpan riwayat nilai dan kemajuan belajar Anda.</p>
-              </div>
+            {/* Guest Information Notice */}
+            <div className="p-3.5 bg-[#FFF5E9] border-2 border-[#171717] rounded-md text-[#0F3D3A] text-xs space-y-1">
+              <p className="font-extrabold text-[#0F3D3A]">Akses Terbuka untuk Kaum Muslimin:</p>
+              <p className="text-[#171717]/80">Pengunjung bebas menonton rekaman dan membaca materi. Daftarkan akun untuk menyimpan riwayat nilai dan kemajuan belajar Anda.</p>
             </div>
           </div>
         </div>
