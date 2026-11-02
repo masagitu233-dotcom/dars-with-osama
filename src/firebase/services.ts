@@ -28,7 +28,7 @@ import {
   hasActiveFirestoreAuthToken,
   ensureFreshFirestoreAuthToken
 } from './config';
-import { Category, Course, Session, Quiz, Enrollment, QuizAttempt, UserProfile, BlogPost, Consultation, ArticleComment, InstructorProfile } from '../types';
+import { Category, Course, Session, Quiz, Enrollment, QuizAttempt, UserProfile, BlogPost, Consultation, ArticleComment, InstructorProfile, EmailNotification, SystemNotificationSettings, NotificationDispatchPayload, StudentNotificationPreferences } from '../types';
 import { SEED_CATEGORIES, SEED_COURSES, SEED_SESSIONS, SEED_QUIZZES } from '../data/seedData';
 import { matchesSessionIdentifier, canAccessSessionPublicly } from '../utils/sessionShareHelper';
 import { sanitizeRichTextHtml } from '../utils/richTextHelper';
@@ -2659,6 +2659,164 @@ export async function saveInstructorProfile(
     return handleFirestoreError(error, OperationType.WRITE, path);
   }
 }
+
+// ==========================================
+// EMAIL NOTIFICATION & SYSTEM SETTINGS SERVICES
+// ==========================================
+
+export const DEFAULT_SYSTEM_NOTIFICATION_SETTINGS: SystemNotificationSettings = {
+  id: 'notifications',
+  enabled: true,
+  coursesEnabled: true,
+  articlesEnabled: true,
+  qaEnabled: true,
+  announcementsEnabled: true,
+  senderName: 'Dars with Osama',
+  senderEmail: 'notifikasi@darswithosama.com'
+};
+
+export async function getSystemNotificationSettings(): Promise<SystemNotificationSettings> {
+  const path = 'systemSettings/notifications';
+  try {
+    const snap = await getDoc(doc(db, 'systemSettings', 'notifications'));
+    if (snap.exists()) {
+      return { ...DEFAULT_SYSTEM_NOTIFICATION_SETTINGS, ...snap.data() } as SystemNotificationSettings;
+    }
+    return DEFAULT_SYSTEM_NOTIFICATION_SETTINGS;
+  } catch (error) {
+    logFirestoreDiagnostic({ operation: 'getSystemNotificationSettings', path }, error);
+    return DEFAULT_SYSTEM_NOTIFICATION_SETTINGS;
+  }
+}
+
+export async function saveSystemNotificationSettings(
+  settings: Partial<SystemNotificationSettings>
+): Promise<SystemNotificationSettings> {
+  const path = 'systemSettings/notifications';
+  const currentUser = auth.currentUser;
+  const merged: SystemNotificationSettings = {
+    ...DEFAULT_SYSTEM_NOTIFICATION_SETTINGS,
+    ...settings,
+    id: 'notifications',
+    updatedAt: new Date().toISOString(),
+    ...(currentUser?.email ? { updatedBy: currentUser.email } : {})
+  };
+
+  try {
+    await executeWithFreshAuthRetry(() =>
+      setDoc(doc(db, 'systemSettings', 'notifications'), merged, { merge: true })
+    );
+    return merged;
+  } catch (error) {
+    logFirestoreDiagnostic({ operation: 'saveSystemNotificationSettings', path }, error);
+    handleFirestoreError(error, OperationType.WRITE, path);
+    throw error;
+  }
+}
+
+export async function getEmailNotificationLogs(): Promise<EmailNotification[]> {
+  const path = 'emailLogs';
+  try {
+    const q = query(collection(db, 'emailLogs'), orderBy('sentAt', 'desc'));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() } as EmailNotification));
+  } catch (error) {
+    logFirestoreDiagnostic({ operation: 'getEmailNotificationLogs', path }, error);
+    return [];
+  }
+}
+
+export async function saveEmailNotificationLog(
+  log: Omit<EmailNotification, 'id'> & { id?: string }
+): Promise<string> {
+  const id = log.id || `log-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+  const path = `emailLogs/${id}`;
+  const record: EmailNotification = {
+    ...log,
+    id
+  };
+
+  try {
+    await setDoc(doc(db, 'emailLogs', id), record, { merge: true });
+    return id;
+  } catch (error) {
+    logFirestoreDiagnostic({ operation: 'saveEmailNotificationLog', path }, error);
+    return id;
+  }
+}
+
+export async function isIdempotencyKeyProcessed(idempotencyKey: string): Promise<boolean> {
+  if (!idempotencyKey) return false;
+  try {
+    const q = query(collection(db, 'emailLogs'), where('idempotencyKey', '==', idempotencyKey));
+    const snap = await getDocs(q);
+    return !snap.empty;
+  } catch {
+    return false;
+  }
+}
+
+export async function dispatchNotificationEmail(
+  payload: NotificationDispatchPayload
+): Promise<{
+  success: boolean;
+  totalRecipients: number;
+  successCount: number;
+  failureCount: number;
+  status: string;
+  provider: string;
+  idempotencyKey: string;
+  message?: string;
+  error?: string;
+}> {
+  try {
+    const res = await fetch('/api/send-notification-email', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || 'Gagal mengirimkan notifikasi email melalui server backend.');
+    }
+    return data;
+  } catch (err: any) {
+    console.error('dispatchNotificationEmail error:', err);
+    return {
+      success: false,
+      totalRecipients: 0,
+      successCount: 0,
+      failureCount: 0,
+      status: 'failed',
+      provider: 'none',
+      idempotencyKey: payload.idempotencyKey || '',
+      error: err?.message || String(err)
+    };
+  }
+}
+
+export async function updateStudentNotificationPreferences(
+  userId: string,
+  preferences: StudentNotificationPreferences
+): Promise<void> {
+  const path = `users/${userId}`;
+  const now = new Date().toISOString();
+  const updatedPrefs: StudentNotificationPreferences = {
+    ...preferences,
+    updatedAt: now
+  };
+
+  try {
+    const userRef = doc(db, 'users', userId);
+    await setDoc(userRef, { notificationPreferences: updatedPrefs }, { merge: true });
+  } catch (error) {
+    logFirestoreDiagnostic({ operation: 'updateStudentNotificationPreferences', path }, error);
+  }
+}
+
 
 
 

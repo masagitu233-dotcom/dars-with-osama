@@ -173,6 +173,21 @@ export function parseUrlToRouteState(pathname: string, search: string): DarsRout
   }
 
   if (
+    cleanPath === '/unsubscribe' ||
+    cleanPath === '/unsubscribe/' ||
+    cleanPath === '/preferences' ||
+    cleanPath === '/preferences/' ||
+    urlView === 'unsubscribe' ||
+    urlView === 'preferences'
+  ) {
+    return {
+      view: 'unsubscribe',
+      filterCategoryId,
+      searchQuery
+    };
+  }
+
+  if (
     cleanPath === '/profil-pengajar' ||
     cleanPath === '/profil-pengajar/' ||
     cleanPath === '/profil' ||

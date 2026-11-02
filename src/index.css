@@ -187,10 +187,83 @@
   box-shadow: 4px 4px 0px #11121A;
 }
 
-/* Content Cards Dark Mode Styling (Charcoal #303544 surface, Border #454B5E, Gold #C6A75E hover border) */
-.dark .course-card,
+/* ==========================================================================
+   THREE MAIN SECTION CARD COLOR IDENTITIES (MANDATORY OVERRIDES)
+   A. Artikel Ilmiah: Background Bordo #6C151E
+   B. Pembelajaran: Background Green #0F3D3A
+   C. Tanya Jawab: Background Cream #F5DABF
+   ========================================================================== */
+
+/* A. Card Artikel Ilmiah - Bordo #6C151E */
+.article-card,
+.card-artikel,
+.nb-card-interactive.article-card,
+.nb-card-interactive.card-artikel,
+div[data-card-type="article"] {
+  background-color: #6C151E !important;
+  color: #FFF5E9 !important;
+  border-color: #171717;
+  box-shadow: 4px 4px 0px #171717;
+}
+
 .dark .article-card,
+.dark .card-artikel,
+.dark .nb-card-interactive.article-card,
+.dark .nb-card-interactive.card-artikel,
+.dark div[data-card-type="article"] {
+  background-color: #6C151E !important;
+  color: #FFF5E9 !important;
+  border-color: #171717 !important;
+  box-shadow: 4px 4px 0px #171717 !important;
+}
+
+/* B. Card Pembelajaran - Green #0F3D3A */
+.course-card,
+.card-pembelajaran,
+.nb-card-interactive.course-card,
+.nb-card-interactive.card-pembelajaran,
+div[data-card-type="course"] {
+  background-color: #0F3D3A !important;
+  color: #FFF5E9 !important;
+  border-color: #171717;
+  box-shadow: 4px 4px 0px #171717;
+}
+
+.dark .course-card,
+.dark .card-pembelajaran,
+.dark .nb-card-interactive.course-card,
+.dark .nb-card-interactive.card-pembelajaran,
+.dark div[data-card-type="course"] {
+  background-color: #0F3D3A !important;
+  color: #FFF5E9 !important;
+  border-color: #171717 !important;
+  box-shadow: 4px 4px 0px #171717 !important;
+}
+
+/* C. Card Tanya Jawab - Cream #F5DABF */
+.qa-card,
+.card-tanya-jawab,
+.nb-card-interactive.qa-card,
+.nb-card-interactive.card-tanya-jawab,
+div[data-card-type="qa"] {
+  background-color: #F5DABF !important;
+  color: #0F3D3A !important;
+  border-color: #171717;
+  box-shadow: 4px 4px 0px #171717;
+}
+
 .dark .qa-card,
+.dark .card-tanya-jawab,
+.dark .nb-card-interactive.qa-card,
+.dark .nb-card-interactive.card-tanya-jawab,
+.dark div[data-card-type="qa"] {
+  background-color: #F5DABF !important;
+  color: #0F3D3A !important;
+  border-color: #171717 !important;
+  box-shadow: 4px 4px 0px #171717 !important;
+}
+
+/* Content Cards Dark Mode Styling for other non-identity cards */
 .dark .stat-card,
 .dark .session-card,
 .dark .q-card {
@@ -200,9 +273,6 @@
   box-shadow: 4px 4px 0px #11121A !important;
 }
 
-.dark .course-card:hover,
-.dark .article-card:hover,
-.dark .qa-card:hover,
 .dark .stat-card:hover,
 .dark .session-card:hover {
   background-color: #3A3F52 !important;

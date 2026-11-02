@@ -293,14 +293,14 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
       {/* Back Button */}
       <button
         onClick={onBack}
-        className="nb-btn nb-btn-secondary px-4 py-2 text-xs"
+        className="nb-btn border-2 border-[#F5DABF] text-[#F5DABF] bg-transparent hover:bg-[#F5DABF] hover:text-[#0F3D3A] px-4 py-2 text-xs flex items-center gap-2 font-bold cursor-pointer transition shadow-[3px_3px_0px_#171717]"
       >
-        <ArrowLeft className="w-4 h-4" />
+        <ArrowLeft className="w-4 h-4 text-[#F5DABF]" />
         <span>Kembali ke Katalog Kursus</span>
       </button>
 
       {/* Hero Header Card */}
-      <div className="nb-card overflow-hidden relative bg-white dark:bg-[#1F5F63]">
+      <div className="nb-card overflow-hidden relative bg-[#FFF5E9] border-2 border-[#171717] shadow-[6px_6px_0px_#171717] text-[#0F3D3A]">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 relative">
           {/* Left Details */}
           <div className="lg:col-span-7 p-6 sm:p-8 md:p-10 flex flex-col justify-between space-y-6">
@@ -308,11 +308,11 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
               {/* Category & Level Badges */}
               <div className="flex flex-wrap items-center gap-2">
                 {category && (
-                  <span className="nb-badge bg-[#4CA7A1] text-[#001722] border-[#171717] dark:border-[#001722]">
+                  <span className="nb-badge bg-[#0F3D3A] text-[#F5DABF] border-[#171717]">
                     {category.name}
                   </span>
                 )}
-                <span className="nb-badge bg-[#FAF7F0] dark:bg-[#0D2B36] text-[#171717] dark:text-[#CEFEF1] border-[#171717] dark:border-[#4CA7A1] capitalize">
+                <span className="nb-badge bg-[#FAF7F0] text-[#0F3D3A] border-[#171717] capitalize">
                   Level: {course.level}
                 </span>
               </div>
@@ -439,10 +439,10 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="space-y-1">
-            <h2 className="text-xl sm:text-2xl font-extrabold text-[#171717] dark:text-[#CEFEF1] font-serif-brand">
+            <h2 className="text-xl sm:text-2xl font-extrabold text-[#F5DABF] font-serif-brand">
               Daftar Sesi Pembelajaran ({sessions.length})
             </h2>
-            <p className="text-xs sm:text-sm text-[#525855] dark:text-[#A6D6C9]">
+            <p className="text-xs sm:text-sm text-[#FFF5E9]/90">
               Klik pada sesi untuk mulai menyimak materi video, naskah PDF, catatan kajian, dan evaluasi kuis.
             </p>
           </div>

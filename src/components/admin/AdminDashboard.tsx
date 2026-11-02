@@ -39,9 +39,11 @@ import {
   FolderOpen,
   FileQuestion,
   MessageSquare,
-  UserCheck
+  UserCheck,
+  Mail
 } from 'lucide-react';
 import { Category, Course, Session, Quiz, Question, UserProfile, QuizAttempt, BlogPost } from '../../types';
+import { AdminNotificationSettings } from './AdminNotificationSettings';
 import {
   getCategories,
   saveCategory,
@@ -104,7 +106,7 @@ export const AdminDashboard: React.FC<{
   const { theme, effectiveTheme, setTheme } = useTheme();
 
   // Active Menu / Tab in Sidebar
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'courses' | 'categories' | 'sessions' | 'quizzes' | 'users' | 'attempts' | 'firebase' | 'blog' | 'consultation' | 'comments' | 'instructor-profile'>(initialTab || 'dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'courses' | 'categories' | 'sessions' | 'quizzes' | 'users' | 'attempts' | 'firebase' | 'blog' | 'consultation' | 'comments' | 'instructor-profile' | 'email-notifications'>(initialTab || 'dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [quickSearch, setQuickSearch] = useState('');
@@ -1278,6 +1280,19 @@ export const AdminDashboard: React.FC<{
                   PENGATURAN
                 </p>
               )}
+              <button
+                onClick={() => { setActiveTab('email-notifications'); setSidebarOpen(false); }}
+                title="Notifikasi Email Siswa"
+                className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'} rounded-md text-xs font-extrabold transition cursor-pointer ${
+                  activeTab === 'email-notifications'
+                    ? 'bg-[#123D32] dark:bg-[#1F5F63] text-[#FAF7F0] dark:text-[#CEFEF1] border-2 border-[#171717] dark:border-[#4CA7A1] border-l-4 dark:border-l-[#4CA7A1] shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#001722]'
+                    : 'bg-[#F5EFE2]/60 dark:bg-[#0D2B36] text-[#171717] dark:text-[#A6D6C9] hover:bg-[#F5EFE2] dark:hover:bg-[#1F5F63] dark:hover:text-[#CEFEF1] border-2 border-[#171717]/40 dark:border-[#4CA7A1]'
+                }`}
+              >
+                <Mail className={`w-4 h-4 shrink-0 ${activeTab === 'email-notifications' ? 'text-[#FAF7F0] dark:text-[#CEFEF1]' : 'text-[#0B6B50] dark:text-[#4CA7A1]'}`} />
+                {!sidebarCollapsed && <span className="truncate">Notifikasi Email</span>}
+              </button>
+
               <button
                 onClick={() => { setActiveTab('firebase'); setSidebarOpen(false); }}
                 title="Status Firebase & Data"
@@ -2527,6 +2542,15 @@ export const AdminDashboard: React.FC<{
               <AdminInstructorProfileManager
                 onOpenPublicProfile={onNavigateToInstructorProfile}
               />
+            </div>
+          )}
+
+          {/* ========================================================= */}
+          {/* VIEW: EMAIL NOTIFICATIONS MANAGER */}
+          {/* ========================================================= */}
+          {activeTab === 'email-notifications' && (
+            <div className="animate-fade-in">
+              <AdminNotificationSettings />
             </div>
           )}
         </main>

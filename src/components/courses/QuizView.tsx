@@ -314,12 +314,12 @@ export const QuizView: React.FC<QuizViewProps> = ({
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6 animate-in fade-in duration-200">
       {/* Top Header */}
-      <div className="flex items-center justify-between pb-4 border-b-2 border-[#292D2B] dark:border-[#34465D]">
+      <div className="flex items-center justify-between pb-4 border-b-2 border-[#171717]">
         <button
           onClick={onBackToSession}
-          className="nb-btn nb-btn-secondary px-4 py-2 text-xs"
+          className="nb-btn border-2 border-[#F5DABF] text-[#F5DABF] bg-transparent hover:bg-[#F5DABF] hover:text-[#0F3D3A] px-4 py-2 text-xs flex items-center gap-2 font-bold cursor-pointer transition shadow-[3px_3px_0px_#171717]"
         >
-          <ArrowLeft className="w-4 h-4" />
+          <ArrowLeft className="w-4 h-4 text-[#F5DABF]" />
           <span>Kembali ke Sesi Belajar</span>
         </button>
 
@@ -338,7 +338,7 @@ export const QuizView: React.FC<QuizViewProps> = ({
 
       {/* Result Screen upon submission */}
       {submitted && scoreResult ? (
-        <div className="nb-card p-6 sm:p-10 space-y-8 bg-white dark:bg-[#16263D]">
+        <div className="nb-card p-6 sm:p-10 space-y-8 bg-[#FFF5E9] text-[#0F3D3A] border-2 border-[#171717] shadow-[6px_6px_0px_#171717]">
           {/* Result Card */}
           <div className="text-center space-y-4">
             <div className={`w-20 h-20 rounded-lg mx-auto flex items-center justify-center text-3xl border-2 border-[#292D2B] dark:border-[#34465D] shadow-[4px_4px_0px_#292D2B] dark:shadow-[4px_4px_0px_#101B2D] ${
@@ -465,14 +465,14 @@ export const QuizView: React.FC<QuizViewProps> = ({
         </div>
       ) : (
         /* Examination Interface (Taking the quiz) */
-        <div className="nb-card p-6 sm:p-8 space-y-6 bg-white dark:bg-[#16263D]">
+        <div className="nb-card p-6 sm:p-8 space-y-6 bg-[#FFF5E9] text-[#0F3D3A] border-2 border-[#171717] shadow-[6px_6px_0px_#171717]">
           {/* Header info */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b-2 border-[#292D2B] dark:border-[#34465D]">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b-2 border-[#171717]">
             <div>
-              <span className="text-xs text-[#123D32] dark:text-[#D6AD52] font-extrabold uppercase tracking-wider">
+              <span className="text-xs text-[#0F3D3A] font-extrabold uppercase tracking-wider">
                 {course.title}
               </span>
-              <h2 className="text-xl sm:text-2xl font-extrabold text-[#292D2B] dark:text-[#F1F4F8] font-serif-brand">
+              <h2 className="text-xl sm:text-2xl font-extrabold text-[#0F3D3A] font-serif-brand">
                 {quiz.title}
               </h2>
             </div>

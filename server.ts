@@ -66,6 +66,212 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
+  app.use(express.json({ limit: '5mb' }));
+
+  // In-memory idempotency cache for deduplicating server-side notifications
+  const processedIdempotencyKeys = new Set<string>();
+
+  // Automated Student Email Notification Dispatch Endpoint
+  app.post('/api/send-notification-email', async (req, res) => {
+    try {
+      const payload = req.body || {};
+      const {
+        type = 'announcement',
+        title = '',
+        subtitle = '',
+        summary = '',
+        contentHtml = '',
+        targetUrl = 'https://darswithosama.com',
+        targetButtonText = '',
+        idempotencyKey = '',
+        recipientEmails,
+        isManualBroadcast = false
+      } = payload;
+
+      if (!title || !summary) {
+        res.status(400).json({ error: 'Judul dan ringkasan notifikasi wajib diisi.' });
+        return;
+      }
+
+      // 1. Idempotency Check (Pencegahan Pengiriman Ganda)
+      const cleanKey = String(idempotencyKey || '').trim();
+      if (cleanKey && processedIdempotencyKeys.has(cleanKey)) {
+        res.status(200).json({
+          success: true,
+          idempotentSkipped: true,
+          totalRecipients: 0,
+          successCount: 0,
+          failureCount: 0,
+          status: 'completed',
+          provider: 'none',
+          idempotencyKey: cleanKey,
+          message: 'Notifikasi ini telah dikirimkan sebelumnya (idempotent).'
+        });
+        return;
+      }
+
+      // Import email template helpers dynamically
+      const {
+        generateEmailHtml,
+        generateEmailPlainText,
+        generateEmailSubject,
+        filterRecipientsByPreferences
+      } = await import('./src/utils/emailTemplateHelper.ts');
+
+      // 2. Determine target recipient emails respecting preferences & QA privacy
+      let finalTargetEmails: Array<{ email: string; name?: string }> = [];
+
+      if (Array.isArray(recipientEmails) && recipientEmails.length > 0) {
+        // Explicit recipients (e.g. Q&A answer sent exclusively to the asker)
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        finalTargetEmails = recipientEmails
+          .map((e: any) => String(e || '').trim().toLowerCase())
+          .filter((e: string) => emailRegex.test(e))
+          .map((e: string) => ({ email: e }));
+      } else {
+        // General student list (default mock registered active students for fallback)
+        const sampleStudents = [
+          { id: 'st-1', email: 'masagitu233@gmail.com', displayName: 'Siswa Dars', role: 'student' as const },
+          { id: 'st-2', email: 'osamanursamsil@gmail.com', displayName: 'Pengasuh', role: 'admin' as const }
+        ];
+
+        const eligibleStudents = filterRecipientsByPreferences(sampleStudents, type);
+        finalTargetEmails = eligibleStudents.map(s => ({ email: s.email, name: s.displayName }));
+      }
+
+      // Avoid sending to empty list
+      if (finalTargetEmails.length === 0) {
+        res.status(200).json({
+          success: true,
+          totalRecipients: 0,
+          successCount: 0,
+          failureCount: 0,
+          status: 'completed',
+          provider: 'none',
+          idempotencyKey: cleanKey,
+          message: 'Tidak ada penerima yang memenuhi syarat preferensi notifikasi.'
+        });
+        return;
+      }
+
+      // 3. Determine Provider (Resend, Brevo, or Simulated)
+      const resendApiKey = process.env.RESEND_API_KEY || process.env.VITE_RESEND_API_KEY;
+      const brevoApiKey = process.env.BREVO_API_KEY || process.env.VITE_BREVO_API_KEY;
+
+      let provider: 'resend' | 'brevo' | 'simulated' = 'simulated';
+      let successCount = 0;
+      let failureCount = 0;
+
+      const subjectLine = generateEmailSubject(type, title);
+
+      if (resendApiKey) {
+        provider = 'resend';
+        for (const target of finalTargetEmails) {
+          try {
+            const html = generateEmailHtml({
+              type,
+              title,
+              subtitle,
+              summary,
+              contentHtml,
+              targetUrl,
+              targetButtonText,
+              recipientEmail: target.email,
+              recipientName: target.name
+            });
+
+            const rRes = await fetch('https://api.resend.com/emails', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${resendApiKey}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                from: 'Dars with Osama <notifikasi@darswithosama.com>',
+                to: [target.email],
+                subject: subjectLine,
+                html
+              })
+            });
+
+            if (rRes.ok) {
+              successCount++;
+            } else {
+              failureCount++;
+            }
+          } catch {
+            failureCount++;
+          }
+        }
+      } else if (brevoApiKey) {
+        provider = 'brevo';
+        for (const target of finalTargetEmails) {
+          try {
+            const html = generateEmailHtml({
+              type,
+              title,
+              subtitle,
+              summary,
+              contentHtml,
+              targetUrl,
+              targetButtonText,
+              recipientEmail: target.email,
+              recipientName: target.name
+            });
+
+            const bRes = await fetch('https://api.brevo.com/v3/smtp/email', {
+              method: 'POST',
+              headers: {
+                'api-key': brevoApiKey,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                sender: { name: 'Dars with Osama', email: 'notifikasi@darswithosama.com' },
+                to: [{ email: target.email, name: target.name || 'Siswa' }],
+                subject: subjectLine,
+                htmlContent: html
+              })
+            });
+
+            if (bRes.ok) {
+              successCount++;
+            } else {
+              failureCount++;
+            }
+          } catch {
+            failureCount++;
+          }
+        }
+      } else {
+        // Safe Simulated Mode (Zero runtime error, zero cost, full log compliance)
+        provider = 'simulated';
+        successCount = finalTargetEmails.length;
+        failureCount = 0;
+      }
+
+      // Mark idempotency key as processed
+      if (cleanKey) {
+        processedIdempotencyKeys.add(cleanKey);
+      }
+
+      res.status(200).json({
+        success: true,
+        totalRecipients: finalTargetEmails.length,
+        successCount,
+        failureCount,
+        status: provider === 'simulated' ? 'simulated' : failureCount === 0 ? 'completed' : 'partial',
+        provider,
+        idempotencyKey: cleanKey,
+        recipientsSample: finalTargetEmails.slice(0, 5).map(t => t.email)
+      });
+    } catch (error: any) {
+      console.error('/api/send-notification-email error:', error);
+      res.status(500).json({
+        error: error?.message || 'Gagal memproses pengiriman notifikasi email.'
+      });
+    }
+  });
+
   // Google Drive audio streaming proxy endpoint
   app.all('/api/gdrive-audio', async (req, res) => {
     try {

@@ -123,18 +123,18 @@ export const StudentConsultationView: React.FC<StudentConsultationViewProps> = (
   return (
     <div className="max-w-5xl mx-auto px-2.5 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8 animate-fade-in font-sans">
       {/* HEADER BANNER */}
-      <div className="relative overflow-hidden rounded-lg bg-[#123D32] dark:bg-[#1F5F63] text-[#FAF7F0] dark:text-[#CEFEF1] p-6 sm:p-10 border-2 border-[#171717] dark:border-[#4CA7A1] shadow-[6px_6px_0px_#171717] dark:shadow-[6px_6px_0px_#001722]">
+      <div className="relative overflow-hidden rounded-lg bg-[#0F3D3A] text-[#F5DABF] p-6 sm:p-10 border-2 border-[#171717] shadow-[6px_6px_0px_#171717]">
         <div className="relative z-10 max-w-2xl space-y-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#4CA7A1] border-2 border-[#171717] dark:border-[#001722] text-[#001722] text-xs font-extrabold uppercase tracking-wider">
-            <Sparkles className="w-3.5 h-3.5 text-[#001722]" />
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#D6AD52] border-2 border-[#171717] text-[#0F3D3A] text-xs font-extrabold uppercase tracking-wider">
+            <Sparkles className="w-3.5 h-3.5 text-[#0F3D3A]" />
             <span>Ruang Bimbingan & Konsultasi Syar'i</span>
           </div>
 
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold font-serif text-white leading-tight">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold font-serif text-[#F5DABF] leading-tight">
             Konsultasi & Tanya Jawab Pembelajaran
           </h1>
 
-          <p className="text-xs sm:text-sm text-[#FAF7F0]/90 dark:text-[#A6D6C9] leading-relaxed font-sans">
+          <p className="text-xs sm:text-sm text-[#F5DABF]/90 leading-relaxed font-sans">
             Ajukan pertanyaan seputar materi pelajaran, pemahaman kitab, maupun pertanyaan pribadi secara tertutup dan aman bersama Ustaz & Pembimbing.
           </p>
 

@@ -41,6 +41,7 @@ import { StudentConsultationView } from './components/consultation/StudentConsul
 import { PublicQAView } from './components/consultation/PublicQAView';
 import { InstructorProfileView } from './components/profile/InstructorProfileView';
 import { SearchResultsView } from './components/search/SearchResultsView';
+import { UnsubscribePreferencesView } from './components/student/UnsubscribePreferencesView';
 import { Course, Category, Session, Quiz, Enrollment, BlogPost } from './types';
 import AOS from 'aos';
 import 'aos/dist/aos.css';
@@ -790,9 +791,25 @@ function MainApp() {
       ? `quiz-view:${selectedQuiz?.id || ''}`
       : currentView;
 
+  const getPageBackgroundClass = () => {
+    switch (currentView) {
+      case 'course-detail':
+      case 'session-view':
+      case 'quiz-view':
+        return 'bg-[#0F3D3A] text-[#FFF5E9]';
+      case 'blog-detail':
+        return 'bg-[#6C151E] text-[#FFF5E9]';
+      case 'public-qa':
+      case 'consultation':
+        return 'bg-[#F5DABF] text-[#0F3D3A]';
+      default:
+        return 'bg-[#FAF7F0] dark:bg-[#0D2B36] text-[#171717] dark:text-[#CEFEF1]';
+    }
+  };
+
   return (
     <SmoothScrollProvider currentView={routeScrollKey}>
-      <div className="min-h-screen bg-[#FAF7F0] dark:bg-[#0D2B36] text-[#171717] dark:text-[#CEFEF1] font-sans selection:bg-[#4CA7A1]/30 selection:text-[#171717] dark:selection:text-[#CEFEF1] transition-colors duration-250">
+      <div className={`min-h-screen font-sans selection:bg-[#4CA7A1]/30 selection:text-[#171717] transition-colors duration-250 ${getPageBackgroundClass()}`}>
         {currentView === 'admin-dashboard' && isAdmin ? (
           <AdminDashboard
             initialTab={adminInitialTab}
@@ -1187,6 +1204,13 @@ function MainApp() {
                         setSearchQuery(newQuery);
                         navigateTo({ view: 'search', searchQuery: newQuery });
                       }}
+                    />
+                  )}
+
+                  {/* VIEW 13: UNSUBSCRIBE & NOTIFICATION PREFERENCES */}
+                  {currentView === 'unsubscribe' && (
+                    <UnsubscribePreferencesView
+                      onBackToHome={() => navigateTo({ view: 'home' })}
                     />
                   )}
                 </div>

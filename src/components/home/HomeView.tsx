@@ -61,48 +61,50 @@ const HomeQACard: React.FC<{
   return (
     <div
       onClick={onReadMore}
-      className="nb-card-interactive p-4 sm:p-5 flex flex-col justify-between group cursor-pointer text-left space-y-3.5 sm:space-y-4 h-full bg-white dark:bg-[#1F5F63] border-2 border-[#171717] dark:border-[#4CA7A1]"
+      data-card-type="qa"
+      className="qa-card card-tanya-jawab nb-card-interactive p-4 sm:p-5 flex flex-col justify-between group cursor-pointer text-left space-y-3.5 sm:space-y-4 h-full border-2 border-[#171717] shadow-[4px_4px_0px_#171717]"
+      style={{ backgroundColor: '#F5DABF', color: '#0F3D3A' }}
     >
       <div className="space-y-2.5 sm:space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="nb-badge bg-[#123D32] text-[#D6AD52] dark:bg-[#4CA7A1] dark:text-[#001722] border-[#171717] dark:border-[#A6D6C9] text-[10px] sm:text-[11px] px-2 sm:px-2.5 py-0.5">
+          <span className="nb-badge bg-[#6C151E] text-[#FFF5E9] border-[#171717] shadow-[1.5px_1.5px_0px_#171717] text-[10px] sm:text-[11px] px-2 sm:px-2.5 py-0.5 font-extrabold">
             Tanya Jawab Syar'i
           </span>
-          <span className="text-[11px] font-bold text-[#525855] dark:text-[#A6D6C9]">
+          <span className="text-[11px] font-bold text-[#6C151E]">
             {item.publishedAt
               ? new Date(item.publishedAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
               : 'Terbit'}
           </span>
         </div>
 
-        <h3 className="font-serif font-bold text-base text-[#171717] dark:text-[#CEFEF1] line-clamp-2 leading-snug group-hover:text-[#123D32] dark:group-hover:text-white transition-colors">
+        <h3 className="font-serif font-bold text-base text-[#0F3D3A] group-hover:text-[#6C151E] line-clamp-2 leading-snug transition-colors">
           {item.title}
         </h3>
 
-        <p className="text-xs text-[#525855] dark:text-[#A6D6C9] line-clamp-2 leading-relaxed">
-          <strong className="font-bold text-[#171717] dark:text-[#CEFEF1]">Pertanyaan: </strong>
+        <p className="text-xs text-[#0F3D3A] line-clamp-2 leading-relaxed">
+          <strong className="font-bold text-[#6C151E]">Pertanyaan: </strong>
           {shortQuestion}
         </p>
 
         {shortAnswer && (
-          <div className="p-3 rounded-md bg-[#FAF7F0] dark:bg-[#0D2B36] border-2 border-[#171717] dark:border-[#4CA7A1] text-xs text-[#171717] dark:text-[#CEFEF1] leading-relaxed line-clamp-2">
-            <strong className="font-bold text-[#123D32] dark:text-[#4CA7A1]">Jawaban: </strong>
+          <div className="p-3 rounded-md bg-[#FFF5E9] border-2 border-[#171717] text-xs text-[#0F3D3A] leading-relaxed line-clamp-2">
+            <strong className="font-bold text-[#6C151E]">Jawaban: </strong>
             {shortAnswer}
           </div>
         )}
       </div>
 
-      <div className="pt-3 border-t-2 border-[#171717] dark:border-[#4CA7A1] flex items-center justify-between text-xs">
-        <span className="inline-flex items-center gap-1.5 font-extrabold text-[#123D32] dark:text-[#CEFEF1] group-hover:dark:text-white">
+      <div className="pt-3 border-t-2 border-[#6C151E]/20 flex items-center justify-between text-xs bg-[#F5DABF]">
+        <span className="inline-flex items-center gap-1.5 font-extrabold text-[#0F3D3A] group-hover:text-[#6C151E] transition-colors">
           <span>Baca Jawaban Lengkap</span>
           {!user ? (
-            <Lock className="w-3.5 h-3.5 text-[#D6AD52] dark:text-[#4CA7A1] ml-1 shrink-0" />
+            <Lock className="w-3.5 h-3.5 text-[#6C151E] ml-1 shrink-0" />
           ) : (
-            <ArrowRight className="w-3.5 h-3.5 text-[#123D32] dark:text-[#4CA7A1] transition-transform group-hover:translate-x-1 shrink-0" />
+            <ArrowRight className="w-3.5 h-3.5 text-[#0F3D3A] group-hover:text-[#6C151E] transition-transform group-hover:translate-x-1 shrink-0" />
           )}
         </span>
         {!user && (
-          <span className="text-[10px] font-extrabold text-[#171717] dark:text-[#001722] bg-[#D6AD52] dark:bg-[#4CA7A1] px-2 py-0.5 rounded border border-[#171717] dark:border-[#A6D6C9] shrink-0">
+          <span className="text-[10px] font-extrabold text-[#FFF5E9] bg-[#6C151E] px-2 py-0.5 rounded border border-[#171717] shrink-0">
             Login
           </span>
         )}
@@ -138,10 +140,12 @@ const HomeArticleCard: React.FC<{
   return (
     <div
       onClick={() => onSelect?.(post)}
-      className="nb-card-interactive overflow-hidden flex flex-col justify-between group cursor-pointer h-full bg-white dark:bg-[#1F5F63] border-2 border-[#171717] dark:border-[#4CA7A1]"
+      data-card-type="article"
+      className="article-card card-artikel nb-card-interactive overflow-hidden flex flex-col justify-between group cursor-pointer h-full border-2 border-[#171717] shadow-[4px_4px_0px_#171717]"
+      style={{ backgroundColor: '#6C151E', color: '#FFF5E9' }}
     >
       <div>
-        <div className="relative aspect-video w-full overflow-hidden bg-[#123D32] dark:bg-[#0D2B36] border-b-2 border-[#171717] dark:border-[#4CA7A1]">
+        <div className="relative aspect-video w-full overflow-hidden bg-[#4A0E14] border-b-2 border-[#171717]">
           <ResilientGoogleDriveImage
             src={post.coverImageUrl || fallbackImg}
             fallbackSrc={fallbackImg}
@@ -151,21 +155,21 @@ const HomeArticleCard: React.FC<{
           />
         </div>
 
-        <div className="p-4 sm:p-5 space-y-2.5 text-left">
-          <div className="flex items-center gap-2.5 sm:gap-3 text-[11px] text-[#525855] dark:text-[#A6D6C9] font-bold">
+        <div className="p-4 sm:p-5 space-y-2.5 text-left bg-[#6C151E] text-[#FFF5E9]">
+          <div className="flex items-center gap-2.5 sm:gap-3 text-[11px] text-[#F5DABF] font-bold">
             <span className="flex items-center gap-1">
-              <Calendar className="w-3.5 h-3.5 text-[#123D32] dark:text-[#4CA7A1]" />
+              <Calendar className="w-3.5 h-3.5 text-[#F5DABF]" />
               <span className="truncate">{formattedDate}</span>
             </span>
             {post.readingTimeMinutes > 0 && (
               <span className="flex items-center gap-1 shrink-0">
-                <Clock className="w-3.5 h-3.5 text-[#123D32] dark:text-[#A6D6C9]" />
+                <Clock className="w-3.5 h-3.5 text-[#F5DABF]" />
                 <span>{post.readingTimeMinutes} mnt baca</span>
               </span>
             )}
           </div>
 
-          <h3 className="font-serif font-bold text-base sm:text-lg text-[#171717] dark:text-[#CEFEF1] line-clamp-2 group-hover:text-[#123D32] dark:group-hover:text-white transition-colors leading-snug">
+          <h3 className="font-serif font-bold text-base sm:text-lg text-white group-hover:text-[#F5DABF] transition-colors leading-snug line-clamp-2">
             {post.title}
           </h3>
 
@@ -179,7 +183,7 @@ const HomeArticleCard: React.FC<{
                 .map((catName, idx) => (
                   <span
                     key={idx}
-                    className="px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider bg-[#4CA7A1] text-[#001722] border border-[#171717] dark:border-[#001722] shadow-[1.5px_1.5px_0px_#171717] dark:shadow-[1.5px_1.5px_0px_#001722] inline-block"
+                    className="px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider bg-[#F5DABF] text-[#6C151E] border border-[#171717] shadow-[1.5px_1.5px_0px_#171717] inline-block"
                   >
                     {catName}
                   </span>
@@ -187,14 +191,14 @@ const HomeArticleCard: React.FC<{
             </div>
           )}
 
-          <p className="text-xs text-[#525855] dark:text-[#A6D6C9] line-clamp-2 leading-relaxed">
+          <p className="text-xs text-[#FFF5E9]/90 line-clamp-2 leading-relaxed">
             {post.excerpt}
           </p>
         </div>
       </div>
 
-      <div className="px-4 sm:px-5 pb-4 pt-2.5 border-t-2 border-[#171717] dark:border-[#4CA7A1] text-left flex items-center justify-between">
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded border-2 border-[#123D32] dark:border-[#4CA7A1] text-xs font-extrabold text-[#123D32] dark:text-[#4CA7A1] bg-transparent dark:bg-[#0D2B36] group-hover:bg-[#123D32] group-hover:text-white dark:group-hover:bg-[#4CA7A1] dark:group-hover:text-[#001722] transition-colors">
+      <div className="px-4 sm:px-5 pb-4 pt-2.5 border-t-2 border-[#F5DABF]/20 text-left flex items-center justify-between bg-[#6C151E]">
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded border-2 border-[#F5DABF] text-xs font-extrabold text-[#F5DABF] bg-transparent group-hover:bg-[#F5DABF] group-hover:text-[#6C151E] transition-colors">
           <span>Baca Artikel</span>
           <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
         </span>
@@ -334,7 +338,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
           </div>
 
           <MobileCarousel
-            desktopGridClass="sm:grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 sm:gap-5"
+            desktopGridClass="sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-5"
             ariaLabel="Materi Pembelajaran Pilihan"
           >
             {courses.slice(0, 4).map((course) => (

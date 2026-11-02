@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { BlogPost } from '../../types';
 import { RichTextEditor } from './RichTextEditor';
-import { saveBlogPost, deleteBlogPost, uploadFileToStorage, deleteDummyBlogPostsFromFirestore } from '../../firebase/services';
+import { saveBlogPost, deleteBlogPost, uploadFileToStorage, deleteDummyBlogPostsFromFirestore, dispatchNotificationEmail } from '../../firebase/services';
 import { ConfirmModal } from '../common/ConfirmModal';
 import { resolveAudioSourceCandidates, describeAudioPlaybackError } from '../../utils/articleAudioHelper';
 import { sanitizeRichTextHtml } from '../../utils/richTextHelper';
@@ -324,6 +324,16 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
         tags: parsedTags,
         status
       });
+
+      if (status === 'published') {
+        dispatchNotificationEmail({
+          type: 'article',
+          title: titleText,
+          summary: formData.excerpt || titleText,
+          targetUrl: `https://darswithosama.com/article/${formData.slug || ''}`,
+          idempotencyKey: `article-${formData.id || 'new'}-${Date.now()}`
+        }).catch(err => console.warn('Article notification notice:', err));
+      }
 
       setIsModalOpen(false);
       await onRefreshPosts();

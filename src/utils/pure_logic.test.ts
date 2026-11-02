@@ -3420,5 +3420,91 @@ test('Case 86: QATableOfContents menampilkan judul Heading 1 langsung tanpa labe
   assert.ok(renderedHtml.includes('2'), 'Nomor bagian 2 tetap ada');
 });
 
+// Case 87: Sistem Notifikasi Email Otomatis Siswa (Preferensi, Idempotensi, Subjek, Template)
+test('Case 87: emailTemplateHelper memvalidasi penyaringan preferensi siswa, pembentukan idempotency key, dan pembuatan template email', async () => {
+  const {
+    isStudentEligibleForCategory,
+    filterRecipientsByPreferences,
+    buildIdempotencyKey,
+    generateEmailSubject,
+    generateEmailHtml,
+    generateEmailPlainText
+  } = await import('./emailTemplateHelper.js');
+
+  // 1. Verifikasi penyaringan preferensi notifikasi siswa
+  const activeStudentPrefs = {
+    courses: true,
+    articles: false,
+    qa: true,
+    announcements: true,
+    unsubscribedAll: false
+  };
+
+  assert.equal(isStudentEligibleForCategory(activeStudentPrefs, 'course'), true, 'Siswa yang mengaktifkan courses harus eligible');
+  assert.equal(isStudentEligibleForCategory(activeStudentPrefs, 'article'), false, 'Siswa yang menonaktifkan articles HARUS tidak eligible');
+  assert.equal(isStudentEligibleForCategory(activeStudentPrefs, 'qa'), true, 'Siswa yang mengaktifkan qa harus eligible');
+
+  const unsubscribedStudentPrefs = {
+    courses: true,
+    articles: true,
+    qa: true,
+    announcements: true,
+    unsubscribedAll: true
+  };
+
+  assert.equal(isStudentEligibleForCategory(unsubscribedStudentPrefs, 'course'), false, 'Siswa unsubscribedAll HARUS tidak eligible untuk semua notifikasi umum');
+  assert.equal(isStudentEligibleForCategory(unsubscribedStudentPrefs, 'article'), false);
+  assert.equal(isStudentEligibleForCategory(unsubscribedStudentPrefs, 'announcement'), false);
+
+  // 2. Verifikasi penyaringan daftar penerima massal
+  const sampleUsers = [
+    { id: 'u1', email: 'siswa1@example.com', displayName: 'Siswa Satu', role: 'student' as const, notificationPreferences: activeStudentPrefs },
+    { id: 'u2', email: 'siswa2@example.com', displayName: 'Siswa Dua', role: 'student' as const, notificationPreferences: unsubscribedStudentPrefs },
+    { id: 'u3', email: 'invalid-email-format', displayName: 'Format Salah', role: 'student' as const, notificationPreferences: activeStudentPrefs }
+  ];
+
+  const eligibleForArticle = filterRecipientsByPreferences(sampleUsers, 'article');
+  assert.equal(eligibleForArticle.length, 0, 'Siswa u1 (articles=false) dan u2 (unsubscribed) dan u3 (invalid email) harus tereliminasi');
+
+  const eligibleForCourse = filterRecipientsByPreferences(sampleUsers, 'course');
+  assert.equal(eligibleForCourse.length, 1, 'Hanya u1 yang memenuhi syarat untuk notifikasi course');
+  assert.equal(eligibleForCourse[0].email, 'siswa1@example.com');
+
+  // 3. Verifikasi pembuatan Idempotency Key unik
+  const key1 = buildIdempotencyKey('course', 'c-101', 'v1');
+  assert.equal(key1, 'course-c-101-v1');
+
+  // 4. Verifikasi Subjek Email resmi Dars with Osama
+  const subjectArticle = generateEmailSubject('article', 'Tafsir Surat Al-Fatihah');
+  assert.ok(subjectArticle.includes('Artikel Ilmiah Baru Telah Terbit'), 'Subjek memuat badge artikel ilmiah');
+  assert.ok(subjectArticle.includes('Dars with Osama'), 'Subjek memuat nama merek');
+
+  // 5. Verifikasi pembuatan Template Email HTML & Plain Text
+  const htmlTemplate = generateEmailHtml({
+    type: 'article',
+    title: 'Tafsir Surat Al-Fatihah',
+    summary: 'Penjelasan makna ayat-ayat Al-Fatihah secara komprehensif.',
+    targetUrl: 'https://darswithosama.com/article/tafsir-al-fatihah',
+    recipientEmail: 'siswa1@example.com',
+    recipientName: 'Siswa Satu'
+  });
+
+  assert.ok(htmlTemplate.includes("Assalamu'alaikum"), 'Email HTML mengandung salam Islami');
+  assert.ok(htmlTemplate.includes('Tafsir Surat Al-Fatihah'), 'Email HTML mengandung judul');
+  assert.ok(htmlTemplate.includes('https://darswithosama.com/article/tafsir-al-fatihah'), 'Email HTML mengandung tombol target URL');
+  assert.ok(htmlTemplate.includes('Unsubscribe'), 'Email HTML mengandung tautan Unsubscribe');
+
+  const plainTextTemplate = generateEmailPlainText({
+    type: 'article',
+    title: 'Tafsir Surat Al-Fatihah',
+    summary: 'Penjelasan makna ayat-ayat Al-Fatihah secara komprehensif.',
+    targetUrl: 'https://darswithosama.com/article/tafsir-al-fatihah',
+    recipientEmail: 'siswa1@example.com'
+  });
+
+  assert.ok(plainTextTemplate.includes("Assalamu'alaikum"), 'Plain text email mengandung salam');
+  assert.ok(plainTextTemplate.includes('Dars with Osama'), 'Plain text email mengandung identitas Dars with Osama');
+});
+
 
 

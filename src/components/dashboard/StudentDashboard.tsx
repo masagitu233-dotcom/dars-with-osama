@@ -6,12 +6,14 @@ import {
   PlayCircle,
   Sparkles,
   ArrowRight,
-  Settings
+  Settings,
+  Bell
 } from 'lucide-react';
 import { Course, Enrollment, QuizAttempt } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { getUserEnrollments, getUserQuizAttempts } from '../../firebase/services';
+import { StudentNotificationPreferencesModal } from '../student/StudentNotificationPreferencesModal';
 
 interface StudentDashboardProps {
   courses: Course[];
@@ -30,6 +32,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [attempts, setPastAttempts] = useState<QuizAttempt[]>([]);
   const [, setLoading] = useState(true);
+  const [notifModalOpen, setNotifModalOpen] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -112,13 +115,21 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
           <p className="text-xs sm:text-sm text-[#626A66] dark:text-[#B4C0D0] max-w-xl">
             Lanjutkan sesi pembelajaran Anda dan pantau kemajuan pemahaman syarah matan secara mandiri.
           </p>
-          <div className="pt-2">
+          <div className="pt-2 flex flex-wrap items-center gap-2">
             <button
               onClick={() => openProfileModal()}
               className="nb-btn nb-btn-gold px-4 py-2 text-xs"
             >
               <Settings className="w-3.5 h-3.5" />
               <span>Pengaturan Profil & Foto</span>
+            </button>
+
+            <button
+              onClick={() => setNotifModalOpen(true)}
+              className="nb-btn nb-btn-secondary px-4 py-2 text-xs flex items-center gap-1.5"
+            >
+              <Bell className="w-3.5 h-3.5 text-[#123D32] dark:text-[#D6AD52]" />
+              <span>Preferensi Notifikasi Email</span>
             </button>
           </div>
         </div>
@@ -323,6 +334,11 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
           </div>
         )}
       </div>
+
+      <StudentNotificationPreferencesModal
+        isOpen={notifModalOpen}
+        onClose={() => setNotifModalOpen(false)}
+      />
     </div>
   );
 };

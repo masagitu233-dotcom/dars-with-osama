@@ -249,9 +249,9 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <button
           onClick={onBack}
-          className="nb-btn nb-btn-secondary px-3.5 py-2 text-xs"
+          className="px-3.5 py-2 text-xs font-extrabold rounded-md border-2 border-[#F5DABF] text-[#F5DABF] bg-transparent hover:bg-[#F5DABF] hover:text-[#6C151E] transition-all inline-flex items-center gap-2 cursor-pointer shadow-[2px_2px_0px_#171717]"
         >
-          <ArrowLeft className="w-4 h-4 text-[#123D32] dark:text-[#4CA7A1]" />
+          <ArrowLeft className="w-4 h-4 text-[#F5DABF]" />
           <span>Kembali ke Daftar Artikel</span>
         </button>
 
@@ -259,20 +259,20 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
           {/* Salin Link Button */}
           <button
             onClick={handleCopyLink}
-            className="nb-btn nb-btn-secondary px-3.5 py-2 text-xs"
+            className="px-3.5 py-2 text-xs font-extrabold rounded-md border-2 border-[#F5DABF] text-[#F5DABF] bg-transparent hover:bg-[#F5DABF] hover:text-[#6C151E] transition-all inline-flex items-center gap-2 cursor-pointer shadow-[2px_2px_0px_#171717]"
             title="Salin tautan permanen artikel ini"
           >
-            {copied ? <Check className="w-4 h-4 text-[#123D32] dark:text-[#CEFEF1]" /> : <Copy className="w-4 h-4 text-[#123D32] dark:text-[#4CA7A1]" />}
+            {copied ? <Check className="w-4 h-4 text-[#F5DABF]" /> : <Copy className="w-4 h-4 text-[#F5DABF]" />}
             <span>{copied ? 'Link Disalin!' : 'Salin Link'}</span>
           </button>
 
           {/* Bagikan Artikel Button */}
           <button
             onClick={handleShare}
-            className="nb-btn nb-btn-gold px-3.5 py-2 text-xs"
+            className="px-3.5 py-2 text-xs font-extrabold rounded-md border-2 border-[#171717] bg-[#D6AD52] text-[#171717] hover:bg-[#E5BE68] transition-all inline-flex items-center gap-2 cursor-pointer shadow-[3px_3px_0px_#171717]"
             title="Bagikan artikel ke WhatsApp, Telegram, Facebook, X, atau Instagram"
           >
-            <Share2 className="w-4 h-4" />
+            <Share2 className="w-4 h-4 text-[#171717]" />
             <span>Bagikan Artikel</span>
           </button>
         </div>
@@ -280,14 +280,14 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
 
       {/* COPIED TOAST NOTIFICATION BANNER */}
       {copied && (
-        <div className="p-3.5 rounded-md bg-[#123D32] dark:bg-[#1F5F63] border-2 border-[#171717] dark:border-[#4CA7A1] text-[#FAF7F0] dark:text-[#CEFEF1] text-xs flex items-center justify-between shadow-[4px_4px_0px_#171717] dark:shadow-[4px_4px_0px_#001722] animate-fade-in">
+        <div className="p-3.5 rounded-md bg-[#FAF7F0] border-2 border-[#171717] text-[#6C151E] text-xs flex items-center justify-between shadow-[4px_4px_0px_#171717] animate-fade-in font-bold">
           <div className="flex items-center gap-2.5">
-            <Check className="w-4 h-4 text-[#CEFEF1] shrink-0" />
+            <Check className="w-4 h-4 text-[#6C151E] shrink-0" />
             <div>
               <strong>Link artikel berhasil disalin!</strong> Tautan permanen siap dibagikan ke WhatsApp, Telegram, atau media sosial.
             </div>
           </div>
-          <span className="text-[10px] font-mono bg-[#001722] px-2 py-0.5 rounded border border-[#4CA7A1] text-[#CEFEF1] hidden sm:inline-block">
+          <span className="text-[10px] font-mono bg-[#6C151E] px-2 py-0.5 rounded border border-[#171717] text-[#FFF5E9] hidden sm:inline-block">
             {articleUrl}
           </span>
         </div>
@@ -296,31 +296,31 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
       {/* EDITORIAL ARTICLE READING CARD */}
       <article
         style={fontControl.style}
-        className="nb-reading-surface p-4 sm:p-8 md:p-12 space-y-5 sm:space-y-8"
+        className="p-5 sm:p-8 md:p-12 space-y-5 sm:space-y-8 bg-[#FFF5E9] text-[#171717] rounded-lg border-2 border-[#171717] shadow-[6px_6px_0px_#171717]"
       >
         {/* Editorial Header */}
-        <div className="space-y-4 border-b-2 border-[#171717] dark:border-[#4CA7A1] pb-6">
+        <div className="space-y-4 border-b-2 border-[#171717] pb-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-3">
-              <span className="px-3 py-1 bg-[#4CA7A1] text-[#001722] font-extrabold text-xs uppercase tracking-wider rounded border-2 border-[#171717] dark:border-[#001722]">
+              <span className="px-3 py-1 bg-[#6C151E] text-[#FFF5E9] font-extrabold text-xs uppercase tracking-wider rounded border-2 border-[#171717] shadow-[1.5px_1.5px_0px_#171717]">
                 {post.category}
               </span>
 
-              <div className="flex flex-wrap items-center gap-3 text-xs text-[#525855] dark:text-[#A6D6C9] font-bold">
+              <div className="flex flex-wrap items-center gap-3 text-xs text-[#6C151E] font-extrabold">
                 <span className="flex items-center gap-1">
-                  <Calendar className="w-3.5 h-3.5 text-[#123D32] dark:text-[#A6D6C9]" />
+                  <Calendar className="w-3.5 h-3.5 text-[#6C151E]" />
                   {new Date(post.publishedAt || post.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
                 </span>
                 <span>•</span>
                 <span className="flex items-center gap-1">
-                  <Clock className="w-3.5 h-3.5 text-[#123D32] dark:text-[#A6D6C9]" />
+                  <Clock className="w-3.5 h-3.5 text-[#6C151E]" />
                   {post.readingTimeMinutes} Menit Baca
                 </span>
                 {post.viewsCount !== undefined && post.viewsCount > 0 && (
                   <>
                     <span>•</span>
                     <span className="flex items-center gap-1">
-                      <Eye className="w-3.5 h-3.5 text-[#123D32] dark:text-[#4CA7A1]" />
+                      <Eye className="w-3.5 h-3.5 text-[#6C151E]" />
                       {post.viewsCount} Dibaca
                     </span>
                   </>
@@ -341,18 +341,18 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
           </div>
 
           <h1
-            className="text-2xl sm:text-3xl lg:text-4xl font-bold text-[#171717] dark:text-[#CEFEF1] leading-tight font-serif tracking-tight"
+            className="text-2xl sm:text-3xl lg:text-4xl font-bold text-[#6C151E] leading-tight font-serif tracking-tight"
             dangerouslySetInnerHTML={{ __html: autoWrapArabicText(post.title) }}
           />
 
           {post.titleAr && (
-            <p className="font-amiri text-xl sm:text-2xl text-[#123D32] dark:text-[#CEFEF1] font-bold leading-[2.0]" dir="rtl">
+            <p className="font-amiri text-xl sm:text-2xl text-[#0F3D3A] font-bold leading-[2.0]" dir="rtl">
               {post.titleAr}
             </p>
           )}
 
           <p
-            className="reading-scalable-excerpt text-[#171717] dark:text-[#CEFEF1] border-2 border-[#171717] dark:border-[#4CA7A1] border-l-4 border-l-[#123D32] dark:border-l-[#4CA7A1] pl-3 sm:pl-4 py-2.5 pr-3 bg-[#FAF7F0] dark:bg-[#0D2B36] rounded-md font-medium"
+            className="reading-scalable-excerpt text-[#0F3D3A] border-2 border-[#171717] border-l-4 border-l-[#6C151E] pl-3 sm:pl-4 py-2.5 pr-3 bg-[#FAF7F0] rounded-md font-medium"
             dangerouslySetInnerHTML={{ __html: autoWrapArabicText(post.excerpt) }}
           />
         </div>

@@ -30,7 +30,8 @@ import {
   getAllConsultationsForAdmin,
   replyConsultation,
   togglePublishConsultation,
-  updateConsultationStatus
+  updateConsultationStatus,
+  dispatchNotificationEmail
 } from '../../firebase/services';
 import { getWhatsAppConsultationUrl } from '../../config/whatsappConfig';
 import { RichTextEditor, RichTextEditorRef } from './RichTextEditor';
@@ -145,6 +146,18 @@ export const AdminConsultationManager: React.FC<AdminConsultationManagerProps> =
     setErrorMessage('');
     try {
       await replyConsultation(selectedConsultation.id, replyInput.trim(), 'answered');
+
+      if (selectedConsultation.studentEmail) {
+        dispatchNotificationEmail({
+          type: 'qa',
+          title: selectedConsultation.title,
+          summary: selectedConsultation.content.substring(0, 160),
+          targetUrl: `https://darswithosama.com/qa/${selectedConsultation.id}`,
+          recipientEmails: [selectedConsultation.studentEmail],
+          idempotencyKey: `qa-${selectedConsultation.id}-replied-${Date.now()}`
+        }).catch(err => console.warn('QA notification notice:', err));
+      }
+
       setToastMessage('Balasan berhasil dikirim kepada siswa!');
       await loadConsultations();
       onConsultationUpdated?.();

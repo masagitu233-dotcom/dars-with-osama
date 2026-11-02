@@ -367,13 +367,13 @@ export const SessionView: React.FC<SessionViewProps> = ({
   return (
     <div className="max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8 py-3 sm:py-6 space-y-3.5 sm:space-y-6">
       {/* Top Breadcrumb & Navigation */}
-      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b-2 border-[#171717] dark:border-[#4CA7A1] transition-all duration-300 ${playlistMarginClass}`}>
+      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b-2 border-[#171717] transition-all duration-300 ${playlistMarginClass}`}>
         <button
           onClick={onBackToCourse}
-          className="inline-flex items-center gap-2 text-[#171717] dark:text-[#CEFEF1] hover:text-[#123D32] dark:hover:text-white transition text-sm font-bold cursor-pointer"
+          className="inline-flex items-center gap-2 text-[#F5DABF] hover:text-white transition text-sm font-bold cursor-pointer"
         >
-          <ArrowLeft className="w-4 h-4 text-[#123D32] dark:text-[#4CA7A1]" />
-          <span>Kembali ke Kurikulum: <strong className="underline decoration-[#4CA7A1] decoration-2">{course.title}</strong></span>
+          <ArrowLeft className="w-4 h-4 text-[#F5DABF]" />
+          <span>Kembali ke Kurikulum: <strong className="underline decoration-[#F5DABF] decoration-2">{course.title}</strong></span>
         </button>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -501,10 +501,10 @@ export const SessionView: React.FC<SessionViewProps> = ({
           {/* Session Headings & Info Panel */}
           <div
             key={session.id}
-            className="nb-card p-4 sm:p-6 space-y-3.5 sm:space-y-4 bg-white dark:bg-[#1F5F63]"
+            className="nb-card p-4 sm:p-6 space-y-3.5 sm:space-y-4 bg-[#FFF5E9] text-[#0F3D3A] border-2 border-[#171717] shadow-[6px_6px_0px_#171717]"
           >
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <span className="nb-badge bg-[#4CA7A1] text-[#001722] border-[#171717] dark:border-[#001722]">
+              <span className="nb-badge bg-[#0F3D3A] text-[#F5DABF] border-[#171717]">
                 Sesi #{currentIndex >= 0 ? currentIndex + 1 : session.order || 1} dari {allSessions.length || 1}
               </span>
 
@@ -514,7 +514,7 @@ export const SessionView: React.FC<SessionViewProps> = ({
                   onClick={() => setShareModalOpen(true)}
                   className="nb-btn nb-btn-secondary px-3.5 py-2 text-xs"
                 >
-                  <Share2 className="w-3.5 h-3.5 text-[#123D32] dark:text-[#4CA7A1]" />
+                  <Share2 className="w-3.5 h-3.5 text-[#0F3D3A]" />
                   <span>Bagikan Sesi</span>
                 </button>
 
@@ -559,17 +559,17 @@ export const SessionView: React.FC<SessionViewProps> = ({
             </div>
 
             <div>
-              <h1 className="text-xl sm:text-2xl font-extrabold text-[#171717] dark:text-[#CEFEF1] font-serif-brand leading-snug">
+              <h1 className="text-xl sm:text-2xl font-extrabold text-[#0F3D3A] font-serif-brand leading-snug">
                 {session.title}
               </h1>
               {session.titleAr && (
-                <p className="font-amiri text-lg sm:text-xl font-bold text-[#123D32] dark:text-[#CEFEF1] mt-1.5 leading-[2.0]" dir="rtl">
+                <p className="font-amiri text-lg sm:text-xl font-bold text-[#6C151E] mt-1.5 leading-[2.0]" dir="rtl">
                   {session.titleAr}
                 </p>
               )}
             </div>
 
-            <p className="text-[#525855] dark:text-[#A6D6C9] text-sm leading-relaxed">
+            <p className="text-[#171717]/80 text-sm leading-relaxed">
               {session.description}
             </p>
           </div>

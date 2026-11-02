@@ -324,11 +324,13 @@ export const BlogListView: React.FC<BlogListViewProps> = ({
               <div
                 key={post.id}
                 onClick={() => onSelectArticle(post)}
-                className="nb-card-interactive overflow-hidden flex flex-col justify-between group cursor-pointer h-full"
+                data-card-type="article"
+                className="article-card card-artikel nb-card-interactive overflow-hidden flex flex-col justify-between group cursor-pointer h-full border-2 border-[#171717] shadow-[4px_4px_0px_#171717]"
+                style={{ backgroundColor: '#6C151E', color: '#FFF5E9' }}
               >
                 <div>
                   {/* Image cover */}
-                  <div className="aspect-video w-full bg-[#123D32] dark:bg-[#0D2B36] overflow-hidden relative border-b-2 border-[#171717] dark:border-[#4CA7A1]">
+                  <div className="aspect-video w-full bg-[#4A0E14] overflow-hidden relative border-b-2 border-[#171717]">
                     <ResilientGoogleDriveImage
                       src={post.coverImageUrl || 'https://images.unsplash.com/photo-1532012197267-da84d127e765?q=80&w=1200&auto=format&fit=crop'}
                       fallbackSrc="https://images.unsplash.com/photo-1532012197267-da84d127e765?q=80&w=1200&auto=format&fit=crop"
@@ -339,26 +341,26 @@ export const BlogListView: React.FC<BlogListViewProps> = ({
                   </div>
 
                   {/* Title & Metadata */}
-                  <div className="p-4 sm:p-5 space-y-2.5">
-                    <div className="flex items-center gap-2 text-[11px] text-[#525855] dark:text-[#A6D6C9] font-bold">
+                  <div className="p-4 sm:p-5 space-y-2.5 bg-[#6C151E] text-[#FFF5E9]">
+                    <div className="flex items-center gap-2 text-[11px] text-[#F5DABF] font-bold">
                       <span className="flex items-center gap-1">
-                        <Calendar className="w-3.5 h-3.5 text-[#123D32] dark:text-[#A6D6C9]" />
+                        <Calendar className="w-3.5 h-3.5 text-[#F5DABF]" />
                         <span className="truncate">{new Date(post.publishedAt || post.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                       </span>
                       <span>•</span>
                       <span className="flex items-center gap-1 shrink-0">
-                        <Clock className="w-3.5 h-3.5 text-[#123D32] dark:text-[#A6D6C9]" />
+                        <Clock className="w-3.5 h-3.5 text-[#F5DABF]" />
                         <span>{post.readingTimeMinutes} min</span>
                       </span>
                     </div>
 
                     <h3
-                      className="font-serif font-bold text-[#171717] dark:text-[#CEFEF1] text-base sm:text-lg leading-snug group-hover:text-[#123D32] dark:group-hover:text-white transition line-clamp-2"
+                      className="font-serif font-bold text-white group-hover:text-[#F5DABF] text-base sm:text-lg leading-snug transition line-clamp-2"
                       dangerouslySetInnerHTML={{ __html: autoWrapArabicText(post.title) }}
                     />
 
                     {post.titleAr && (
-                      <p className="font-amiri text-sm sm:text-base text-[#123D32] dark:text-[#CEFEF1] font-bold truncate leading-[1.85]" dir="rtl">
+                      <p className="font-amiri text-sm sm:text-base text-[#F5DABF] font-bold truncate leading-[1.85]" dir="rtl">
                         {post.titleAr}
                       </p>
                     )}
@@ -373,7 +375,7 @@ export const BlogListView: React.FC<BlogListViewProps> = ({
                           .map((catName, idx) => (
                             <span
                               key={idx}
-                              className="px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider bg-[#4CA7A1] text-[#001722] border border-[#171717] dark:border-[#001722] shadow-[1.5px_1.5px_0px_#171717] dark:shadow-[1.5px_1.5px_0px_#001722] inline-block"
+                              className="px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider bg-[#F5DABF] text-[#6C151E] border border-[#171717] shadow-[1.5px_1.5px_0px_#171717] inline-block"
                             >
                               {catName}
                             </span>
@@ -383,24 +385,24 @@ export const BlogListView: React.FC<BlogListViewProps> = ({
 
                     <p
                       style={fontControl.style}
-                      className="reading-scalable-text text-[#525855] dark:text-[#A6D6C9] text-xs line-clamp-2 leading-relaxed"
+                      className="reading-scalable-text text-[#FFF5E9]/90 text-xs line-clamp-2 leading-relaxed"
                       dangerouslySetInnerHTML={{ __html: autoWrapArabicText(post.excerpt) }}
                     />
                   </div>
                 </div>
 
                 {/* Footer info */}
-                <div className="px-4 sm:px-5 py-3 sm:py-3.5 border-t-2 border-[#171717] dark:border-[#4CA7A1] bg-[#FAF7F0] dark:bg-[#0D2B36] flex items-center justify-between text-xs">
+                <div className="px-4 sm:px-5 py-3 sm:py-3.5 border-t-2 border-[#F5DABF]/20 bg-[#6C151E] text-[#FFF5E9] flex items-center justify-between text-xs">
                   <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded bg-[#001722] text-[#CEFEF1] border border-[#171717] dark:border-[#4CA7A1] font-bold text-[10px] flex items-center justify-center shrink-0">
+                    <div className="w-6 h-6 rounded bg-[#FAF7F0] text-[#6C151E] border border-[#171717] font-bold text-[10px] flex items-center justify-center shrink-0">
                       {post.authorName.charAt(0)}
                     </div>
-                    <span className="font-bold text-[#171717] dark:text-[#A6D6C9] text-xs truncate max-w-[120px] sm:max-w-none">
+                    <span className="font-bold text-[#F5DABF] text-xs truncate max-w-[120px] sm:max-w-none">
                       {post.authorName}
                     </span>
                   </div>
 
-                  <span className="px-2.5 py-0.5 rounded border border-[#171717] dark:border-[#4CA7A1] text-[#123D32] dark:text-[#4CA7A1] font-extrabold text-[11px] flex items-center gap-0.5 group-hover:bg-[#123D32] group-hover:text-white dark:group-hover:bg-[#4CA7A1] dark:group-hover:text-[#001722] transition shrink-0">
+                  <span className="px-2.5 py-0.5 rounded border-2 border-[#F5DABF] text-[#F5DABF] font-extrabold text-[11px] flex items-center gap-0.5 group-hover:bg-[#F5DABF] group-hover:text-[#6C151E] transition shrink-0">
                     Baca Artikel <ChevronRight className="w-3.5 h-3.5" />
                   </span>
                 </div>
