@@ -125,7 +125,17 @@ export interface UserProfile {
   location?: string;
   kunyah?: string;
   preferredLanguage?: 'id' | 'ar';
+  notificationPreferences?: StudentNotificationPreferences;
   createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface StudentNotificationPreferences {
+  courses: boolean; // Pembelajaran (materi/sesi/video/kurikulum baru)
+  articles: boolean; // Artikel ilmiah baru & pembaruan substantif
+  qa: boolean; // Tanya jawab & konsultasi syar'i baru
+  announcements: boolean; // Pengumuman website & kegiatan
+  unsubscribedAll: boolean; // Berhenti menerima semua notifikasi
   updatedAt?: string;
 }
 
@@ -232,5 +242,51 @@ export interface InstructorProfile {
   updatedBy?: string;
 }
 
+export type NotificationCategory = 'course' | 'session' | 'article' | 'qa' | 'announcement';
 
+export interface EmailNotification {
+  id: string;
+  idempotencyKey: string;
+  type: NotificationCategory;
+  title: string;
+  subtitle?: string;
+  summary: string;
+  contentHtml?: string;
+  targetUrl: string;
+  targetButtonText?: string;
+  sentAt: string;
+  totalRecipients: number;
+  successCount: number;
+  failureCount: number;
+  status: 'completed' | 'partial' | 'failed' | 'simulated';
+  provider: 'resend' | 'brevo' | 'smtp' | 'simulated';
+  recipientsSample?: string[];
+  errorDetails?: string;
+}
 
+export interface SystemNotificationSettings {
+  id?: string;
+  enabled: boolean;
+  coursesEnabled: boolean;
+  articlesEnabled: boolean;
+  qaEnabled: boolean;
+  announcementsEnabled: boolean;
+  senderName: string;
+  senderEmail: string;
+  updatedAt?: string;
+  updatedBy?: string;
+}
+
+export interface NotificationDispatchPayload {
+  type: NotificationCategory;
+  title: string;
+  subtitle?: string;
+  summary: string;
+  contentHtml?: string;
+  targetUrl: string;
+  targetButtonText?: string;
+  idempotencyKey?: string;
+  recipientsFilter?: 'all' | 'custom';
+  recipientEmails?: string[];
+  isManualBroadcast?: boolean;
+}

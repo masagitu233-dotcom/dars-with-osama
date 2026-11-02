@@ -454,44 +454,53 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
                           </div>
 
                           {/* DAFTAR ISI JAWABAN (Ditempatkan tepat setelah label Jawaban dan sebelum isi jawaban) */}
-                          {qaSections.items.length > 0 && (
-                            <QATableOfContents items={qaSections.items} />
+                          {qaSections.sections.length > 0 && (
+                            <QATableOfContents sections={qaSections.sections} />
                           )}
 
                           {/* Isi Jawaban Utuh & Berurutan: Jawaban Ringkas & Jawaban Mendetail */}
                           <div className="space-y-6 pt-1">
-                            {qaSections.hasMendetail ? (
-                              <>
-                                {/* Bagian 1: Jawaban Ringkas */}
-                                <div id={`jawaban-ringkas-${item.id}`} className="scroll-mt-28 space-y-2">
+                            {/* Fallback untuk jawaban warisan / belum ditandai secara eksplisit */}
+                            {!qaSections.hasRingkas && !qaSections.hasMendetail && (
+                              <div
+                                className="prose dark:prose-invert max-w-none text-[#171717] dark:text-[#CEFEF1] leading-relaxed space-y-3 font-sans blog-content"
+                                dangerouslySetInnerHTML={{ __html: autoWrapArabicText(qaSections.unmarkedHtml || item.replyContent) }}
+                              />
+                            )}
+
+                            {/* Bagian 1: Jawaban Ringkas (Hanya jika ditentukan / terisi) */}
+                            {qaSections.hasRingkas && (
+                              <div id={`jawaban-ringkas-${item.id}`} className="scroll-mt-28 space-y-2">
+                                {qaSections.hasMendetail && (
                                   <div className="flex items-center gap-2 text-xs font-bold font-serif text-[#123D32] dark:text-[#4CA7A1] pb-1 border-b border-[#171717]/10 dark:border-[#4CA7A1]/20">
                                     <span className="w-2 h-2 rounded-full bg-[#123D32] dark:bg-[#4CA7A1]" />
                                     <span>Jawaban Ringkas</span>
                                   </div>
-                                  <div
-                                    className="prose dark:prose-invert max-w-none text-[#171717] dark:text-[#CEFEF1] leading-relaxed space-y-3 font-sans blog-content"
-                                    dangerouslySetInnerHTML={{ __html: autoWrapArabicText(qaSections.ringkasHtml) }}
-                                  />
-                                </div>
+                                )}
+                                <div
+                                  className="prose dark:prose-invert max-w-none text-[#171717] dark:text-[#CEFEF1] leading-relaxed space-y-3 font-sans blog-content"
+                                  dangerouslySetInnerHTML={{ __html: autoWrapArabicText(qaSections.ringkasHtml) }}
+                                />
+                              </div>
+                            )}
 
-                                {/* Bagian 2: Jawaban Mendetail */}
-                                <div id={`jawaban-mendetail-${item.id}`} className="scroll-mt-28 space-y-2 pt-4 border-t-2 border-[#171717]/15 dark:border-[#4CA7A1]/30">
-                                  <div className="flex items-center gap-2 text-xs sm:text-sm font-bold font-serif text-[#123D32] dark:text-[#CEFEF1] pb-1 border-b border-[#171717]/10 dark:border-[#4CA7A1]/20">
-                                    <span className="w-2 h-2 rounded-full bg-[#D6AD52]" />
-                                    <span>Jawaban Mendetail & Pembahasan Lengkap</span>
-                                  </div>
-                                  <div
-                                    className="prose dark:prose-invert max-w-none text-[#171717] dark:text-[#CEFEF1] leading-relaxed space-y-3 font-sans blog-content"
-                                    dangerouslySetInnerHTML={{ __html: autoWrapArabicText(qaSections.mendetailHtml) }}
-                                  />
-                                </div>
-                              </>
-                            ) : (
+                            {/* Bagian 2: Jawaban Mendetail (Hanya jika ditentukan / terisi) */}
+                            {qaSections.hasMendetail && (
                               <div
-                                id={`jawaban-ringkas-${item.id}`}
-                                className="scroll-mt-28 prose dark:prose-invert max-w-none text-[#171717] dark:text-[#CEFEF1] leading-relaxed space-y-3 font-sans blog-content"
-                                dangerouslySetInnerHTML={{ __html: autoWrapArabicText(item.replyContent) }}
-                              />
+                                id={`jawaban-mendetail-${item.id}`}
+                                className={`scroll-mt-28 space-y-2 ${
+                                  qaSections.hasRingkas ? 'pt-4 border-t-2 border-[#171717]/15 dark:border-[#4CA7A1]/30' : ''
+                                }`}
+                              >
+                                <div className="flex items-center gap-2 text-xs sm:text-sm font-bold font-serif text-[#123D32] dark:text-[#CEFEF1] pb-1 border-b border-[#171717]/10 dark:border-[#4CA7A1]/20">
+                                  <span className="w-2 h-2 rounded-full bg-[#D6AD52]" />
+                                  <span>Jawaban Mendetail & Pembahasan Lengkap</span>
+                                </div>
+                                <div
+                                  className="prose dark:prose-invert max-w-none text-[#171717] dark:text-[#CEFEF1] leading-relaxed space-y-3 font-sans blog-content"
+                                  dangerouslySetInnerHTML={{ __html: autoWrapArabicText(qaSections.mendetailHtml) }}
+                                />
+                              </div>
                             )}
                           </div>
 

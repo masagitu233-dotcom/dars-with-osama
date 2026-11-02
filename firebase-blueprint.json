@@ -238,6 +238,43 @@
         "updatedBy": { "type": "string", "maxLength": 200 }
       },
       "required": ["id", "name", "role", "title", "updatedAt"]
+    },
+    "EmailNotification": {
+      "title": "EmailNotification",
+      "description": "Log of dispatched email notifications and broadcast updates sent to registered students",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "idempotencyKey": { "type": "string", "maxLength": 256 },
+        "type": { "type": "string", "enum": ["course", "session", "article", "qa", "announcement"] },
+        "title": { "type": "string", "maxLength": 300 },
+        "subtitle": { "type": "string", "maxLength": 200 },
+        "summary": { "type": "string", "maxLength": 5000 },
+        "targetUrl": { "type": "string", "maxLength": 1000 },
+        "sentAt": { "type": "string", "maxLength": 100 },
+        "totalRecipients": { "type": "number" },
+        "successCount": { "type": "number" },
+        "failureCount": { "type": "number" },
+        "status": { "type": "string", "enum": ["completed", "partial", "failed", "simulated"] },
+        "provider": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["id", "idempotencyKey", "type", "title", "sentAt", "status"]
+    },
+    "NotificationSettings": {
+      "title": "NotificationSettings",
+      "description": "Platform-wide configuration for email notification triggers and sender settings",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "enabled": { "type": "boolean" },
+        "coursesEnabled": { "type": "boolean" },
+        "articlesEnabled": { "type": "boolean" },
+        "qaEnabled": { "type": "boolean" },
+        "announcementsEnabled": { "type": "boolean" },
+        "senderName": { "type": "string", "maxLength": 100 },
+        "senderEmail": { "type": "string", "maxLength": 200 }
+      },
+      "required": ["enabled"]
     }
   },
   "firestore": {
@@ -283,7 +320,7 @@
     },
     "/users/{userId}": {
       "schema": { "$ref": "#/entities/UserProfile" },
-      "description": "User profile data"
+      "description": "User profile data and notification preferences"
     },
     "/admins/{adminId}": {
       "schema": { "$ref": "#/entities/AdminRole" },
@@ -296,6 +333,14 @@
     "/instructorProfiles/{profileId}": {
       "schema": { "$ref": "#/entities/InstructorProfile" },
       "description": "Public instructor profile document editable only by verified admins"
+    },
+    "/emailNotifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/EmailNotification" },
+      "description": "Historical audit logs of email notifications dispatched to students"
+    },
+    "/notificationSettings/{configId}": {
+      "schema": { "$ref": "#/entities/NotificationSettings" },
+      "description": "Platform settings for automated email notifications"
     }
   }
 }

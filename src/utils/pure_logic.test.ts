@@ -3059,12 +3059,12 @@ test('Case 83: computeConsultationCounts, splitQAAnswer, dan buildQAShareMessage
   assert.equal(counts.unansweredCount, 2, 'Harus terhitung 2 pertanyaan belum dijawab (Badge Merah)');
   assert.equal(counts.answeredCount, 2, 'Harus terhitung 2 pertanyaan sudah dijawab (Badge Hijau)');
 
-  // 2. Verifikasi Pemisahan Jawaban Otomatis (Daftar Isi 2 Pilihan: Ringkas & Mendetail)
+  // 2. Verifikasi Pemisahan Jawaban (Daftar Isi 2 Pilihan: Ringkas & Mendetail pada jawaban yang ditandai admin)
   const fullHtmlAnswer = `
-    <p>Hukum shalat berjamaah di masjid bagi laki-laki baligh adalah fardhu 'ain menurut pendapat yang terkuat berdasarkan dalil Al-Qur'an dan As-Sunnah.</p>
-    <h2>Berikut pembahasannya secara terperinci</h2>
+    <section data-qa-section="ringkas"><p>Hukum shalat berjamaah di masjid bagi laki-laki baligh adalah fardhu 'ain menurut pendapat yang terkuat berdasarkan dalil Al-Qur'an dan As-Sunnah.</p></section>
+    <section data-qa-section="mendetail"><h2>Berikut pembahasannya secara terperinci</h2>
     <p>Dalil pertama dari firman Allah Ta'ala dalam Surah An-Nisa ayat 102...</p>
-    <p>Dalil kedua dari hadits Abu Hurairah radhiyallahu 'anhu mengenai ancaman membakar rumah...</p>
+    <p>Dalil kedua dari hadits Abu Hurairah radhiyallahu 'anhu mengenai ancaman membakar rumah...</p></section>
   `;
 
   const splitResult = splitQAAnswer(fullHtmlAnswer, 'c-1');
@@ -3076,10 +3076,10 @@ test('Case 83: computeConsultationCounts, splitQAAnswer, dan buildQAShareMessage
   assert.equal(splitResult.items[1].label, 'Jawaban Mendetail');
   assert.equal(splitResult.items[1].targetId, 'jawaban-mendetail-c-1');
 
-  // Jika jawaban hanya 1 bagian singkat, TOC tidak dimunculkan
+  // Jika jawaban belum ditandai (unmarked / legacy), tidak ditebak-tebak dan TOC tidak dimunculkan
   const shortAnswer = '<p>Jawaban singkat tanpa rincian panjang.</p>';
   const singleSplit = splitQAAnswer(shortAnswer, 'c-2');
-  assert.equal(singleSplit.items.length, 0, 'Daftar isi tidak dimunculkan jika hanya ada satu bagian jawaban');
+  assert.equal(singleSplit.items.length, 0, 'Daftar isi tidak dimunculkan jika belum ada penandaan bagian jawaban');
 
   // 3. Verifikasi Format Berbagi Pertanyaan (Ketentuan Privasi & Keutuhan Teks)
   const questionContent = 'Bolehkah seorang musafir menjamak shalat jika jarak perjalanannya hanya 50 km menurut mazhab Syafi\'i?';
@@ -3224,5 +3224,141 @@ test('Case 84: calculateFloatingToolbarPosition accurately tracks selection and 
 
   assert.equal(clippedBelowPos.isVisible, false, 'Toolbar must hide when selection scrolls below container boundary');
 });
+
+// Case 85: Penyempurnaan Mekanisme Penandaan Jawaban Ringkas dan Jawaban Mendetail pada Editor Tanya Jawab
+test('Case 85: qaHelper memvalidasi penandaan eksplisit seleksi admin, visual boundary markers, unmark, ekstraksi H1 TOC, dan zero-guessing legacy', async () => {
+  const {
+    buildMarkedSectionHtml,
+    extractCleanSectionContent,
+    unmarkSectionInHtml,
+    hasMarkedSection,
+    splitQAAnswer,
+    getAnswerSectionStats
+  } = await import('./qaHelper.js');
+
+  // 1. Verifikasi pembuatan section dengan penanda visual batas (AWAL & AKHIR)
+  const ringkasInner = '<p>Secara ringkas, hukum jual beli salam diperbolehkan dalam syariat Islam dengan syarat tertentu.</p><h1>Syarat Dasar Salam</h1>';
+  const markedRingkasHtml = buildMarkedSectionHtml('ringkas', ringkasInner);
+  
+  assert.ok(markedRingkasHtml.includes('data-qa-section="ringkas"'), 'Container section ringkas memiliki atribut data-qa-section');
+  assert.ok(markedRingkasHtml.includes('[AWAL JAWABAN RINGKAS]'), 'Terdapat penanda visual [AWAL JAWABAN RINGKAS] untuk admin');
+  assert.ok(markedRingkasHtml.includes('[AKHIR JAWABAN RINGKAS]'), 'Terdapat penanda visual [AKHIR JAWABAN RINGKAS] untuk admin');
+  assert.ok(markedRingkasHtml.includes('contenteditable="false"'), 'Penanda batas tidak dapat diedit secara tidak sengaja oleh admin');
+
+  // 2. Verifikasi pembersihan penanda visual untuk halaman publik
+  const cleanPublicRingkas = extractCleanSectionContent(markedRingkasHtml);
+  assert.ok(!cleanPublicRingkas.includes('[AWAL JAWABAN RINGKAS]'), 'Penanda visual AWAL TIDAK BOLEH muncul di konten publik');
+  assert.ok(!cleanPublicRingkas.includes('[AKHIR JAWABAN RINGKAS]'), 'Penanda visual AKHIR TIDAK BOLEH muncul di konten publik');
+  assert.ok(!cleanPublicRingkas.includes('data-qa-boundary'), 'Atribut boundary dibersihkan untuk konten publik');
+  assert.ok(cleanPublicRingkas.includes('Secara ringkas, hukum jual beli salam diperbolehkan'), 'Teks asli tersimpan utuh');
+  assert.ok(cleanPublicRingkas.includes('<h1>Syarat Dasar Salam</h1>'), 'Heading 1 tersimpan utuh');
+
+  // 3. Verifikasi penghapusan penanda (unmark) tanpa menghilangkan teks asli
+  const unmarkResult = unmarkSectionInHtml(markedRingkasHtml, 'ringkas');
+  assert.equal(hasMarkedSection(unmarkResult, 'ringkas'), false, 'Section ringkas berhasil di-unmark');
+  assert.ok(!unmarkResult.includes('[AWAL JAWABAN RINGKAS]'), 'Penanda batas awal terhapus saat unmark');
+  assert.ok(!unmarkResult.includes('[AKHIR JAWABAN RINGKAS]'), 'Penanda batas akhir terhapus saat unmark');
+  assert.ok(unmarkResult.includes('Secara ringkas, hukum jual beli salam diperbolehkan'), 'Teks asli tetap utuh setelah di-unmark');
+
+  // 4. Jawaban dengan 2 Bagian Eksplisit (Ringkas & Mendetail) dan Heading 1 di kedua bagian
+  const mendetailInner = `
+    <p>Berikut adalah dalil dan pembahasan komprehensif dari kitab-kitab para fuqaha.</p>
+    <h1>Landasan Dalil dari As-Sunnah</h1>
+    <p>Hadits dari Ibnu Abbas radhiyallahu 'anhuma...</p>
+    <h2>Catatan Tambahan untuk Dalil</h2>
+    <p>Penjelasan sanad hadits.</p>
+    <h1>Pandangan Empat Mazhab</h1>
+    <p>Uraian kesepakatan ulama mazhab.</p>
+  `;
+  const markedMendetailHtml = buildMarkedSectionHtml('mendetail', mendetailInner);
+
+  const fullStructuredAnswer = `
+    ${markedRingkasHtml}
+    ${markedMendetailHtml}
+  `;
+
+  const result = splitQAAnswer(fullStructuredAnswer, 'c-85');
+  assert.equal(result.hasRingkas, true);
+  assert.equal(result.hasMendetail, true);
+  assert.equal(result.sections.length, 2);
+
+  // Bagian 1: Jawaban Ringkas
+  const ringkasSec = result.sections.find((s) => s.id === 'ringkas');
+  assert.ok(ringkasSec, 'Seksi Jawaban Ringkas harus ada');
+  assert.equal(ringkasSec?.label, 'Jawaban Ringkas');
+  assert.equal(ringkasSec?.targetId, 'jawaban-ringkas-c-85');
+
+  // Verifikasi hanya <h1> yang diekstraksi ke TOC (<h2> tidak boleh masuk!)
+  assert.equal(ringkasSec?.headings.length, 1, 'Hanya ada 1 H1 di Jawaban Ringkas');
+  assert.equal(ringkasSec?.headings[0].text, 'Syarat Dasar Salam');
+  assert.equal(ringkasSec?.headings[0].id, 'qa-h1-c-85-r-0');
+
+  // Bagian 2: Jawaban Mendetail
+  const mendetailSec = result.sections.find((s) => s.id === 'mendetail');
+  assert.ok(mendetailSec, 'Seksi Jawaban Mendetail harus ada');
+  assert.equal(mendetailSec?.label, 'Jawaban Mendetail');
+  assert.equal(mendetailSec?.targetId, 'jawaban-mendetail-c-85');
+
+  // Verifikasi hanya <h1> yang diekstraksi ke TOC (<h2> tidak boleh masuk!)
+  assert.equal(mendetailSec?.headings.length, 2, 'Ada 2 H1 di Jawaban Mendetail');
+  assert.equal(mendetailSec?.headings[0].text, 'Landasan Dalil dari As-Sunnah');
+  assert.equal(mendetailSec?.headings[0].id, 'qa-h1-c-85-m-0');
+  assert.equal(mendetailSec?.headings[1].text, 'Pandangan Empat Mazhab');
+  assert.equal(mendetailSec?.headings[1].id, 'qa-h1-c-85-m-1');
+
+  // Total H1
+  assert.equal(result.totalHeadings, 3, 'Total 3 heading H1 terdeteksi');
+
+  // Verifikasi penanda visual AWAL/AKHIR sama sekali tidak ada di output publik
+  assert.ok(!result.ringkasHtml.includes('[AWAL'), 'Output publik ringkas bersih dari banner AWAL');
+  assert.ok(!result.ringkasHtml.includes('[AKHIR'), 'Output publik ringkas bersih dari banner AKHIR');
+  assert.ok(!result.mendetailHtml.includes('[AWAL'), 'Output publik mendetail bersih dari banner AWAL');
+  assert.ok(!result.mendetailHtml.includes('[AKHIR'), 'Output publik mendetail bersih dari banner AKHIR');
+
+  // Verifikasi anchor unik dan clearance sticky header (scroll-mt-28)
+  assert.ok(result.ringkasHtml.includes('id="qa-h1-c-85-r-0"'), 'Anchor ID H1 disuntikkan ke HTML ringkas');
+  assert.ok(result.ringkasHtml.includes('scroll-mt-28'), 'scroll-mt-28 disuntikkan untuk clearance sticky header');
+  assert.ok(result.mendetailHtml.includes('id="qa-h1-c-85-m-0"'), 'Anchor ID H1 disuntikkan ke HTML mendetail');
+  assert.ok(result.mendetailHtml.includes('id="qa-h1-c-85-m-1"'), 'Anchor ID H1 kedua disuntikkan ke HTML mendetail');
+
+  // 5. Verifikasi Hanya 1 Bagian yang Ditandai (Contoh: Hanya Ringkas)
+  const onlyRingkasAnswer = `${markedRingkasHtml}<p>Teks tambahan di luar bagian</p>`;
+  const onlyRingkasResult = splitQAAnswer(onlyRingkasAnswer, 'c-ringkas-only');
+  assert.equal(onlyRingkasResult.hasRingkas, true);
+  assert.equal(onlyRingkasResult.hasMendetail, false, 'Jawaban mendetail tidak muncul jika tidak ditandai');
+  assert.equal(onlyRingkasResult.sections.length, 1);
+  assert.equal(onlyRingkasResult.sections[0].id, 'ringkas');
+
+  // 6. Strict Zero-Guessing Rule: Jawaban Lama / Warisan yang Belum Ditandai
+  const legacyUnmarkedAnswer = `
+    <p>Ini adalah jawaban warisan yang dibuat sebelum fitur penandaan ada.</p>
+    <p>Paragraf kedua berisi penjelasan lebih panjang tanpa ada penanda eksplisit.</p>
+    <h1>Bab Kesimpulan Lama</h1>
+    <p>Penjelasan akhir.</p>
+  `;
+  const legacyResult = splitQAAnswer(legacyUnmarkedAnswer, 'c-legacy');
+  assert.equal(legacyResult.hasRingkas, false, 'Zero-guessing: tidak boleh menebak paragraf 1 sebagai ringkas');
+  assert.equal(legacyResult.hasMendetail, false, 'Zero-guessing: tidak boleh menebak paragraf 2 sebagai mendetail');
+  assert.equal(legacyResult.sections.length, 0, 'Tidak ada TOC palsu untuk jawaban yang belum ditandai');
+  assert.ok(legacyResult.unmarkedHtml.includes('Ini adalah jawaban warisan'), 'unmarkedHtml mempertahankan seluruh jawaban asli');
+
+  // 7. Verifikasi Statistik untuk Admin UI
+  const stats = getAnswerSectionStats(fullStructuredAnswer, 'c-85');
+  assert.equal(stats.isExplicitlyMarked, true);
+  assert.equal(stats.hasRingkas, true);
+  assert.equal(stats.hasMendetail, true);
+  assert.equal(stats.ringkasH1Count, 1);
+  assert.equal(stats.mendetailH1Count, 2);
+  assert.equal(stats.totalH1Count, 3);
+  assert.ok(stats.ringkasWords > 0);
+  assert.ok(stats.mendetailWords > 0);
+
+  const legacyStats = getAnswerSectionStats(legacyUnmarkedAnswer, 'c-legacy');
+  assert.equal(legacyStats.isExplicitlyMarked, false);
+  assert.equal(legacyStats.hasRingkas, false);
+  assert.equal(legacyStats.hasMendetail, false);
+  assert.equal(legacyStats.totalWords > 0, true);
+});
+
 
 

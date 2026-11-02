@@ -50,6 +50,7 @@ export interface FloatingContextualToolbarProps {
   onFontChange?: (font: string) => void;
   fontOptions?: Array<{ label: string; value: string }>;
   toolbarRef?: React.RefObject<HTMLDivElement | null>;
+  onMarkSection?: (type: 'ringkas' | 'mendetail') => void;
 }
 
 export const FloatingContextualToolbar: React.FC<FloatingContextualToolbarProps> = ({
@@ -72,7 +73,8 @@ export const FloatingContextualToolbar: React.FC<FloatingContextualToolbarProps>
   selectedFont,
   onFontChange,
   fontOptions,
-  toolbarRef
+  toolbarRef,
+  onMarkSection
 }) => {
   if (typeof document === 'undefined' || !document.body) return null;
 
@@ -430,6 +432,35 @@ export const FloatingContextualToolbar: React.FC<FloatingContextualToolbarProps>
           <span className="text-[11px] font-black px-0.5">Tx</span>
         </button>
       </div>
+
+      {/* 7. Quick QA Section Designation if enabled */}
+      {onMarkSection && (
+        <>
+          <div className="h-4 w-[1.5px] bg-[#171717]/25 dark:bg-[#D9AC45]/30 mx-0.5 shrink-0" />
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              type="button"
+              data-testid="floating-mark-ringkas"
+              onMouseDown={handleToolbarMouseDown}
+              onClick={() => onMarkSection('ringkas')}
+              className="px-2 py-1 bg-[#123D32] hover:bg-[#1a4f41] text-[#D6AD52] border border-[#171717] rounded-xs text-[11px] font-extrabold transition flex items-center gap-1 cursor-pointer shadow-2xs"
+              title="Tandai seleksi sebagai Jawaban Ringkas"
+            >
+              <span>📌 Ringkas</span>
+            </button>
+            <button
+              type="button"
+              data-testid="floating-mark-mendetail"
+              onMouseDown={handleToolbarMouseDown}
+              onClick={() => onMarkSection('mendetail')}
+              className="px-2 py-1 bg-[#D6AD52] hover:bg-[#e2bb63] text-[#171717] border border-[#171717] rounded-xs text-[11px] font-extrabold transition flex items-center gap-1 cursor-pointer shadow-2xs"
+              title="Tandai seleksi sebagai Jawaban Mendetail"
+            >
+              <span>📌 Mendetail</span>
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 

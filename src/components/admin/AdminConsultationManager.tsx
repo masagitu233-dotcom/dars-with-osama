@@ -16,7 +16,14 @@ import {
   MessageCircle,
   X,
   ShieldCheck,
-  Share2
+  Share2,
+  Scissors,
+  Split,
+  FileText,
+  Heading1 as Heading1Icon,
+  HelpCircle,
+  Hash,
+  BookmarkCheck
 } from 'lucide-react';
 import { Consultation } from '../../types';
 import {
@@ -26,8 +33,14 @@ import {
   updateConsultationStatus
 } from '../../firebase/services';
 import { getWhatsAppConsultationUrl } from '../../config/whatsappConfig';
-import { RichTextEditor } from './RichTextEditor';
+import { RichTextEditor, RichTextEditorRef } from './RichTextEditor';
 import { ShareQAModal } from '../consultation/ShareQAModal';
+import { QATableOfContents } from '../consultation/QATableOfContents';
+import {
+  getAnswerSectionStats,
+  splitQAAnswer,
+  unmarkSectionInHtml
+} from '../../utils/qaHelper';
 import { useAuth } from '../../context/AuthContext';
 
 interface AdminConsultationManagerProps {
@@ -52,6 +65,7 @@ export const AdminConsultationManager: React.FC<AdminConsultationManagerProps> =
   // Active modal for reply/manage
   const [selectedConsultation, setSelectedConsultation] = useState<Consultation | null>(null);
   const [replyInput, setReplyInput] = useState<string>('');
+  const [showPreview, setShowPreview] = useState<boolean>(false);
 
   // Share & Dakwah Card Modal State for Admin
   const [shareModalOpen, setShareModalOpen] = useState<boolean>(false);
@@ -78,6 +92,7 @@ export const AdminConsultationManager: React.FC<AdminConsultationManagerProps> =
   const openManageModal = (item: Consultation) => {
     setSelectedConsultation(item);
     setReplyInput(item.replyContent || '');
+    setShowPreview(false);
     setErrorMessage('');
     setToastMessage('');
   };
@@ -85,6 +100,38 @@ export const AdminConsultationManager: React.FC<AdminConsultationManagerProps> =
   const closeManageModal = () => {
     setSelectedConsultation(null);
     setReplyInput('');
+    setShowPreview(false);
+  };
+
+  const editorRef = React.useRef<RichTextEditorRef>(null);
+
+  const handleMarkSelection = (type: 'ringkas' | 'mendetail') => {
+    setErrorMessage('');
+    const res = editorRef.current?.markSelectionAs(type);
+    if (!res?.success) {
+      if (res?.reason === 'no_selection') {
+        setErrorMessage(
+          `Silakan blok atau seleksi teks pada editor yang ingin dijadikan Jawaban ${
+            type === 'ringkas' ? 'Ringkas' : 'Mendetail'
+          } terlebih dahulu.`
+        );
+      } else {
+        setErrorMessage('Gagal menandai seleksi. Pastikan kursor berada di dalam editor.');
+      }
+    } else {
+      setToastMessage(
+        `Teks yang dipilih berhasil ditandai sebagai Jawaban ${
+          type === 'ringkas' ? 'Ringkas' : 'Mendetail'
+        }.`
+      );
+    }
+  };
+
+  const handleUnmarkSection = (type: 'ringkas' | 'mendetail') => {
+    editorRef.current?.unmarkSection(type);
+    setToastMessage(
+      `Penandaan Jawaban ${type === 'ringkas' ? 'Ringkas' : 'Mendetail'} berhasil dihapus. Teks tetap tersimpan utuh.`
+    );
   };
 
   const handleSendReply = async () => {
@@ -550,18 +597,239 @@ export const AdminConsultationManager: React.FC<AdminConsultationManagerProps> =
               </div>
             </div>
 
-            {/* Reply Rich Text Editor Input */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-extrabold text-charcoal dark:text-offwhite">
-                Tulis Balasan Resmi Ustaz / Admin (Format Teks Kaya & Ayat Al-Qur'an):
-              </label>
-              <RichTextEditor
-                value={replyInput}
-                onChange={setReplyInput}
-                placeholder="Tuliskan balasan, dalil, dan penjelasan ilmiah secara santun..."
-                minHeight="220px"
-              />
-            </div>
+            {/* Reply Rich Text Editor with Explicit Selection-Based Section Marking */}
+            {(() => {
+              const stats = getAnswerSectionStats(replyInput, selectedConsultation.id);
+              const previewSections = splitQAAnswer(replyInput, selectedConsultation.id);
+
+              return (
+                <div className="space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <label className="text-xs font-extrabold text-charcoal dark:text-offwhite flex items-center gap-1.5">
+                      <FileText className="w-3.5 h-3.5 text-[#123D32] dark:text-[#D6AD52]" />
+                      <span>Tulis Balasan Resmi Ustaz / Admin:</span>
+                    </label>
+
+                    {/* Mode Status Pill */}
+                    <div className="flex items-center gap-1.5 text-[11px] font-bold">
+                      {stats.isExplicitlyMarked ? (
+                        <span className="px-2.5 py-0.5 rounded-full bg-[#123D32]/10 dark:bg-[#4CA7A1]/20 text-[#123D32] dark:text-[#CEFEF1] border border-[#123D32]/30 flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-[#123D32] dark:bg-[#4CA7A1] animate-pulse" />
+                          <span>
+                            {stats.hasRingkas && stats.hasMendetail
+                              ? 'Bagian Ringkas & Mendetail Ditandai'
+                              : stats.hasRingkas
+                              ? 'Hanya Jawaban Ringkas Ditandai'
+                              : 'Hanya Jawaban Mendetail Ditandai'}
+                          </span>
+                        </span>
+                      ) : (
+                        <span className="px-2.5 py-0.5 rounded-full bg-amber-50 dark:bg-[#16263D] text-[#8C6D1F] dark:text-[#D6AD52] border border-[#8C6D1F]/30 flex items-center gap-1.5 font-bold">
+                          <span className="w-2 h-2 rounded-full bg-[#D6AD52]" />
+                          <span>Belum Ditentukan (Jawaban Utuh)</span>
+                        </span>
+                      )}
+
+                      {stats.totalH1Count > 0 && (
+                        <span className="px-2 py-0.5 rounded bg-[#D6AD52]/20 text-[#171717] dark:text-[#CEFEF1] border border-[#D6AD52]/40 font-mono text-[10px] font-bold">
+                          {stats.totalH1Count} H1 TOC
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Section Controls Toolbar */}
+                  <div className="p-3 sm:p-3.5 rounded-md bg-[#FAF7F0] dark:bg-[#102C2B] border-2 border-[#171717] dark:border-[#4CA7A1] shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#071918] space-y-2.5">
+                    {/* Guidance Prompt as requested by user */}
+                    <div className="flex items-start gap-2 text-xs text-[#171717] dark:text-[#CEFEF1]">
+                      <HelpCircle className="w-4 h-4 shrink-0 text-[#123D32] dark:text-[#D6AD52] mt-0.5" />
+                      <p className="leading-snug">
+                        <strong className="font-extrabold text-[#123D32] dark:text-[#D6AD52]">Petunjuk Penandaan: </strong>
+                        Seleksi teks yang ingin ditandai, lalu pilih jenis jawaban. Anda dapat mengubah penandaan kapan saja sebelum menerbitkan.
+                      </p>
+                    </div>
+
+                    {/* Main Action Buttons */}
+                    <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-[#171717]/15 dark:border-[#4CA7A1]/30">
+                      {/* Button: Tandai sebagai Jawaban Ringkas */}
+                      <button
+                        type="button"
+                        data-testid="mark-as-ringkas-btn"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => handleMarkSelection('ringkas')}
+                        className="nb-btn px-3 py-2 text-xs flex items-center gap-1.5 bg-[#123D32] hover:bg-[#1a4f41] text-[#D6AD52] border-2 border-[#171717] shadow-2xs font-extrabold cursor-pointer transition active:translate-y-0.5"
+                        title="Blok teks pada editor lalu klik tombol ini untuk menetapkannya sebagai Jawaban Ringkas"
+                      >
+                        <BookmarkCheck className="w-4 h-4 text-[#D6AD52]" />
+                        <span>Tandai sebagai Jawaban Ringkas</span>
+                      </button>
+
+                      {/* Button: Tandai sebagai Jawaban Mendetail */}
+                      <button
+                        type="button"
+                        data-testid="mark-as-mendetail-btn"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => handleMarkSelection('mendetail')}
+                        className="nb-btn px-3 py-2 text-xs flex items-center gap-1.5 bg-[#D6AD52] hover:bg-[#e2bb63] text-[#171717] border-2 border-[#171717] shadow-2xs font-extrabold cursor-pointer transition active:translate-y-0.5"
+                        title="Blok teks pada editor lalu klik tombol ini untuk menetapkannya sebagai Jawaban Mendetail"
+                      >
+                        <BookmarkCheck className="w-4 h-4 text-[#171717]" />
+                        <span>Tandai sebagai Jawaban Mendetail</span>
+                      </button>
+
+                      {/* Button: Pratinjau Struktur & TOC */}
+                      <button
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => setShowPreview(!showPreview)}
+                        className={`nb-btn px-3 py-2 text-xs flex items-center gap-1.5 cursor-pointer shadow-2xs font-bold transition ml-auto ${
+                          showPreview ? 'nb-btn-primary' : 'nb-btn-secondary'
+                        }`}
+                        title="Lihat hasil pemisahan dan Daftar Isi sebelum publikasi"
+                      >
+                        {showPreview ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        <span>{showPreview ? 'Tutup Pratinjau' : 'Pratinjau Struktur & TOC'}</span>
+                      </button>
+                    </div>
+
+                    {/* Status & Unmark Controls Strip */}
+                    <div className="pt-2 border-t border-[#171717]/10 dark:border-[#4CA7A1]/20 flex flex-wrap items-center justify-between gap-2 text-xs">
+                      {!stats.isExplicitlyMarked ? (
+                        <div className="p-2 rounded bg-amber-50 dark:bg-[#16263D] border border-amber-300 dark:border-amber-600 text-amber-900 dark:text-amber-200 text-[11px] font-semibold w-full flex items-center gap-1.5">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+                          <span>
+                            <strong>Pemberitahuan:</strong> Bagian jawaban belum ditentukan. Silakan seleksi teks dan pilih salah satu tombol di atas jika ingin membagi menjadi Jawaban Ringkas dan Mendetail.
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="flex flex-wrap items-center justify-between gap-2 w-full">
+                          <div className="flex flex-wrap items-center gap-2.5">
+                            {stats.hasRingkas && (
+                              <div className="flex items-center gap-1.5 p-1.5 rounded bg-white dark:bg-[#163835] border border-[#123D32]/30 text-[11px]">
+                                <span className="w-2 h-2 rounded-full bg-[#123D32]" />
+                                <span className="font-bold text-[#123D32] dark:text-[#CEFEF1]">
+                                  Jawaban Ringkas: {stats.ringkasWords} kata
+                                  {stats.ringkasH1Count > 0 ? ` (${stats.ringkasH1Count} H1)` : ''}
+                                </span>
+                                <button
+                                  type="button"
+                                  onMouseDown={(e) => e.preventDefault()}
+                                  onClick={() => handleUnmarkSection('ringkas')}
+                                  className="text-red-600 dark:text-red-400 hover:underline font-bold text-[10px] ml-1 flex items-center gap-0.5 cursor-pointer"
+                                  title="Hapus penandaan Jawaban Ringkas (teks tetap tersimpan)"
+                                >
+                                  <X className="w-3 h-3" />
+                                  <span>Hapus Penandaan</span>
+                                </button>
+                              </div>
+                            )}
+
+                            {stats.hasMendetail && (
+                              <div className="flex items-center gap-1.5 p-1.5 rounded bg-white dark:bg-[#163835] border border-[#D6AD52]/40 text-[11px]">
+                                <span className="w-2 h-2 rounded-full bg-[#D6AD52]" />
+                                <span className="font-bold text-[#171717] dark:text-[#CEFEF1]">
+                                  Jawaban Mendetail: {stats.mendetailWords} kata
+                                  {stats.mendetailH1Count > 0 ? ` (${stats.mendetailH1Count} H1)` : ''}
+                                </span>
+                                <button
+                                  type="button"
+                                  onMouseDown={(e) => e.preventDefault()}
+                                  onClick={() => handleUnmarkSection('mendetail')}
+                                  className="text-red-600 dark:text-red-400 hover:underline font-bold text-[10px] ml-1 flex items-center gap-0.5 cursor-pointer"
+                                  title="Hapus penandaan Jawaban Mendetail (teks tetap tersimpan)"
+                                >
+                                  <X className="w-3 h-3" />
+                                  <span>Hapus Penandaan</span>
+                                </button>
+                              </div>
+                            )}
+                          </div>
+
+                          <span className="text-[11px] text-[#525856] dark:text-[#A6D6C9] font-medium flex items-center gap-1 ml-auto">
+                            <Hash className="w-3 h-3 text-[#123D32] dark:text-[#D6AD52]" />
+                            <span>Judul <strong>Heading 1 (H1)</strong> otomatis masuk TOC.</span>
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Rich Text Editor with Ref and qaSectionMode enabled */}
+                  <RichTextEditor
+                    ref={editorRef}
+                    qaSectionMode={true}
+                    value={replyInput}
+                    onChange={setReplyInput}
+                    placeholder="Tuliskan balasan, dalil, dan penjelasan ilmiah secara santun..."
+                    minHeight="220px"
+                  />
+
+                  {/* Live Preview Panel when showPreview is active */}
+                  {showPreview && (
+                    <div className="p-3.5 sm:p-4 rounded-md bg-[#FAF7F0] dark:bg-[#0D2B36] border-2 border-[#123D32] dark:border-[#4CA7A1] shadow-[3px_3px_0px_#123D32] dark:shadow-[3px_3px_0px_#071918] space-y-3 animate-fade-in">
+                      <div className="flex items-center justify-between pb-2 border-b border-[#171717]/15 dark:border-[#4CA7A1]/30">
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-[#123D32] dark:text-[#CEFEF1] font-serif">
+                          <Eye className="w-4 h-4 text-[#123D32] dark:text-[#4CA7A1]" />
+                          <span>Pratinjau Hasil Jawaban & Daftar Isi Otomatis:</span>
+                        </div>
+                        <span className="text-[10px] font-mono font-bold text-[#525856] dark:text-[#A6D6C9]">
+                          Live Real-time
+                        </span>
+                      </div>
+
+                      {/* Realtime Table of Contents */}
+                      {previewSections.sections.length > 0 ? (
+                        <QATableOfContents sections={previewSections.sections} />
+                      ) : (
+                        <div className="p-2.5 rounded bg-white dark:bg-[#163835] border border-dashed border-[#171717]/30 text-xs text-[#525856] dark:text-[#A6D6C9] italic text-center">
+                          Daftar isi belum memiliki sub-bab. Tambahkan judul dengan format <strong>Heading 1</strong> di dalam editor untuk memunculkannya di sini.
+                        </div>
+                      )}
+
+                      {/* Split Preview Boxes: ONLY render sections that actually exist */}
+                      {previewSections.isExplicitlyMarked ? (
+                        <div className={`grid gap-3 pt-1 ${previewSections.hasRingkas && previewSections.hasMendetail ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
+                          {previewSections.hasRingkas && (
+                            <div className="p-3 rounded bg-white dark:bg-[#163835] border border-[#171717]/20 dark:border-[#4CA7A1]/30 space-y-1.5">
+                              <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#123D32] dark:text-[#4CA7A1] block border-b pb-1">
+                                1. Jawaban Ringkas ({stats.ringkasWords} kata):
+                              </span>
+                              <div
+                                className="prose dark:prose-invert max-w-none text-xs leading-relaxed"
+                                dangerouslySetInnerHTML={{ __html: previewSections.ringkasHtml }}
+                              />
+                            </div>
+                          )}
+
+                          {previewSections.hasMendetail && (
+                            <div className="p-3 rounded bg-white dark:bg-[#163835] border border-[#171717]/20 dark:border-[#4CA7A1]/30 space-y-1.5">
+                              <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#D6AD52] block border-b pb-1">
+                                2. Jawaban Mendetail ({stats.mendetailWords} kata):
+                              </span>
+                              <div
+                                className="prose dark:prose-invert max-w-none text-xs leading-relaxed"
+                                dangerouslySetInnerHTML={{ __html: previewSections.mendetailHtml }}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        /* Unmarked / Legacy Answer Preview */
+                        <div className="p-3 rounded bg-white dark:bg-[#163835] border border-[#171717]/20 dark:border-[#4CA7A1]/30 space-y-1.5">
+                          <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#525856] dark:text-[#A6D6C9] block border-b pb-1">
+                            Jawaban Lengkap (Belum Dibagi):
+                          </span>
+                          <div
+                            className="prose dark:prose-invert max-w-none text-xs leading-relaxed"
+                            dangerouslySetInnerHTML={{ __html: previewSections.unmarkedHtml || replyInput }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Actions */}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t-2 border-charcoal dark:border-[#D6AD52]/50">

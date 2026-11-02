@@ -140,6 +140,18 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    // EMAIL NOTIFICATIONS & AUDIT LOGS
+    match /emailNotifications/{notificationId} {
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // SYSTEM NOTIFICATION SETTINGS
+    match /notificationSettings/{configId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     match /{document=**} {
       allow read, write: if isSignedIn();
     }

@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useCallback, useImperativeHandle } from 'react';
 import { FloatingContextualToolbar } from './FloatingContextualToolbar';
 import { calculateFloatingToolbarPosition } from '../../utils/floatingToolbarHelper';
 import {
@@ -49,11 +49,19 @@ import {
   getGoogleDriveViewerUrl
 } from '../../utils/googleDriveHelper';
 
-interface RichTextEditorProps {
+export interface RichTextEditorRef {
+  markSelectionAs: (type: 'ringkas' | 'mendetail') => { success: boolean; reason?: string };
+  unmarkSection: (type: 'ringkas' | 'mendetail') => boolean;
+  focus: () => void;
+  getEditorElement: () => HTMLDivElement | null;
+}
+
+export interface RichTextEditorProps {
   value: string;
   onChange: (html: string) => void;
   placeholder?: string;
   minHeight?: string;
+  qaSectionMode?: boolean;
 }
 
 const FONT_OPTIONS = [
@@ -127,14 +135,131 @@ function sanitizeAndLinkifyHtml(rawHtml: string): string {
   }
 }
 
-export const RichTextEditor: React.FC<RichTextEditorProps> = ({
-  value,
-  onChange,
-  placeholder = 'Tuliskan artikel atau materi pembelajaran di sini...',
-  minHeight = '320px'
-}) => {
-  const editorRef = useRef<HTMLDivElement>(null);
-  const savedRangeRef = useRef<Range | null>(null);
+export const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
+  (
+    {
+      value,
+      onChange,
+      placeholder = 'Tuliskan artikel atau materi pembelajaran di sini...',
+      minHeight = '320px',
+      qaSectionMode = false
+    },
+    ref
+  ) => {
+    const editorRef = useRef<HTMLDivElement>(null);
+    const savedRangeRef = useRef<Range | null>(null);
+
+    const unmarkSection = useCallback(
+      (type: 'ringkas' | 'mendetail') => {
+        if (!editorRef.current) return false;
+        const section = editorRef.current.querySelector(`section[data-qa-section="${type}"]`);
+        if (!section) return false;
+
+        const contentDiv = section.querySelector('[data-section-content]');
+        const parent = section.parentNode;
+        if (!parent) return false;
+
+        if (contentDiv) {
+          while (contentDiv.firstChild) {
+            parent.insertBefore(contentDiv.firstChild, section);
+          }
+        }
+        parent.removeChild(section);
+        onChange(editorRef.current.innerHTML);
+        return true;
+      },
+      [onChange]
+    );
+
+    const markSelectionAs = useCallback(
+      (type: 'ringkas' | 'mendetail') => {
+        if (!editorRef.current) return { success: false, reason: 'no_editor' };
+
+        let range: Range | null = null;
+        const sel = window.getSelection();
+
+        if (sel && sel.rangeCount > 0 && editorRef.current.contains(sel.anchorNode)) {
+          range = sel.getRangeAt(0);
+        } else if (
+          savedRangeRef.current &&
+          editorRef.current.contains(savedRangeRef.current.commonAncestorContainer)
+        ) {
+          range = savedRangeRef.current;
+        }
+
+        if (!range || range.collapsed || !range.toString().trim()) {
+          return { success: false, reason: 'no_selection' };
+        }
+
+        // 1. If an existing section of this type exists, unwrap it first so there's only one
+        unmarkSection(type);
+
+        // 2. Extract selected contents
+        const fragment = range.extractContents();
+
+        // Clean any accidental nested boundary nodes inside the fragment
+        const boundaries = fragment.querySelectorAll('[data-qa-boundary]');
+        boundaries.forEach((b) => b.remove());
+
+        // 3. Build section container with visual boundaries
+        const isRingkas = type === 'ringkas';
+        const label = isRingkas ? 'RINGKAS' : 'MENDETAIL';
+        const borderClass = isRingkas ? 'border-[#123D32]' : 'border-[#D6AD52]';
+        const bgClass = isRingkas ? 'bg-[#FAF7F0] dark:bg-[#102C2B]' : 'bg-[#FDFBF7] dark:bg-[#16263D]';
+        const shadowClass = isRingkas ? 'shadow-[3px_3px_0px_#123D32]' : 'shadow-[3px_3px_0px_#D6AD52]';
+        const badgeHeaderBg = isRingkas ? 'bg-[#123D32] text-[#D6AD52]' : 'bg-[#D6AD52] text-[#171717]';
+
+        const sectionEl = document.createElement('section');
+        sectionEl.setAttribute('data-qa-section', type);
+        sectionEl.className = `dars-qa-marked-section ${type} my-4 p-3.5 sm:p-4 rounded-md border-2 ${borderClass} ${bgClass} text-[#171717] dark:text-[#CEFEF1] ${shadowClass} transition-all`;
+
+        // Header boundary
+        const headerEl = document.createElement('div');
+        headerEl.setAttribute('contenteditable', 'false');
+        headerEl.setAttribute('data-qa-boundary', 'start');
+        headerEl.className = `dars-qa-boundary-start select-none py-1.5 px-3 mb-2 rounded text-[11px] font-extrabold uppercase tracking-wider flex items-center justify-between border ${badgeHeaderBg} border-[#171717]`;
+        headerEl.innerHTML = `<span>📌 [AWAL JAWABAN ${label}]</span><span class="text-[9px] font-mono opacity-80">Batas Visual Editor</span>`;
+
+        // Body container
+        const bodyEl = document.createElement('div');
+        bodyEl.setAttribute('data-section-content', type);
+        bodyEl.className = 'dars-qa-section-content space-y-2';
+        bodyEl.appendChild(fragment);
+
+        // Footer boundary
+        const footerEl = document.createElement('div');
+        footerEl.setAttribute('contenteditable', 'false');
+        footerEl.setAttribute('data-qa-boundary', 'end');
+        footerEl.className = `dars-qa-boundary-end select-none py-1.5 px-3 mt-2 rounded text-[11px] font-extrabold uppercase tracking-wider flex items-center justify-between border ${badgeHeaderBg} border-[#171717]`;
+        footerEl.innerHTML = `<span>🏁 [AKHIR JAWABAN ${label}]</span><span class="text-[9px] font-mono opacity-80">Batas Akhir</span>`;
+
+        sectionEl.appendChild(headerEl);
+        sectionEl.appendChild(bodyEl);
+        sectionEl.appendChild(footerEl);
+
+        range.insertNode(sectionEl);
+
+        if (editorRef.current) {
+          onChange(editorRef.current.innerHTML);
+        }
+        setFloatingToolbarVisible(false);
+        savedRangeRef.current = null;
+
+        return { success: true };
+      },
+      [onChange, unmarkSection]
+    );
+
+    useImperativeHandle(
+      ref,
+      () => ({
+        markSelectionAs,
+        unmarkSection,
+        focus: () => editorRef.current?.focus(),
+        getEditorElement: () => editorRef.current
+      }),
+      [markSelectionAs, unmarkSection]
+    );
 
   const [editorError, setEditorError] = useState<string | null>(null);
 
@@ -1295,6 +1420,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         }}
         fontOptions={FONT_OPTIONS}
         toolbarRef={floatingToolbarRef}
+        onMarkSection={qaSectionMode ? markSelectionAs : undefined}
       />
 
       {/* Table Creation Modal */}
@@ -1587,4 +1713,6 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       )}
     </div>
   );
-};
+});
+
+RichTextEditor.displayName = 'RichTextEditor';
