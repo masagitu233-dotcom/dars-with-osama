@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import {
   Bold,
   Italic,
@@ -45,6 +46,9 @@ export interface FloatingContextualToolbarProps {
   onInsertArabicBlock: () => void;
   onUndo: () => void;
   onResetFormat: () => void;
+  selectedFont?: string;
+  onFontChange?: (font: string) => void;
+  fontOptions?: Array<{ label: string; value: string }>;
   toolbarRef?: React.RefObject<HTMLDivElement | null>;
 }
 
@@ -65,9 +69,12 @@ export const FloatingContextualToolbar: React.FC<FloatingContextualToolbarProps>
   onInsertArabicBlock,
   onUndo,
   onResetFormat,
+  selectedFont,
+  onFontChange,
+  fontOptions,
   toolbarRef
 }) => {
-  if (!visible) return null;
+  if (typeof document === 'undefined' || !document.body) return null;
 
   const activeBtnClass = 'bg-[#F2D98A] text-[#102C2B] border-[#171717] dark:border-[#B8E8D8] font-extrabold shadow-2xs';
   const inactiveBtnClass = 'bg-white dark:bg-[#193A37] text-[#171717] dark:text-[#F0F7F5] border-transparent hover:border-[#171717] dark:hover:border-[#B8E8D8]';
@@ -78,7 +85,7 @@ export const FloatingContextualToolbar: React.FC<FloatingContextualToolbarProps>
     e.stopPropagation();
   };
 
-  return (
+  const toolbarNode = (
     <div
       ref={toolbarRef as any}
       data-testid="floating-contextual-toolbar"
@@ -89,10 +96,35 @@ export const FloatingContextualToolbar: React.FC<FloatingContextualToolbarProps>
         position: 'fixed',
         top: `${position.top}px`,
         left: `${position.left}px`,
-        zIndex: 60
+        zIndex: 99999,
+        visibility: visible ? 'visible' : 'hidden',
+        opacity: visible ? 1 : 0,
+        pointerEvents: visible ? 'auto' : 'none',
+        transform: visible ? 'translate3d(0, 0, 0) scale(1)' : 'translate3d(0, -3px, 0) scale(0.98)',
+        transition: 'opacity 0.1s ease, transform 0.1s ease'
       }}
-      className="bg-[#FAF7F0] dark:bg-[#0E2825] border-2 border-[#171717] dark:border-[#4CA7A1] shadow-[4px_4px_0px_#171717] dark:shadow-[4px_4px_0px_#061715] rounded-md p-1 sm:p-1.5 flex items-center gap-1 max-w-[calc(100vw-20px)] overflow-x-auto select-none transition-all duration-75 text-[#171717] dark:text-[#F8F3E8]"
+      className="bg-[#FAF7F0] dark:bg-[#0E2825] border-2 border-[#171717] dark:border-[#4CA7A1] shadow-[4px_4px_0px_#171717] dark:shadow-[4px_4px_0px_#061715] rounded-md p-1 sm:p-1.5 flex items-center gap-1 max-w-[calc(100vw-20px)] overflow-x-auto select-none text-[#171717] dark:text-[#F8F3E8]"
     >
+      {/* 0. Font Family Selector */}
+      {fontOptions && fontOptions.length > 0 && onFontChange && (
+        <div className="flex items-center gap-1 shrink-0 border-r border-[#171717]/20 dark:border-[#4CA7A1]/30 pr-1 mr-0.5">
+          <select
+            data-testid="floating-rte-font"
+            onMouseDown={handleToolbarMouseDown}
+            value={selectedFont || 'Plus Jakarta Sans'}
+            onChange={(e) => onFontChange(e.target.value)}
+            className="px-1.5 py-1 text-[11px] font-bold rounded-xs bg-white dark:bg-[#193A37] text-[#171717] dark:text-[#F0F7F5] border border-[#171717] dark:border-[#4CA7A1] cursor-pointer max-w-[125px] sm:max-w-[145px] truncate"
+            title="Pilih Jenis Font"
+          >
+            {fontOptions.map((f) => (
+              <option key={f.value} value={f.value} style={{ fontFamily: f.value }}>
+                {f.label.split(' ')[0]} {f.label.includes('(') ? f.label.slice(f.label.indexOf('(')) : ''}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {/* 1. Block Formatting (P, H1, H2, H3, Blockquote) */}
       <div className="flex items-center gap-0.5 shrink-0">
         <button
@@ -400,4 +432,6 @@ export const FloatingContextualToolbar: React.FC<FloatingContextualToolbarProps>
       </div>
     </div>
   );
+
+  return createPortal(toolbarNode, document.body);
 };

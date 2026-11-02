@@ -37,7 +37,9 @@ import {
   Clock,
   GraduationCap,
   FolderOpen,
-  FileQuestion
+  FileQuestion,
+  MessageSquare,
+  UserCheck
 } from 'lucide-react';
 import { Category, Course, Session, Quiz, Question, UserProfile, QuizAttempt, BlogPost } from '../../types';
 import {
@@ -76,8 +78,7 @@ import { AdminCommentsManager } from './AdminCommentsManager';
 import { AdminInstructorProfileManager } from './AdminInstructorProfileManager';
 import { RichTextEditor } from './RichTextEditor';
 import { QuizImportModal } from './QuizImportModal';
-import { MessageSquare, UserCheck } from 'lucide-react';
-import { getAllArticleCommentsForAdmin } from '../../firebase/services';
+import { getAllArticleCommentsForAdmin, subscribeToConsultationsStats } from '../../firebase/services';
 import { auditBrowserStorageEntries } from '../../utils/dataAuditHelper';
 
 export const AdminDashboard: React.FC<{
@@ -112,6 +113,10 @@ export const AdminDashboard: React.FC<{
   const [commentsCount, setCommentsCount] = useState<number>(0);
   const [pendingCommentsCount, setPendingCommentsCount] = useState<number>(0);
   const [selectedArticleIdForComments, setSelectedArticleIdForComments] = useState<string>('all');
+
+  // Consultation state for indicators (Unanswered / Merah vs Answered / Hijau)
+  const [unansweredConsultationsCount, setUnansweredConsultationsCount] = useState<number>(0);
+  const [answeredConsultationsCount, setAnsweredConsultationsCount] = useState<number>(0);
 
   // Keyboard Escape listener to close drawer on mobile/tablet
   useEffect(() => {
@@ -303,6 +308,18 @@ export const AdminDashboard: React.FC<{
   useEffect(() => {
     loadAllAdminData();
   }, [user?.uid, isAdmin]);
+
+  // Live consultation indicators subscription for admin sidebar badges
+  useEffect(() => {
+    if (!isAdmin) return;
+    const unsubscribe = subscribeToConsultationsStats(({ unansweredCount, answeredCount }) => {
+      setUnansweredConsultationsCount(unansweredCount);
+      setAnsweredConsultationsCount(answeredCount);
+    });
+    return () => {
+      unsubscribe();
+    };
+  }, [isAdmin, user?.uid]);
 
   // Sync tab if initialTab prop changes
   useEffect(() => {
@@ -1097,7 +1114,7 @@ export const AdminDashboard: React.FC<{
 
               <button
                 onClick={() => { setActiveTab('consultation'); setSidebarOpen(false); }}
-                title="Konsultasi & Q&A Siswa"
+                title={`Konsultasi & Q&A Siswa (${unansweredConsultationsCount} belum dijawab, ${answeredConsultationsCount} sudah dijawab)`}
                 className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3.5 py-2.5'} rounded-md text-xs font-extrabold transition cursor-pointer ${
                   activeTab === 'consultation'
                     ? 'bg-[#123D32] dark:bg-[#1F5F63] text-[#FAF7F0] dark:text-[#CEFEF1] border-2 border-[#171717] dark:border-[#4CA7A1] border-l-4 dark:border-l-[#4CA7A1] shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#001722]'
@@ -1108,6 +1125,33 @@ export const AdminDashboard: React.FC<{
                   <MessageSquare className={`w-4 h-4 shrink-0 ${activeTab === 'consultation' ? 'text-[#FAF7F0] dark:text-[#CEFEF1]' : 'text-[#0B6B50] dark:text-[#4CA7A1]'}`} />
                   {!sidebarCollapsed && <span className="truncate">Konsultasi & Q&A</span>}
                 </div>
+
+                {!sidebarCollapsed && (unansweredConsultationsCount > 0 || answeredConsultationsCount > 0) && (
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {unansweredConsultationsCount > 0 && (
+                      <span
+                        data-testid="badge-qa-unanswered"
+                        title={`${unansweredConsultationsCount} pertanyaan belum dijawab`}
+                        className="text-[10px] px-2 py-0.5 rounded-sm bg-[#C94A4A] text-white border border-[#171717] font-extrabold shrink-0 shadow-2xs"
+                      >
+                        {unansweredConsultationsCount}
+                      </span>
+                    )}
+                    {answeredConsultationsCount > 0 && (
+                      <span
+                        data-testid="badge-qa-answered"
+                        title={`${answeredConsultationsCount} pertanyaan sudah dijawab`}
+                        className={`text-[10px] px-2 py-0.5 rounded-sm font-extrabold shrink-0 border shadow-2xs ${
+                          activeTab === 'consultation'
+                            ? 'bg-[#4CA7A1] text-[#001722] border-[#171717] dark:border-[#001722]'
+                            : 'bg-[#123D32] dark:bg-[#237A70] text-[#D6AD52] dark:text-white border-[#171717] dark:border-[#4CA7A1]'
+                        }`}
+                      >
+                        {answeredConsultationsCount}
+                      </span>
+                    )}
+                  </div>
+                )}
               </button>
 
               <button
@@ -2471,7 +2515,7 @@ export const AdminDashboard: React.FC<{
           {/* ========================================================= */}
           {activeTab === 'consultation' && (
             <div className="animate-fade-in">
-              <AdminConsultationManager />
+              <AdminConsultationManager onConsultationUpdated={loadAllAdminData} />
             </div>
           )}
 

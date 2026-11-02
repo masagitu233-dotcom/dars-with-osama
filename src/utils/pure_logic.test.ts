@@ -3010,3 +3010,219 @@ test('Course Card: Thumbnail has NO badges or overlays; Level badge and Share bu
   assert.equal(courseCardLayout.levelColorsPreserved.intermediate.lightBg, '#D6AD52');
   assert.equal(courseCardLayout.levelColorsPreserved.advanced.lightBg, '#237A70');
 });
+
+// Case 83: QA & Tanya Jawab Enhancements (Admin Count Badges, Automatic Answer TOC, Privacy-Preserving Share)
+test('Case 83: computeConsultationCounts, splitQAAnswer, dan buildQAShareMessage memvalidasi fitur Konsultasi & Tanya Jawab', async () => {
+  const {
+    computeConsultationCounts,
+    splitQAAnswer,
+    buildQAShareMessage
+  } = await import('./qaHelper.js');
+
+  // 1. Verifikasi Penghitungan Notifikasi Pertanyaan (Merah vs Hijau)
+  const mockConsultations: any[] = [
+    {
+      id: 'c-1',
+      title: 'Hukum Shalat Berjamaah',
+      content: 'Bagaimana hukum shalat berjamaah bagi laki-laki?',
+      status: 'pending',
+      replyContent: '',
+      isPublished: false
+    },
+    {
+      id: 'c-2',
+      title: 'Zakat Fitrah',
+      content: 'Kapan batas waktu membayar zakat fitrah?',
+      status: 'pending',
+      replyContent: null,
+      isPublished: false
+    },
+    {
+      id: 'c-3',
+      title: 'Muamalah Finansial',
+      content: 'Bagaimana fikih uang kripto?',
+      status: 'answered',
+      replyContent: '<p>Uang kripto memiliki khilaf di kalangan ulama...</p>',
+      isPublished: true
+    },
+    {
+      id: 'c-4',
+      title: 'Puasa Sunnah',
+      content: 'Bolehkah menggabungkan niat puasa Senin-Kamis dengan Syawal?',
+      status: 'answered',
+      replyContent: '<p>Boleh menurut mayoritas ulama Syafi\'iyyah...</p>',
+      isPublished: false
+    }
+  ];
+
+  const counts = computeConsultationCounts(mockConsultations);
+  assert.equal(counts.unansweredCount, 2, 'Harus terhitung 2 pertanyaan belum dijawab (Badge Merah)');
+  assert.equal(counts.answeredCount, 2, 'Harus terhitung 2 pertanyaan sudah dijawab (Badge Hijau)');
+
+  // 2. Verifikasi Pemisahan Jawaban Otomatis (Daftar Isi 2 Pilihan: Ringkas & Mendetail)
+  const fullHtmlAnswer = `
+    <p>Hukum shalat berjamaah di masjid bagi laki-laki baligh adalah fardhu 'ain menurut pendapat yang terkuat berdasarkan dalil Al-Qur'an dan As-Sunnah.</p>
+    <h2>Berikut pembahasannya secara terperinci</h2>
+    <p>Dalil pertama dari firman Allah Ta'ala dalam Surah An-Nisa ayat 102...</p>
+    <p>Dalil kedua dari hadits Abu Hurairah radhiyallahu 'anhu mengenai ancaman membakar rumah...</p>
+  `;
+
+  const splitResult = splitQAAnswer(fullHtmlAnswer, 'c-1');
+  assert.equal(splitResult.hasRingkas, true);
+  assert.equal(splitResult.hasMendetail, true);
+  assert.equal(splitResult.items.length, 2);
+  assert.equal(splitResult.items[0].label, 'Jawaban Ringkas');
+  assert.equal(splitResult.items[0].targetId, 'jawaban-ringkas-c-1');
+  assert.equal(splitResult.items[1].label, 'Jawaban Mendetail');
+  assert.equal(splitResult.items[1].targetId, 'jawaban-mendetail-c-1');
+
+  // Jika jawaban hanya 1 bagian singkat, TOC tidak dimunculkan
+  const shortAnswer = '<p>Jawaban singkat tanpa rincian panjang.</p>';
+  const singleSplit = splitQAAnswer(shortAnswer, 'c-2');
+  assert.equal(singleSplit.items.length, 0, 'Daftar isi tidak dimunculkan jika hanya ada satu bagian jawaban');
+
+  // 3. Verifikasi Format Berbagi Pertanyaan (Ketentuan Privasi & Keutuhan Teks)
+  const questionContent = 'Bolehkah seorang musafir menjamak shalat jika jarak perjalanannya hanya 50 km menurut mazhab Syafi\'i?';
+  const directLink = 'https://darswithosama.com/qa/c-1';
+
+  const shareData = buildQAShareMessage(questionContent, directLink);
+
+  // Strictly excludes title
+  assert.equal(shareData.plainText.includes('Hukum Shalat Berjamaah'), false, 'Teks berbagi TIDAK boleh memuat judul pertanyaan');
+  // Strictly excludes category
+  assert.equal(shareData.plainText.includes('Fiqih Ibadah'), false, 'Teks berbagi TIDAK boleh memuat label kategori');
+  // Strictly excludes internal ID
+  assert.equal(shareData.plainText.includes('ID: c-1'), false, 'Teks berbagi TIDAK boleh memuat nomor ID konsultasi');
+  // Strictly excludes student name
+  assert.equal(shareData.plainText.includes('Ahmad Fauzi'), false, 'Teks berbagi TIDAK boleh memuat nama santri/penanya');
+
+  // Strictly includes full question content intact without truncation
+  assert.ok(shareData.plainText.includes(questionContent), 'Teks berbagi HARUS memuat seluruh isi pertanyaan tanpa terpotong');
+
+  // Strictly includes canonical direct URL
+  assert.ok(shareData.plainText.includes(directLink), 'Teks berbagi HARUS memuat URL permanen langsung');
+  assert.equal(shareData.shareUrl, directLink);
+});
+
+// Case 84: Floating Contextual Toolbar Adaptive Positioning & Container Clipping
+test('Case 84: calculateFloatingToolbarPosition accurately tracks selection and respects containerRect boundaries', async () => {
+  const { calculateFloatingToolbarPosition } = await import('./floatingToolbarHelper.js');
+
+  const toolbarDimensions = { width: 480, height: 44 };
+  const viewportDimensions = { width: 1280, height: 800 };
+
+  // 1. Text selection in the middle of editor: toolbar appears directly above the text
+  const midSelection = {
+    top: 450,
+    bottom: 475,
+    left: 300,
+    right: 420,
+    width: 120,
+    height: 25
+  };
+
+  const midPos = calculateFloatingToolbarPosition(
+    midSelection,
+    toolbarDimensions,
+    viewportDimensions,
+    { minTopBoundary: 70, offset: 8 }
+  );
+
+  assert.equal(midPos.isVisible, true);
+  assert.equal(midPos.placement, 'top');
+  // top = 450 - (44 + 8) = 398 (directly above selection)
+  assert.equal(midPos.top, 398);
+  // horizontal center = 300 + 60 = 360, left = 360 - 240 = 120
+  assert.equal(midPos.left, 120);
+
+  // 2. Text selection at bottom of scrolled editor: toolbar appears directly above selection
+  const bottomSelection = {
+    top: 700,
+    bottom: 725,
+    left: 200,
+    right: 350,
+    width: 150,
+    height: 25
+  };
+
+  const bottomPos = calculateFloatingToolbarPosition(
+    bottomSelection,
+    toolbarDimensions,
+    viewportDimensions,
+    { minTopBoundary: 70, offset: 8 }
+  );
+
+  assert.equal(bottomPos.isVisible, true);
+  assert.equal(bottomPos.placement, 'top');
+  assert.equal(bottomPos.top, 648); // 700 - 52 = 648
+
+  // 3. Selection inside a modal scroll container: headroom restricted by containerRect
+  const modalContainerRect = {
+    top: 150,
+    bottom: 650,
+    left: 100,
+    right: 900
+  };
+
+  // Selection near top of modal body (headroom < 52px): flips directly BELOW selection
+  const nearTopModalSelection = {
+    top: 170,
+    bottom: 195,
+    left: 250,
+    right: 400,
+    width: 150,
+    height: 25
+  };
+
+  const modalTopPos = calculateFloatingToolbarPosition(
+    nearTopModalSelection,
+    toolbarDimensions,
+    viewportDimensions,
+    { minTopBoundary: 12, offset: 8, containerRect: modalContainerRect }
+  );
+
+  assert.equal(modalTopPos.isVisible, true);
+  assert.equal(modalTopPos.placement, 'bottom');
+  // top = bottom + offset = 195 + 8 = 203 (directly below selection)
+  assert.equal(modalTopPos.top, 203);
+
+  // 4. Selection scrolled above containerRect (clipped behind modal header): hides toolbar
+  const scrolledAboveModalSelection = {
+    top: 100,
+    bottom: 130, // below containerRect.top (150)
+    left: 250,
+    right: 400,
+    width: 150,
+    height: 30
+  };
+
+  const clippedAbovePos = calculateFloatingToolbarPosition(
+    scrolledAboveModalSelection,
+    toolbarDimensions,
+    viewportDimensions,
+    { minTopBoundary: 12, offset: 8, containerRect: modalContainerRect }
+  );
+
+  assert.equal(clippedAbovePos.isVisible, false, 'Toolbar must hide when selection scrolls past container boundary');
+
+  // 5. Selection scrolled below containerRect (clipped by modal footer): hides toolbar
+  const scrolledBelowModalSelection = {
+    top: 670,
+    bottom: 700,
+    left: 250,
+    right: 400,
+    width: 150,
+    height: 30
+  };
+
+  const clippedBelowPos = calculateFloatingToolbarPosition(
+    scrolledBelowModalSelection,
+    toolbarDimensions,
+    viewportDimensions,
+    { minTopBoundary: 12, offset: 8, containerRect: modalContainerRect }
+  );
+
+  assert.equal(clippedBelowPos.isVisible, false, 'Toolbar must hide when selection scrolls below container boundary');
+});
+
+

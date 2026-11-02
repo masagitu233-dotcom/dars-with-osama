@@ -10,10 +10,12 @@ import {
   Facebook,
   Twitter,
   Sparkles,
-  Lock
+  Lock,
+  FileText
 } from 'lucide-react';
 import { Consultation } from '../../types';
 import { useAuth } from '../../context/AuthContext';
+import { buildQAShareMessage } from '../../utils/qaHelper';
 
 interface ShareQAModalProps {
   isOpen: boolean;
@@ -22,36 +24,32 @@ interface ShareQAModalProps {
   initialTab?: string;
 }
 
-function stripHtml(html: string): string {
-  if (!html) return '';
-  return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-}
-
 export const ShareQAModal: React.FC<ShareQAModalProps> = ({
   isOpen,
   onClose,
   consultation
 }) => {
   const { showToast } = useAuth();
-  const [copied, setCopied] = useState<boolean>(false);
+  const [copiedLink, setCopiedLink] = useState<boolean>(false);
+  const [copiedFull, setCopiedFull] = useState<boolean>(false);
 
   useEffect(() => {
     if (isOpen) {
-      setCopied(false);
+      setCopiedLink(false);
+      setCopiedFull(false);
     }
   }, [isOpen]);
-
-  const cleanQuestionSnippet = useMemo(() => {
-    if (!consultation?.content) return '';
-    const plain = stripHtml(consultation.content);
-    return plain.length > 200 ? plain.slice(0, 200) + '...' : plain;
-  }, [consultation?.content]);
 
   const shareUrl = useMemo(() => {
     if (!consultation?.id) return '';
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://darswithosama.com';
     return `${origin}/qa/${encodeURIComponent(consultation.id)}`;
   }, [consultation?.id]);
+
+  const shareData = useMemo(() => {
+    if (!consultation) return { plainText: '', shareUrl: '' };
+    return buildQAShareMessage(consultation.content || '', shareUrl);
+  }, [consultation, shareUrl]);
 
   if (!isOpen || !consultation) return null;
 
@@ -61,11 +59,23 @@ export const ShareQAModal: React.FC<ShareQAModalProps> = ({
     if (!shareUrl) return;
     try {
       await navigator.clipboard.writeText(shareUrl);
-      setCopied(true);
+      setCopiedLink(true);
       showToast('Tautan pertanyaan berhasil disalin!');
-      setTimeout(() => setCopied(false), 2500);
+      setTimeout(() => setCopiedLink(false), 2500);
     } catch {
       showToast('Gagal menyalin tautan.');
+    }
+  };
+
+  const handleCopyFullMessage = async () => {
+    if (!shareData.plainText) return;
+    try {
+      await navigator.clipboard.writeText(shareData.plainText);
+      setCopiedFull(true);
+      showToast('Pesan lengkap pertanyaan berhasil disalin!');
+      setTimeout(() => setCopiedFull(false), 2500);
+    } catch {
+      showToast('Gagal menyalin pesan.');
     }
   };
 
@@ -74,26 +84,24 @@ export const ShareQAModal: React.FC<ShareQAModalProps> = ({
     if (navigator.share) {
       try {
         await navigator.share({
-          title: `Tanya Jawab Syar'i: ${consultation.title}`,
-          text: `*Tanya Jawab Syar'i — Dars with Osama*\n\n📌 *Pertanyaan:*\n*${consultation.title}*\n\n💡 *Ingin tahu jawaban resmi Ustaz?*\nBuka tautan berikut untuk membaca jawaban lengkap:`,
+          title: `Tanya Jawab Syar'i — Dars with Osama`,
+          text: shareData.plainText,
           url: shareUrl
         });
       } catch {
         // User cancelled share
       }
     } else {
-      handleCopyLink();
+      handleCopyFullMessage();
     }
   };
 
   const handleShareWhatsApp = () => {
-    const text = `*Tanya Jawab Syar'i — Dars with Osama*\n\n📌 *Pertanyaan:*\n*${consultation.title}*\n\n"${cleanQuestionSnippet}"\n\n💡 *Ingin mengetahui jawaban resmi Ustaz?*\nKlik tautan berikut untuk membaca jawaban lengkap & pembahasan dalilnya:\n${shareUrl}`;
-    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareData.plainText)}`, '_blank', 'noopener,noreferrer');
   };
 
   const handleShareTelegram = () => {
-    const text = `*Tanya Jawab Syar'i — Dars with Osama*\n\n📌 *Pertanyaan:* ${consultation.title}\n\n"${cleanQuestionSnippet}"\n\n💡 Klik tautan untuk membaca jawaban resmi Ustaz:`;
-    window.open(`https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
+    window.open(`https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareData.plainText)}`, '_blank', 'noopener,noreferrer');
   };
 
   const handleShareFacebook = () => {
@@ -101,8 +109,11 @@ export const ShareQAModal: React.FC<ShareQAModalProps> = ({
   };
 
   const handleShareTwitter = () => {
-    const text = `Tanya Jawab Syar'i Dars with Osama: ${consultation.title}\n\n💡 Klik link untuk membaca jawaban resmi Ustaz:`;
-    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareUrl)}`, '_blank', 'noopener,noreferrer');
+    // Truncate cleanly for Twitter if needed while preserving the core question and URL
+    const tweetText = shareData.plainText.length > 250
+      ? `${shareData.plainText.slice(0, 240)}...\n\n${shareUrl}`
+      : shareData.plainText;
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -158,70 +169,83 @@ export const ShareQAModal: React.FC<ShareQAModalProps> = ({
             </div>
           ) : (
             <div className="space-y-6 animate-fade-in">
-              {/* Topic Overview Card */}
+              {/* Question Preview Card (Strictly excludes title, category, student name, and ID) */}
               <div className="p-4 rounded-md bg-white dark:bg-[#243A56] border-2 border-charcoal dark:border-[#34465D] space-y-2.5 shadow-[3px_3px_0px_#292D2B]">
                 <div className="flex items-center justify-between gap-2 text-[11px] font-bold">
                   <span className="px-2 py-0.5 rounded bg-[#123D32] text-[#D6AD52] border border-charcoal dark:border-[#D6AD52]">
-                    ❓ Pertanyaan Tanya Jawab
+                    ❓ Isi Lengkap Pertanyaan
                   </span>
                   <span className="text-[#123D32] dark:text-[#D6AD52] font-bold flex items-center gap-1">
                     <Lock className="w-3 h-3 text-[#D6AD52]" />
-                    <span>Jawaban Terkunci (Perlu Klik Link)</span>
+                    <span>Jawaban Dibaca Melalui Link</span>
                   </span>
                 </div>
 
-                <h4 className="font-serif font-bold text-sm sm:text-base text-charcoal dark:text-offwhite">
-                  {consultation.title}
-                </h4>
+                <div className="text-xs text-charcoal dark:text-offwhite leading-relaxed font-sans border-l-4 border-[#D6AD52] pl-3 py-1.5 max-h-40 overflow-y-auto whitespace-pre-wrap bg-[#FAF7F0]/60 dark:bg-[#16263D]/40 rounded-r">
+                  &quot;{consultation.content}&quot;
+                </div>
 
-                {cleanQuestionSnippet && (
-                  <p className="text-xs text-slate-gray dark:text-blue-gray line-clamp-2 leading-relaxed font-sans border-l-4 border-[#D6AD52] pl-2.5">
-                    &quot;{cleanQuestionSnippet}&quot;
-                  </p>
-                )}
-
-                <div className="pt-2 text-[11px] font-medium text-charcoal dark:text-offwhite bg-[#FAF7F0] dark:bg-[#16263D] p-2.5 rounded border border-charcoal dark:border-[#34465D] flex items-center gap-2">
+                <div className="pt-1 text-[11px] font-medium text-charcoal dark:text-offwhite bg-[#FAF7F0] dark:bg-[#16263D] p-2.5 rounded border border-charcoal dark:border-[#34465D] flex items-center gap-2">
                   <Sparkles className="w-3.5 h-3.5 text-[#D6AD52] shrink-0" />
-                  <span>Teks & pratinjau yang dibagikan hanya memuat <strong>pertanyaan</strong>. Pembaca harus mengklik link untuk membaca jawaban resmi dari Ustaz.</span>
+                  <span>Teks yang dibagikan memuat <strong>seluruh isi pertanyaan</strong> tanpa judul atau identitas penanya. Pembaca cukup membuka link untuk membaca jawaban resmi Ustaz.</span>
                 </div>
               </div>
 
-              {/* Direct Link Section */}
-              <div className="space-y-2">
-                <label className="text-xs font-extrabold text-charcoal dark:text-[#D6AD52] uppercase tracking-wider block">
-                  Salin Link Permanen Pertanyaan:
-                </label>
-
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    readOnly
-                    value={shareUrl}
-                    className="nb-input w-full px-3.5 py-2.5 text-xs font-mono select-all"
-                  />
-                  <button
-                    onClick={handleCopyLink}
-                    className="nb-btn nb-btn-primary px-4 py-2.5 text-xs shrink-0"
-                  >
-                    {copied ? (
-                      <>
-                        <Check className="w-4 h-4 text-[#D6AD52]" />
-                        <span>Tersalin</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-4 h-4 text-[#D6AD52]" />
-                        <span>Salin Link</span>
-                      </>
-                    )}
-                  </button>
+              {/* Direct Link & Message Copy Section */}
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-extrabold text-charcoal dark:text-[#D6AD52] uppercase tracking-wider block">
+                    Link Permanen Pertanyaan:
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      readOnly
+                      value={shareUrl}
+                      className="nb-input w-full px-3.5 py-2.5 text-xs font-mono select-all"
+                    />
+                    <button
+                      onClick={handleCopyLink}
+                      className="nb-btn nb-btn-secondary px-3.5 py-2.5 text-xs shrink-0 flex items-center gap-1.5"
+                      title="Salin tautan saja"
+                    >
+                      {copiedLink ? (
+                        <>
+                          <Check className="w-4 h-4 text-[#123D32]" />
+                          <span>Tersalin</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-4 h-4 text-[#D6AD52]" />
+                          <span>Salin Link</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
+
+                <button
+                  onClick={handleCopyFullMessage}
+                  className="w-full nb-btn nb-btn-primary py-2.5 px-4 text-xs flex items-center justify-center gap-2 font-bold"
+                >
+                  {copiedFull ? (
+                    <>
+                      <Check className="w-4 h-4 text-[#D6AD52]" />
+                      <span>Pesan Lengkap Tersalin ke Clipboard</span>
+                    </>
+                  ) : (
+                    <>
+                      <FileText className="w-4 h-4 text-[#D6AD52]" />
+                      <span>Salin Pesan Lengkap Siap Kirim</span>
+                    </>
+                  )}
+                </button>
               </div>
 
               {/* Social Share Buttons Grid */}
               <div className="space-y-2.5">
                 <label className="text-xs font-extrabold text-charcoal dark:text-[#D6AD52] uppercase tracking-wider block">
-                  Pilih Platform Berbagi:
+                  Bagikan ke Media Sosial & Pesan:
                 </label>
 
                 <div className="grid grid-cols-2 gap-2.5">

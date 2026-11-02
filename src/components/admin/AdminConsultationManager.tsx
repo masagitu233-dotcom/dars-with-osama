@@ -30,7 +30,13 @@ import { RichTextEditor } from './RichTextEditor';
 import { ShareQAModal } from '../consultation/ShareQAModal';
 import { useAuth } from '../../context/AuthContext';
 
-export const AdminConsultationManager: React.FC = () => {
+interface AdminConsultationManagerProps {
+  onConsultationUpdated?: () => void;
+}
+
+export const AdminConsultationManager: React.FC<AdminConsultationManagerProps> = ({
+  onConsultationUpdated
+}) => {
   const { user, isAdmin, loading: authLoading } = useAuth();
   const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -94,6 +100,7 @@ export const AdminConsultationManager: React.FC = () => {
       await replyConsultation(selectedConsultation.id, replyInput.trim(), 'answered');
       setToastMessage('Balasan berhasil dikirim kepada siswa!');
       await loadConsultations();
+      onConsultationUpdated?.();
       setSelectedConsultation((prev) =>
         prev
           ? {
@@ -128,6 +135,7 @@ export const AdminConsultationManager: React.FC = () => {
           : 'Pertanyaan berhasil disembunyikan dari Halaman Q&A Publik.'
       );
       await loadConsultations();
+      onConsultationUpdated?.();
       if (selectedConsultation?.id === item.id) {
         setSelectedConsultation((prev) => (prev ? { ...prev, isPublished: nextState } : null));
       }
@@ -144,6 +152,7 @@ export const AdminConsultationManager: React.FC = () => {
       await updateConsultationStatus(item.id, newStatus);
       setToastMessage(`Status konsultasi diperbarui menjadi ${newStatus}.`);
       await loadConsultations();
+      onConsultationUpdated?.();
       if (selectedConsultation?.id === item.id) {
         setSelectedConsultation((prev) => (prev ? { ...prev, status: newStatus } : null));
       }

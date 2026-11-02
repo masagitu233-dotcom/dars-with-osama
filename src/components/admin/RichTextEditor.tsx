@@ -222,10 +222,27 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     const range = sel.getRangeAt(0);
     const rect = range.getBoundingClientRect();
 
-    if (rect.height === 0 || rect.bottom < 60 || rect.top > window.innerHeight) {
+    if (rect.height === 0 || rect.bottom <= 0 || rect.top >= window.innerHeight) {
       setFloatingToolbarVisible(false);
       return;
     }
+
+    // Determine if editor is inside modal dialog or popup
+    const modalAncestor = editorRef.current.closest('.fixed, [role="dialog"], .modal') as HTMLElement | null;
+    const scrollContainer = editorRef.current.closest('.overflow-y-auto, .overflow-auto') as HTMLElement | null;
+
+    let containerRect: { top: number; bottom: number; left?: number; right?: number } | undefined = undefined;
+    if (scrollContainer && scrollContainer !== document.documentElement && scrollContainer !== document.body) {
+      const cRect = scrollContainer.getBoundingClientRect();
+      containerRect = {
+        top: cRect.top,
+        bottom: cRect.bottom,
+        left: cRect.left,
+        right: cRect.right
+      };
+    }
+
+    const minTopBoundary = modalAncestor ? 12 : 70;
 
     const toolbarWidth = floatingToolbarRef.current?.offsetWidth || 560;
     const toolbarHeight = floatingToolbarRef.current?.offsetHeight || 44;
@@ -234,7 +251,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       rect,
       { width: toolbarWidth, height: toolbarHeight },
       { width: window.innerWidth, height: window.innerHeight },
-      { minTopBoundary: 70, padding: 12, offset: 8 }
+      { minTopBoundary, padding: 12, offset: 8, containerRect }
     );
 
     if (pos.isVisible) {
@@ -347,18 +364,23 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         const sel = window.getSelection();
         if (!sel || sel.isCollapsed || !editorRef.current?.contains(sel.anchorNode)) {
           setFloatingToolbarVisible(false);
+        } else if (sel && !sel.isCollapsed && editorRef.current?.contains(sel.anchorNode) && editorRef.current?.contains(sel.focusNode)) {
+          updateFloatingToolbar();
         }
       }
     };
     document.addEventListener('selectionchange', handleSelectionChange);
     return () => document.removeEventListener('selectionchange', handleSelectionChange);
-  }, []);
+  }, [updateFloatingToolbar]);
 
   // Recalculate floating position when scrolling or resizing
   useEffect(() => {
     const handleScrollOrResize = () => {
-      if (floatingToolbarVisible) {
+      const sel = window.getSelection();
+      if (sel && !sel.isCollapsed && editorRef.current?.contains(sel.anchorNode)) {
         updateFloatingToolbar();
+      } else {
+        setFloatingToolbarVisible(false);
       }
     };
     window.addEventListener('scroll', handleScrollOrResize, true);
@@ -367,7 +389,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       window.removeEventListener('scroll', handleScrollOrResize, true);
       window.removeEventListener('resize', handleScrollOrResize);
     };
-  }, [floatingToolbarVisible, updateFloatingToolbar]);
+  }, [updateFloatingToolbar]);
 
   // Hide floating toolbar when clicking outside editor and floating toolbar
   useEffect(() => {
@@ -1266,6 +1288,12 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
           applyBlockFormat('p');
           setTimeout(updateFloatingToolbar, 10);
         }}
+        selectedFont={selectedFont}
+        onFontChange={(font) => {
+          handleFontChange(font);
+          setTimeout(updateFloatingToolbar, 10);
+        }}
+        fontOptions={FONT_OPTIONS}
         toolbarRef={floatingToolbarRef}
       />
 

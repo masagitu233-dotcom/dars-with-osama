@@ -10,7 +10,8 @@ import {
   query,
   where,
   orderBy,
-  writeBatch
+  writeBatch,
+  onSnapshot
 } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import {
@@ -32,6 +33,7 @@ import { SEED_CATEGORIES, SEED_COURSES, SEED_SESSIONS, SEED_QUIZZES } from '../d
 import { matchesSessionIdentifier, canAccessSessionPublicly } from '../utils/sessionShareHelper';
 import { sanitizeRichTextHtml } from '../utils/richTextHelper';
 import { normalizeArticleHtmlImages } from '../utils/googleDriveHelper';
+import { computeConsultationCounts, ConsultationCounts } from '../utils/qaHelper';
 import {
   DEFAULT_INSTRUCTOR_PROFILE_ID,
   getDefaultInstructorProfile,
@@ -2196,6 +2198,38 @@ export async function getAllConsultationsForAdmin(): Promise<Consultation[]> {
     return [...PRODUCTION_CONSULTATIONS].sort(
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
+  }
+}
+
+/**
+ * Real-time or polled subscription to consultation stats for admin menu indicators.
+ * Provides live updates for unanswered (Merah) and answered (Hijau) counts.
+ */
+export function subscribeToConsultationsStats(
+  callback: (counts: ConsultationCounts) => void
+): () => void {
+  try {
+    const collRef = collection(db, 'consultations');
+    const unsubscribe = onSnapshot(
+      collRef,
+      (snapshot) => {
+        const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Consultation));
+        callback(computeConsultationCounts(list));
+      },
+      (error) => {
+        console.warn('subscribeToConsultationsStats snapshot notice:', error);
+        getAllConsultationsForAdmin()
+          .then(list => callback(computeConsultationCounts(list)))
+          .catch(() => {});
+      }
+    );
+    return unsubscribe;
+  } catch (err) {
+    console.warn('onSnapshot not available, using single fetch fallback:', err);
+    getAllConsultationsForAdmin()
+      .then(list => callback(computeConsultationCounts(list)))
+      .catch(() => {});
+    return () => {};
   }
 }
 
