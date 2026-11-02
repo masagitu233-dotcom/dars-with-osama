@@ -803,7 +803,7 @@ function MainApp() {
       case 'consultation':
         return 'bg-[#F5DABF] text-[#0F3D3A]';
       default:
-        return 'bg-[#FAF7F0] dark:bg-[#0D2B36] text-[#171717] dark:text-[#CEFEF1]';
+        return 'bg-neo-grid text-[#171717] dark:text-[#CEFEF1]';
     }
   };
 
