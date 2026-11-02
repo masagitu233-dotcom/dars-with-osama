@@ -5,6 +5,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Course, Category, Enrollment } from '../../types';
 import { CourseCard } from './CourseCard';
 import { useLanguage } from '../../context/LanguageContext';
+import { useAuth } from '../../context/AuthContext';
 import { ServiceDisruptionBanner } from '../common/ServiceDisruptionBanner';
 import { MobileCarousel } from '../common/MobileCarousel';
 
@@ -37,6 +38,7 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({
   lastAttemptTimestamp = 0
 }) => {
   const { t } = useLanguage();
+  const { isAdmin } = useAuth();
   const [activeCategory, setActiveCategory] = useState<string>(initialCat);
   const [activeLevel, setActiveLevel] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>(initialSearch);
@@ -95,7 +97,7 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({
       </div>
 
       {/* SERVICE DISRUPTION BANNER WHEN DATA IS RETAINED IN MEMORY */}
-      {loadError && courses.length > 0 && (
+      {isAdmin && loadError && courses.length > 0 && (
         <ServiceDisruptionBanner
           category={loadError.category}
           code={loadError.code}
@@ -189,7 +191,7 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({
             ))}
           </MobileCarousel>
         </div>
-      ) : loadError && courses.length === 0 ? (
+      ) : loadError && courses.length === 0 && isAdmin ? (
         <ServiceDisruptionBanner
           category={loadError.category}
           code={loadError.code}

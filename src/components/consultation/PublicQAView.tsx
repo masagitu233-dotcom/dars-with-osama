@@ -42,7 +42,7 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
   onNavigateToConsultation,
   initialQaId
 }) => {
-  const { user, openAuthModal, showToast } = useAuth();
+  const { user, isAdmin, openAuthModal, showToast } = useAuth();
   const [qaList, setQaList] = useState<Consultation[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -235,7 +235,7 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
       </div>
 
       {/* SERVICE DISRUPTION BANNER WHEN DATA IS RETAINED IN MEMORY */}
-      {qaError && qaList.length > 0 && (
+      {isAdmin && qaError && qaList.length > 0 && (
         <ServiceDisruptionBanner
           category={qaError.category}
           code={qaError.code}
@@ -256,7 +256,7 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
           </p>
         </div>
       ) : filteredQA.length === 0 ? (
-        qaError && qaList.length === 0 ? (
+        qaError && qaList.length === 0 && isAdmin ? (
           <ServiceDisruptionBanner
             category={qaError.category}
             code={qaError.code}

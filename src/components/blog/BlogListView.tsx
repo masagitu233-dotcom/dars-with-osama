@@ -18,6 +18,7 @@ import { ResilientGoogleDriveImage } from '../common/ResilientGoogleDriveImage';
 import { getInstructorProfile } from '../../firebase/services';
 import { resolveDisplayImageUrl } from '../../utils/googleDriveHelper';
 import { MobileCarousel } from '../common/MobileCarousel';
+import { useAuth } from '../../context/AuthContext';
 
 interface BlogListViewProps {
   posts: BlogPost[];
@@ -38,6 +39,7 @@ export const BlogListView: React.FC<BlogListViewProps> = ({
   isRetrying = false,
   lastAttemptTimestamp = 0
 }) => {
+  const { isAdmin } = useAuth();
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [shareModalOpen, setShareModalOpen] = useState<boolean>(false);
@@ -252,7 +254,7 @@ export const BlogListView: React.FC<BlogListViewProps> = ({
       )}
 
       {/* SERVICE DISRUPTION BANNER WHEN DATA IS RETAINED IN MEMORY */}
-      {loadError && posts.length > 0 && (
+      {isAdmin && loadError && posts.length > 0 && (
         <ServiceDisruptionBanner
           category={loadError.category}
           code={loadError.code}
@@ -294,7 +296,7 @@ export const BlogListView: React.FC<BlogListViewProps> = ({
             ))}
           </div>
         ) : filteredPosts.length === 0 ? (
-          loadError && posts.length === 0 ? (
+          loadError && posts.length === 0 && isAdmin ? (
             <ServiceDisruptionBanner
               category={loadError.category}
               code={loadError.code}

@@ -859,7 +859,7 @@ function MainApp() {
 
               {/* Main Body Router */}
               <main className="flex-1 pb-12 sm:pb-16">
-                {loadError && currentView === 'home' && (
+                {isAdmin && loadError && currentView === 'home' && (
                   <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
                     <ServiceDisruptionBanner
                       category={loadError.category}
@@ -977,7 +977,7 @@ function MainApp() {
                         />
                       </div>
                     ) : (
-                      loadError ? (
+                      loadError && isAdmin ? (
                         <div className="max-w-4xl mx-auto px-4 py-12">
                           <ServiceDisruptionBanner
                             category={loadError.category}
@@ -989,7 +989,24 @@ function MainApp() {
                             customTitle="Detail Kursus Tidak Dapat Dimuat"
                           />
                         </div>
-                      ) : null
+                      ) : (
+                        <div className="max-w-4xl mx-auto px-4 py-12 text-center space-y-4">
+                          <div className="nb-card p-8 space-y-3">
+                            <h3 className="text-lg font-bold font-serif text-[#171717] dark:text-[#CEFEF1]">
+                              Detail Kursus Tidak Tersedia
+                            </h3>
+                            <p className="text-xs text-[#525855] dark:text-[#A6D6C9]">
+                              Materi kursus yang Anda cari tidak ditemukan atau sedang diproses.
+                            </p>
+                            <button
+                              onClick={() => handleBackOrNavigate(['courses'], { view: 'courses' })}
+                              className="nb-btn nb-btn-primary px-4 py-2 text-xs"
+                            >
+                              Kembali ke Katalog Kursus
+                            </button>
+                          </div>
+                        </div>
+                      )
                     )
                   )}
 
@@ -1014,7 +1031,7 @@ function MainApp() {
                         onRefreshEnrollment={loadUserEnrollments}
                       />
                     ) : (
-                      (sessionError || loadError) ? (
+                      (sessionError || loadError) && isAdmin ? (
                         <div className="max-w-4xl mx-auto px-4 py-12">
                           <ServiceDisruptionBanner
                             category={(sessionError || loadError)?.category}
@@ -1106,7 +1123,7 @@ function MainApp() {
                         }}
                       />
                     ) : (
-                      loadError ? (
+                      loadError && isAdmin ? (
                         <div className="max-w-4xl mx-auto px-4 py-12">
                           <ServiceDisruptionBanner
                             category={loadError.category}

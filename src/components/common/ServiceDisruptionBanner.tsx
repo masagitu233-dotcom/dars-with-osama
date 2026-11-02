@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AlertTriangle, RefreshCw, Database, ShieldCheck, WifiOff } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 import {
   formatDisruptionMessage,
   getRemainingCooldownSeconds,
@@ -30,6 +31,7 @@ export const ServiceDisruptionBanner: React.FC<ServiceDisruptionBannerProps> = (
   customTitle,
   customMessage
 }) => {
+  const { user, isAdmin, loading: authLoading } = useAuth();
   const [remainingCooldown, setRemainingCooldown] = useState<number>(() =>
     getRemainingCooldownSeconds(lastAttemptTimestamp, cooldownSeconds)
   );
@@ -44,6 +46,12 @@ export const ServiceDisruptionBanner: React.FC<ServiceDisruptionBannerProps> = (
     const interval = setInterval(updateCooldown, 1000);
     return () => clearInterval(interval);
   }, [lastAttemptTimestamp, cooldownSeconds]);
+
+  // Restrict disruption banner visibility exclusively to authenticated admins.
+  // Students, visitors, and non-admins must never see system disruption notifications.
+  if (authLoading || !user || !isAdmin) {
+    return null;
+  }
 
   const info = formatDisruptionMessage(category, code);
   const displayTitle = customTitle || info.title;
