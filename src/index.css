@@ -36,7 +36,7 @@
 
 :root {
   --nb-bg-deep: #EFE5D2;
-  --nb-bg: #4D694E;
+  --nb-bg: #FFF3D5;
   --nb-bg-subtle: #F4EFE4;
   --nb-surface: #FFFFFF;
   --nb-surface-alt: #FAF7F0;
@@ -75,10 +75,10 @@
 
 /* Neo-Brutalist Graph Paper Grid Background */
 .bg-neo-grid {
-  background-color: #4D694E;
+  background-color: #FFF3D5;
   background-image: 
-    linear-gradient(rgba(15, 28, 16, 0.28) 2px, transparent 2px),
-    linear-gradient(90deg, rgba(15, 28, 16, 0.28) 2px, transparent 2px);
+    linear-gradient(#DCCFA8 2px, transparent 2px),
+    linear-gradient(90deg, #DCCFA8 2px, transparent 2px);
   background-size: 34px 34px;
   background-position: -2px -2px;
 }
@@ -96,8 +96,8 @@
   body {
     background-color: var(--nb-bg);
     background-image: 
-      linear-gradient(rgba(15, 28, 16, 0.28) 2px, transparent 2px),
-      linear-gradient(90deg, rgba(15, 28, 16, 0.28) 2px, transparent 2px);
+      linear-gradient(#DCCFA8 2px, transparent 2px),
+      linear-gradient(90deg, #DCCFA8 2px, transparent 2px);
     background-size: 34px 34px;
     background-position: -2px -2px;
     color: var(--nb-text);
