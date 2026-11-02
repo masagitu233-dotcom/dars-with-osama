@@ -3360,5 +3360,65 @@ test('Case 85: qaHelper memvalidasi penandaan eksplisit seleksi admin, visual bo
   assert.equal(legacyStats.totalWords > 0, true);
 });
 
+// Case 86: Perapian Tampilan Daftar Isi Jawaban Tanya Jawab (Tanpa Label Kategori & Tanpa Penomoran Otomatis 2.1, 2.2)
+test('Case 86: QATableOfContents menampilkan judul Heading 1 langsung tanpa label SUB-BAB HEADING 1 dan tanpa prefix nomor otomatis', async () => {
+  const React = await import('react');
+  const ReactDOMServer = await import('react-dom/server');
+  const { QATableOfContents } = await import('../components/consultation/QATableOfContents.js');
+  const { splitQAAnswer, buildMarkedSectionHtml } = await import('./qaHelper.js');
+
+  const answerHtml = `
+    ${buildMarkedSectionHtml('ringkas', '<p>Kesimpulan ringkas.</p><h1>Pokok Masalah</h1>')}
+    ${buildMarkedSectionHtml('mendetail', '<p>Penjelasan panjang.</p><h1>3 Landasan Dalil Utama</h1><h1>Pandangan Para Ulama</h1>')}
+  `;
+
+  const parsed = splitQAAnswer(answerHtml, 'c-86');
+  assert.equal(parsed.sections.length, 2);
+
+  // Render QATableOfContents to static HTML
+  const renderedHtml = ReactDOMServer.renderToStaticMarkup(
+    React.createElement(QATableOfContents, { sections: parsed.sections })
+  );
+
+  // 1. Verifikasi TIDAK ADA label kategori "Sub-bab Heading 1:" atau "SUB-BAB HEADING 1:"
+  assert.equal(
+    /sub-bab heading 1/i.test(renderedHtml),
+    false,
+    'Teks "Sub-bab Heading 1:" HARUS dihilangkan dari daftar isi'
+  );
+
+  // 2. Verifikasi TIDAK ADA penomoran otomatis bertingkat seperti "2.1", "2.2", "1.1" sebelum judul Heading 1
+  assert.equal(
+    />\s*2\.1\s*</i.test(renderedHtml),
+    false,
+    'Prefix penomoran otomatis "2.1" tidak boleh muncul'
+  );
+  assert.equal(
+    />\s*1\.1\s*</i.test(renderedHtml),
+    false,
+    'Prefix penomoran otomatis "1.1" tidak boleh muncul'
+  );
+
+  // 3. Verifikasi judul Heading 1 asli tetap tampil langsung dan utuh, termasuk angka yang menjadi bagian teks asli ("3 Landasan Dalil Utama")
+  assert.ok(
+    renderedHtml.includes('3 Landasan Dalil Utama'),
+    'Judul asli dengan angka ("3 Landasan Dalil Utama") harus tetap tampil utuh'
+  );
+  assert.ok(
+    renderedHtml.includes('Pokok Masalah'),
+    'Judul "Pokok Masalah" harus tetap tampil'
+  );
+  assert.ok(
+    renderedHtml.includes('Pandangan Para Ulama'),
+    'Judul "Pandangan Para Ulama" harus tetap tampil'
+  );
+
+  // 4. Verifikasi bagian utama tetap mempertahankan nomor bagian (1 dan 2) serta label bagian ("Jawaban Ringkas", "Jawaban Mendetail")
+  assert.ok(renderedHtml.includes('Jawaban Ringkas'), 'Label bagian utama Jawaban Ringkas tetap ada');
+  assert.ok(renderedHtml.includes('Jawaban Mendetail'), 'Label bagian utama Jawaban Mendetail tetap ada');
+  assert.ok(renderedHtml.includes('1'), 'Nomor bagian 1 tetap ada');
+  assert.ok(renderedHtml.includes('2'), 'Nomor bagian 2 tetap ada');
+});
+
 
 

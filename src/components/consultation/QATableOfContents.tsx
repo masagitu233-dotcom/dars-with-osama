@@ -1,5 +1,5 @@
 import React from 'react';
-import { ListOrdered, ArrowDown, Hash, ChevronRight } from 'lucide-react';
+import { ListOrdered, ArrowDown, ChevronRight } from 'lucide-react';
 import { QATocMainSection, QATableOfContentsItem } from '../../utils/qaHelper';
 
 interface QATableOfContentsProps {
@@ -129,31 +129,21 @@ export const QATableOfContents: React.FC<QATableOfContentsProps> = ({
 
               {/* Heading 1 Sub-items (if any) */}
               {hasSubHeadings && (
-                <div className="pt-2 border-t border-[#171717]/10 dark:border-[#4CA7A1]/20 space-y-1.5">
-                  <div className="flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wider text-[#525856] dark:text-[#A6D6C9] px-1">
-                    <Hash className="w-3 h-3 text-[#123D32] dark:text-[#D6AD52]" />
-                    <span>Sub-bab Heading 1:</span>
-                  </div>
-
-                  <div className="space-y-1 pl-1">
-                    {sec.headings.map((h, hIdx) => (
-                      <a
-                        key={h.id}
-                        href={`#${h.id}`}
-                        onClick={(e) => handleScrollTo(e, h.id)}
-                        className="flex items-start gap-1.5 p-1.5 rounded hover:bg-[#FAF7F0] dark:hover:bg-[#0D2B36] text-[11px] font-bold text-[#171717] dark:text-[#CEFEF1] hover:text-[#123D32] dark:hover:text-[#D6AD52] transition group cursor-pointer"
-                        title={h.text}
-                      >
-                        <span className="text-[10px] font-mono font-bold text-[#123D32] dark:text-[#D6AD52] shrink-0 mt-0.5">
-                          {secIdx + 1}.{hIdx + 1}
-                        </span>
-                        <span className="line-clamp-2 leading-snug group-hover:underline">
-                          {h.text}
-                        </span>
-                        <ChevronRight className="w-3 h-3 opacity-40 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all text-[#123D32] dark:text-[#4CA7A1] shrink-0 ml-auto mt-0.5" />
-                      </a>
-                    ))}
-                  </div>
+                <div className="pt-2 border-t border-[#171717]/10 dark:border-[#4CA7A1]/20 space-y-1">
+                  {sec.headings.map((h) => (
+                    <a
+                      key={h.id}
+                      href={`#${h.id}`}
+                      onClick={(e) => handleScrollTo(e, h.id)}
+                      className="flex items-start justify-between gap-2 p-1.5 rounded hover:bg-[#FAF7F0] dark:hover:bg-[#0D2B36] text-[11px] font-bold text-[#171717] dark:text-[#CEFEF1] hover:text-[#123D32] dark:hover:text-[#D6AD52] transition group cursor-pointer"
+                      title={h.text}
+                    >
+                      <span className="line-clamp-2 leading-snug group-hover:underline">
+                        {h.text}
+                      </span>
+                      <ChevronRight className="w-3 h-3 opacity-40 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all text-[#123D32] dark:text-[#4CA7A1] shrink-0 ml-auto mt-0.5" />
+                    </a>
+                  ))}
                 </div>
               )}
             </div>
