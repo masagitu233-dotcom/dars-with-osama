@@ -22,6 +22,10 @@ import { ReadingFontControls, useReadingFontSize } from '../common/ReadingFontCo
 import { ResilientGoogleDriveImage } from '../common/ResilientGoogleDriveImage';
 import { ArticleTableOfContents } from './ArticleTableOfContents';
 import { injectHeadingIdsIntoHtml } from '../../utils/tableOfContentsHelper';
+import {
+  prepareArticleSpeechContent,
+  clearAllReadingHighlights
+} from '../../utils/articleSpeechSync';
 import { MobileCarousel } from '../common/MobileCarousel';
 import {
   normalizeArticleHtmlImages,
@@ -143,13 +147,65 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
     };
   }, []);
 
-  // Automatically process article content to inject unique heading IDs and generate Table of Contents
-  const { processedHtml: processedContent, items: tocItems } = React.useMemo(() => {
+  const jumpToSentenceRef = React.useRef<((sentenceIndex: number) => void) | null>(null);
+
+  // Automatically process article content to inject unique heading IDs, Table of Contents,
+  // and non-destructive reading spans for real-time text highlight and auto-scroll synchronization
+  const {
+    preparedTitleHtml,
+    preparedTitleArHtml,
+    preparedExcerptHtml,
+    preparedBodyHtml,
+    preparedContentArHtml,
+    sentences,
+    tocItems
+  } = React.useMemo(() => {
     const raw = post.content || '';
     const sanitized = sanitizeRichTextHtml(raw);
     const normalizedImages = normalizeArticleHtmlImages(sanitized);
-    return injectHeadingIdsIntoHtml(normalizedImages);
-  }, [post.content]);
+    const withHeadings = injectHeadingIdsIntoHtml(normalizedImages);
+
+    const speechPrep = prepareArticleSpeechContent(
+      post.title || '',
+      post.excerpt || '',
+      withHeadings.processedHtml,
+      {
+        titleAr: post.titleAr,
+        contentArHtml: post.contentAr
+      }
+    );
+
+    return {
+      preparedTitleHtml: speechPrep.preparedTitleHtml,
+      preparedTitleArHtml: speechPrep.preparedTitleArHtml,
+      preparedExcerptHtml: speechPrep.preparedExcerptHtml,
+      preparedBodyHtml: speechPrep.preparedBodyHtml,
+      preparedContentArHtml: speechPrep.preparedContentArHtml,
+      sentences: speechPrep.sentences,
+      tocItems: withHeadings.items
+    };
+  }, [post.content, post.title, post.excerpt, post.titleAr, post.contentAr]);
+
+  const handleArticleTextClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    const sentenceEl = target.closest('[data-sentence-idx]') as HTMLElement | null;
+    if (sentenceEl && jumpToSentenceRef.current) {
+      const idxStr = sentenceEl.getAttribute('data-sentence-idx');
+      if (idxStr !== null) {
+        const sIdx = parseInt(idxStr, 10);
+        if (!isNaN(sIdx)) {
+          jumpToSentenceRef.current(sIdx);
+        }
+      }
+    }
+  };
+
+  // Clean up any temporary reading highlights when leaving or switching articles
+  useEffect(() => {
+    return () => {
+      clearAllReadingHighlights();
+    };
+  }, [post.id]);
 
   // Handle deep-link anchor scroll on load or refresh (e.g. url#heading-id)
   useEffect(() => {
@@ -342,24 +398,30 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
 
           <h1
             className="text-2xl sm:text-3xl lg:text-4xl font-bold text-[#6C151E] leading-tight font-serif tracking-tight"
-            dangerouslySetInnerHTML={{ __html: autoWrapArabicText(post.title) }}
+            dangerouslySetInnerHTML={{ __html: preparedTitleHtml }}
           />
 
           {post.titleAr && (
-            <p className="font-amiri text-xl sm:text-2xl text-[#0F3D3A] font-bold leading-[2.0]" dir="rtl">
-              {post.titleAr}
-            </p>
+            <p
+              className="font-amiri text-xl sm:text-2xl text-[#0F3D3A] font-bold leading-[2.0]"
+              dir="rtl"
+              dangerouslySetInnerHTML={{ __html: preparedTitleArHtml || post.titleAr }}
+            />
           )}
 
           <p
             className="reading-scalable-excerpt text-[#0F3D3A] border-2 border-[#171717] border-l-4 border-l-[#6C151E] pl-3 sm:pl-4 py-2.5 pr-3 bg-[#FAF7F0] rounded-md font-medium"
-            dangerouslySetInnerHTML={{ __html: autoWrapArabicText(post.excerpt) }}
+            dangerouslySetInnerHTML={{ __html: preparedExcerptHtml }}
           />
         </div>
 
         {/* AUDIO READING PLAYER (Hanya tampil jika diaktifkan admin) */}
         {post.audioConfig?.enabled && (
-          <ArticleAudioPlayer post={post} />
+          <ArticleAudioPlayer
+            post={post}
+            sentences={sentences}
+            onJumpToSentenceRef={jumpToSentenceRef}
+          />
         )}
 
         {/* COVER IMAGE */}
@@ -388,13 +450,14 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
           <ArticleTableOfContents items={tocItems} />
         )}
 
-        {/* MAIN BODY HTML CONTENT — Calm reading zone */}
+        {/* MAIN BODY HTML CONTENT — Calm reading zone with real-time text highlight */}
         <div
           ref={contentBodyRef}
           data-testid="article-body-content"
-          className="prose dark:prose-invert max-w-none sm:max-w-[68ch] mx-auto text-[#171717] dark:text-[#CEFEF1] leading-relaxed space-y-3.5 sm:space-y-4 font-sans blog-content"
+          className="prose dark:prose-invert max-w-none sm:max-w-[68ch] mx-auto text-[#171717] dark:text-[#CEFEF1] leading-relaxed space-y-3.5 sm:space-y-4 font-sans blog-content cursor-pointer"
+          onClick={handleArticleTextClick}
           dangerouslySetInnerHTML={{
-            __html: autoWrapArabicText(processedContent)
+            __html: preparedBodyHtml
           }}
         />
 
@@ -404,7 +467,7 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
             className="p-4 sm:p-6 bg-[#FAF7F0] dark:bg-[#0D2B36] border-2 border-[#171717] dark:border-[#4CA7A1] rounded-md space-y-3 font-amiri text-right reading-scalable-arabic text-[#171717] dark:text-[#CEFEF1]"
             dir="rtl"
           >
-            <div dangerouslySetInnerHTML={{ __html: post.contentAr }} />
+            <div dangerouslySetInnerHTML={{ __html: preparedContentArHtml || post.contentAr }} />
           </div>
         )}
 

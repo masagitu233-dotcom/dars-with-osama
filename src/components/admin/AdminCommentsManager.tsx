@@ -81,13 +81,13 @@ export const AdminCommentsManager: React.FC<AdminCommentsManagerProps> = ({
       setComments(prev =>
         prev.map(c => (c.id === comment.id ? { ...c, status: newStatus, moderatedAt: new Date().toISOString(), moderatedBy: adminName } : c))
       );
-      const actionText = newStatus === 'approved' ? 'disetujui dan tampil publik' : 'ditolak';
+      const actionText = newStatus === 'approved' ? 'disetujui dan tampil publik di Cloud Firebase' : 'ditolak di Cloud Firebase';
       setFeedback({
         type: 'success',
         text: `Komentar dari "${comment.authorName}" berhasil ${actionText}.`
       });
       if (showToast) {
-        showToast(`Komentar telah di-${newStatus === 'approved' ? 'setujui' : 'tolak'}.`);
+        showToast(`Komentar telah di-${newStatus === 'approved' ? 'setujui' : 'tolak'} (Cloud Firebase).`);
       }
     } catch (err: any) {
       setFeedback({
@@ -108,10 +108,10 @@ export const AdminCommentsManager: React.FC<AdminCommentsManagerProps> = ({
       setComments(prev => prev.filter(c => c.id !== commentToDelete.id));
       setFeedback({
         type: 'success',
-        text: `Komentar dari "${commentToDelete.authorName}" berhasil dihapus secara permanen.`
+        text: `Komentar dari "${commentToDelete.authorName}" berhasil dihapus secara permanen dari Cloud Firebase.`
       });
       if (showToast) {
-        showToast('Komentar berhasil dihapus.');
+        showToast('Komentar berhasil dihapus dari Cloud Firebase.');
       }
       setCommentToDelete(null);
     } catch (err: any) {

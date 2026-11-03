@@ -158,7 +158,7 @@ export const AdminConsultationManager: React.FC<AdminConsultationManagerProps> =
         }).catch(err => console.warn('QA notification notice:', err));
       }
 
-      setToastMessage('Balasan berhasil dikirim kepada siswa!');
+      setToastMessage('Balasan berhasil disimpan ke Cloud Firebase dan dikirim kepada siswa!');
       await loadConsultations();
       onConsultationUpdated?.();
       setSelectedConsultation((prev) =>
@@ -191,8 +191,8 @@ export const AdminConsultationManager: React.FC<AdminConsultationManagerProps> =
       await togglePublishConsultation(item.id, nextState);
       setToastMessage(
         nextState
-          ? 'Pertanyaan berhasil dipublikasikan di Halaman Q&A Publik!'
-          : 'Pertanyaan berhasil disembunyikan dari Halaman Q&A Publik.'
+          ? 'Pertanyaan berhasil dipublikasikan ke Cloud Firebase (Halaman Q&A Publik)!'
+          : 'Pertanyaan berhasil disembunyikan di Cloud Firebase.'
       );
       await loadConsultations();
       onConsultationUpdated?.();
@@ -210,7 +210,7 @@ export const AdminConsultationManager: React.FC<AdminConsultationManagerProps> =
     setActionLoading(`status-${item.id}`);
     try {
       await updateConsultationStatus(item.id, newStatus);
-      setToastMessage(`Status konsultasi diperbarui menjadi ${newStatus}.`);
+      setToastMessage(`Status konsultasi berhasil diperbarui menjadi ${newStatus} di Cloud Firebase.`);
       await loadConsultations();
       onConsultationUpdated?.();
       if (selectedConsultation?.id === item.id) {

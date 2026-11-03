@@ -586,7 +586,7 @@ export const AdminDashboard: React.FC<{
         description: editingCategory.description || '',
         order: Number(editingCategory.order) || 1
       });
-      showStatus('success', 'Bab / Modul berhasil disimpan.');
+      showStatus('success', `Bab / Modul "${editingCategory.name}" berhasil disimpan ke Cloud Firebase.`);
       setEditingCategory(null);
       await loadAllAdminData();
       onRefreshData();
@@ -606,7 +606,7 @@ export const AdminDashboard: React.FC<{
         setConfirmDialog(prev => ({ ...prev, loading: true }));
         try {
           await deleteCategory(cat.id);
-          showStatus('success', `Bab / Modul "${cat.name}" berhasil dihapus.`);
+          showStatus('success', `Bab / Modul "${cat.name}" berhasil dihapus dari Cloud Firebase.`);
           await loadAllAdminData();
           onRefreshData();
           setConfirmDialog(prev => ({ ...prev, isOpen: false, loading: false }));
@@ -646,7 +646,7 @@ export const AdminDashboard: React.FC<{
         totalDuration: editingCourse.totalDuration || '5 Sesi',
         order: Number(editingCourse.order) || 1
       });
-      showStatus('success', 'Mata Pelajaran berhasil disimpan.');
+      showStatus('success', `Mata Pelajaran "${editingCourse.title}" berhasil disimpan ke Cloud Firebase.`);
       setEditingCourse(null);
       await loadAllAdminData();
       onRefreshData();
@@ -728,7 +728,7 @@ export const AdminDashboard: React.FC<{
         isPublished: editingQuiz.isPublished ?? true,
         questions: editingQuiz.questions || []
       });
-      showStatus('success', 'Kuis evaluasi berhasil disimpan.');
+      showStatus('success', `Kuis evaluasi "${editingQuiz.title}" berhasil disimpan ke Cloud Firebase.`);
       setEditingQuiz(null);
       await loadAllAdminData();
       onRefreshData();
@@ -742,13 +742,13 @@ export const AdminDashboard: React.FC<{
       isOpen: true,
       title: 'Hapus Kuis Evaluasi',
       itemName: `${quiz.title} (ID: ${quiz.id})`,
-      message: 'Kuis evaluasi ini dan seluruh butir pertanyaan di dalamnya akan dihapus permanen.',
+      message: 'Kuis evaluasi ini dan seluruh butir pertanyaan di dalamnya akan dihapus permanen dari Cloud Firestore.',
       loading: false,
       onConfirm: async () => {
         setConfirmDialog(prev => ({ ...prev, loading: true }));
         try {
           await deleteQuiz(quiz.id);
-          showStatus('success', `Kuis "${quiz.title}" berhasil dihapus.`);
+          showStatus('success', `Kuis "${quiz.title}" berhasil dihapus dari Cloud Firebase.`);
           await loadAllAdminData();
           onRefreshData();
           setConfirmDialog(prev => ({ ...prev, isOpen: false, loading: false }));

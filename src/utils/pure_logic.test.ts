@@ -955,7 +955,7 @@ test('Case 29: extractGoogleDriveFileId dan resolveAudioSourceCandidates menanga
   assert.equal(resolved.candidates.length, 3);
   assert.equal(resolved.candidates[0].label, 'proxy');
   assert.equal(resolved.candidates[1].label, 'gdrive-cors');
-  assert.equal(resolved.candidates[1].useCrossOrigin, true);
+  assert.equal(resolved.candidates[1].useCrossOrigin, false);
 
   // 2. Variasi format URL Google Drive lainnya (/open?id=, /uc?id=, /file/u/0/d/, drive.usercontent.google.com)
   assert.equal(
@@ -3504,6 +3504,616 @@ test('Case 87: emailTemplateHelper memvalidasi penyaringan preferensi siswa, pem
 
   assert.ok(plainTextTemplate.includes("Assalamu'alaikum"), 'Plain text email mengandung salam');
   assert.ok(plainTextTemplate.includes('Dars with Osama'), 'Plain text email mengandung identitas Dars with Osama');
+});
+
+// Case 88: articleSpeechSync - Real-time highlight synchronization, non-destructive markup, and auto-scroll logic
+test('Case 88: articleSpeechSync prepares synchronized sentence and word units without breaking HTML or Arabic text', async () => {
+  const { prepareArticleSpeechContent } = await import('./articleSpeechSync.js');
+
+  const title = 'Pentingnya Menuntut Ilmu Syar\'i';
+  const excerpt = 'Ilmu mendahului ucapan dan perbuatan. Simak penjelasan ringkas berikut ini.';
+  const bodyHtml = `
+    <h2>Keutamaan Ilmu</h2>
+    <p>Nabi Muhammad SAW bersabda dalam hadits riwayat Bukhari tentang <strong>kebaikan agama</strong>.</p>
+    <p>Beliau bersabda: <span class="font-amiri inline-arabic" dir="rtl" lang="ar">مَنْ يُرِدِ اللَّهُ بِهِ خَيْرًا يُفَقِّهْهُ فِي الدِّينِ</span> yang artinya Allah akan pahamkan agamanya.</p>
+    <ul>
+      <li>Syarat pertama: <a href="https://example.com/niat">Ikhlas karena Allah semata</a></li>
+      <li>Syarat kedua: Mengikuti tuntunan Rasulullah SAW</li>
+    </ul>
+  `;
+
+  const result = prepareArticleSpeechContent(title, excerpt, bodyHtml, { includeHeader: true });
+
+  // 1. Validasi sentences yang dihasilkan
+  assert.ok(Array.isArray(result.sentences));
+  assert.ok(result.sentences.length >= 4, `Jumlah kalimat harus minimal 4, didapat: ${result.sentences.length}`);
+
+  // 2. Kalimat pertama harus Title
+  const titleSentence = result.sentences[0];
+  assert.equal(titleSentence.isTitle, true);
+  assert.ok(titleSentence.text.includes('Pentingnya Menuntut'));
+  assert.ok(titleSentence.words.length >= 4);
+  assert.ok(result.preparedTitleHtml.includes('Pentingnya Menuntut'));
+  assert.equal(result.preparedTitleHtml.includes('class="dars-word"'), false);
+
+  // 3. Excerpt terbagi menjadi kalimat dan berpenanda isExcerpt
+  const excerptSentence = result.sentences[1];
+  assert.equal(excerptSentence.isExcerpt, true);
+  assert.ok(result.preparedExcerptHtml.includes('Ilmu mendahului ucapan'));
+  assert.equal(result.preparedExcerptHtml.includes('class="dars-word"'), false);
+
+  // 4. Struktur HTML asli tidak rusak (h2, strong, a, ul, li tetap ada)
+  assert.ok(result.preparedBodyHtml.includes('<h2>'));
+  assert.ok(result.preparedBodyHtml.includes('<strong>'));
+  assert.ok(result.preparedBodyHtml.includes('<a href="https://example.com/niat">'));
+  assert.ok(result.preparedBodyHtml.includes('<ul>'));
+  assert.ok(result.preparedBodyHtml.includes('<li>'));
+
+  // 5. Teks Arab dan harakat serta atribut RTL tetap terjaga utuh
+  assert.ok(result.preparedBodyHtml.includes('مَنْ يُرِدِ اللَّهُ بِهِ خَيْرًا يُفَقِّهْهُ فِي الدِّينِ'));
+  assert.ok(result.preparedBodyHtml.includes('font-amiri'));
+
+  // 6. Setiap kata memiliki ID unik dan char boundary yang valid
+  for (const s of result.sentences) {
+    assert.ok(s.sentenceId.startsWith('dars-s-'));
+    assert.ok(s.spokenText.length > 0);
+    for (const w of s.words) {
+      assert.ok(w.wordId.startsWith('dars-w-'));
+      assert.ok(w.charEnd >= w.charStart);
+    }
+  }
+
+  // 7. Total kata dihitung secara akurat
+  assert.ok(result.totalWords > 20);
+});
+
+// Case 89: Google Drive Audio Helper, MP3/WAV Format Support, and Diagnostic Messaging
+test('Case 89: Google Drive audio resolution, MP3/WAV format detection, and precise error diagnostics', async () => {
+  const {
+    extractGoogleDriveFileId,
+    detectAudioFormatFromUrl,
+    isAudioFormatSupportedByBrowser,
+    resolveAudioSourceCandidates,
+    describeAudioPlaybackError,
+    isGoogleDriveFolderUrl
+  } = await import('./articleAudioHelper.js');
+
+  // 1. Validasi Ekstraksi File ID Google Drive dari berbagai variasi tautan
+  const testLinks = [
+    { url: 'https://drive.google.com/file/d/1A2B3C4D5E6F7G8H9I0J/view?usp=sharing', expectedId: '1A2B3C4D5E6F7G8H9I0J' },
+    { url: 'https://drive.google.com/uc?id=1A2B3C4D5E6F7G8H9I0J&export=download', expectedId: '1A2B3C4D5E6F7G8H9I0J' },
+    { url: 'https://drive.google.com/open?id=1A2B3C4D5E6F7G8H9I0J', expectedId: '1A2B3C4D5E6F7G8H9I0J' },
+    { url: 'https://drive.usercontent.google.com/download?id=1A2B3C4D5E6F7G8H9I0J&confirm=t', expectedId: '1A2B3C4D5E6F7G8H9I0J' },
+    { url: 'https://docs.google.com/file/d/1A2B3C4D5E6F7G8H9I0J/edit', expectedId: '1A2B3C4D5E6F7G8H9I0J' },
+  ];
+
+  for (const item of testLinks) {
+    const id = extractGoogleDriveFileId(item.url);
+    assert.equal(id, item.expectedId, `ID harus cocok untuk ${item.url}`);
+  }
+
+  // Tautan folder Google Drive tidak boleh dianggap file ID
+  const folderLink = 'https://drive.google.com/drive/folders/1XYZ1234567890FolderId';
+  assert.equal(isGoogleDriveFolderUrl(folderLink), true);
+  const resolvedFolder = resolveAudioSourceCandidates(folderLink);
+  assert.equal(resolvedFolder.isGoogleDriveFolder, true);
+
+  // 2. Deteksi Format Audio (MP3 dan WAV)
+  assert.equal(detectAudioFormatFromUrl('https://example.com/recording.mp3'), 'mp3');
+  assert.equal(detectAudioFormatFromUrl('https://example.com/audio.WAV?token=abc'), 'wav');
+  assert.equal(detectAudioFormatFromUrl('https://example.com/kajian.m4a'), 'm4a');
+  assert.equal(detectAudioFormatFromUrl('https://example.com/tilawah.ogg'), 'ogg');
+  assert.equal(detectAudioFormatFromUrl('https://drive.google.com/file/d/12345/view'), 'unknown');
+
+  // Dukungan browser terhadap MP3 dan WAV
+  const mp3Support = isAudioFormatSupportedByBrowser('mp3');
+  assert.equal(mp3Support.supported, true);
+  assert.ok(mp3Support.detail.length > 0);
+
+  const wavSupport = isAudioFormatSupportedByBrowser('wav');
+  assert.equal(wavSupport.supported, true);
+  assert.ok(wavSupport.detail.length > 0);
+
+  // 3. Resolusi Kandidat Sumber Audio Google Drive
+  const resolvedGDrive = resolveAudioSourceCandidates('https://drive.google.com/file/d/1A2B3C4D5E/view?usp=sharing');
+  assert.equal(resolvedGDrive.isGoogleDrive, true);
+  assert.equal(resolvedGDrive.fileId, '1A2B3C4D5E');
+  assert.ok(resolvedGDrive.primaryUrl.includes('/api/gdrive-audio?id=1A2B3C4D5E'));
+  assert.equal(resolvedGDrive.candidates.length, 3);
+  // Verifikasi useCrossOrigin adalah false untuk mencegah pemblokiran CORP browser
+  assert.equal(resolvedGDrive.candidates[0].useCrossOrigin, false);
+  assert.equal(resolvedGDrive.candidates[1].useCrossOrigin, false);
+
+  // 4. Resolusi Audio URL Langsung (Non-Google Drive)
+  const resolvedDirect = resolveAudioSourceCandidates('https://storage.googleapis.com/bucket/dars-lesson.wav');
+  assert.equal(resolvedDirect.isGoogleDrive, false);
+  assert.equal(resolvedDirect.detectedFormat, 'wav');
+  assert.equal(resolvedDirect.primaryUrl, 'https://storage.googleapis.com/bucket/dars-lesson.wav');
+
+  // 5. Diagnostik Pesan Kesalahan Non-Defensif (describeAudioPlaybackError)
+  // Pesan server spesifik harus langsung diprioritaskan
+  const customServerMsg = describeAudioPlaybackError({
+    isGoogleDrive: true,
+    fileId: '123',
+    serverMessage: 'Ukuran berkas audio terlalu besar atau kuota Google Drive terlampaui.'
+  });
+  assert.equal(customServerMsg, 'Ukuran berkas audio terlalu besar atau kuota Google Drive terlampaui.');
+
+  // Codec WAV non-PCM pada browser (mediaErrorCode = 4)
+  const wavCodecMsg = describeAudioPlaybackError({
+    isGoogleDrive: true,
+    fileId: '123',
+    detectedFormat: 'wav',
+    mediaErrorCode: 4
+  });
+  assert.ok(wavCodecMsg.includes('Linear PCM'), 'WAV error harus menyarankan format Linear PCM');
+  assert.ok(!wavCodecMsg.includes('Pastikan akses umum berkas telah diatur'), 'Tidak boleh menuduh hak akses untuk error codec');
+
+  // Decode error MP3 (mediaErrorCode = 4)
+  const mp3DecodeMsg = describeAudioPlaybackError({
+    isGoogleDrive: true,
+    fileId: '123',
+    detectedFormat: 'mp3',
+    mediaErrorCode: 4
+  });
+  assert.ok(mp3DecodeMsg.includes('MPEG Audio Layer 3'), 'MP3 error harus menyebut MPEG Audio Layer 3');
+
+  // Network interruption (mediaErrorCode = 2)
+  const networkErrorMsg = describeAudioPlaybackError({
+    isGoogleDrive: true,
+    fileId: '123',
+    mediaErrorCode: 2
+  });
+  assert.ok(networkErrorMsg.includes('gangguan jaringan'), 'Media error 2 harus mendiagnosis gangguan jaringan');
+
+  // 6. Validasi Logika Bypass Token Konfirmasi Unduhan Google Drive
+  const sampleConfirmationHtml = `
+    <form id="download-form" action="/download" method="get">
+      <input type="hidden" name="id" value="1A2B3C4D5E">
+      <input type="hidden" name="export" value="download">
+      <input type="hidden" name="confirm" value="t_abc123XYZ">
+      <input type="hidden" name="uuid" value="uuid-889900-aabbcc">
+      <a id="uc-download-link" href="/download?id=1A2B3C4D5E&confirm=t_abc123XYZ">Unduh berkas tetap</a>
+    </form>
+  `;
+
+  const confirmMatch = sampleConfirmationHtml.match(/name="confirm"\s+value="([^"]+)"/i) ||
+                       sampleConfirmationHtml.match(/confirm=([0-9A-Za-z_\-]+)/i);
+  assert.ok(confirmMatch, 'Harus mendeteksi token konfirmasi unduhan');
+  assert.equal(confirmMatch[1], 't_abc123XYZ');
+
+  const uuidMatch = sampleConfirmationHtml.match(/name="uuid"\s+value="([^"]+)"/i);
+  assert.ok(uuidMatch, 'Harus mendeteksi UUID konfirmasi');
+  assert.equal(uuidMatch[1], 'uuid-889900-aabbcc');
+});
+
+// Case 90: Audit Codec Audio WAV, Parsing Binary RIFF Header, dan Diagnostik Kompatibilitas Peramban
+test('Case 90: parseWavHeader mengaudit codec audio WAV dari binary header dan mendiagnosis ketidakcocokan codec secara objektif', async () => {
+  const { parseWavHeader, describeAudioPlaybackError } = await import('./articleAudioHelper.js');
+
+  // Helper pembuat buffer biner WAV sintetis standar RIFF/WAVE
+  function createSyntheticWav(options: {
+    formatCode: number;
+    channels: number;
+    sampleRate: number;
+    bitsPerSample: number;
+  }): ArrayBuffer {
+    const buffer = new ArrayBuffer(44);
+    const view = new DataView(buffer);
+    // 'RIFF'
+    view.setUint8(0, 0x52); view.setUint8(1, 0x49); view.setUint8(2, 0x46); view.setUint8(3, 0x46);
+    view.setUint32(4, 36, true);
+    // 'WAVE'
+    view.setUint8(8, 0x57); view.setUint8(9, 0x41); view.setUint8(10, 0x56); view.setUint8(11, 0x45);
+    // 'fmt '
+    view.setUint8(12, 0x66); view.setUint8(13, 0x6d); view.setUint8(14, 0x74); view.setUint8(15, 0x20);
+    view.setUint32(16, 16, true);
+    view.setUint16(20, options.formatCode, true);
+    view.setUint16(22, options.channels, true);
+    view.setUint32(24, options.sampleRate, true);
+    const blockAlign = Math.max(1, Math.floor((options.channels * options.bitsPerSample) / 8));
+    view.setUint32(28, options.sampleRate * blockAlign, true);
+    view.setUint16(32, blockAlign, true);
+    view.setUint16(34, options.bitsPerSample, true);
+    // 'data'
+    view.setUint8(36, 0x64); view.setUint8(37, 0x61); view.setUint8(38, 0x74); view.setUint8(39, 0x61);
+    view.setUint32(40, 0, true);
+    return buffer;
+  }
+
+  // 1. Uji WAV Linear PCM 16-bit integer standar (44,100 Hz, Stereo) -> Kompatibel
+  const pcm16Stereo = createSyntheticWav({ formatCode: 1, channels: 2, sampleRate: 44100, bitsPerSample: 16 });
+  const pcm16Result = parseWavHeader(pcm16Stereo);
+  assert.equal(pcm16Result.validWav, true);
+  assert.equal(pcm16Result.formatCode, 1);
+  assert.equal(pcm16Result.formatName, 'Linear PCM (Integer PCM)');
+  assert.equal(pcm16Result.isLinearPcm, true);
+  assert.equal(pcm16Result.isSupportedByBrowser, true);
+  assert.equal(pcm16Result.numChannels, 2);
+  assert.equal(pcm16Result.channelLayout, 'Stereo');
+  assert.equal(pcm16Result.sampleRate, 44100);
+  assert.equal(pcm16Result.bitsPerSample, 16);
+  assert.ok(pcm16Result.diagnosticSummary.includes('Kompatibel dengan peramban'));
+
+  // 2. Uji WAV IEEE Float 32-bit (48,000 Hz, Mono) -> Kompatibel
+  const float32Mono = createSyntheticWav({ formatCode: 3, channels: 1, sampleRate: 48000, bitsPerSample: 32 });
+  const floatResult = parseWavHeader(float32Mono);
+  assert.equal(floatResult.validWav, true);
+  assert.equal(floatResult.formatCode, 3);
+  assert.equal(floatResult.isIeeeFloat, true);
+  assert.equal(floatResult.isSupportedByBrowser, true);
+  assert.equal(floatResult.numChannels, 1);
+  assert.equal(floatResult.channelLayout, 'Mono');
+  assert.equal(floatResult.sampleRate, 48000);
+  assert.equal(floatResult.bitsPerSample, 32);
+
+  // 3. Uji Codec WAV Tidak Kompatibel: Microsoft ADPCM (Format ID: 2, 22,050 Hz, Mono, 4-bit)
+  const adpcm = createSyntheticWav({ formatCode: 2, channels: 1, sampleRate: 22050, bitsPerSample: 4 });
+  const adpcmResult = parseWavHeader(adpcm);
+  assert.equal(adpcmResult.validWav, true);
+  assert.equal(adpcmResult.formatCode, 2);
+  assert.equal(adpcmResult.formatName, 'Microsoft ADPCM');
+  assert.equal(adpcmResult.isSupportedByBrowser, false);
+  assert.equal(adpcmResult.numChannels, 1);
+  assert.equal(adpcmResult.channelLayout, 'Mono');
+  assert.equal(adpcmResult.bitsPerSample, 4);
+  assert.ok(adpcmResult.unsupportedReason?.includes('Microsoft ADPCM'));
+  assert.ok(adpcmResult.diagnosticSummary.includes('Tidak didukung peramban'));
+
+  // Pesan diagnostik describeAudioPlaybackError untuk Microsoft ADPCM
+  const adpcmDiag = describeAudioPlaybackError({
+    isGoogleDrive: true,
+    fileId: 'adpcm123',
+    detectedFormat: 'wav',
+    mediaErrorCode: 4,
+    wavInfo: adpcmResult
+  });
+  assert.ok(adpcmDiag.includes('Microsoft ADPCM (Format ID: 2)'));
+  assert.ok(adpcmDiag.includes('22,050 Hz'));
+  assert.ok(adpcmDiag.includes('4-bit'));
+  assert.ok(adpcmDiag.includes('Mono'));
+  assert.ok(adpcmDiag.includes('Linear PCM'));
+  // Memastikan tidak menuduh file rusak atau hak akses salah
+  assert.ok(!adpcmDiag.includes('rusak'));
+  assert.ok(!adpcmDiag.includes('Anyone with the link'));
+
+  // 4. Uji Codec WAV Tidak Kompatibel: IMA / DVI ADPCM (Format ID: 17, 16,000 Hz, Mono, 4-bit)
+  const imaAdpcm = createSyntheticWav({ formatCode: 17, channels: 1, sampleRate: 16000, bitsPerSample: 4 });
+  const imaResult = parseWavHeader(imaAdpcm);
+  assert.equal(imaResult.validWav, true);
+  assert.equal(imaResult.formatCode, 17);
+  assert.equal(imaResult.formatName, 'IMA / DVI ADPCM');
+  assert.equal(imaResult.isSupportedByBrowser, false);
+  assert.ok(imaResult.unsupportedReason?.includes('IMA ADPCM'));
+
+  // 5. Uji Codec WAV Tidak Kompatibel: GSM 6.10 (Format ID: 49, 8,000 Hz, Mono)
+  const gsmWav = createSyntheticWav({ formatCode: 49, channels: 1, sampleRate: 8000, bitsPerSample: 16 });
+  const gsmResult = parseWavHeader(gsmWav);
+  assert.equal(gsmResult.validWav, true);
+  assert.equal(gsmResult.formatCode, 49);
+  assert.equal(gsmResult.formatName, 'GSM 6.10');
+  assert.equal(gsmResult.isSupportedByBrowser, false);
+  assert.ok(gsmResult.unsupportedReason?.includes('GSM 6.10'));
+
+  // 6. Uji Kontainer Non-WAV (bukan RIFF/WAVE, misalnya string HTML atau data MP3)
+  const nonWavBuffer = new TextEncoder().encode('<!DOCTYPE html><html><body>Error</body></html>').buffer;
+  const nonWavResult = parseWavHeader(nonWavBuffer);
+  assert.equal(nonWavResult.validWav, false);
+  assert.equal(nonWavResult.formatName, 'Bukan RIFF/WAVE');
+
+  // 7. Uji Data Terlalu Pendek / Terpotong (< 12 byte)
+  const truncatedBuffer = new ArrayBuffer(8);
+  const truncatedResult = parseWavHeader(truncatedBuffer);
+  assert.equal(truncatedResult.validWav, false);
+  assert.ok(truncatedResult.diagnosticSummary.includes('terlalu pendek'));
+
+  // 8. Dukungan MP3 Tetap Terjaga Utuh Tanpa Terpengaruh Logika WAV
+  const mp3ErrorDiag = describeAudioPlaybackError({
+    isGoogleDrive: true,
+    fileId: 'mp3file123',
+    detectedFormat: 'mp3',
+    mediaErrorCode: 4
+  });
+  assert.ok(mp3ErrorDiag.includes('MPEG Audio Layer 3'));
+  assert.ok(!mp3ErrorDiag.includes('Linear PCM'));
+});
+
+// Case 91: Sinkronisasi Presisi Audio dan Highlight Teks, Pemetaan Karakter 1-to-1, dan Pencegahan Loncatan Highlight
+test('Case 91: Sinkronisasi presisi audio dan highlight teks artikel Dars with Osama', async () => {
+  const {
+    prepareArticleSpeechContent,
+    buildSpokenSentence,
+    findSpokenWordByCharIndex,
+    findSentenceByProgressRatio
+  } = await import('./articleSpeechSync.js');
+
+  const title = 'Adab Menuntut Ilmu Menurut Kitab Ta\'limul Muta\'allim';
+  const excerpt = 'Penuntut ilmu hendaknya menghormati guru dan kitab. Simak adab-adab pokok berikut ini.';
+  const bodyHtml = `
+    <p>Para ulama salaf senantiasa mendahulukan adab sebelum mempelajari cabang-cabang ilmu syariat.</p>
+    <blockquote>
+      <p>Imam Malik rahimahullah berkata: Pelajarilah adab sebelum engkau mempelajari ilmu.</p>
+    </blockquote>
+    <p>Nabi Muhammad SAW bersabda dalam hadits riwayat Bukhari mengenai keutamaan ilmu.</p>
+    <p>Beliau bersabda: <span class="font-amiri inline-arabic" dir="rtl" lang="ar">طَلَبُ الْعِلْمِ فَرِيضَةٌ عَلَى كُلِّ مُسْلِمٍ</span> yang maknanya menuntut ilmu adalah kewajiban.</p>
+  `;
+
+  const prepared = prepareArticleSpeechContent(title, excerpt, bodyHtml, {
+    titleAr: 'آداب طالب العلم',
+    contentArHtml: '<p>الحمد لله رب العالمين والصلاة والسلام على رسول الله</p>'
+  });
+
+  // 1. Validasi Titik Awal: Audio dan Highlight SAMA-SAMA Dimulai dari Isi Artikel (Bukan Judul)
+  assert.ok(prepared.sentences.length >= 4);
+  const firstSentence = prepared.sentences[0];
+  // Kalimat pertama HARUS berasal dari isi artikel (paragraf pertama)
+  assert.ok(firstSentence.text.includes('Para ulama salaf'));
+  assert.equal(firstSentence.words[0].text, 'Para');
+  assert.equal(firstSentence.words[0].wordIndex, 0);
+  assert.equal(firstSentence.words[0].wordId, 'dars-w-0');
+
+  // Judul dan Excerpt TIDAK disorot dan TIDAK memiliki span dars-sentence / dars-word
+  assert.ok(!prepared.preparedTitleHtml.includes('dars-sentence'));
+  assert.ok(!prepared.preparedTitleHtml.includes('dars-word'));
+  assert.ok(!prepared.preparedExcerptHtml.includes('dars-sentence'));
+  assert.ok(!prepared.preparedExcerptHtml.includes('dars-word'));
+
+  // Validasi skrip audio extractArticleSpeechScript juga langsung mulai dari isi artikel
+  const { extractArticleSpeechScript } = await import('./articleAudioHelper.js');
+  const speechScript = extractArticleSpeechScript({ content: bodyHtml, title, excerpt } as any);
+  assert.ok(speechScript.startsWith('Para ulama salaf'), 'Skrip narasi audio harus mulai dari isi artikel');
+  assert.ok(!speechScript.startsWith('Adab Menuntut Ilmu'), 'Skrip narasi audio tidak boleh diawali judul artikel');
+
+  // 2. Validasi Setiap Kalimat dan Kata Memiliki Kesesuaian Karakter Presisi
+  for (const sentence of prepared.sentences) {
+    assert.ok(sentence.spokenText.length > 0);
+    assert.ok(sentence.words.length > 0);
+
+    for (const word of sentence.words) {
+      assert.ok(word.charStart >= 0);
+      assert.ok(word.charEnd > word.charStart);
+      const actualSlice = sentence.spokenText.slice(word.charStart, word.charEnd);
+      assert.equal(
+        actualSlice,
+        word.spokenText,
+        `Karakter slice pada spokenText ("${actualSlice}") harus persis sama dengan word.spokenText ("${word.spokenText}")`
+      );
+    }
+  }
+
+  // 3. Validasi findSpokenWordByCharIndex (Pencegahan Loncatan Mundur ke Kata Awal)
+  const sampleSentence = prepared.sentences[0];
+  const secondWord = sampleSentence.words[1];
+  const thirdWord = sampleSentence.words[2];
+
+  // Ketika boundary terjadi persis di awal kata kedua
+  const matchAtStart = findSpokenWordByCharIndex(sampleSentence.words, secondWord.charStart);
+  assert.equal(matchAtStart?.wordId, secondWord.wordId);
+
+  // Ketika boundary terjadi di tengah-tengah kata kedua
+  const midChar = Math.floor((secondWord.charStart + secondWord.charEnd) / 2);
+  const matchAtMid = findSpokenWordByCharIndex(sampleSentence.words, midChar);
+  assert.equal(matchAtMid?.wordId, secondWord.wordId);
+
+  // Ketika boundary terjadi di awal kata ketiga
+  const matchAtThird = findSpokenWordByCharIndex(sampleSentence.words, thirdWord.charStart);
+  assert.equal(matchAtThird?.wordId, thirdWord.wordId);
+  // Verifikasi: Tidak boleh loncat balik ke kata ke-0!
+  assert.notEqual(matchAtThird?.wordId, sampleSentence.words[0].wordId);
+
+  // 4. Validasi findSentenceByProgressRatio untuk Audio Kustom (Google Drive MP3/WAV)
+  // Di awal durasi (0.0): Menunjuk kalimat pertama isi artikel
+  const startSync = findSentenceByProgressRatio(prepared.sentences, 0.0);
+  assert.equal(startSync?.sentenceIndex, 0);
+  assert.ok(startSync?.sentence.text.includes('Para ulama salaf'));
+
+  // Di akhir durasi (1.0): Menunjuk kalimat terakhir isi artikel
+  const endSync = findSentenceByProgressRatio(prepared.sentences, 1.0);
+  assert.equal(endSync?.sentenceIndex, prepared.sentences.length - 1);
+
+  // Di pertengahan (0.5): Menunjuk kalimat yang proporsional dengan akumulasi jumlah kata
+  const midSync = findSentenceByProgressRatio(prepared.sentences, 0.5);
+  assert.ok(midSync !== null);
+  assert.ok(midSync.sentenceIndex >= 1 && midSync.sentenceIndex < prepared.sentences.length);
+
+  // 5. Validasi Pemisahan Bahasa dan Teks Arab
+  const arabicSentence = prepared.sentences.find(s => s.lang === 'ar-SA' || s.isArabicSection);
+  assert.ok(arabicSentence, 'Harus mendeteksi kalimat bahasa Arab');
+  assert.equal(arabicSentence.lang, 'ar-SA');
+  assert.ok(arabicSentence.text.length > 0);
+
+  // 6. Validasi Teks Asli Tetap Utuh
+  assert.ok(prepared.preparedBodyHtml.includes('Para ulama salaf senantiasa'));
+});
+
+// Case 92: Fitur Auto-Scroll Mengikuti Posisi Pembacaan Audio dan Penghapusan Penuh Sorotan Teks (Highlight)
+test('Case 92: Pengguliran otomatis (auto-scroll) halus dan penghapusan total fitur highlight teks artikel', async () => {
+  const {
+    prepareArticleSpeechContent,
+    calculateArticleScrollTarget,
+    smoothScrollToArticleProgress,
+    applyActiveReadingHighlight,
+    clearAllReadingHighlights
+  } = await import('./articleSpeechSync.js');
+
+  const title = 'Adab Menuntut Ilmu Menurut Salafush Shalih';
+  const excerpt = 'Panduan penuntut ilmu dalam menjaga adab dan menghormati para guru.';
+  const bodyHtml = `
+    <p>Penuntut ilmu wajib mengikhlaskan niat semata-mata karena Allah Ta'ala.</p>
+    <p>Keikhlasan adalah pondasi diterimanya amal shalih dan ilmu yang bermanfaat.</p>
+    <p>Janganlah menuntut ilmu demi popularitas atau perdebatan yang sia-sia.</p>
+    <p>Hiasilah diri dengan sifat tawadhu' dan sabar dalam menghadapi kesulitan belajar.</p>
+    <p><span class="font-amiri" dir="rtl" lang="ar">مَنْ سَلَكَ طَرِيقًا يَلْتَمِسُ فِيهِ عِلْمًا سَهَّلَ اللَّهُ لَهُ بِهِ طَرِيقًا إِلَى الْجَنَّةِ</span></p>
+    <p>Demikianlah keutamaan yang sangat agung bagi para penuntut ilmu syar'i.</p>
+  `;
+
+  // 1. Validasi Penghapusan Highlight: preparedBodyHtml TIDAK lagi membungkus kata dengan <span class="dars-word">
+  const prep = prepareArticleSpeechContent(title, excerpt, bodyHtml);
+  assert.equal(prep.preparedBodyHtml.includes('dars-word'), false, 'Visual DOM tidak boleh mengandung elemen span dars-word');
+  assert.equal(prep.preparedBodyHtml.includes('dars-sentence-active'), false, 'Visual DOM tidak boleh mengandung class dars-sentence-active');
+  assert.equal(prep.preparedBodyHtml.includes('dars-word-active'), false, 'Visual DOM tidak boleh mengandung class dars-word-active');
+
+  // Naskah artikel asli tetap utuh 100% tanpa ada kata yang hilang
+  assert.ok(prep.preparedBodyHtml.includes('Penuntut ilmu wajib mengikhlaskan niat'));
+  assert.ok(prep.preparedBodyHtml.includes('Keikhlasan adalah pondasi'));
+  assert.ok(prep.preparedBodyHtml.includes('مَنْ سَلَكَ طَرِيقًا يَلْتَمِسُ فِيهِ عِلْمًا'));
+
+  // 2. Validasi applyActiveReadingHighlight adalah safe no-op
+  assert.doesNotThrow(() => {
+    applyActiveReadingHighlight(0, 0);
+    applyActiveReadingHighlight(2, null);
+    clearAllReadingHighlights();
+  });
+
+  // 3. Validasi Perhitungan Auto-Scroll (calculateArticleScrollTarget)
+  // Simulasi elemen DOM artikel dengan ukuran realistis
+  const mockContainer = {
+    getBoundingClientRect: () => ({
+      top: 250, // 250px dari viewport saat window.pageYOffset = 0
+      bottom: 2250,
+      left: 100,
+      right: 900,
+      width: 800,
+      height: 2000 // Tinggi 2000px (> 70% viewport)
+    })
+  } as unknown as HTMLElement;
+
+  const viewportHeight = 800;
+
+  // Di awal audio (0.0): Target berada di sekitar bagian atas artikel dengan offset kenyamanan baca (~32%)
+  const startTarget = calculateArticleScrollTarget(mockContainer, 0.0, viewportHeight);
+  assert.ok(startTarget !== null);
+  // startScrollY = 250 - (800 * 0.32) = 250 - 256 = Math.max(0, -6) = 0
+  assert.equal(startTarget, 0);
+
+  // Di pertengahan audio (0.5): Target bergerak secara proporsional ke tengah artikel
+  const midTarget = calculateArticleScrollTarget(mockContainer, 0.5, viewportHeight);
+  assert.ok(midTarget !== null);
+  assert.ok(midTarget! > startTarget!, 'Target scroll tengah harus lebih jauh dari awal');
+
+  // Di akhir audio (1.0): Target bergerak halus mendekati akhir artikel tanpa melampaui batas wajar
+  const endTarget = calculateArticleScrollTarget(mockContainer, 1.0, viewportHeight);
+  assert.ok(endTarget !== null);
+  assert.ok(endTarget! > midTarget!, 'Target scroll akhir harus lebih jauh dari tengah');
+
+  // Kemajuan posisi scroll harus monoton naik mengikuti progres audio
+  const q1 = calculateArticleScrollTarget(mockContainer, 0.25, viewportHeight)!;
+  const q2 = calculateArticleScrollTarget(mockContainer, 0.75, viewportHeight)!;
+  assert.ok(q1 < midTarget!);
+  assert.ok(midTarget! < q2);
+  assert.ok(q2 < endTarget!);
+
+  // 4. Validasi Jika Konten Singkat (Muat Penuh di Layar), Auto-Scroll Tidak Memaksa Bergerak (return null)
+  const shortContainer = {
+    getBoundingClientRect: () => ({
+      top: 100,
+      bottom: 450,
+      left: 100,
+      right: 900,
+      width: 800,
+      height: 350 // < 800 * 0.7 (560px)
+    })
+  } as unknown as HTMLElement;
+
+  const shortTarget = calculateArticleScrollTarget(shortContainer, 0.5, viewportHeight);
+  assert.equal(shortTarget, null, 'Konten pendek yang muat di layar tidak memerlukan pengguliran');
+
+  // 5. Validasi smoothScrollToArticleProgress Tidak Berbenturan Saat Pengguna Menggulir Manual
+  let scrolledTo: any = null;
+  const origWindow = globalThis.window;
+  (globalThis as any).window = {
+    pageYOffset: 100,
+    scrollTo: (opts: any) => {
+      scrolledTo = opts;
+    }
+  };
+
+  try {
+    // Saat isUserScrolling = true (pengguna sedang menyentuh layar / roda mouse): TIDAK boleh memicu scroll
+    scrolledTo = null;
+    smoothScrollToArticleProgress(600, true);
+    assert.equal(scrolledTo, null, 'Auto-scroll tidak boleh berjalan saat user sedang menggulir manual');
+
+    // Saat isUserScrolling = false dan jarak pergerakan cukup (> minDelta 35px): Scroll halus dieksekusi
+    scrolledTo = null;
+    smoothScrollToArticleProgress(600, false);
+    assert.deepEqual(scrolledTo, { top: 600, behavior: 'smooth' });
+
+    // Saat jarak di bawah deadband (misal delta hanya 10px): Diabaikan untuk mencegah jitter
+    scrolledTo = null;
+    smoothScrollToArticleProgress(110, false, undefined, { minDelta: 35 });
+    assert.equal(scrolledTo, null, 'Perubahan jarak di bawah threshold deadband diabaikan untuk mencegah jitter');
+  } finally {
+    (globalThis as any).window = origWindow;
+  }
+
+  // 6. Validasi Pengaturan Kecepatan Auto-Scroll, Label, dan LocalStorage Persistence
+  const {
+    getSavedAutoScrollSpeed,
+    saveAutoScrollSpeed,
+    getAutoScrollSpeedLabel,
+    DynamicArticleAutoScroller
+  } = await import('./articleSpeechSync.js');
+
+  // Validasi Label Kecepatan
+  assert.equal(getAutoScrollSpeedLabel(0.5), '0.5× (Sangat Lambat)');
+  assert.equal(getAutoScrollSpeedLabel(0.75), '0.75× (Santai)');
+  assert.equal(getAutoScrollSpeedLabel(1.0), '1.0× (Normal)');
+  assert.equal(getAutoScrollSpeedLabel(1.25), '1.25× (Cepat)');
+  assert.equal(getAutoScrollSpeedLabel(1.5), '1.5× (Sangat Cepat)');
+  assert.equal(getAutoScrollSpeedLabel(2.0), '2.0× (Maksimal)');
+
+  // Validasi LocalStorage Mocking
+  const mockStorage: Record<string, string> = {};
+  const origLocalStorage = (globalThis as any).localStorage;
+  (globalThis as any).localStorage = {
+    getItem: (k: string) => mockStorage[k] ?? null,
+    setItem: (k: string, v: string) => { mockStorage[k] = v; }
+  };
+
+  try {
+    // Default jika belum ada storage = 1.0
+    assert.equal(getSavedAutoScrollSpeed(), 1.0);
+
+    // Simpan kecepatan baru (misal 1.25)
+    saveAutoScrollSpeed(1.25);
+    assert.equal(getSavedAutoScrollSpeed(), 1.25);
+
+    // Batasan clamping kecepatan (0.5 hingga 2.0)
+    saveAutoScrollSpeed(0.2); // Terlalu lambat -> di-clamp ke 0.5
+    assert.equal(getSavedAutoScrollSpeed(), 0.5);
+
+    saveAutoScrollSpeed(3.5); // Terlalu cepat -> di-clamp ke 2.0
+    assert.equal(getSavedAutoScrollSpeed(), 2.0);
+  } finally {
+    (globalThis as any).localStorage = origLocalStorage;
+  }
+
+  // 7. Validasi Mesin DynamicArticleAutoScroller (Damping, Zero-Jump Pause/Resume, Single rAF)
+  const scroller = new DynamicArticleAutoScroller(1.0);
+  assert.equal(scroller.getSpeed(), 1.0);
+  assert.equal(scroller.getIsRunning(), false);
+
+  // Ubah kecepatan scroller saat aktif
+  scroller.setSpeed(1.5);
+  assert.equal(scroller.getSpeed(), 1.5);
+
+  // Set target Y dan status
+  scroller.setTargetY(500);
+  assert.equal(scroller.getTargetY(), 500);
+
+  // Uji suspensi manual pengguna
+  scroller.setUserSuspended(true);
+  assert.equal(scroller.isUserSuspended(), true);
+  scroller.setUserSuspended(false);
+  assert.equal(scroller.isUserSuspended(), false);
+
+  // Uji pause dan stop
+  scroller.pause();
+  assert.equal(scroller.getIsRunning(), false);
+  scroller.stop();
+  assert.equal(scroller.getTargetY(), null);
+  assert.equal(scroller.getIsRunning(), false);
 });
 
 

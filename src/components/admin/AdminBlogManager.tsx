@@ -19,13 +19,19 @@ import {
   Play,
   Square,
   MessageSquare,
-  Info
+  Info,
+  Loader2
 } from 'lucide-react';
 import { BlogPost } from '../../types';
 import { RichTextEditor } from './RichTextEditor';
 import { saveBlogPost, deleteBlogPost, uploadFileToStorage, deleteDummyBlogPostsFromFirestore, dispatchNotificationEmail } from '../../firebase/services';
 import { ConfirmModal } from '../common/ConfirmModal';
-import { resolveAudioSourceCandidates, describeAudioPlaybackError } from '../../utils/articleAudioHelper';
+import {
+  resolveAudioSourceCandidates,
+  describeAudioPlaybackError,
+  verifyAudioAccessibility,
+  AudioAccessibilityResult
+} from '../../utils/articleAudioHelper';
 import { sanitizeRichTextHtml } from '../../utils/richTextHelper';
 import { autoWrapArabicText } from '../../utils/arabicFontHelper';
 import { ResilientGoogleDriveImage } from '../common/ResilientGoogleDriveImage';
@@ -105,6 +111,8 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
   });
 
   const [tagInput, setTagInput] = useState('');
+  const [isCheckingAudio, setIsCheckingAudio] = useState(false);
+  const [audioCheckResult, setAudioCheckResult] = useState<AudioAccessibilityResult | null>(null);
 
   const categories = Array.from(new Set(posts.map(p => p.category).filter(Boolean)));
 
@@ -121,8 +129,33 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
 
   const modalBodyRef = React.useRef<HTMLDivElement>(null);
 
+  const handleVerifyAdminAudio = async (rawUrl: string) => {
+    if (!rawUrl) return;
+    setIsCheckingAudio(true);
+    setAudioCheckResult(null);
+    try {
+      const result = await verifyAudioAccessibility(rawUrl);
+      setAudioCheckResult(result);
+    } catch (err: any) {
+      setAudioCheckResult({
+        accessible: false,
+        statusCode: 0,
+        detectedFormat: 'unknown',
+        mimeType: '',
+        isGoogleDrive: false,
+        fileId: null,
+        canBrowserPlay: false,
+        codecDetail: 'Kesalahan jaringan',
+        errorMessage: 'Gagal menghubungi server audio: ' + (err?.message || 'Kesalahan jaringan')
+      });
+    } finally {
+      setIsCheckingAudio(false);
+    }
+  };
+
   const handleOpenAddModal = () => {
     setFeedback(null);
+    setAudioCheckResult(null);
     setFormData({
       id: undefined,
       title: '',
@@ -153,6 +186,7 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
 
   const handleOpenEditModal = (post: BlogPost) => {
     setFeedback(null);
+    setAudioCheckResult(null);
     setFormData({
       ...post,
       audioConfig: post.audioConfig
@@ -339,7 +373,7 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
       await onRefreshPosts();
       setFeedback({
         type: 'success',
-        text: `Artikel "${titleText}" berhasil disimpan sebagai ${status === 'published' ? 'Terbit (Published)' : 'Draf'}.`
+        text: `Artikel "${titleText}" berhasil disimpan ke Cloud Firebase sebagai ${status === 'published' ? 'Terbit (Published)' : 'Draf'}.`
       });
     } catch (err: any) {
       let msg = err?.message || String(err);
@@ -368,7 +402,7 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
       setPostToDelete(null);
       setFeedback({
         type: 'success',
-        text: `Artikel "${targetTitle}" berhasil dihapus secara permanen dari database.`
+        text: `Artikel "${targetTitle}" berhasil dihapus secara permanen dari Cloud Firebase.`
       });
     } catch (err: any) {
       let msg = err?.message || String(err);
@@ -1016,7 +1050,7 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
                           }`}
                         >
                           <Mic className="w-3.5 h-3.5" />
-                          <span>File Audio Rekaman (MP3)</span>
+                          <span>File Audio Rekaman (MP3 / WAV)</span>
                         </button>
                       </div>
                     </div>
@@ -1131,18 +1165,18 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
                           <div className="p-3 bg-white dark:bg-[#0B3026] border-2 border-[#171717] rounded-md flex items-start gap-2.5 text-[#171717] dark:text-[#F8F3E8]">
                             <Music className="w-4 h-4 text-[#D9AC45] shrink-0 mt-0.5" />
                             <div className="text-[11px] leading-relaxed">
-                              <strong className="text-[#06251D] dark:text-[#D9AC45]">Mode Rekaman Suara Asli (Google Drive / MP3):</strong> Masukkan tautan berbagi berkas audio dari Google Drive atau unggah berkas audio (.mp3, .m4a, .wav).
+                              <strong className="text-[#06251D] dark:text-[#D9AC45]">Mode Rekaman Suara Asli (Google Drive / MP3 / WAV):</strong> Masukkan tautan berbagi berkas audio dari Google Drive atau unggah berkas rekaman (.mp3, .wav, .m4a). Sistem mendukung audio MP3 serta WAV (Linear PCM).
                             </div>
                           </div>
 
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
                             <div className="space-y-2">
                               <label className="text-[11px] font-extrabold text-[#171717] dark:text-[#F8F3E8] block">
-                                Unggah Berkas Audio Rekaman (.mp3, .m4a, .wav):
+                                Unggah Berkas Audio Rekaman (.mp3, .wav, .m4a):
                               </label>
                               <input
                                 type="file"
-                                accept="audio/*,.mp3,.m4a,.wav,.ogg,.aac"
+                                accept="audio/*,.mp3,.wav,.m4a,.ogg,.aac"
                                 onChange={handleAudioFileUpload}
                                 disabled={uploadingAudio}
                                 className="w-full text-xs text-[#171717] dark:text-[#F8F3E8] file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-2 file:border-[#171717] file:text-xs file:font-extrabold file:bg-[#D9AC45] file:text-[#171717] cursor-pointer disabled:opacity-50"
@@ -1164,12 +1198,13 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
 
                             <div className="space-y-2">
                               <label className="text-[11px] font-extrabold text-[#171717] dark:text-[#F8F3E8] block">
-                                Tautan Google Drive Audio atau URL MP3 Langsung:
+                                Tautan Google Drive Audio atau URL MP3/WAV Langsung:
                               </label>
                               <input
                                 type="url"
                                 value={formData.audioConfig?.customAudioUrl || ''}
-                                onChange={(e) =>
+                                onChange={(e) => {
+                                  setAudioCheckResult(null);
                                   setFormData(prev => ({
                                     ...prev,
                                     audioConfig: {
@@ -1178,59 +1213,169 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
                                       mode: 'custom',
                                       customAudioUrl: e.target.value
                                     }
-                                  }))
-                                }
-                                placeholder="https://drive.google.com/file/d/.../view?usp=drive_link"
+                                  }));
+                                }}
+                                placeholder="https://drive.google.com/file/d/.../view?usp=drive_link atau https://.../audio.wav"
                                 className="nb-input w-full px-3 py-2 text-xs"
                               />
                             </div>
                           </div>
 
                           {formData.audioConfig?.customAudioUrl && (
-                            <div className="p-3 bg-white dark:bg-[#0B3026] rounded-md border-2 border-[#171717] space-y-2">
+                            <div className="p-3 bg-white dark:bg-[#0B3026] rounded-md border-2 border-[#171717] space-y-2.5">
                               <div className="flex flex-wrap items-center justify-between gap-2">
-                                <span className="text-[11px] font-extrabold text-[#171717] dark:text-[#F8F3E8] flex items-center gap-1.5">
-                                  {resolvedAdminAudio.isGoogleDrive && !resolvedAdminAudio.fileId ? (
-                                    <>
-                                      <AlertCircle className="w-3.5 h-3.5 text-[#F04438]" />
-                                      <span className="text-[#F04438]">Tautan Google Drive Tidak Valid</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <CheckCircle className="w-3.5 h-3.5 text-[#06251D] dark:text-[#D9AC45]" />
-                                      <span>
-                                        {resolvedAdminAudio.isGoogleDrive
-                                          ? `Google Drive Audio Terdeteksi (ID: ${resolvedAdminAudio.fileId})`
-                                          : 'Berkas Audio Rekaman Terpasang'}
-                                      </span>
-                                    </>
-                                  )}
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setFormData(prev => ({
-                                      ...prev,
-                                      audioConfig: {
-                                        ...(prev.audioConfig || { mode: 'custom', enabled: true }),
-                                        enabled: true,
-                                        mode: 'custom',
-                                        customAudioUrl: ''
-                                      }
-                                    }))
-                                  }
-                                  className="text-[10px] text-[#F04438] font-bold underline cursor-pointer"
-                                >
-                                  Hapus Berkas Audio
-                                </button>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-[11px] font-extrabold text-[#171717] dark:text-[#F8F3E8] flex items-center gap-1.5">
+                                    {resolvedAdminAudio.isGoogleDrive && !resolvedAdminAudio.fileId ? (
+                                      <>
+                                        <AlertCircle className="w-3.5 h-3.5 text-[#F04438]" />
+                                        <span className="text-[#F04438]">Tautan Google Drive Tidak Valid</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <CheckCircle className="w-3.5 h-3.5 text-[#06251D] dark:text-[#D9AC45]" />
+                                        <span>
+                                          {resolvedAdminAudio.isGoogleDrive
+                                            ? `Google Drive Audio (ID: ${resolvedAdminAudio.fileId})`
+                                            : 'Berkas Audio Rekaman Terpasang'}
+                                        </span>
+                                      </>
+                                    )}
+                                  </span>
+
+                                  {/* Format Badge */}
+                                  <span className="px-2 py-0.5 rounded text-[10px] font-extrabold uppercase bg-[#D9AC45] text-[#06251D] border border-[#171717]">
+                                    Format: {resolvedAdminAudio.detectedFormat.toUpperCase()}
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                  {/* Verification Button */}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleVerifyAdminAudio(formData.audioConfig?.customAudioUrl || '')}
+                                    disabled={isCheckingAudio || (resolvedAdminAudio.isGoogleDrive && !resolvedAdminAudio.fileId)}
+                                    className="px-2.5 py-1 rounded text-[11px] font-extrabold bg-[#FAF7F0] dark:bg-[#102C2B] text-[#171717] dark:text-[#F8F3E8] border-2 border-[#171717] hover:bg-[#D9AC45] hover:text-[#06251D] transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                                    title="Uji kelayakan akses Google Drive dan kompatibilitas format audio"
+                                  >
+                                    {isCheckingAudio ? (
+                                      <>
+                                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                        <span>Memeriksa Akses...</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <RefreshCw className="w-3.5 h-3.5" />
+                                        <span>Periksa & Uji Akses Audio</span>
+                                      </>
+                                    )}
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setAudioCheckResult(null);
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        audioConfig: {
+                                          ...(prev.audioConfig || { mode: 'custom', enabled: true }),
+                                          enabled: true,
+                                          mode: 'custom',
+                                          customAudioUrl: ''
+                                        }
+                                      }));
+                                    }}
+                                    className="text-[10px] text-[#F04438] font-bold underline cursor-pointer"
+                                  >
+                                    Hapus Berkas Audio
+                                  </button>
+                                </div>
                               </div>
+
+                              {/* Live Verification Diagnostic Report */}
+                              {audioCheckResult && (
+                                <div
+                                  className={`p-2.5 rounded-md border-2 text-[11px] space-y-1.5 ${
+                                    audioCheckResult.accessible
+                                      ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-600 text-emerald-950 dark:text-emerald-200'
+                                      : 'bg-rose-50 dark:bg-rose-950/40 border-rose-600 text-rose-950 dark:text-rose-200'
+                                  }`}
+                                >
+                                  <div className="flex items-start gap-1.5 font-bold">
+                                    {audioCheckResult.accessible ? (
+                                      <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                                    ) : (
+                                      <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                                    )}
+                                    <span className="leading-tight">
+                                      {audioCheckResult.accessible
+                                        ? `Berkas audio berhasil diakses dan siap diputar (${audioCheckResult.codecDetail}).`
+                                        : `Akses audio terkendala: ${audioCheckResult.errorMessage || 'Tidak dapat diakses'}`}
+                                    </span>
+                                  </div>
+
+                                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-[10px] font-mono border-t border-black/10 dark:border-white/10">
+                                    <div>
+                                      <span className="opacity-75 block">Format:</span>
+                                      <strong className="uppercase">{audioCheckResult.detectedFormat}</strong>
+                                    </div>
+                                    <div>
+                                      <span className="opacity-75 block">MIME Type:</span>
+                                      <strong className="truncate block" title={audioCheckResult.mimeType || '-'}>
+                                        {audioCheckResult.mimeType || '-'}
+                                      </strong>
+                                    </div>
+                                    <div>
+                                      <span className="opacity-75 block">Ukuran:</span>
+                                      <strong>
+                                        {audioCheckResult.fileSizeBytes
+                                          ? `${(audioCheckResult.fileSizeBytes / (1024 * 1024)).toFixed(2)} MB`
+                                          : 'Ukuran Terbaca'}
+                                      </strong>
+                                    </div>
+                                    <div>
+                                      <span className="opacity-75 block">Dukungan Codec:</span>
+                                      <strong>
+                                        {audioCheckResult.canBrowserPlay ? 'Didukung Peramban' : audioCheckResult.codecDetail}
+                                      </strong>
+                                    </div>
+                                  </div>
+
+                                  {audioCheckResult.wavInfo && (
+                                    <div className="mt-1.5 p-2 rounded bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-[9.5px] font-mono space-y-1">
+                                      <div className="font-sans font-bold text-[10px] text-[#06251D] dark:text-[#D9AC45]">
+                                        Audit Header WAV (RIFF):
+                                      </div>
+                                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                                        <div>
+                                          <span className="opacity-75">Codec:</span>{' '}
+                                          <strong>{audioCheckResult.wavInfo.formatName}</strong>
+                                        </div>
+                                        <div>
+                                          <span className="opacity-75">Sample Rate:</span>{' '}
+                                          <strong>{audioCheckResult.wavInfo.sampleRate.toLocaleString()} Hz</strong>
+                                        </div>
+                                        <div>
+                                          <span className="opacity-75">Bit Depth:</span>{' '}
+                                          <strong>{audioCheckResult.wavInfo.bitsPerSample}-bit</strong>
+                                        </div>
+                                        <div>
+                                          <span className="opacity-75">Saluran:</span>{' '}
+                                          <strong>{audioCheckResult.wavInfo.channelLayout} ({audioCheckResult.wavInfo.numChannels} ch)</strong>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
 
                               {resolvedAdminAudio.isGoogleDrive && !resolvedAdminAudio.fileId ? (
                                 <p className="text-[11px] text-[#F04438]">
                                   {describeAudioPlaybackError({
                                     isGoogleDrive: true,
                                     isGoogleDriveFolder: resolvedAdminAudio.isGoogleDriveFolder,
-                                    fileId: null
+                                    fileId: null,
+                                    detectedFormat: resolvedAdminAudio.detectedFormat
                                   })}
                                 </p>
                               ) : (

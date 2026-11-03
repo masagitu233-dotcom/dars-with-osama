@@ -1490,4 +1490,15 @@ table td {
   border-radius: 4px;
 }
 
+/* ==========================================================================
+   ARTICLE AUDIO READING & SMOOTH AUTO-SCROLL
+   - Text highlights completely removed per requirements
+   - Preserves original clean typography, font-family, font-size, line-height, and Arabic cursive ligatures
+   ========================================================================== */
+
+.dars-auto-scroll-indicator {
+  transition: all 0.2s ease-in-out;
+}
+
+
 
