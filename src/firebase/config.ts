@@ -564,7 +564,7 @@ export function classifyFirestoreError(error: unknown): {
   } else if (code.includes('resource-exhausted') || rawMsg.includes('quota') || rawMsg.includes('Quota exceeded')) {
     category = 'resource-exhausted';
     summary =
-      'Batas kuota baca harian gratis (Free Tier Daily Read Quota) Cloud Firestore pada database produksi telah tercapai. Data terbaru Anda tetap aman di server Firestore; untuk sementara sistem menampilkan cadangan statis (22 Okt 2026) hingga kuota harian di-reset atau proyek di-upgrade ke paket Blaze.';
+      'Kuota pembacaan Firestore sedang mencapai batas harian. Sebagian data mungkin belum dapat diperbarui dari cloud. Data lokal yang tersedia tetap dapat diakses dan status sinkronisasinya ditampilkan di halaman ini.';
   }
 
   const maskedProjectId = firebaseConfig.projectId

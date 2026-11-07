@@ -39,6 +39,7 @@ import {
 } from '../../utils/quizFlowHelper';
 import { QuizRequiredModal } from './QuizRequiredModal';
 import { ReadingFontControls, useReadingFontSize } from '../common/ReadingFontControls';
+import { SessionSlideViewer } from './SessionSlideViewer';
 
 interface SessionViewProps {
   course: Course;
@@ -709,45 +710,14 @@ export const SessionView: React.FC<SessionViewProps> = ({
             </div>
           )}
 
-          {/* Lesson Notes & Faedah Ilmiah Section - Reading Surface */}
+          {/* Integrated Table of Contents and Slide Navigation for Lesson Notes & Faedah Ilmiah */}
           {session.lessonNotes && (
-            <div
-              style={fontControl.style}
-              className="nb-reading-surface p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-5 bg-white dark:bg-[#1F5F63]"
-            >
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-[#171717] dark:border-[#4CA7A1] pb-4">
-                <div className="flex items-center gap-2.5">
-                  <div className="p-2 rounded-md bg-[#001722] text-[#CEFEF1] border-2 border-[#171717] dark:border-[#4CA7A1] shrink-0">
-                    <BookOpen className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-base sm:text-lg font-extrabold font-serif-brand text-[#171717] dark:text-[#CEFEF1] leading-snug">
-                      Catatan Pelajaran & Faedah Ilmiah
-                    </h3>
-                    <p className="text-xs text-[#525855] dark:text-[#A6D6C9] font-sans">
-                      Rangkuman poin penting, syarah, dan dalil-dalil ilmiah pada sesi ini.
-                    </p>
-                  </div>
-                </div>
-
-                <ReadingFontControls
-                  step={fontControl.step}
-                  percentage={fontControl.percentage}
-                  canDecrease={fontControl.canDecrease}
-                  canIncrease={fontControl.canIncrease}
-                  isDefault={fontControl.isDefault}
-                  onDecrease={fontControl.decrease}
-                  onIncrease={fontControl.increase}
-                  onReset={fontControl.reset}
-                />
-              </div>
-
-              {/* Rich Blog-Quality Typography Content Renderer */}
-              <div
-                className="prose dark:prose-invert max-w-none text-[#171717] dark:text-[#CEFEF1] leading-relaxed space-y-3.5 sm:space-y-4 font-sans blog-content"
-                dangerouslySetInnerHTML={{ __html: renderFormattedContentHtml(session.lessonNotes) }}
-              />
-            </div>
+            <SessionSlideViewer
+              rawContent={session.lessonNotes}
+              sessionTitle={session.title}
+              fontControl={fontControl}
+              isAdmin={isAdmin}
+            />
           )}
         </div>
 

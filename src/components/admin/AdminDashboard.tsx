@@ -82,6 +82,7 @@ import { RichTextEditor } from './RichTextEditor';
 import { QuizImportModal } from './QuizImportModal';
 import { getAllArticleCommentsForAdmin, subscribeToConsultationsStats } from '../../firebase/services';
 import { auditBrowserStorageEntries } from '../../utils/dataAuditHelper';
+import { splitSessionContentIntoSlides } from '../../utils/sessionSlideHelper';
 
 export const AdminDashboard: React.FC<{
   initialCourseId?: string;
@@ -2785,6 +2786,66 @@ export const AdminDashboard: React.FC<{
                       placeholder="Ringkasan poin penting, faedah ilmiah, dan penjelasan materi..."
                       minHeight="220px"
                     />
+
+                    {/* Live Automatic Table of Contents & Slide Detection for Admin */}
+                    {(() => {
+                      const liveSlideInfo = splitSessionContentIntoSlides(
+                        sessionFormData.lessonNotes,
+                        sessionFormData.title || 'Materi Pembahasan'
+                      );
+                      const hasH1 = liveSlideInfo.hasH1;
+                      const count = liveSlideInfo.slides.length;
+
+                      return (
+                        <div className="mt-2.5 p-3 sm:p-3.5 rounded-md bg-[#FAF7F0] dark:bg-[#0D2B36] border-2 border-[#171717] dark:border-[#4CA7A1] text-xs space-y-2">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-1.5 font-black text-[#123D32] dark:text-[#CEFEF1] uppercase tracking-wider text-[11px]">
+                              <span>Sistem Daftar Isi & Navigasi Slide Otomatis</span>
+                            </div>
+                            <span className={`px-2 py-0.5 rounded-sm font-extrabold text-[10px] border ${
+                              hasH1
+                                ? 'bg-[#123D32] text-[#CEFEF1] border-[#171717]'
+                                : 'bg-[#D6AD52] text-[#171717] border-[#171717]'
+                            }`}>
+                              {hasH1 ? `${count} Slide Terdeteksi (H1)` : '1 Slide (Mode Kompatibilitas)'}
+                            </span>
+                          </div>
+
+                          <p className="text-[#525855] dark:text-[#A6D6C9] leading-relaxed">
+                            {hasH1 ? (
+                              <span>
+                                Setiap judul berformat <strong>Heading 1 (H1)</strong> di editor otomatis menjadi poin daftar isi dan slide pembahasan terpisah untuk santri.
+                              </span>
+                            ) : (
+                              <span>
+                                <strong>Tips Admin:</strong> Tandai judul pembahasan pada teks di atas lalu klik tombol <strong>H1 (Heading 1)</strong> pada toolbar editor. Judul H1 akan otomatis menjadi poin daftar isi dan membagi materi menjadi beberapa slide pembahasan.
+                              </span>
+                            )}
+                          </p>
+
+                          {hasH1 && count > 0 && (
+                            <div className="pt-2 border-t border-[#171717]/15 dark:border-[#4CA7A1]/30">
+                              <span className="text-[10px] font-black uppercase text-[#171717] dark:text-[#CEFEF1] block mb-1">
+                                Urutan Slide Pembahasan Terdeteksi:
+                              </span>
+                              <div className="flex flex-wrap gap-1.5">
+                                {liveSlideInfo.slides.map((s, idx) => (
+                                  <span
+                                    key={s.id}
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-white dark:bg-[#1F5F63] border border-[#171717] dark:border-[#4CA7A1] font-bold text-[11px] text-[#171717] dark:text-[#CEFEF1]"
+                                  >
+                                    <span className="w-4 h-4 rounded-full bg-[#123D32] text-[#FAF7F0] text-[9px] flex items-center justify-center font-black">
+                                      {idx + 1}
+                                    </span>
+                                    <span className="max-w-[200px] truncate">{s.title}</span>
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   <div>

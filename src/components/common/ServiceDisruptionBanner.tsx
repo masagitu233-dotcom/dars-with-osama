@@ -47,8 +47,8 @@ export const ServiceDisruptionBanner: React.FC<ServiceDisruptionBannerProps> = (
     return () => clearInterval(interval);
   }, [lastAttemptTimestamp, cooldownSeconds]);
 
-  // Restrict disruption banner visibility exclusively to authenticated admins.
-  // Students, visitors, and non-admins must never see system disruption notifications.
+  // DILARANG menampilkan peringatan kuota, status kuota habis, pesan antrean sinkronisasi,
+  // dan istilah teknis terkait IndexedDB atau cache Firestore kepada pengunjung umum maupun siswa.
   if (authLoading || !user || !isAdmin) {
     return null;
   }

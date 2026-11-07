@@ -1,5 +1,13 @@
 export type CourseLevel = 'beginner' | 'intermediate' | 'advanced';
 
+export type DataSyncStatus = 'synced' | 'pending';
+
+export interface SaveResult<T = string> {
+  id: T;
+  syncStatus: DataSyncStatus;
+  message: string;
+}
+
 export interface Category {
   id: string;
   name: string;
@@ -9,6 +17,7 @@ export interface Category {
   order: number;
   icon?: string;
   createdAt?: string;
+  _pendingSync?: boolean;
 }
 
 export interface Question {
@@ -40,6 +49,7 @@ export interface Quiz {
   questions: Question[];
   createdAt?: string;
   updatedAt?: string;
+  _pendingSync?: boolean;
 }
 
 export interface Session {
@@ -60,6 +70,7 @@ export interface Session {
   quizId?: string; // Linked quiz if any
   createdAt?: string;
   updatedAt?: string;
+  _pendingSync?: boolean;
 }
 
 export interface Course {
@@ -82,6 +93,7 @@ export interface Course {
   sessionsCount?: number;
   createdAt?: string;
   updatedAt?: string;
+  _pendingSync?: boolean;
 }
 
 export interface Enrollment {
@@ -168,6 +180,7 @@ export interface BlogPost {
   readingTimeMinutes: number;
   viewsCount?: number;
   audioConfig?: BlogPostAudioConfig;
+  _pendingSync?: boolean;
   publishedAt?: string;
   createdAt: string;
   updatedAt: string;

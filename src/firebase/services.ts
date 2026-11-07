@@ -4,6 +4,8 @@ import {
   getDocs,
   getDoc,
   getDocFromServer,
+  getDocsFromCache,
+  getDocFromCache,
   setDoc,
   updateDoc,
   deleteDoc,
@@ -28,7 +30,25 @@ import {
   hasActiveFirestoreAuthToken,
   ensureFreshFirestoreAuthToken
 } from './config';
-import { Category, Course, Session, Quiz, Enrollment, QuizAttempt, UserProfile, BlogPost, Consultation, ArticleComment, InstructorProfile, EmailNotification, SystemNotificationSettings, NotificationDispatchPayload, StudentNotificationPreferences } from '../types';
+import {
+  Category,
+  Course,
+  Session,
+  Quiz,
+  Enrollment,
+  QuizAttempt,
+  UserProfile,
+  BlogPost,
+  Consultation,
+  ArticleComment,
+  InstructorProfile,
+  EmailNotification,
+  SystemNotificationSettings,
+  NotificationDispatchPayload,
+  StudentNotificationPreferences,
+  SaveResult,
+  DataSyncStatus
+} from '../types';
 import { SEED_CATEGORIES, SEED_COURSES, SEED_SESSIONS, SEED_QUIZZES } from '../data/seedData';
 import { matchesSessionIdentifier, canAccessSessionPublicly } from '../utils/sessionShareHelper';
 import { sanitizeRichTextHtml } from '../utils/richTextHelper';
@@ -58,6 +78,10 @@ import {
   PRODUCTION_INSTRUCTOR_PROFILE
 } from '../data/productionCache.js';
 
+// Exact string requirement for items awaiting server synchronization
+export const MSG_PENDING_SYNC = 'Data tersimpan sementara di perangkat ini dan menunggu sinkronisasi ke cloud.';
+export const MSG_SAVED_CLOUD = 'Berhasil disimpan di Cloud Firestore.';
+
 // Fixed initial admin emails (User email from runtime and bootstrap admin)
 export const INITIAL_ADMIN_EMAILS = [
   'masagitu233@gmail.com',
@@ -69,6 +93,54 @@ export function isPlatformAdminEmail(email?: string | null): boolean {
   if (!email) return false;
   const clean = email.trim().toLowerCase();
   return INITIAL_ADMIN_EMAILS.some(adminEmail => adminEmail.toLowerCase() === clean);
+}
+
+// ==========================================
+// PENDING SYNC TRACKING (Accurate Write Status)
+// ==========================================
+export const PENDING_SYNC_STORAGE_KEY = 'dars_pending_sync_items_v1';
+
+export function getPendingSyncIds(): Set<string> {
+  if (typeof window === 'undefined' || !window.localStorage) return new Set();
+  try {
+    const raw = localStorage.getItem(PENDING_SYNC_STORAGE_KEY);
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw);
+    return new Set(Array.isArray(arr) ? arr : []);
+  } catch {
+    return new Set();
+  }
+}
+
+export function markItemPendingSync(id: string, reason?: string): void {
+  if (typeof window === 'undefined' || !window.localStorage || !id) return;
+  try {
+    const set = getPendingSyncIds();
+    set.add(id);
+    localStorage.setItem(PENDING_SYNC_STORAGE_KEY, JSON.stringify(Array.from(set)));
+    console.warn(`[SyncStatus] Dokumen "${id}" ditandai MENUNGGU SINKRONISASI: ${reason || 'menunggu konfirmasi server'}`);
+  } catch (err) {
+    console.warn('[markItemPendingSync] Storage write notice:', err);
+  }
+}
+
+export function clearItemPendingSync(id: string): void {
+  if (typeof window === 'undefined' || !window.localStorage || !id) return;
+  try {
+    const set = getPendingSyncIds();
+    if (set.has(id)) {
+      set.delete(id);
+      localStorage.setItem(PENDING_SYNC_STORAGE_KEY, JSON.stringify(Array.from(set)));
+      console.log(`[SyncStatus] Dokumen "${id}" dikonfirmasi TERSIMPAN DI CLOUD.`);
+    }
+  } catch (err) {
+    console.warn('[clearItemPendingSync] Storage write notice:', err);
+  }
+}
+
+export function isItemPendingSync(id?: string | null): boolean {
+  if (!id) return false;
+  return getPendingSyncIds().has(id);
 }
 
 export function logCrudDiagnostic(op: string, path: string, status: 'start' | 'success' | 'failed', error?: any): void {
@@ -148,8 +220,85 @@ export function invalidateServicesCache(target?: 'categories' | 'courses' | 'ses
 }
 
 // ==========================================
-// CATEGORIES (Cloud Firestore with Production Fallback on Error)
+// CATEGORIES (Cloud Firestore with Cache-First Fallback)
 // ==========================================
+export const LOCAL_CATEGORIES_STORAGE_KEY = 'dars_custom_categories_v1';
+export const DELETED_CATEGORIES_STORAGE_KEY = 'dars_deleted_categories_v1';
+
+export function getDeletedCategoryIds(): Set<string> {
+  if (typeof window === 'undefined' || !window.localStorage) return new Set();
+  try {
+    const raw = localStorage.getItem(DELETED_CATEGORIES_STORAGE_KEY);
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw);
+    return new Set(Array.isArray(arr) ? arr : []);
+  } catch {
+    return new Set();
+  }
+}
+
+export function getLocalCustomCategories(): Category[] {
+  if (typeof window === 'undefined' || !window.localStorage) return [];
+  try {
+    const raw = localStorage.getItem(LOCAL_CATEGORIES_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    const deleted = getDeletedCategoryIds();
+    return (Array.isArray(parsed) ? parsed : []).filter(c => c && c.id && !deleted.has(c.id));
+  } catch {
+    return [];
+  }
+}
+
+export function saveLocalCustomCategory(category: Category): void {
+  if (typeof window === 'undefined' || !window.localStorage || !category || !category.id) return;
+  try {
+    const existing = getLocalCustomCategories();
+    const idx = existing.findIndex((c) => c.id === category.id);
+    if (idx >= 0) {
+      existing[idx] = category;
+    } else {
+      existing.unshift(category);
+    }
+    localStorage.setItem(LOCAL_CATEGORIES_STORAGE_KEY, JSON.stringify(existing));
+  } catch (err) {
+    console.warn('[saveLocalCustomCategory] Storage write notice:', err);
+  }
+}
+
+export function removeLocalCustomCategory(id: string): void {
+  if (typeof window === 'undefined' || !window.localStorage || !id) return;
+  try {
+    const existing = getLocalCustomCategories();
+    const filtered = existing.filter((c) => c.id !== id);
+    localStorage.setItem(LOCAL_CATEGORIES_STORAGE_KEY, JSON.stringify(filtered));
+    const set = getDeletedCategoryIds();
+    set.add(id);
+    localStorage.setItem(DELETED_CATEGORIES_STORAGE_KEY, JSON.stringify(Array.from(set)));
+  } catch (err) {
+    console.warn('[removeLocalCustomCategory] Storage write notice:', err);
+  }
+}
+
+export function mergeCategoriesLists(primary: Category[], secondary: Category[]): Category[] {
+  const tombstones = getDeletedCategoryIds();
+  const map = new Map<string, Category>();
+
+  for (const c of Array.isArray(secondary) ? secondary : []) {
+    if (!c || !c.id || tombstones.has(c.id)) continue;
+    map.set(c.id, c);
+  }
+
+  for (const c of Array.isArray(primary) ? primary : []) {
+    if (!c || !c.id || tombstones.has(c.id)) continue;
+    map.set(c.id, c);
+  }
+
+  return Array.from(map.values())
+    .filter(c => !tombstones.has(c.id))
+    .sort((a, b) => (a.order || 0) - (b.order || 0));
+}
+
 export async function getCategories(forceRefresh = false): Promise<Category[]> {
   const now = Date.now();
   if (!forceRefresh && categoriesCache && now - categoriesCache.timestamp < CACHE_TTL_MS) {
@@ -157,32 +306,56 @@ export async function getCategories(forceRefresh = false): Promise<Category[]> {
     return categoriesCache.data;
   }
 
+  const localCategories = getLocalCustomCategories();
+  const fallbackCategories = mergeCategoriesLists(localCategories, PRODUCTION_CATEGORIES);
+
   try {
     const q = query(collection(db, 'categories'), orderBy('order', 'asc'));
-    const snapshot = await getDocs(q);
-    if (snapshot.empty && snapshot.metadata?.fromCache) {
-      throw new Error('Client is offline and local cache is empty for categories');
+    let snapshot;
+    try {
+      snapshot = await getDocs(q);
+    } catch (serverErr) {
+      // Prioritas 1: Jika kuota Firestore habis, baca dari cache Firestore lokal (IndexedDB)
+      try {
+        snapshot = await getDocsFromCache(q);
+      } catch {
+        throw serverErr;
+      }
     }
-    const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Category));
-    list.sort((a, b) => (a.order || 0) - (b.order || 0));
-    categoriesCache = { data: list, timestamp: now };
-    recordFeatureDataSource(
-      'categories',
-      snapshot.metadata?.fromCache ? 'memory-cache' : 'firestore-server'
-    );
-    return list;
+
+    if (snapshot && !snapshot.empty) {
+      const rawList = snapshot.docs.map(d => ({
+        id: d.id,
+        ...d.data(),
+        _pendingSync: d.metadata?.hasPendingWrites || isItemPendingSync(d.id)
+      } as Category));
+      const list = mergeCategoriesLists(rawList, localCategories);
+      list.sort((a, b) => (a.order || 0) - (b.order || 0));
+      categoriesCache = { data: list, timestamp: now };
+      recordFeatureDataSource(
+        'categories',
+        snapshot.metadata?.fromCache ? 'memory-cache' : 'firestore-server'
+      );
+      return list;
+    }
+
+    return fallbackCategories;
   } catch (err) {
     logFirestoreDiagnostic({ operation: 'getCategories', collection: 'categories' }, err);
     if (categoriesCache && Array.isArray(categoriesCache.data) && categoriesCache.data.length > 0) {
       recordFeatureDataSource('categories', 'memory-cache', 'Retained in-memory cache');
       return categoriesCache.data;
     }
-    recordFeatureDataSource('categories', 'static-fallback-oct22', String((err as any)?.code || err));
-    return PRODUCTION_CATEGORIES;
+    recordFeatureDataSource(
+      'categories',
+      localCategories.length > 0 ? 'local-storage' : 'static-fallback-oct22',
+      String((err as any)?.code || err)
+    );
+    return fallbackCategories;
   }
 }
 
-export async function saveCategory(category: Partial<Category> & { name: string; slug: string }): Promise<string> {
+export async function saveCategory(category: Partial<Category> & { name: string; slug: string }): Promise<SaveResult<string>> {
   const id = category.id || `cat-${Date.now()}`;
   const path = `categories/${id}`;
   logCrudDiagnostic('saveCategory', path, 'start');
@@ -197,19 +370,31 @@ export async function saveCategory(category: Partial<Category> & { name: string;
       createdAt: category.createdAt || new Date().toISOString()
     };
     await executeWithFreshAuthRetry(() => setDoc(doc(db, 'categories', id), data, { merge: true }));
+    saveLocalCustomCategory(data);
 
+    let syncStatus: DataSyncStatus = 'synced';
     try {
       const vSnap = await getDocFromServer(doc(db, 'categories', id));
       if (vSnap.exists()) {
+        clearItemPendingSync(id);
         logCrudDiagnostic(`saveCategory Server Verification [ID: ${id}]`, path, 'success');
+      } else {
+        syncStatus = 'pending';
+        markItemPendingSync(id, 'Menunggu konfirmasi server Firestore');
       }
     } catch (vErr) {
-      console.warn('[saveCategory] Server verification notice (write may be queued or quota restricted):', vErr);
+      syncStatus = 'pending';
+      markItemPendingSync(id, 'Verifikasi server tertunda karena batas kuota atau koneksi');
+      console.warn('[saveCategory] Server verification deferred (write queued in IndexedDB):', vErr);
     }
 
     invalidateServicesCache('categories');
     logCrudDiagnostic('saveCategory', path, 'success');
-    return id;
+    return {
+      id,
+      syncStatus,
+      message: syncStatus === 'synced' ? MSG_SAVED_CLOUD : MSG_PENDING_SYNC
+    };
   } catch (error) {
     logCrudDiagnostic('saveCategory', path, 'failed', error);
     handleFirestoreError(error, OperationType.WRITE, path);
@@ -222,6 +407,8 @@ export async function deleteCategory(id: string): Promise<void> {
   logCrudDiagnostic('deleteCategory', path, 'start');
   try {
     await executeWithFreshAuthRetry(() => deleteDoc(doc(db, 'categories', id)));
+    removeLocalCustomCategory(id);
+    clearItemPendingSync(id);
     invalidateServicesCache('categories');
     logCrudDiagnostic('deleteCategory', path, 'success');
   } catch (error) {
@@ -253,6 +440,180 @@ export async function seedDefaultCategoriesIfEmpty(): Promise<Category[]> {
 }
 
 // ==========================================
+// LOCAL STORAGE KEYS & RESILIENT PERSISTENCE HELPERS
+// ==========================================
+export const LOCAL_COURSES_STORAGE_KEY = 'dars_custom_courses_v1';
+export const DELETED_COURSES_STORAGE_KEY = 'dars_deleted_courses_v1';
+export const LOCAL_SESSIONS_STORAGE_KEY = 'dars_custom_sessions_v1';
+export const DELETED_SESSIONS_STORAGE_KEY = 'dars_deleted_sessions_v1';
+
+export function getDeletedCourseIds(): Set<string> {
+  if (typeof window === 'undefined' || !window.localStorage) return new Set();
+  try {
+    const raw = localStorage.getItem(DELETED_COURSES_STORAGE_KEY);
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw);
+    return new Set(Array.isArray(arr) ? arr : []);
+  } catch {
+    return new Set();
+  }
+}
+
+export function getLocalCustomCourses(): Course[] {
+  if (typeof window === 'undefined' || !window.localStorage) return [];
+  try {
+    const raw = localStorage.getItem(LOCAL_COURSES_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    const deleted = getDeletedCourseIds();
+    return (Array.isArray(parsed) ? parsed : []).filter(c => c && c.id && !deleted.has(c.id));
+  } catch {
+    return [];
+  }
+}
+
+export function saveLocalCustomCourse(course: Course): void {
+  if (typeof window === 'undefined' || !window.localStorage || !course || !course.id) return;
+  try {
+    const existing = getLocalCustomCourses();
+    const idx = existing.findIndex((c) => c.id === course.id);
+    if (idx >= 0) {
+      existing[idx] = course;
+    } else {
+      existing.unshift(course);
+    }
+    localStorage.setItem(LOCAL_COURSES_STORAGE_KEY, JSON.stringify(existing));
+  } catch (err) {
+    console.warn('[saveLocalCustomCourse] Notice writing to local course storage:', err);
+  }
+}
+
+export function removeLocalCustomCourse(id: string): void {
+  if (typeof window === 'undefined' || !window.localStorage || !id) return;
+  try {
+    const existing = getLocalCustomCourses();
+    const filtered = existing.filter((c) => c.id !== id);
+    localStorage.setItem(LOCAL_COURSES_STORAGE_KEY, JSON.stringify(filtered));
+    const set = getDeletedCourseIds();
+    set.add(id);
+    localStorage.setItem(DELETED_COURSES_STORAGE_KEY, JSON.stringify(Array.from(set)));
+  } catch (err) {
+    console.warn('[removeLocalCustomCourse] Notice removing from local course storage:', err);
+  }
+}
+
+export function mergeCoursesLists(primary: Course[], secondary: Course[]): Course[] {
+  const tombstones = getDeletedCourseIds();
+  const map = new Map<string, Course>();
+
+  for (const c of Array.isArray(secondary) ? secondary : []) {
+    if (!c || !c.id || tombstones.has(c.id)) continue;
+    map.set(c.id, c);
+  }
+
+  for (const c of Array.isArray(primary) ? primary : []) {
+    if (!c || !c.id || tombstones.has(c.id)) continue;
+    const existing = map.get(c.id);
+    if (!existing) {
+      map.set(c.id, c);
+    } else {
+      const timePrimary = new Date(c.updatedAt || c.createdAt || 0).getTime() || 0;
+      const timeExisting = new Date(existing.updatedAt || existing.createdAt || 0).getTime() || 0;
+      if (timePrimary >= timeExisting) {
+        map.set(c.id, c);
+      }
+    }
+  }
+
+  return Array.from(map.values())
+    .filter(c => !tombstones.has(c.id))
+    .sort((a, b) => (a.order || 0) - (b.order || 0));
+}
+
+export function getDeletedSessionIds(): Set<string> {
+  if (typeof window === 'undefined' || !window.localStorage) return new Set();
+  try {
+    const raw = localStorage.getItem(DELETED_SESSIONS_STORAGE_KEY);
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw);
+    return new Set(Array.isArray(arr) ? arr : []);
+  } catch {
+    return new Set();
+  }
+}
+
+export function getLocalCustomSessions(): Session[] {
+  if (typeof window === 'undefined' || !window.localStorage) return [];
+  try {
+    const raw = localStorage.getItem(LOCAL_SESSIONS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    const deleted = getDeletedSessionIds();
+    return (Array.isArray(parsed) ? parsed : []).filter(s => s && s.id && !deleted.has(s.id));
+  } catch {
+    return [];
+  }
+}
+
+export function saveLocalCustomSession(session: Session): void {
+  if (typeof window === 'undefined' || !window.localStorage || !session || !session.id) return;
+  try {
+    const existing = getLocalCustomSessions();
+    const idx = existing.findIndex((s) => s.id === session.id);
+    if (idx >= 0) {
+      existing[idx] = session;
+    } else {
+      existing.unshift(session);
+    }
+    localStorage.setItem(LOCAL_SESSIONS_STORAGE_KEY, JSON.stringify(existing));
+  } catch (err) {
+    console.warn('[saveLocalCustomSession] Notice writing to local session storage:', err);
+  }
+}
+
+export function removeLocalCustomSession(id: string): void {
+  if (typeof window === 'undefined' || !window.localStorage || !id) return;
+  try {
+    const existing = getLocalCustomSessions();
+    const filtered = existing.filter((s) => s.id !== id);
+    localStorage.setItem(LOCAL_SESSIONS_STORAGE_KEY, JSON.stringify(filtered));
+    const set = getDeletedSessionIds();
+    set.add(id);
+    localStorage.setItem(DELETED_SESSIONS_STORAGE_KEY, JSON.stringify(Array.from(set)));
+  } catch (err) {
+    console.warn('[removeLocalCustomSession] Notice removing from local session storage:', err);
+  }
+}
+
+export function mergeSessionsLists(primary: Session[], secondary: Session[]): Session[] {
+  const tombstones = getDeletedSessionIds();
+  const map = new Map<string, Session>();
+
+  for (const s of Array.isArray(secondary) ? secondary : []) {
+    if (!s || !s.id || tombstones.has(s.id)) continue;
+    map.set(s.id, s);
+  }
+
+  for (const s of Array.isArray(primary) ? primary : []) {
+    if (!s || !s.id || tombstones.has(s.id)) continue;
+    const existing = map.get(s.id);
+    if (!existing) {
+      map.set(s.id, s);
+    } else {
+      const timePrimary = new Date(s.updatedAt || s.createdAt || 0).getTime() || 0;
+      const timeExisting = new Date(existing.updatedAt || existing.createdAt || 0).getTime() || 0;
+      if (timePrimary >= timeExisting) {
+        map.set(s.id, s);
+      }
+    }
+  }
+
+  return Array.from(map.values())
+    .filter(s => !tombstones.has(s.id))
+    .sort((a, b) => (a.order || 0) - (b.order || 0));
+}
+
+// ==========================================
 // COURSES (Cloud Firestore with Production Fallback on Error)
 // ==========================================
 export async function getSessionCountsByCourse(includeUnpublished = false, forceRefresh = false): Promise<Record<string, number>> {
@@ -262,8 +623,10 @@ export async function getSessionCountsByCourse(includeUnpublished = false, force
     return cached.data;
   }
 
+  const localSessions = getLocalCustomSessions();
+  const allAvailableSessions = mergeSessionsLists(localSessions, PRODUCTION_SESSIONS);
   const fallbackCounts: Record<string, number> = {};
-  for (const s of PRODUCTION_SESSIONS) {
+  for (const s of allAvailableSessions) {
     if (s.courseId) {
       if (includeUnpublished || s.isPublished !== false) {
         fallbackCounts[s.courseId] = (fallbackCounts[s.courseId] || 0) + 1;
@@ -333,34 +696,54 @@ export async function getCourses(includeUnpublished = false, forceRefresh = fals
     return includeUnpublished ? cached : cached.filter(c => c.isPublished);
   }
 
+  const localCourses = getLocalCustomCourses();
+  const fallbackCourses = mergeCoursesLists(localCourses, PRODUCTION_COURSES);
+
   try {
-    const snapshot = await getDocs(collection(db, 'courses'));
-    if (snapshot.empty && snapshot.metadata?.fromCache) {
-      throw new Error('Client is offline and local cache is empty for courses');
-    }
-    let courses = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Course));
-    courses.sort((a, b) => (a.order || 0) - (b.order || 0));
-
-    // Only run a full sessions count scan if forceRefresh is requested or courses lack sessionsCount
-    const needsCountScan = forceRefresh || courses.some(c => typeof c.sessionsCount !== 'number');
-    if (needsCountScan) {
+    const colRef = collection(db, 'courses');
+    let snapshot;
+    try {
+      snapshot = await getDocs(colRef);
+    } catch (serverErr) {
+      // Prioritas 1: Jika kuota Firestore habis, baca dari cache Firestore lokal (IndexedDB)
       try {
-        const counts = await getSessionCountsByCourse(includeUnpublished, forceRefresh);
-        courses = courses.map(c => attachCourseSessionCount(c, counts));
-      } catch (e) {
-        console.warn('Failed to attach dynamic session counts:', e);
+        snapshot = await getDocsFromCache(colRef);
+      } catch {
+        throw serverErr;
       }
-    } else {
-      courses = courses.map(c => attachCourseSessionCount(c, {}));
     }
 
-    coursesCache = { data: courses, timestamp: now };
-    recordFeatureDataSource(
-      'courses',
-      snapshot.metadata?.fromCache ? 'memory-cache' : 'firestore-server'
-    );
-    clearLatestFirestoreDiagnostic();
-    return includeUnpublished ? courses : courses.filter(c => c.isPublished);
+    if (snapshot && !snapshot.empty) {
+      const rawCourses = snapshot.docs.map(d => ({
+        id: d.id,
+        ...d.data(),
+        _pendingSync: d.metadata?.hasPendingWrites || isItemPendingSync(d.id)
+      } as Course));
+      let courses = mergeCoursesLists(rawCourses, localCourses);
+
+      // Only run a full sessions count scan if forceRefresh is requested or courses lack sessionsCount
+      const needsCountScan = forceRefresh && courses.some(c => typeof c.sessionsCount !== 'number');
+      if (needsCountScan) {
+        try {
+          const counts = await getSessionCountsByCourse(includeUnpublished, false);
+          courses = courses.map(c => attachCourseSessionCount(c, counts));
+        } catch (e) {
+          console.warn('Failed to attach dynamic session counts:', e);
+        }
+      } else {
+        courses = courses.map(c => attachCourseSessionCount(c, {}));
+      }
+
+      coursesCache = { data: courses, timestamp: now };
+      recordFeatureDataSource(
+        'courses',
+        snapshot.metadata?.fromCache ? 'memory-cache' : 'firestore-server'
+      );
+      clearLatestFirestoreDiagnostic();
+      return includeUnpublished ? courses : courses.filter(c => c.isPublished);
+    }
+
+    return includeUnpublished ? fallbackCourses : fallbackCourses.filter(c => c.isPublished);
   } catch (err) {
     logFirestoreDiagnostic({ operation: 'getCourses', collection: 'courses' }, err);
     if (coursesCache && Array.isArray(coursesCache.data) && coursesCache.data.length > 0) {
@@ -368,32 +751,51 @@ export async function getCourses(includeUnpublished = false, forceRefresh = fals
       const cached = coursesCache.data;
       return includeUnpublished ? cached : cached.filter(c => c.isPublished);
     }
-    recordFeatureDataSource('courses', 'static-fallback-oct22', String((err as any)?.code || err));
+    const localSessions = getLocalCustomSessions();
+    const allAvailableSessions = mergeSessionsLists(localSessions, PRODUCTION_SESSIONS);
     const fallbackCounts: Record<string, number> = {};
-    for (const s of PRODUCTION_SESSIONS) {
+    for (const s of allAvailableSessions) {
       if (s.courseId && (includeUnpublished || s.isPublished !== false)) {
         fallbackCounts[s.courseId] = (fallbackCounts[s.courseId] || 0) + 1;
       }
     }
-    const enrichedProductionCourses = PRODUCTION_COURSES.map(c => attachCourseSessionCount(c, fallbackCounts));
-    return includeUnpublished ? enrichedProductionCourses : enrichedProductionCourses.filter(c => c.isPublished);
+    const enrichedCourses = fallbackCourses.map(c => attachCourseSessionCount(c, fallbackCounts));
+    recordFeatureDataSource(
+      'courses',
+      localCourses.length > 0 ? 'local-storage' : 'static-fallback-oct22',
+      String((err as any)?.code || err)
+    );
+    return includeUnpublished ? enrichedCourses : enrichedCourses.filter(c => c.isPublished);
   }
 }
 
 export async function getCourseById(courseId: string): Promise<Course | null> {
   try {
-    const d = await getDoc(doc(db, 'courses', courseId));
-    if (d.exists()) {
-      return { id: d.id, ...d.data() } as Course;
+    let d;
+    try {
+      d = await getDoc(doc(db, 'courses', courseId));
+    } catch {
+      d = await getDocFromCache(doc(db, 'courses', courseId));
     }
+    if (d && d.exists()) {
+      return {
+        id: d.id,
+        ...d.data(),
+        _pendingSync: d.metadata?.hasPendingWrites || isItemPendingSync(d.id)
+      } as Course;
+    }
+    const localMatch = getLocalCustomCourses().find(c => c.id === courseId);
+    if (localMatch) return localMatch;
     return null;
   } catch (error) {
     console.warn('getCourseById live fetch notice:', error);
+    const localMatch = getLocalCustomCourses().find(c => c.id === courseId);
+    if (localMatch) return localMatch;
     return PRODUCTION_COURSES.find(c => c.id === courseId) || null;
   }
 }
 
-export async function saveCourse(course: Partial<Course> & { title: string; categoryId: string }): Promise<string> {
+export async function saveCourse(course: Partial<Course> & { title: string; categoryId: string }): Promise<SaveResult<string>> {
   const id = course.id || `course-${Date.now()}`;
   const path = `courses/${id}`;
   logCrudDiagnostic('saveCourse', path, 'start');
@@ -411,19 +813,31 @@ export async function saveCourse(course: Partial<Course> & { title: string; cate
     } as Course;
 
     await executeWithFreshAuthRetry(() => setDoc(doc(db, 'courses', id), courseData, { merge: true }));
+    saveLocalCustomCourse(courseData);
 
+    let syncStatus: DataSyncStatus = 'synced';
     try {
       const vSnap = await getDocFromServer(doc(db, 'courses', id));
       if (vSnap.exists()) {
+        clearItemPendingSync(id);
         logCrudDiagnostic(`saveCourse Server Verification [ID: ${id}]`, path, 'success');
+      } else {
+        syncStatus = 'pending';
+        markItemPendingSync(id, 'Menunggu konfirmasi server Firestore');
       }
     } catch (vErr) {
-      console.warn('[saveCourse] Server verification notice (write may be queued or quota restricted):', vErr);
+      syncStatus = 'pending';
+      markItemPendingSync(id, 'Verifikasi server tertunda karena batas kuota atau koneksi');
+      console.warn('[saveCourse] Server verification deferred (write queued in IndexedDB):', vErr);
     }
 
     invalidateServicesCache('courses');
     logCrudDiagnostic('saveCourse', path, 'success');
-    return id;
+    return {
+      id,
+      syncStatus,
+      message: syncStatus === 'synced' ? MSG_SAVED_CLOUD : MSG_PENDING_SYNC
+    };
   } catch (error) {
     logCrudDiagnostic('saveCourse', path, 'failed', error);
     handleFirestoreError(error, OperationType.WRITE, path);
@@ -437,6 +851,8 @@ export async function deleteCourse(courseId: string): Promise<void> {
   try {
     // 1. Delete course document from Cloud Firestore
     await executeWithFreshAuthRetry(() => deleteDoc(doc(db, 'courses', courseId)));
+    removeLocalCustomCourse(courseId);
+    clearItemPendingSync(courseId);
 
     // 2. Cascading delete subcollection sessions: courses/{courseId}/sessions
     try {
@@ -509,7 +925,7 @@ export async function deleteCourse(courseId: string): Promise<void> {
 }
 
 // ==========================================
-// SESSIONS (Cloud Firestore with Production Fallback on Error)
+// SESSIONS (Optimized Quota Consumption & Cache-First Fallback)
 // ==========================================
 export async function getSessionsByCourse(courseId: string, includeUnpublished = false, forceRefresh = false): Promise<Session[]> {
   const now = Date.now();
@@ -520,58 +936,82 @@ export async function getSessionsByCourse(courseId: string, includeUnpublished =
     return includeUnpublished ? list : list.filter(s => s.isPublished !== false);
   }
 
-  const fallbackSessions = PRODUCTION_SESSIONS
-    .filter(s => s.courseId === courseId)
-    .sort((a, b) => (a.order || 0) - (b.order || 0));
+  const localSessions = getLocalCustomSessions().filter(s => s.courseId === courseId);
+  const fallbackSessions = mergeSessionsLists(
+    localSessions,
+    PRODUCTION_SESSIONS.filter(s => s.courseId === courseId)
+  );
 
   try {
-    const subSessions: Session[] = [];
-    const topSessions: Session[] = [];
-    let subQuerySucceeded = false;
-    let topQuerySucceeded = false;
+    const sessions: Session[] = [];
+    let querySucceeded = false;
 
-    // 1. Check subcollection: courses/{courseId}/sessions
+    // 1. Single consistent location to conserve quota: Top-level sessions collection with courseId filter
+    const topQ = query(collection(db, 'sessions'), where('courseId', '==', courseId));
     try {
-      const subCol = collection(db, 'courses', courseId, 'sessions');
-      const subSnapshot = await getDocs(subCol);
-      if (!subSnapshot.empty || !subSnapshot.metadata?.fromCache) {
-        subQuerySucceeded = true;
-        subSnapshot.forEach(d => {
-          subSessions.push({ id: d.id, courseId, ...d.data() } as Session);
-        });
+      let topSnapshot;
+      try {
+        topSnapshot = await getDocs(topQ);
+      } catch {
+        topSnapshot = await getDocsFromCache(topQ);
       }
-    } catch (e) {
-      logFirestoreDiagnostic({ operation: 'getSessionsByCourse (subcollection)', path: `courses/${courseId}/sessions` }, e);
-    }
-
-    // 2. Also check top-level sessions collection
-    try {
-      const q = query(collection(db, 'sessions'), where('courseId', '==', courseId));
-      const topSnapshot = await getDocs(q);
-      if (!topSnapshot.empty || !topSnapshot.metadata?.fromCache) {
-        topQuerySucceeded = true;
+      if (topSnapshot && !topSnapshot.empty) {
+        querySucceeded = true;
         topSnapshot.forEach(d => {
-          topSessions.push({ id: d.id, ...d.data() } as Session);
+          sessions.push({
+            id: d.id,
+            ...d.data(),
+            _pendingSync: d.metadata?.hasPendingWrites || isItemPendingSync(d.id)
+          } as Session);
         });
       }
     } catch (e) {
-      logFirestoreDiagnostic({ operation: 'getSessionsByCourse (top-level)', collection: 'sessions' }, e);
+      // Top-level query notice
     }
 
-    if (!subQuerySucceeded && !topQuerySucceeded) {
+    // 2. Only if top-level query returned 0 items, check subcollection courses/{courseId}/sessions for backward compatibility
+    if (!querySucceeded || sessions.length === 0) {
+      try {
+        const subCol = collection(db, 'courses', courseId, 'sessions');
+        let subSnapshot;
+        try {
+          subSnapshot = await getDocs(subCol);
+        } catch {
+          subSnapshot = await getDocsFromCache(subCol);
+        }
+        if (subSnapshot && !subSnapshot.empty) {
+          querySucceeded = true;
+          subSnapshot.forEach(d => {
+            sessions.push({
+              id: d.id,
+              courseId,
+              ...d.data(),
+              _pendingSync: d.metadata?.hasPendingWrites || isItemPendingSync(d.id)
+            } as Session);
+          });
+        }
+      } catch (e) {
+        // Subcollection notice
+      }
+    }
+
+    if (!querySucceeded && sessions.length === 0) {
       if (cached && Array.isArray(cached.data) && cached.data.length > 0) {
         recordFeatureDataSource('sessions', 'memory-cache', 'Retained in-memory cache');
         return includeUnpublished ? cached.data : cached.data.filter(s => s.isPublished !== false);
       }
-      // Do NOT pollute sessionsByCourseCache with fallbackSessions!
-      recordFeatureDataSource('sessions', 'static-fallback-oct22', 'Both subcollection and top-level session queries failed');
+      recordFeatureDataSource(
+        'sessions',
+        localSessions.length > 0 ? 'local-storage' : 'static-fallback-oct22',
+        'Firestore sessions query unavailable'
+      );
       return includeUnpublished ? fallbackSessions : fallbackSessions.filter(s => s.isPublished !== false);
     }
 
-    const merged = mergeCourseSessions(subSessions, topSessions, true);
-    sessionsByCourseCache.set(courseId, { data: merged, timestamp: now });
+    const fullyMerged = mergeSessionsLists(sessions, localSessions);
+    sessionsByCourseCache.set(courseId, { data: fullyMerged, timestamp: now });
     recordFeatureDataSource('sessions', 'firestore-server');
-    return includeUnpublished ? merged : merged.filter(s => s.isPublished !== false);
+    return includeUnpublished ? fullyMerged : fullyMerged.filter(s => s.isPublished !== false);
   } catch (err) {
     logFirestoreDiagnostic(
       { operation: 'getSessionsByCourse', collection: 'sessions', path: `courses/${courseId}/sessions` },
@@ -581,51 +1021,66 @@ export async function getSessionsByCourse(courseId: string, includeUnpublished =
       recordFeatureDataSource('sessions', 'memory-cache', 'Retained in-memory cache');
       return includeUnpublished ? cached.data : cached.data.filter(s => s.isPublished !== false);
     }
-    recordFeatureDataSource('sessions', 'static-fallback-oct22', String((err as any)?.code || err));
+    recordFeatureDataSource(
+      'sessions',
+      localSessions.length > 0 ? 'local-storage' : 'static-fallback-oct22',
+      String((err as any)?.code || err)
+    );
     return includeUnpublished ? fallbackSessions : fallbackSessions.filter(s => s.isPublished !== false);
   }
 }
 
 export async function getSessionById(courseId: string, sessionId: string): Promise<Session | null> {
   try {
-    let subSnap: any = null;
     let topSnap: any = null;
     let anySucceeded = false;
 
-    try {
-      subSnap = await getDoc(doc(db, 'courses', courseId, 'sessions', sessionId));
-      anySucceeded = true;
-    } catch {
-      // ignore subSnap error
-    }
-
+    // Prioritize top-level sessions query
     try {
       topSnap = await getDoc(doc(db, 'sessions', sessionId));
       anySucceeded = true;
     } catch {
-      // ignore topSnap error
+      try {
+        topSnap = await getDocFromCache(doc(db, 'sessions', sessionId));
+        anySucceeded = true;
+      } catch {
+        // ignore
+      }
     }
 
-    const subSession = subSnap && subSnap.exists()
-      ? ({ id: subSnap.id, courseId, ...subSnap.data() } as Session)
-      : null;
-    const topSession = topSnap && topSnap.exists()
-      ? ({ id: topSnap.id, ...topSnap.data() } as Session)
-      : null;
+    if (topSnap && topSnap.exists()) {
+      return {
+        id: topSnap.id,
+        ...topSnap.data(),
+        _pendingSync: topSnap.metadata?.hasPendingWrites || isItemPendingSync(topSnap.id)
+      } as Session;
+    }
 
-    if (subSession && topSession) {
-      const merged = mergeCourseSessions([subSession], [topSession], true);
-      return merged[0] || subSession;
+    // Fallback to subcollection if top-level does not exist
+    try {
+      const subSnap = await getDoc(doc(db, 'courses', courseId, 'sessions', sessionId));
+      if (subSnap.exists()) {
+        return {
+          id: subSnap.id,
+          courseId,
+          ...subSnap.data(),
+          _pendingSync: subSnap.metadata?.hasPendingWrites || isItemPendingSync(subSnap.id)
+        } as Session;
+      }
+    } catch {
+      // ignore
     }
-    if (subSession || topSession) {
-      return subSession || topSession;
-    }
+
     if (anySucceeded) {
       return null;
     }
   } catch (err) {
     console.warn('getSessionById live fetch notice:', err);
   }
+  const localMatch = getLocalCustomSessions().find(
+    s => s.id === sessionId || (s.courseId === courseId && matchesSessionIdentifier(s, sessionId))
+  );
+  if (localMatch) return localMatch;
   return (
     PRODUCTION_SESSIONS.find(
       s => s.id === sessionId || (s.courseId === courseId && matchesSessionIdentifier(s, sessionId))
@@ -790,6 +1245,7 @@ export async function saveSession(courseId: string, session: Partial<Session> & 
       // 2. Also save to top-level sessions for flat queries
       await setDoc(doc(db, 'sessions', id), sessionData, { merge: true });
     });
+    saveLocalCustomSession(sessionData as Session);
 
     // 2b. If moved from a different course, remove orphaned subcollection document from old course
     if (previousCourseId && previousCourseId !== courseId) {
@@ -825,19 +1281,30 @@ export async function saveSession(courseId: string, session: Partial<Session> & 
     }
 
     // Verify server persistence
+    let syncStatus: DataSyncStatus = 'synced';
     try {
       const vSnap = await getDocFromServer(doc(db, 'sessions', id));
       if (vSnap.exists()) {
+        clearItemPendingSync(id);
         logCrudDiagnostic(`saveSession Server Verification [ID: ${id}]`, path, 'success');
+      } else {
+        syncStatus = 'pending';
+        markItemPendingSync(id, 'Menunggu konfirmasi server Firestore');
       }
     } catch (vErr) {
-      console.warn('[saveSession] Server verification notice:', vErr);
+      syncStatus = 'pending';
+      markItemPendingSync(id, 'Verifikasi server tertunda karena batas kuota atau koneksi');
+      console.warn('[saveSession] Server verification deferred (write queued in IndexedDB):', vErr);
     }
 
     invalidateServicesCache('sessions');
     invalidateServicesCache('courses');
     logCrudDiagnostic('saveSession', path, 'success');
-    return id;
+    return {
+      id,
+      syncStatus,
+      message: syncStatus === 'synced' ? MSG_SAVED_CLOUD : MSG_PENDING_SYNC
+    };
   } catch (error) {
     logCrudDiagnostic('saveSession', path, 'failed', error);
     handleFirestoreError(error, OperationType.WRITE, path);
@@ -855,6 +1322,8 @@ export async function deleteSession(courseId: string, sessionId: string): Promis
       // 2. Delete from top-level sessions
       await deleteDoc(doc(db, 'sessions', sessionId));
     });
+    removeLocalCustomSession(sessionId);
+    clearItemPendingSync(sessionId);
 
     // 3. Unlink from any quizzes that reference this sessionId
     try {
@@ -894,55 +1363,170 @@ export async function deleteSession(courseId: string, sessionId: string): Promis
 }
 
 // ==========================================
-// QUIZZES (Cloud Firestore with Production Fallback on Error)
+// QUIZZES (Cloud Firestore with Cache-First Fallback)
 // ==========================================
+export const LOCAL_QUIZZES_STORAGE_KEY = 'dars_custom_quizzes_v1';
+export const DELETED_QUIZZES_STORAGE_KEY = 'dars_deleted_quizzes_v1';
+
+export function getDeletedQuizIds(): Set<string> {
+  if (typeof window === 'undefined' || !window.localStorage) return new Set();
+  try {
+    const raw = localStorage.getItem(DELETED_QUIZZES_STORAGE_KEY);
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw);
+    return new Set(Array.isArray(arr) ? arr : []);
+  } catch {
+    return new Set();
+  }
+}
+
+export function getLocalCustomQuizzes(): Quiz[] {
+  if (typeof window === 'undefined' || !window.localStorage) return [];
+  try {
+    const raw = localStorage.getItem(LOCAL_QUIZZES_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    const deleted = getDeletedQuizIds();
+    return (Array.isArray(parsed) ? parsed : []).filter(q => q && q.id && !deleted.has(q.id));
+  } catch {
+    return [];
+  }
+}
+
+export function saveLocalCustomQuiz(quiz: Quiz): void {
+  if (typeof window === 'undefined' || !window.localStorage || !quiz || !quiz.id) return;
+  try {
+    const existing = getLocalCustomQuizzes();
+    const idx = existing.findIndex((q) => q.id === quiz.id);
+    if (idx >= 0) {
+      existing[idx] = quiz;
+    } else {
+      existing.unshift(quiz);
+    }
+    localStorage.setItem(LOCAL_QUIZZES_STORAGE_KEY, JSON.stringify(existing));
+  } catch (err) {
+    console.warn('[saveLocalCustomQuiz] Storage write notice:', err);
+  }
+}
+
+export function removeLocalCustomQuiz(id: string): void {
+  if (typeof window === 'undefined' || !window.localStorage || !id) return;
+  try {
+    const existing = getLocalCustomQuizzes();
+    const filtered = existing.filter((q) => q.id !== id);
+    localStorage.setItem(LOCAL_QUIZZES_STORAGE_KEY, JSON.stringify(filtered));
+    const set = getDeletedQuizIds();
+    set.add(id);
+    localStorage.setItem(DELETED_QUIZZES_STORAGE_KEY, JSON.stringify(Array.from(set)));
+  } catch (err) {
+    console.warn('[removeLocalCustomQuiz] Storage write notice:', err);
+  }
+}
+
+export function mergeQuizzesLists(primary: Quiz[], secondary: Quiz[]): Quiz[] {
+  const tombstones = getDeletedQuizIds();
+  const map = new Map<string, Quiz>();
+
+  for (const q of Array.isArray(secondary) ? secondary : []) {
+    if (!q || !q.id || tombstones.has(q.id)) continue;
+    map.set(q.id, q);
+  }
+
+  for (const q of Array.isArray(primary) ? primary : []) {
+    if (!q || !q.id || tombstones.has(q.id)) continue;
+    map.set(q.id, q);
+  }
+
+  return Array.from(map.values()).filter(q => !tombstones.has(q.id));
+}
+
 export async function getQuizById(quizId: string): Promise<Quiz | null> {
   try {
-    const d = await getDoc(doc(db, 'quizzes', quizId));
-    if (d.exists()) {
-      recordFeatureDataSource('quizzes', d.metadata?.fromCache ? 'memory-cache' : 'firestore-server');
-      return { id: d.id, ...d.data() } as Quiz;
+    let d;
+    try {
+      d = await getDoc(doc(db, 'quizzes', quizId));
+    } catch {
+      d = await getDocFromCache(doc(db, 'quizzes', quizId));
     }
+    if (d && d.exists()) {
+      recordFeatureDataSource('quizzes', d.metadata?.fromCache ? 'memory-cache' : 'firestore-server');
+      return {
+        id: d.id,
+        ...d.data(),
+        _pendingSync: d.metadata?.hasPendingWrites || isItemPendingSync(d.id)
+      } as Quiz;
+    }
+    const localMatch = getLocalCustomQuizzes().find(q => q.id === quizId);
+    if (localMatch) return localMatch;
     return null;
   } catch (error) {
     console.warn('getQuizById live fetch notice:', error);
     recordFeatureDataSource('quizzes', 'static-fallback-oct22', String((error as any)?.code || error));
+    const localMatch = getLocalCustomQuizzes().find(q => q.id === quizId);
+    if (localMatch) return localMatch;
     return PRODUCTION_QUIZZES.find(q => q.id === quizId) || null;
   }
 }
 
 export async function getQuizzesByCourse(courseId: string): Promise<Quiz[]> {
+  const localQuizzes = getLocalCustomQuizzes().filter(q => q.courseId === courseId);
+  const fallbackQuizzes = mergeQuizzesLists(localQuizzes, PRODUCTION_QUIZZES.filter(q => q.courseId === courseId));
+
   try {
     const q = query(collection(db, 'quizzes'), where('courseId', '==', courseId));
-    const snapshot = await getDocs(q);
-    if (snapshot.empty && snapshot.metadata?.fromCache) {
-      throw new Error('Client is offline and local cache is empty for quizzes');
+    let snapshot;
+    try {
+      snapshot = await getDocs(q);
+    } catch {
+      snapshot = await getDocsFromCache(q);
     }
-    recordFeatureDataSource('quizzes', snapshot.metadata?.fromCache ? 'memory-cache' : 'firestore-server');
-    return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Quiz));
+    if (snapshot && !snapshot.empty) {
+      const list = snapshot.docs.map(d => ({
+        id: d.id,
+        ...d.data(),
+        _pendingSync: d.metadata?.hasPendingWrites || isItemPendingSync(d.id)
+      } as Quiz));
+      recordFeatureDataSource('quizzes', snapshot.metadata?.fromCache ? 'memory-cache' : 'firestore-server');
+      return mergeQuizzesLists(list, localQuizzes);
+    }
+    return fallbackQuizzes;
   } catch (err) {
     console.warn('getQuizzesByCourse live fetch notice:', err);
     recordFeatureDataSource('quizzes', 'static-fallback-oct22', String((err as any)?.code || err));
-    return PRODUCTION_QUIZZES.filter(q => q.courseId === courseId);
+    return fallbackQuizzes;
   }
 }
 
 export async function getAllQuizzes(): Promise<Quiz[]> {
+  const localQuizzes = getLocalCustomQuizzes();
+  const fallbackQuizzes = mergeQuizzesLists(localQuizzes, PRODUCTION_QUIZZES);
+
   try {
-    const snapshot = await getDocs(collection(db, 'quizzes'));
-    if (snapshot.empty && snapshot.metadata?.fromCache) {
-      throw new Error('Client is offline and local cache is empty for all quizzes');
+    const colRef = collection(db, 'quizzes');
+    let snapshot;
+    try {
+      snapshot = await getDocs(colRef);
+    } catch {
+      snapshot = await getDocsFromCache(colRef);
     }
-    recordFeatureDataSource('quizzes', snapshot.metadata?.fromCache ? 'memory-cache' : 'firestore-server');
-    return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Quiz));
+    if (snapshot && !snapshot.empty) {
+      const list = snapshot.docs.map(d => ({
+        id: d.id,
+        ...d.data(),
+        _pendingSync: d.metadata?.hasPendingWrites || isItemPendingSync(d.id)
+      } as Quiz));
+      recordFeatureDataSource('quizzes', snapshot.metadata?.fromCache ? 'memory-cache' : 'firestore-server');
+      return mergeQuizzesLists(list, localQuizzes);
+    }
+    return fallbackQuizzes;
   } catch (err) {
     console.warn('getAllQuizzes live fetch notice:', err);
     recordFeatureDataSource('quizzes', 'static-fallback-oct22', String((err as any)?.code || err));
-    return PRODUCTION_QUIZZES;
+    return fallbackQuizzes;
   }
 }
 
-export async function saveQuiz(quiz: Partial<Quiz> & { title: string; courseId: string; questions: any[] }): Promise<string> {
+export async function saveQuiz(quiz: Partial<Quiz> & { title: string; courseId: string; questions: any[] }): Promise<SaveResult<string>> {
   const id = quiz.id || `quiz-${Date.now()}`;
   const path = `quizzes/${id}`;
   logCrudDiagnostic('saveQuiz', path, 'start');
@@ -960,15 +1544,23 @@ export async function saveQuiz(quiz: Partial<Quiz> & { title: string; courseId: 
       createdAt: quiz.createdAt || new Date().toISOString()
     };
     await executeWithFreshAuthRetry(() => setDoc(doc(db, 'quizzes', id), quizData, { merge: true }));
+    saveLocalCustomQuiz(quizData as Quiz);
 
     // Server verification read-back
+    let syncStatus: DataSyncStatus = 'synced';
     try {
       const vSnap = await getDocFromServer(doc(db, 'quizzes', id));
       if (vSnap.exists()) {
+        clearItemPendingSync(id);
         logCrudDiagnostic(`saveQuiz Server Verification [ID: ${id}]`, path, 'success');
+      } else {
+        syncStatus = 'pending';
+        markItemPendingSync(id, 'Menunggu konfirmasi server Firestore');
       }
     } catch (vErr) {
-      console.warn('[saveQuiz] Server verification notice:', vErr);
+      syncStatus = 'pending';
+      markItemPendingSync(id, 'Verifikasi server tertunda karena batas kuota atau koneksi');
+      console.warn('[saveQuiz] Server verification deferred (write queued in IndexedDB):', vErr);
     }
 
     // If quiz has sessionId, update that session's quizId
@@ -979,7 +1571,11 @@ export async function saveQuiz(quiz: Partial<Quiz> & { title: string; courseId: 
     }
 
     logCrudDiagnostic('saveQuiz', path, 'success');
-    return id;
+    return {
+      id,
+      syncStatus,
+      message: syncStatus === 'synced' ? MSG_SAVED_CLOUD : MSG_PENDING_SYNC
+    };
   } catch (error) {
     logCrudDiagnostic('saveQuiz', path, 'failed', error);
     handleFirestoreError(error, OperationType.WRITE, path);
@@ -992,6 +1588,9 @@ export async function deleteQuiz(quizId: string): Promise<void> {
   logCrudDiagnostic('deleteQuiz', path, 'start');
   try {
     await executeWithFreshAuthRetry(() => deleteDoc(doc(db, 'quizzes', quizId)));
+    removeLocalCustomQuiz(quizId);
+    clearItemPendingSync(quizId);
+
     // Clear quizId from any sessions
     const sessions = await getDocs(query(collection(db, 'sessions'), where('quizId', '==', quizId))).catch(() => null);
     if (sessions && !sessions.empty) {

@@ -4116,5 +4116,166 @@ test('Case 92: Pengguliran otomatis (auto-scroll) halus dan penghapusan total fi
   assert.equal(scroller.getIsRunning(), false);
 });
 
+// Case 93: Audit dan verifikasi data sesi pasca-22 Oktober serta konsistensi jumlah sesi per kursus
+test('Case 93: Verifikasi keberadaan dan integritas data sesi Firestore pasca-22 Oktober', async () => {
+  const { PRODUCTION_COURSES, PRODUCTION_SESSIONS } = await import('../data/productionCache.js');
+
+  // 1. Verifikasi total sesi sekarang berjumlah 21 (17 sesi awal + 4 sesi baru pasca-22 Oktober)
+  assert.equal(PRODUCTION_SESSIONS.length, 21, 'Total sesi harus tepat 21');
+
+  // 2. Verifikasi 4 dokumen sesi baru yang ditambahkan pasca-22 Oktober
+  const postOct22SessionIds = [
+    'session-1792896959084', // Na'ib fa'il (Course 1, Order 16)
+    'session-1792896087379', // Seputas Air part 2 (Course 2, Order 3)
+    'session-1792896349507', // Al-Aniah: Wadah (Course 2, Order 4)
+    'session-1793033036867'  // Ketentuan dan adab buang hajat (Course 2, Order 5)
+  ];
+
+  for (const sessionId of postOct22SessionIds) {
+    const found = PRODUCTION_SESSIONS.find(s => s.id === sessionId);
+    assert.ok(found, `Sesi pasca-22 Oktober dengan ID ${sessionId} harus ditemukan`);
+    assert.ok(found.title && found.title.length > 0, `Sesi ${sessionId} harus memiliki judul yang valid`);
+    assert.ok(found.order > 0, `Sesi ${sessionId} harus memiliki nomor urut positif`);
+    assert.equal(found.isPublished, true, `Sesi ${sessionId} harus berstatus terbit (published)`);
+  }
+
+  // 3. Verifikasi jumlah sesi per kursus
+  const course1Sessions = PRODUCTION_SESSIONS.filter(s => s.courseId === 'course-1792197763057');
+  const course2Sessions = PRODUCTION_SESSIONS.filter(s => s.courseId === 'course-1792229735274');
+
+  assert.equal(course1Sessions.length, 16, 'Kursus 1 (Mutammimah Al-Ajurumiyah) harus memiliki tepat 16 sesi');
+  assert.equal(course2Sessions.length, 5, 'Kursus 2 (Fiqih Taharah) harus memiliki tepat 5 sesi');
+
+  // 4. Verifikasi urutan sesi Kursus 1 (1 sampai 16 tanpa loncatan)
+  const course1Orders = course1Sessions.map(s => s.order).sort((a, b) => a - b);
+  assert.deepEqual(course1Orders, Array.from({ length: 16 }, (_, i) => i + 1));
+
+  // 5. Verifikasi urutan sesi Kursus 2 (1 sampai 5 tanpa loncatan)
+  const course2Orders = course2Sessions.map(s => s.order).sort((a, b) => a - b);
+  assert.deepEqual(course2Orders, [1, 2, 3, 4, 5]);
+
+  // 6. Verifikasi kursus terdaftar memiliki counter yang selaras
+  const course1 = PRODUCTION_COURSES.find(c => c.id === 'course-1792197763057');
+  const course2 = PRODUCTION_COURSES.find(c => c.id === 'course-1792229735274');
+
+  assert.ok(course1, 'Kursus 1 harus ada dalam PRODUCTION_COURSES');
+  assert.ok(course2, 'Kursus 2 harus ada dalam PRODUCTION_COURSES');
+  assert.equal(course1.sessionsCount, 16);
+  assert.equal(course2.sessionsCount, 5);
+});
+
+// Case 94: Sistem Daftar Isi Otomatis dan Navigasi Slide Pembahasan pada Sesi Pembelajaran
+test('Case 94: sessionSlideHelper memvalidasi ekstraksi H1, segmentasi slide, preservasi elemen, navigasi, dan kompatibilitas materi lama', async () => {
+  const {
+    splitSessionContentIntoSlides,
+    getSlideNavInfo,
+    hasMeaningfulContent
+  } = await import('./sessionSlideHelper.js');
+
+  // 1. Ekstraksi otomatis H1 menjadi slide terpadu
+  const sampleHtml = `
+    <p>Pengantar awal sesi sebelum judul pertama.</p>
+    <h1>1. Pengertian Kalam</h1>
+    <p>Kalam menurut ulama Nahwu adalah lafaz yang tersusun dan memberi faedah.</p>
+    <div dir="rtl" class="font-amiri">الْكَلَامُ هُوَ اللَّفْظُ الْمُرَكَّبُ الْمُفِيدُ بِالْوَضْعِ</div>
+    <h2>Syarat-syarat Kalam</h2>
+    <p>Terdapat empat syarat utama.</p>
+    <h1>2. Pembagian Kalam</h1>
+    <p>Kalam terbagi menjadi tiga bagian: isim, fi'il, dan huruf.</p>
+    <table class="test-table"><tr><td>Isim</td><td>Fi'il</td><td>Huruf</td></tr></table>
+    <blockquote>Kutipan dari Matan Al-Ajurumiyyah</blockquote>
+    <h1>3. Tanda-tanda Isim</h1>
+    <p>Isim dapat dikenali dengan khafadh, tanwin, dan kemasukan alif lam.</p>
+    <h3>Rincian Huruf Khafadh</h3>
+    <p>Di antaranya min, ila, 'an, 'ala...</p>
+  `;
+
+  const result = splitSessionContentIntoSlides(sampleHtml, 'Sesi Belajar Nahwu');
+  assert.equal(result.hasH1, true, 'Harus mendeteksi keberadaan H1');
+  assert.equal(result.fallbackUsed, false, 'Tidak boleh menggunakan fallback jika ada H1');
+  assert.equal(result.slides.length, 3, 'Harus menghasilkan tepat 3 slide dari 3 buah H1');
+
+  // 2. Urutan daftar isi sesuai urutan H1
+  assert.equal(result.slides[0].title, '1. Pengertian Kalam');
+  assert.equal(result.slides[1].title, '2. Pembagian Kalam');
+  assert.equal(result.slides[2].title, '3. Tanda-tanda Isim');
+
+  // 3. Preamble sebelum H1 pertama dimasukkan ke slide 1 tanpa ada konten yang hilang
+  assert.ok(
+    result.slides[0].htmlContent.includes('Pengantar awal sesi sebelum judul pertama'),
+    'Pengantar sebelum H1 pertama harus tetap ada di slide 1'
+  );
+  assert.ok(
+    result.slides[0].htmlContent.includes('الْكَلَامُ هُوَ اللَّفْظُ الْمُرَكَّبُ الْمُفِيدُ بِالْوَضْعِ'),
+    'Teks Arab dan harakat harus utuh di slide 1'
+  );
+  assert.ok(
+    result.slides[0].htmlContent.includes('<h2>Syarat-syarat Kalam</h2>'),
+    'Heading 2 harus tetap menjadi bagian dari isi slide 1, bukan poin daftar isi'
+  );
+
+  // 4. Slide 2 memuat tabel dan blockquote
+  assert.ok(result.slides[1].htmlContent.includes('<table class="test-table">'), 'Tabel harus utuh di slide 2');
+  assert.ok(result.slides[1].htmlContent.includes('<blockquote>'), 'Kutipan blockquote harus utuh di slide 2');
+  assert.equal(result.slides[1].htmlContent.includes('Tanda-tanda Isim'), false, 'Konten slide 3 tidak boleh bocor ke slide 2');
+
+  // 5. Slide 3 memuat Heading 3
+  assert.ok(
+    result.slides[2].htmlContent.includes('<h3>Rincian Huruf Khafadh</h3>'),
+    'Heading 3 harus tetap berada di dalam slide 3, bukan menjadi poin daftar isi'
+  );
+
+  // 6. Navigasi Slide (getSlideNavInfo)
+  // Uji Slide Pertama (index 0)
+  const navFirst = getSlideNavInfo(result.slides, 0);
+  assert.equal(navFirst.isFirst, true);
+  assert.equal(navFirst.prevSlide, null);
+  assert.equal(navFirst.prevButtonLabel, null, 'Tombol Sebelumnya harus disembunyikan pada slide pertama');
+  assert.equal(navFirst.nextSlide?.title, '2. Pembagian Kalam');
+  assert.equal(navFirst.nextButtonLabel, 'Selanjutnya: 2. Pembagian Kalam →');
+
+  // Uji Slide Kedua (index 1)
+  const navMiddle = getSlideNavInfo(result.slides, 1);
+  assert.equal(navMiddle.isFirst, false);
+  assert.equal(navMiddle.isLast, false);
+  assert.equal(navMiddle.prevSlide?.title, '1. Pengertian Kalam');
+  assert.equal(navMiddle.prevButtonLabel, '← Sebelumnya: 1. Pengertian Kalam');
+  assert.equal(navMiddle.nextSlide?.title, '3. Tanda-tanda Isim');
+  assert.equal(navMiddle.nextButtonLabel, 'Selanjutnya: 3. Tanda-tanda Isim →');
+
+  // Uji Slide Terakhir (index 2)
+  const navLast = getSlideNavInfo(result.slides, 2);
+  assert.equal(navLast.isFirst, false);
+  assert.equal(navLast.isLast, true);
+  assert.equal(navLast.prevSlide?.title, '2. Pembagian Kalam');
+  assert.equal(navLast.prevButtonLabel, '← Sebelumnya: 2. Pembagian Kalam');
+  assert.equal(navLast.nextSlide, null);
+  assert.equal(navLast.nextButtonLabel, 'Kembali ke Daftar Isi', 'Pada slide terakhir tombol Selanjutnya diganti Kembali ke Daftar Isi');
+
+  // 7. Pengujian Kompatibilitas Materi Lama tanpa Heading 1
+  const legacyHtml = '<p>Catatan lama materi fiqih thaharah tanpa format H1.</p><p>Paragraf kedua materi.</p>';
+  const legacyResult = splitSessionContentIntoSlides(legacyHtml, 'Seputar Air & Thaharah');
+  assert.equal(legacyResult.hasH1, false);
+  assert.equal(legacyResult.fallbackUsed, true, 'Harus mengaktifkan mode fallback kompatibilitas');
+  assert.equal(legacyResult.slides.length, 1, 'Harus menghasilkan 1 slide utuh');
+  assert.equal(legacyResult.slides[0].title, 'Seputar Air & Thaharah', 'Judul slide harus mengambil fallback title');
+  assert.equal(legacyResult.slides[0].htmlContent, legacyHtml, 'Seluruh materi lama harus tetap ada 100%');
+
+  // 8. Pengujian HTML kosong atau hanya spasi/tag kosong
+  assert.equal(hasMeaningfulContent(''), false);
+  assert.equal(hasMeaningfulContent('<p><br></p>'), false);
+  assert.equal(hasMeaningfulContent('   '), false);
+  const emptyResult = splitSessionContentIntoSlides('<p><br></p>', 'Judul');
+  assert.equal(emptyResult.slides.length, 0, 'Konten kosong tidak boleh menghasilkan slide palsu');
+
+  // 9. Perubahan H1 oleh admin memperbarui daftar isi secara langsung
+  const updatedHtml = sampleHtml + '<h1>4. Catatan dan Faedah Ilmiah</h1><p>Faedah penting dari guru...</p>';
+  const updatedResult = splitSessionContentIntoSlides(updatedHtml, 'Sesi Belajar Nahwu');
+  assert.equal(updatedResult.slides.length, 4, 'Penambahan H1 harus langsung menambah jumlah slide menjadi 4');
+  assert.equal(updatedResult.slides[3].title, '4. Catatan dan Faedah Ilmiah');
+});
+
+
+
 
 
