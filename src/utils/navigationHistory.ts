@@ -5,6 +5,7 @@ export interface DarsRouteState {
   quizId?: string | null;
   blogPostId?: string | null;
   blogPostSlug?: string | null;
+  genre?: string | null;
   qaId?: string | null;
   filterCategoryId?: string;
   searchQuery?: string;
@@ -63,6 +64,7 @@ export function parseUrlToRouteState(pathname: string, search: string): DarsRout
   const urlQuizId = params.get('quizId') || null;
   const urlArticle = params.get('article') || null;
   const urlArticleId = params.get('id') || null;
+  const urlGenre = params.get('genre') || null;
   const urlQaId = params.get('qaId') || null;
   const urlView = params.get('view') || null;
   const filterCategoryId = params.get('category') || 'all';
@@ -210,6 +212,7 @@ export function parseUrlToRouteState(pathname: string, search: string): DarsRout
   ) {
     return {
       view: 'blog',
+      genre: urlGenre,
       filterCategoryId,
       searchQuery
     };
@@ -262,8 +265,12 @@ export function buildUrlFromRouteState(route: DarsRouteState): string {
     case 'instructor-profile':
       return '/profil-pengajar';
 
-    case 'blog':
+    case 'blog': {
+      if (route.genre && route.genre.trim()) {
+        return `/?view=blog&genre=${encodeURIComponent(route.genre.trim())}`;
+      }
       return '/?view=blog';
+    }
 
     case 'blog-detail': {
       if (route.blogPostSlug) {
@@ -352,6 +359,8 @@ export function isSameRouteState(a: DarsRouteState, b: DarsRouteState): boolean 
   switch (a.view) {
     case 'search':
       return (a.searchQuery || '').trim().toLowerCase() === (b.searchQuery || '').trim().toLowerCase();
+    case 'blog':
+      return (a.genre || '') === (b.genre || '');
     case 'blog-detail': {
       const aKey = a.blogPostSlug || a.blogPostId || '';
       const bKey = b.blogPostSlug || b.blogPostId || '';

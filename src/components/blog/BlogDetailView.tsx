@@ -20,12 +20,13 @@ import { ArticleAudioPlayer } from './ArticleAudioPlayer';
 import { ArticleCommentsSection } from './ArticleCommentsSection';
 import { ReadingFontControls, useReadingFontSize } from '../common/ReadingFontControls';
 import { ResilientGoogleDriveImage } from '../common/ResilientGoogleDriveImage';
-import { ArticleTableOfContents } from './ArticleTableOfContents';
+import { ArticleReadingViewer } from './ArticleReadingViewer';
 import { injectHeadingIdsIntoHtml } from '../../utils/tableOfContentsHelper';
 import {
   prepareArticleSpeechContent,
   clearAllReadingHighlights
 } from '../../utils/articleSpeechSync';
+import { recordLastReadArticle } from '../../utils/articleHistoryHelper';
 import { MobileCarousel } from '../common/MobileCarousel';
 import {
   normalizeArticleHtmlImages,
@@ -60,6 +61,7 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
   useEffect(() => {
     if (post && post.id) {
       incrementBlogPostViews(post.id);
+      recordLastReadArticle(post.id);
     }
   }, [post.id]);
 
@@ -445,20 +447,15 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
           </figure>
         )}
 
-        {/* DAFTAR ISI OTOMATIS (TABLE OF CONTENTS) */}
-        {tocItems.length > 0 && (
-          <ArticleTableOfContents items={tocItems} />
-        )}
-
-        {/* MAIN BODY HTML CONTENT — Calm reading zone with real-time text highlight */}
-        <div
-          ref={contentBodyRef}
-          data-testid="article-body-content"
-          className="prose dark:prose-invert max-w-none sm:max-w-[68ch] mx-auto text-[#171717] dark:text-[#CEFEF1] leading-relaxed space-y-3.5 sm:space-y-4 font-sans blog-content cursor-pointer"
-          onClick={handleArticleTextClick}
-          dangerouslySetInnerHTML={{
-            __html: preparedBodyHtml
-          }}
+        {/* ARTICLE READING VIEWER (DAFTAR ISI AWAL, NAVIGASI SLIDE H1, & MODE BACA SEMUA) */}
+        <ArticleReadingViewer
+          rawContent={preparedBodyHtml}
+          articleTitle={post.title}
+          fontControl={fontControl}
+          isAdmin={isAdmin}
+          onTextClick={handleArticleTextClick}
+          contentBodyRef={contentBodyRef}
+          postId={post.id}
         />
 
         {/* ARABIC CONTENT SECTION (IF PRESENT) */}

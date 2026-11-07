@@ -4341,6 +4341,159 @@ test('Case 95: extractValidQuizId dan evaluateSessionQuizStatus menangani quizId
   assert.equal(statusValid.canCompleteSession, false);
 });
 
+test('Case 96: articleHistoryHelper memvalidasi penyimpanan/pengambilan artikel terakhir dibaca dan pengelompokan genre 3-kolom mobile', async () => {
+  const {
+    recordLastReadArticle,
+    getLastReadArticleId,
+    resolveLastReadArticle,
+    extractGenresFromCategory,
+    groupArticlesByGenre,
+    findArticlesByGenre,
+    LAST_READ_ARTICLE_STORAGE_KEY
+  } = await import('./articleHistoryHelper');
+
+  // Mock localStorage in node environment if needed
+  const storageMap = new Map<string, string>();
+  const originalWindow = (global as any).window;
+  (global as any).window = {
+    localStorage: {
+      getItem: (k: string) => storageMap.get(k) || null,
+      setItem: (k: string, v: string) => { storageMap.set(k, String(v)); },
+      removeItem: (k: string) => { storageMap.delete(k); }
+    }
+  };
+
+  try {
+    // 1. Uji ekstraksi genre
+    assert.deepEqual(extractGenresFromCategory('Adab & Akhlak'), ['Adab & Akhlak']);
+    assert.deepEqual(extractGenresFromCategory('Nahwu, Bahasa Arab, Kaidah'), ['Nahwu', 'Bahasa Arab', 'Kaidah']);
+    assert.deepEqual(extractGenresFromCategory(''), []);
+    assert.deepEqual(extractGenresFromCategory(undefined), []);
+
+    // 2. Sample artikel untuk pengujian
+    const mockPosts: any[] = [
+      { id: 'post-1', title: 'Adab Penuntut Ilmu', category: 'Adab & Akhlak', coverImageUrl: 'img1.jpg' },
+      { id: 'post-2', title: 'Pengertian Kalam', category: 'nahwu', coverImageUrl: 'img2.jpg' },
+      { id: 'post-3', title: 'I\'rab Fi\'il Mudhari\'', category: 'nahwu, bahasa arab', coverImageUrl: 'img3.jpg' },
+      { id: 'post-4', title: 'Tanda-Tanda Isim', category: 'nahwu', coverImageUrl: 'img4.jpg' },
+      { id: 'post-5', title: 'Kaidah I\'rab Lanjutan', category: 'nahwu', coverImageUrl: 'img5.jpg' },
+      { id: 'post-6', title: 'Sejarah Tadwin Hadits', category: 'sejarah', coverImageUrl: 'img6.jpg' }
+    ];
+
+    // 3. Uji groupArticlesByGenre
+    const groups = groupArticlesByGenre(mockPosts);
+    assert.ok(groups.length >= 3, 'Harus menghasilkan minimal 3 kelompok genre');
+
+    const nahwuGroup = groups.find((g) => g.name.toLowerCase() === 'nahwu');
+    assert.ok(nahwuGroup, 'Genre Nahwu harus ditemukan');
+    assert.equal(nahwuGroup!.articles.length, 4, 'Genre Nahwu harus berisi 4 artikel');
+
+    // Pada katalog utama mobile, hanya maksimal 3 card yang ditampilkan
+    const catalogCards = nahwuGroup!.articles.slice(0, 3);
+    assert.equal(catalogCards.length, 3, 'Katalog genre mobile hanya menampilkan maksimal 3 card per baris');
+
+    // 4. Uji findArticlesByGenre untuk halaman detail genre
+    const detailArticles = findArticlesByGenre(mockPosts, 'Nahwu');
+    assert.equal(detailArticles.length, 4, 'Halaman detail genre menampilkan SELURUH 4 artikel');
+    assert.equal(detailArticles[0].id, 'post-2');
+    assert.equal(detailArticles[3].id, 'post-5');
+
+    // 5. Uji Artikel Terakhir Dibaca
+    // Awal: belum pernah membaca
+    assert.equal(getLastReadArticleId(), null);
+    assert.equal(resolveLastReadArticle(mockPosts), null);
+
+    // Pengguna membuka artikel post-3
+    recordLastReadArticle('post-3');
+    assert.equal(getLastReadArticleId(), 'post-3');
+    const resolved = resolveLastReadArticle(mockPosts);
+    assert.ok(resolved);
+    assert.equal(resolved!.id, 'post-3');
+    assert.equal(resolved!.title, 'I\'rab Fi\'il Mudhari\'');
+
+    // Pengguna kemudian membuka artikel post-1
+    recordLastReadArticle('post-1');
+    assert.equal(getLastReadArticleId(), 'post-1');
+    const resolvedLatest = resolveLastReadArticle(mockPosts);
+    assert.ok(resolvedLatest);
+    assert.equal(resolvedLatest!.id, 'post-1');
+    assert.equal(resolvedLatest!.title, 'Adab Penuntut Ilmu');
+  } finally {
+    (global as any).window = originalWindow;
+  }
+});
+
+test('Case 97: Article Table of Contents dan Mode Baca Artikel (TOC Awal, Slide H1, dan Mode Baca Semua)', async () => {
+  const { splitSessionContentIntoSlides, getSlideNavInfo } = await import('./sessionSlideHelper.js');
+
+  const articleHtml = `
+    <h1>PENGERTIAN KALAM DALAM ILMU NAHWU</h1>
+    <p>Kalam adalah lafal yang tersusun dan berfaedah.</p>
+    <h2>A. Unsur-Unsur Kalam</h2>
+    <p>1. Lafal 2. Murakkab 3. Mufid 4. Bil-Wadh'i</p>
+    <div dir="rtl" class="font-amiri">زَيْدٌ قَائِمٌ</div>
+
+    <h1>PERBEDAAN KALAM, QAWL, DAN KALIM</h1>
+    <p>Berikut rincian perbedaan ketiga istilah menurut para ulama nahwu:</p>
+    <h3>1. Pendapat Ibnu Jinni</h3>
+    <blockquote>Kalam lebih spesifik dari qawl.</blockquote>
+    <table><tr><td>Istilah</td><td>Makna</td></tr></table>
+
+    <h1>KISAH SEJARAH ILMU NAHWU</h1>
+    <p>Kisah putri Abu al-Aswad ad-Du'ali dan perdebatan Sibawayh dengan al-Kisa'i.</p>
+  `;
+
+  // 1. Verifikasi pembagian konten menjadi slide H1
+  const result = splitSessionContentIntoSlides(articleHtml, 'Artikel Contoh');
+  assert.equal(result.hasH1, true, 'Harus mendeteksi keberadaan H1');
+  assert.equal(result.slides.length, 3, 'Harus menghasilkan 3 slide/poin pembahasan');
+
+  // 2. Verifikasi poin Daftar Isi mengikuti urutan dan judul asli H1
+  assert.equal(result.slides[0].title, 'PENGERTIAN KALAM DALAM ILMU NAHWU');
+  assert.equal(result.slides[1].title, 'PERBEDAAN KALAM, QAWL, DAN KALIM');
+  assert.equal(result.slides[2].title, 'KISAH SEJARAH ILMU NAHWU');
+
+  // 3. Verifikasi slide 1 mempertahankan H2, teks Arab, dan paragraf
+  assert.ok(result.slides[0].htmlContent.includes('<h2>A. Unsur-Unsur Kalam</h2>'));
+  assert.ok(result.slides[0].htmlContent.includes('زَيْدٌ قَائِمٌ'));
+  assert.ok(!result.slides[0].htmlContent.includes('PERBEDAAN KALAM'));
+
+  // 4. Verifikasi slide 2 mempertahankan H3, blockquote, dan table
+  assert.ok(result.slides[1].htmlContent.includes('<h3>1. Pendapat Ibnu Jinni</h3>'));
+  assert.ok(result.slides[1].htmlContent.includes('<blockquote>'));
+  assert.ok(result.slides[1].htmlContent.includes('<table>'));
+
+  // 5. Verifikasi navigasi antar slide
+  // Slide pertama (index 0): Tombol sebelumnya null, tombol selanjutnya mengarah ke slide 2
+  const nav0 = getSlideNavInfo(result.slides, 0);
+  assert.equal(nav0.isFirst, true);
+  assert.equal(nav0.prevButtonLabel, null, 'Slide pertama tidak menampilkan tombol Sebelumnya');
+  assert.ok(nav0.nextButtonLabel.includes('PERBEDAAN KALAM, QAWL, DAN KALIM'));
+
+  // Slide tengah (index 1): Tombol sebelumnya mengarah ke slide 1, selanjutnya ke slide 3
+  const nav1 = getSlideNavInfo(result.slides, 1);
+  assert.equal(nav1.isFirst, false);
+  assert.equal(nav1.isLast, false);
+  assert.ok(nav1.prevButtonLabel!.includes('PENGERTIAN KALAM DALAM ILMU NAHWU'));
+  assert.ok(nav1.nextButtonLabel.includes('KISAH SEJARAH ILMU NAHWU'));
+
+  // Slide terakhir (index 2): Tombol selanjutnya berganti menjadi 'Kembali ke Daftar Isi'
+  const nav2 = getSlideNavInfo(result.slides, 2);
+  assert.equal(nav2.isLast, true);
+  assert.ok(nav2.prevButtonLabel!.includes('PERBEDAAN KALAM, QAWL, DAN KALIM'));
+  assert.equal(nav2.nextButtonLabel, 'Kembali ke Daftar Isi', 'Slide terakhir harus memiliki tombol Kembali ke Daftar Isi');
+
+  // 6. Verifikasi artikel tanpa H1 (fallback lama tetap aman terbaca tanpa kehilangan konten)
+  const legacyHtml = '<p>Artikel lama tanpa judul H1 langsung berupa uraian ilmu.</p>';
+  const fallbackResult = splitSessionContentIntoSlides(legacyHtml, 'Artikel Klasik');
+  assert.equal(fallbackResult.hasH1, false);
+  assert.equal(fallbackResult.fallbackUsed, true);
+  assert.equal(fallbackResult.slides.length, 1);
+  assert.ok(fallbackResult.slides[0].htmlContent.includes('Artikel lama tanpa judul H1'));
+});
+
+
+
 
 
 

@@ -73,6 +73,7 @@ import {
   isSameRouteState,
   computeInitialHistorySetup
 } from './utils/navigationHistory';
+import { recordLastReadArticle } from './utils/articleHistoryHelper';
 
 function MainApp() {
   const {
@@ -114,6 +115,7 @@ function MainApp() {
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [selectedQuiz, setSelectedQuiz] = useState<Quiz | null>(null);
   const [selectedBlogPost, setSelectedBlogPost] = useState<BlogPost | null>(null);
+  const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
 
   // Certificate Modal State
   const [certModalOpen, setCertModalOpen] = useState(false);
@@ -220,6 +222,8 @@ function MainApp() {
   selectedQuizRef.current = selectedQuiz;
   const targetQaIdRef = useRef<string | null>(targetQaId);
   targetQaIdRef.current = targetQaId;
+  const selectedGenreRef = useRef<string | null>(selectedGenre);
+  selectedGenreRef.current = selectedGenre;
 
   // Map of internal history index -> DarsHistoryState to inspect previous entry on in-app Back buttons
   const historyEntriesRef = useRef<Record<number, DarsHistoryState>>({});
@@ -326,6 +330,13 @@ function MainApp() {
         return;
       }
 
+      if (route.view === 'blog') {
+        setSelectedGenre(route.genre || null);
+        setCurrentView('blog');
+        return;
+      }
+
+      setSelectedGenre(null);
       setCurrentView(route.view || 'home');
     },
     []
@@ -357,6 +368,7 @@ function MainApp() {
             quizId: selectedQuizRef.current?.id || null,
             blogPostId: selectedBlogPostRef.current?.id || null,
             blogPostSlug: selectedBlogPostRef.current?.slug || null,
+            genre: selectedGenreRef.current || null,
             qaId: targetQaIdRef.current || null,
             filterCategoryId: filterCategoryIdRef.current,
             searchQuery: searchQueryRef.current,
@@ -391,6 +403,7 @@ function MainApp() {
         quizId: nextRoute.quizId ?? null,
         blogPostId: nextRoute.blogPostId ?? null,
         blogPostSlug: nextRoute.blogPostSlug ?? null,
+        genre: nextRoute.genre ?? null,
         qaId: nextRoute.qaId ?? null,
         filterCategoryId: nextRoute.filterCategoryId ?? filterCategoryIdRef.current,
         searchQuery: nextRoute.searchQuery ?? searchQueryRef.current,
@@ -744,6 +757,7 @@ function MainApp() {
   };
 
   const handleSelectBlogPost = (post: BlogPost) => {
+    recordLastReadArticle(post.id);
     setSelectedBlogPost(post);
     navigateTo({
       view: 'blog-detail',
@@ -783,6 +797,8 @@ function MainApp() {
   const routeScrollKey =
     currentView === 'blog-detail'
       ? `blog-detail:${selectedBlogPost?.id || ''}`
+      : currentView === 'blog'
+      ? `blog:${selectedGenre || 'catalog'}`
       : currentView === 'course-detail'
       ? `course-detail:${selectedCourse?.id || ''}`
       : currentView === 'session-view'
@@ -1099,6 +1115,19 @@ function MainApp() {
                       loading={loading}
                       onSelectArticle={(article) => {
                         handleSelectBlogPost(article);
+                      }}
+                      selectedGenre={selectedGenre}
+                      onSelectGenre={(genre) => {
+                        navigateTo({
+                          view: 'blog',
+                          genre: genre || null
+                        });
+                      }}
+                      onBackToCatalog={() => {
+                        handleBackOrNavigate(['blog'], {
+                          view: 'blog',
+                          genre: null
+                        });
                       }}
                       loadError={loadError}
                       onRetry={handleRetryLoadData}
