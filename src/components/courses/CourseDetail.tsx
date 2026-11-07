@@ -25,6 +25,7 @@ import { buildCourseShareUrl, copyCourseUrlToClipboard } from '../../utils/cours
 import {
   evaluateSessionQuizStatus,
   findFirstUncompletedPrecedingQuizSession,
+  extractValidQuizId,
   SessionQuizStatus
 } from '../../utils/quizFlowHelper';
 import { QuizRequiredModal } from './QuizRequiredModal';
@@ -77,8 +78,8 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
 
   React.useEffect(() => {
     const quizIds = sessions
-      .map(s => s.quizId)
-      .filter((id): id is string => Boolean(id && id.trim().length > 0));
+      .map(s => extractValidQuizId(s.quizId))
+      .filter((id): id is string => Boolean(id));
 
     if (quizIds.length === 0) return;
 
@@ -95,7 +96,7 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
 
   const handleStartQuizForSession = async (e: React.MouseEvent, targetSession: Session) => {
     e.stopPropagation();
-    const qId = targetSession.quizId;
+    const qId = extractValidQuizId(targetSession.quizId);
     if (!qId) return;
 
     if (!user) {
@@ -453,7 +454,8 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
           <div className="space-y-3.5">
             {sessions.map((session, idx) => {
               const isSessionDone = completedIds.has(session.id);
-              const sQuiz = session.quizId ? quizzesMap[session.quizId] : null;
+              const validQuizId = extractValidQuizId(session.quizId);
+              const sQuiz = validQuizId ? quizzesMap[validQuizId] : null;
               const quizStatus = evaluateSessionQuizStatus(session, sQuiz, userAttempts);
 
               return (
@@ -499,7 +501,7 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
                       </p>
 
                       {/* Dedicated Quiz Button directly beneath this session */}
-                      {session.quizId && (
+                      {validQuizId && (
                         <div className="pt-2">
                           {quizStatus.status === 'passed' ? (
                             <button

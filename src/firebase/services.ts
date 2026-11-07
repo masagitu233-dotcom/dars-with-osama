@@ -1178,7 +1178,7 @@ export async function resolveSessionFromRoute(
   }
 }
 
-export async function saveSession(courseId: string, session: Partial<Session> & { title: string }): Promise<string> {
+export async function saveSession(courseId: string, session: Partial<Session> & { title: string }): Promise<SaveResult<string>> {
   const id = session.id || `session-${Date.now()}`;
   const path = `courses/${courseId}/sessions/${id}`;
   logCrudDiagnostic('saveSession', path, 'start');
@@ -1681,8 +1681,8 @@ export async function isSessionQuizSatisfied(
         if (targetIdx > 0) {
           const preceding = sorted.slice(0, targetIdx);
           for (const prev of preceding) {
-            if (prev.quizId && prev.quizId.trim().length > 0) {
-              const prevQuiz = await getQuizById(prev.quizId);
+            if (typeof prev.quizId === 'string' && prev.quizId.trim().length > 0) {
+              const prevQuiz = await getQuizById(prev.quizId.trim());
               if (prevQuiz && prevQuiz.isPublished !== false) {
                 const prevCheck = canCompleteSession(prev, prevQuiz, attempts);
                 if (!prevCheck.allowed) {
@@ -1702,8 +1702,8 @@ export async function isSessionQuizSatisfied(
     }
 
     // 2. Validate current session quiz
-    if (session.quizId && session.quizId.trim().length > 0) {
-      const quiz = await getQuizById(session.quizId);
+    if (typeof session.quizId === 'string' && session.quizId.trim().length > 0) {
+      const quiz = await getQuizById(session.quizId.trim());
       if (quiz && quiz.isPublished !== false) {
         const check = canCompleteSession(session, quiz, attempts);
         return {

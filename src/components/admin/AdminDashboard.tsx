@@ -500,7 +500,7 @@ export const AdminDashboard: React.FC<{
           ? sessionFormData.quizTitle.trim()
           : `Kuis Evaluasi - ${sessionTitle}`;
 
-        const savedQuizId = await saveQuiz({
+        const savedQuizRes = await saveQuiz({
           id: linkedQuizId || `quiz-${Date.now()}`,
           title: quizTitleToSave,
           titleAr: sessionFormData.titleAr ? `اختبار - ${sessionFormData.titleAr}` : '',
@@ -513,7 +513,7 @@ export const AdminDashboard: React.FC<{
           isPublished: sessionFormData.isPublished,
           questions: sessionFormData.questions || []
         });
-        linkedQuizId = savedQuizId || linkedQuizId;
+        linkedQuizId = (typeof savedQuizRes === 'string' ? savedQuizRes : savedQuizRes?.id) || linkedQuizId;
       }
 
       // Save Session

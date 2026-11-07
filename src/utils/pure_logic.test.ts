@@ -4275,6 +4275,73 @@ test('Case 94: sessionSlideHelper memvalidasi ekstraksi H1, segmentasi slide, pr
   assert.equal(updatedResult.slides[3].title, '4. Catatan dan Faedah Ilmiah');
 });
 
+// Case 95: Pengujian kekebalan evaluasi quizId terhadap tipe non-string (boolean, null, undefined, object)
+test('Case 95: extractValidQuizId dan evaluateSessionQuizStatus menangani quizId non-string tanpa melempar TypeError', async () => {
+  const { extractValidQuizId, evaluateSessionQuizStatus, canCompleteSession } = await import('./quizFlowHelper.js');
+
+  // 1. Validasi extractValidQuizId
+  assert.equal(extractValidQuizId('quiz-123'), 'quiz-123');
+  assert.equal(extractValidQuizId('   quiz-456   '), 'quiz-456');
+  assert.equal(extractValidQuizId(''), null);
+  assert.equal(extractValidQuizId('   '), null);
+  assert.equal(extractValidQuizId(null), null);
+  assert.equal(extractValidQuizId(undefined), null);
+  assert.equal(extractValidQuizId(false), null);
+  assert.equal(extractValidQuizId(true), null);
+  assert.equal(extractValidQuizId(123), null);
+  assert.equal(extractValidQuizId({}), null);
+
+  // 2. Sesi dengan quizId boolean false atau true tidak boleh melempar session.quizId.trim is not a function
+  const sessionWithBoolQuizId: any = {
+    id: 'session-bool-1',
+    courseId: 'course-1',
+    title: 'Sesi Uji Coba',
+    quizId: false,
+    order: 1
+  };
+
+  assert.doesNotThrow(() => {
+    const status = evaluateSessionQuizStatus(sessionWithBoolQuizId, null, []);
+    assert.equal(status.hasQuiz, false);
+    assert.equal(status.status, 'no_quiz');
+    assert.equal(status.canCompleteSession, true);
+  });
+
+  const checkBool = canCompleteSession(sessionWithBoolQuizId, null, []);
+  assert.equal(checkBool.allowed, true);
+
+  // 3. Sesi dengan quizId boolean true
+  const sessionWithTrueQuizId: any = {
+    id: 'session-bool-2',
+    courseId: 'course-1',
+    title: 'Sesi Uji Coba 2',
+    quizId: true,
+    order: 2
+  };
+
+  assert.doesNotThrow(() => {
+    const status = evaluateSessionQuizStatus(sessionWithTrueQuizId, null, []);
+    assert.equal(status.hasQuiz, false);
+    assert.equal(status.status, 'no_quiz');
+  });
+
+  // 4. Sesi dengan quizId string valid
+  const sessionWithValidQuizId: any = {
+    id: 'session-valid-1',
+    courseId: 'course-1',
+    title: 'Sesi Uji Coba 3',
+    quizId: '  quiz-real-123  ',
+    order: 3
+  };
+
+  const statusValid = evaluateSessionQuizStatus(sessionWithValidQuizId, null, []);
+  assert.equal(statusValid.hasQuiz, true);
+  assert.equal(statusValid.quizId, 'quiz-real-123');
+  assert.equal(statusValid.status, 'not_attempted');
+  assert.equal(statusValid.canCompleteSession, false);
+});
+
+
 
 
 

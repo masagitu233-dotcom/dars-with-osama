@@ -35,6 +35,7 @@ import {
   canAdvanceToNextSession,
   evaluateSessionQuizStatus,
   findFirstUncompletedPrecedingQuizSession,
+  extractValidQuizId,
   SessionQuizStatus
 } from '../../utils/quizFlowHelper';
 import { QuizRequiredModal } from './QuizRequiredModal';
@@ -184,8 +185,8 @@ export const SessionView: React.FC<SessionViewProps> = ({
   // Pre-load quiz data for any session with a linked quiz
   useEffect(() => {
     const quizIdsToFetch = allSessions
-      .map(s => s.quizId)
-      .filter((id): id is string => Boolean(id && id.trim().length > 0));
+      .map(s => extractValidQuizId(s.quizId))
+      .filter((id): id is string => Boolean(id));
 
     if (quizIdsToFetch.length === 0) return;
 
@@ -238,7 +239,7 @@ export const SessionView: React.FC<SessionViewProps> = ({
   const isCompleted = enrollment?.completedSessionIds?.includes(session.id) || false;
 
   const handleStartQuizForSession = async (targetSession: Session, preloadedQuiz?: Quiz | null) => {
-    const targetQuizId = targetSession.quizId;
+    const targetQuizId = extractValidQuizId(targetSession.quizId);
     if (!targetQuizId) return;
 
     if (!user) {
@@ -774,7 +775,8 @@ export const SessionView: React.FC<SessionViewProps> = ({
               {allSessions.map((s, idx) => {
                 const isActive = s.id === session.id;
                 const isItemDone = enrollment?.completedSessionIds?.includes(s.id);
-                const sQuiz = s.quizId ? (quizzesMap[s.quizId] || (s.id === session.id ? quiz : null)) : null;
+                const validSQuizId = extractValidQuizId(s.quizId);
+                const sQuiz = validSQuizId ? (quizzesMap[validSQuizId] || (s.id === session.id ? quiz : null)) : null;
                 const quizStatus = evaluateSessionQuizStatus(s, sQuiz, userAttempts);
 
                 return (
@@ -820,7 +822,7 @@ export const SessionView: React.FC<SessionViewProps> = ({
                     </button>
 
                     {/* Dedicated Quiz Button/Status Directly Under This Session */}
-                    {s.quizId && (
+                    {validSQuizId && (
                       <div className="px-2.5 sm:px-3 pb-2.5 pt-0">
                         {quizStatus.status === 'passed' ? (
                           <button

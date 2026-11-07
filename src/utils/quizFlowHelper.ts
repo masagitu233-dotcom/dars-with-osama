@@ -20,6 +20,17 @@ export interface SessionQuizStatus {
 }
 
 /**
+ * Safely extracts a non-empty string quiz ID, guarding against null, undefined, boolean, or non-string values.
+ */
+export function extractValidQuizId(quizId: unknown): string | null {
+  if (typeof quizId === 'string') {
+    const trimmed = quizId.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+  return null;
+}
+
+/**
  * Evaluates the quiz status for a given session against a student's past attempts.
  */
 export function evaluateSessionQuizStatus(
@@ -28,9 +39,9 @@ export function evaluateSessionQuizStatus(
   attempts: QuizAttempt[] = []
 ): SessionQuizStatus {
   // If session has no quizId or quiz is explicitly unpublished/empty
-  const hasQuizId = Boolean(session.quizId && session.quizId.trim().length > 0);
+  const targetQuizId = extractValidQuizId(session?.quizId);
 
-  if (!hasQuizId) {
+  if (!targetQuizId) {
     return {
       hasQuiz: false,
       status: 'no_quiz',
@@ -41,7 +52,6 @@ export function evaluateSessionQuizStatus(
     };
   }
 
-  const targetQuizId = session.quizId!.trim();
   const passingScore = typeof quiz?.passingScore === 'number' ? quiz.passingScore : 70;
 
   // Filter attempts belonging to this quiz or this session
@@ -199,10 +209,11 @@ export function findFirstUncompletedPrecedingQuizSession(
   const precedingSessions = sorted.slice(0, targetIdx);
 
   for (const prevSession of precedingSessions) {
-    if (!prevSession.quizId || prevSession.quizId.trim().length === 0) {
+    const prevQuizId = extractValidQuizId(prevSession.quizId);
+    if (!prevQuizId) {
       continue;
     }
-    const quiz = quizzesMap[prevSession.quizId] || null;
+    const quiz = quizzesMap[prevQuizId] || null;
     // If quiz is known to be unpublished, do not trap student
     if (quiz && quiz.isPublished === false) {
       continue;
