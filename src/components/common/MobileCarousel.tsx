@@ -6,19 +6,27 @@ interface MobileCarouselProps {
   desktopGridClass?: string;
   className?: string;
   ariaLabel?: string;
+  showSwipeHint?: boolean;
 }
 
 export const MobileCarousel: React.FC<MobileCarouselProps> = ({
   children,
   desktopGridClass = 'sm:grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 sm:gap-6',
   className = '',
-  ariaLabel = 'Daftar Konten'
+  ariaLabel = 'Daftar Konten',
+  showSwipeHint = true
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
   const [dragSuppressed, setDragSuppressed] = useState(false);
+
+  // Subtle peek/hint animation state for mobile carousel
+  const [isHinting, setIsHinting] = useState(false);
+  const userInteractedRef = useRef(false);
+  const hintTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hintCycleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Mouse drag state for desktop testing
   const [isMouseDown, setIsMouseDown] = useState(false);
@@ -36,6 +44,62 @@ export const MobileCarousel: React.FC<MobileCarouselProps> = ({
   });
 
   const itemCount = React.Children.count(children);
+
+  // Helper to schedule hint nudges
+  const clearHintTimers = useCallback(() => {
+    if (hintTimeoutRef.current) clearTimeout(hintTimeoutRef.current);
+    if (hintCycleTimerRef.current) clearTimeout(hintCycleTimerRef.current);
+  }, []);
+
+  const triggerHint = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    // Don't hint if reduced motion is preferred, or user is currently touching/dragging, or on desktop
+    const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion || window.innerWidth >= 640 || itemCount <= 1) return;
+
+    // Check if there is room to peek to the right
+    const el = containerRef.current;
+    if (el && el.scrollLeft >= el.scrollWidth - el.clientWidth - 10) return;
+
+    setIsHinting(true);
+    hintTimeoutRef.current = setTimeout(() => {
+      setIsHinting(false);
+    }, 850);
+  }, [itemCount]);
+
+  const scheduleNextHint = useCallback((delayMs = 7000) => {
+    clearHintTimers();
+    hintCycleTimerRef.current = setTimeout(() => {
+      triggerHint();
+      // Recurse to keep periodic cadence
+      scheduleNextHint(7500);
+    }, delayMs);
+  }, [clearHintTimers, triggerHint]);
+
+  // Pause hint on user interaction and resume after idle period
+  const handleUserInteractionStart = useCallback(() => {
+    setIsHinting(false);
+    clearHintTimers();
+    userInteractedRef.current = true;
+    // Resume hint animation after 8 seconds of inactivity
+    scheduleNextHint(8000);
+  }, [clearHintTimers, scheduleNextHint]);
+
+  // Initialize hint on mount or re-activation
+  useEffect(() => {
+    if (!showSwipeHint || itemCount <= 1) return;
+
+    // Trigger initial hint nudge 900ms after entering/mounting
+    const initialTimer = setTimeout(() => {
+      triggerHint();
+      scheduleNextHint(7000);
+    }, 900);
+
+    return () => {
+      clearTimeout(initialTimer);
+      clearHintTimers();
+    };
+  }, [showSwipeHint, itemCount, triggerHint, scheduleNextHint, clearHintTimers]);
 
   // Smooth active index tracking via passive scroll observer
   const updateScrollState = useCallback(() => {
@@ -119,8 +183,9 @@ export const MobileCarousel: React.FC<MobileCarouselProps> = ({
     scrollToCard(activeIndex + 1);
   };
 
-  // --- NATIVE TOUCH HANDLERS (Non-blocking, purely for click suppression) ---
+  // --- NATIVE TOUCH HANDLERS (Non-blocking, purely for click suppression & hint pause) ---
   const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    handleUserInteractionStart();
     const touch = e.touches[0];
     touchTracking.current = {
       startX: touch.clientX,
@@ -130,6 +195,7 @@ export const MobileCarousel: React.FC<MobileCarouselProps> = ({
   };
 
   const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    handleUserInteractionStart();
     const touch = e.touches[0];
     const diffX = Math.abs(touch.clientX - touchTracking.current.startX);
     const diffY = Math.abs(touch.clientY - touchTracking.current.startY);
@@ -151,6 +217,7 @@ export const MobileCarousel: React.FC<MobileCarouselProps> = ({
   // --- MOUSE DRAG HANDLERS (for desktop / responsive emulator testing) ---
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.button !== 0) return;
+    handleUserInteractionStart();
     const el = containerRef.current;
     if (!el) return;
 
@@ -233,10 +300,13 @@ export const MobileCarousel: React.FC<MobileCarouselProps> = ({
         {React.Children.map(children, (child, idx) => (
           <div
             key={idx}
-            className="w-[84vw] max-w-[340px] shrink-0 snap-start sm:w-auto sm:max-w-none sm:shrink sm:snap-none h-auto sm:h-full flex flex-col"
+            className={`w-[84vw] max-w-[340px] shrink-0 snap-start sm:w-auto sm:max-w-none sm:shrink sm:snap-none h-auto sm:h-full flex flex-col transition-transform sm:!transform-none ${
+              isMouseDown ? 'transition-none' : 'duration-700 ease-in-out'
+            }`}
             style={{
               scrollSnapAlign: 'start',
-              scrollSnapStop: 'normal'
+              scrollSnapStop: 'normal',
+              transform: isHinting ? 'translateX(-18px)' : 'translateX(0px)'
             }}
           >
             {child}

@@ -367,9 +367,9 @@ export const SessionView: React.FC<SessionViewProps> = ({
 
 
   return (
-    <div className="max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8 py-3 sm:py-6 space-y-3.5 sm:space-y-6">
+    <div className="max-w-7xl mx-auto px-0 sm:px-6 lg:px-8 py-3 sm:py-6 space-y-3.5 sm:space-y-6">
       {/* Top Breadcrumb & Navigation */}
-      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b-2 border-[#171717] transition-all duration-300 ${playlistMarginClass}`}>
+      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b-2 border-[#171717] transition-all duration-300 ${playlistMarginClass} px-3.5 sm:px-0`}>
         <button
           onClick={onBackToCourse}
           className="inline-flex items-center gap-2 text-[#F5DABF] hover:text-white transition text-sm font-bold cursor-pointer"
@@ -457,7 +457,7 @@ export const SessionView: React.FC<SessionViewProps> = ({
       {/* Main Classroom Layout Container */}
       <div className="relative">
         {copiedLink && (
-          <div className={`mb-4 ${playlistMarginClass} p-3.5 rounded-lg bg-[#EFE5D2] dark:bg-[#1F5F63] border-2 border-[#171717] dark:border-[#4CA7A1] shadow-[4px_4px_0px_#171717] dark:shadow-[4px_4px_0px_#001722] text-[#171717] dark:text-[#CEFEF1] text-xs flex items-center justify-between animate-fade-in`}>
+          <div className={`mb-4 mx-3.5 sm:mx-0 ${playlistMarginClass} p-3.5 rounded-lg bg-[#EFE5D2] dark:bg-[#1F5F63] border-2 border-[#171717] dark:border-[#4CA7A1] shadow-[4px_4px_0px_#171717] dark:shadow-[4px_4px_0px_#001722] text-[#171717] dark:text-[#CEFEF1] text-xs flex items-center justify-between animate-fade-in`}>
             <div className="flex items-center gap-2">
               <Check className="w-4 h-4 text-[#123D32] dark:text-[#CEFEF1] shrink-0" />
               <span>
@@ -499,11 +499,11 @@ export const SessionView: React.FC<SessionViewProps> = ({
         </div>
 
         {/* Left Primary Learning Content (Scrolls smoothly beneath sticky video on mobile) */}
-        <div className={`space-y-6 transition-all duration-300 ${playlistMarginClass}`}>
+        <div className={`space-y-4 sm:space-y-6 transition-all duration-300 ${playlistMarginClass}`}>
           {/* Session Headings & Info Panel */}
           <div
             key={session.id}
-            className="nb-card p-4 sm:p-6 space-y-3.5 sm:space-y-4 bg-[#FFF5E9] text-[#0F3D3A] border-2 border-[#171717] shadow-[6px_6px_0px_#171717]"
+            className="w-full border-x-0 border-y sm:border-2 rounded-none sm:rounded-lg shadow-none sm:shadow-[6px_6px_0px_#171717] px-4 py-4 sm:p-6 space-y-3.5 sm:space-y-4 bg-[#FFF5E9] text-[#0F3D3A] border-[#171717]"
           >
             <div className="flex flex-wrap items-center justify-between gap-3">
               <span className="nb-badge bg-[#0F3D3A] text-[#F5DABF] border-[#171717]">
@@ -578,41 +578,85 @@ export const SessionView: React.FC<SessionViewProps> = ({
 
           {/* PDF Resource Card (if available) */}
           {session.pdfUrl && (
-            <div className="nb-card p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#FAF7F0] dark:bg-[#1F5F63]">
-              <div className="flex items-start gap-3.5">
-                <div className="p-3 bg-[#4CA7A1] text-[#001722] rounded-md shrink-0 border-2 border-[#171717] dark:border-[#001722]">
-                  <FileText className="w-6 h-6" />
+            <div className="px-3.5 sm:px-0">
+              <div className="nb-card p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#FAF7F0] dark:bg-[#1F5F63]">
+                <div className="flex items-start gap-3.5">
+                  <div className="p-3 bg-[#4CA7A1] text-[#001722] rounded-md shrink-0 border-2 border-[#171717] dark:border-[#001722]">
+                    <FileText className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h4 className="font-extrabold text-[#171717] dark:text-[#CEFEF1] text-sm md:text-base">
+                      {session.pdfTitle || 'Materi & Naskah Matan PDF'}
+                    </h4>
+                    <p className="text-xs text-[#525855] dark:text-[#A6D6C9] mt-0.5">
+                      Naskah rujukan asli berbahasa Arab / terjemahan yang dibahas pada sesi ini.
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="font-extrabold text-[#171717] dark:text-[#CEFEF1] text-sm md:text-base">
-                    {session.pdfTitle || 'Materi & Naskah Matan PDF'}
-                  </h4>
-                  <p className="text-xs text-[#525855] dark:text-[#A6D6C9] mt-0.5">
-                    Naskah rujukan asli berbahasa Arab / terjemahan yang dibahas pada sesi ini.
-                  </p>
+
+                <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!user) {
+                        openGuestModal(course, {
+                          type: 'session',
+                          courseId: course.id,
+                          sessionId: session.id,
+                          onSuccess: () => setPdfModalOpen(true)
+                        });
+                        return;
+                      }
+                      setPdfModalOpen(true);
+                    }}
+                    className="nb-btn nb-btn-secondary px-3.5 py-2 text-xs min-h-[40px]"
+                  >
+                    <Eye className="w-4 h-4 text-[#123D32] dark:text-[#4CA7A1]" />
+                    <span>Baca di Web</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!user) {
+                        openGuestModal(course, {
+                          type: 'session',
+                          courseId: course.id,
+                          sessionId: session.id
+                        });
+                        return;
+                      }
+                      if (session.pdfUrl) {
+                        window.open(session.pdfUrl, '_blank', 'noopener,noreferrer');
+                      }
+                    }}
+                    className="nb-btn nb-btn-gold px-3.5 py-2 text-xs min-h-[40px]"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>Unduh PDF</span>
+                  </button>
                 </div>
               </div>
+            </div>
+          )}
 
-              <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!user) {
-                      openGuestModal(course, {
-                        type: 'session',
-                        courseId: course.id,
-                        sessionId: session.id,
-                        onSuccess: () => setPdfModalOpen(true)
-                      });
-                      return;
-                    }
-                    setPdfModalOpen(true);
-                  }}
-                  className="nb-btn nb-btn-secondary px-3.5 py-2 text-xs min-h-[40px]"
-                >
-                  <Eye className="w-4 h-4 text-[#123D32] dark:text-[#4CA7A1]" />
-                  <span>Baca di Web</span>
-                </button>
+          {/* Google Drive PDF Card (if available) */}
+          {session.googleDriveUrl && (
+            <div className="px-3.5 sm:px-0">
+              <div className="nb-card p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-[#1F5F63]">
+                <div className="flex items-start gap-3.5">
+                  <div className="p-3 bg-[#001722] text-[#CEFEF1] rounded-md shrink-0 border-2 border-[#171717] dark:border-[#4CA7A1]">
+                    <ExternalLink className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h4 className="font-extrabold text-[#171717] dark:text-[#CEFEF1] text-sm md:text-base">
+                      Google Drive PDF Modul / Rujukan
+                    </h4>
+                    <p className="text-xs text-[#525855] dark:text-[#A6D6C9] mt-0.5">
+                      Tautan langsung ke dokumen / folder Google Drive untuk sesi ini.
+                    </p>
+                  </div>
+                </div>
+
                 <button
                   type="button"
                   onClick={() => {
@@ -624,56 +668,16 @@ export const SessionView: React.FC<SessionViewProps> = ({
                       });
                       return;
                     }
-                    if (session.pdfUrl) {
-                      window.open(session.pdfUrl, '_blank', 'noopener,noreferrer');
+                    if (session.googleDriveUrl) {
+                      window.open(session.googleDriveUrl, '_blank', 'noopener,noreferrer');
                     }
                   }}
-                  className="nb-btn nb-btn-gold px-3.5 py-2 text-xs min-h-[40px]"
+                  className="nb-btn nb-btn-primary px-4 py-2 text-xs self-end sm:self-center shrink-0 min-h-[40px]"
                 >
-                  <Download className="w-4 h-4" />
-                  <span>Unduh PDF</span>
+                  <ExternalLink className="w-4 h-4" />
+                  <span>Buka di Google Drive</span>
                 </button>
               </div>
-            </div>
-          )}
-
-          {/* Google Drive PDF Card (if available) */}
-          {session.googleDriveUrl && (
-            <div className="nb-card p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-[#1F5F63]">
-              <div className="flex items-start gap-3.5">
-                <div className="p-3 bg-[#001722] text-[#CEFEF1] rounded-md shrink-0 border-2 border-[#171717] dark:border-[#4CA7A1]">
-                  <ExternalLink className="w-6 h-6" />
-                </div>
-                <div>
-                  <h4 className="font-extrabold text-[#171717] dark:text-[#CEFEF1] text-sm md:text-base">
-                    Google Drive PDF Modul / Rujukan
-                  </h4>
-                  <p className="text-xs text-[#525855] dark:text-[#A6D6C9] mt-0.5">
-                    Tautan langsung ke dokumen / folder Google Drive untuk sesi ini.
-                  </p>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => {
-                  if (!user) {
-                    openGuestModal(course, {
-                      type: 'session',
-                      courseId: course.id,
-                      sessionId: session.id
-                    });
-                    return;
-                  }
-                  if (session.googleDriveUrl) {
-                    window.open(session.googleDriveUrl, '_blank', 'noopener,noreferrer');
-                  }
-                }}
-                className="nb-btn nb-btn-primary px-4 py-2 text-xs self-end sm:self-center shrink-0 min-h-[40px]"
-              >
-                <ExternalLink className="w-4 h-4" />
-                <span>Buka di Google Drive</span>
-              </button>
             </div>
           )}
 
@@ -681,7 +685,7 @@ export const SessionView: React.FC<SessionViewProps> = ({
           {session.descriptionAr && (
             <div
               style={fontControl.style}
-              className="nb-reading-surface p-4 sm:p-6 md:p-8 space-y-3 bg-[#FAF7F0] dark:bg-[#1F5F63]"
+              className="w-full border-x-0 border-y sm:border-2 rounded-none sm:rounded-lg shadow-none sm:shadow-[5px_5px_0px_#171717] px-4 py-4 sm:p-6 md:p-8 space-y-3 bg-[#FAF7F0] dark:bg-[#1F5F63] border-[#171717] dark:border-[#4CA7A1]"
             >
               <div className="text-xs font-sans font-extrabold uppercase tracking-wider text-[#123D32] dark:text-[#CEFEF1] border-b-2 border-[#171717] dark:border-[#4CA7A1] pb-3 flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
@@ -724,7 +728,7 @@ export const SessionView: React.FC<SessionViewProps> = ({
 
 
         {/* Right Sidebar: Sessions Playlist & Progress (Fixed to Viewport on Desktop & Responsive on Mobile) */}
-        <aside className={`${isPlaylistOpen ? 'flex' : 'hidden'} lg:fixed lg:top-[72px] lg:right-4 xl:right-8 lg:w-[320px] xl:w-[380px] lg:h-[calc(100dvh-5.5rem)] lg:z-20 flex-col space-y-4 mt-8 lg:mt-0 animate-fade-in`}>
+        <aside className={`${isPlaylistOpen ? 'flex' : 'hidden'} lg:fixed lg:top-[72px] lg:right-4 xl:right-8 lg:w-[320px] xl:w-[380px] lg:h-[calc(100dvh-5.5rem)] lg:z-20 flex-col space-y-4 mt-8 lg:mt-0 animate-fade-in px-3.5 sm:px-0 lg:px-0`}>
           {/* Completed Notice */}
           {enrollment?.isCompleted && (
             <div className="nb-card bg-[#4CA7A1] text-[#001722] p-4 text-center space-y-1.5 shrink-0">

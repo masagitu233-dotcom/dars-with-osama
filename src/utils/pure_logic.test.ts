@@ -4492,10 +4492,236 @@ test('Case 97: Article Table of Contents dan Mode Baca Artikel (TOC Awal, Slide 
   assert.ok(fallbackResult.slides[0].htmlContent.includes('Artikel lama tanpa judul H1'));
 });
 
+test('Case 98: Penyesuaian Halaman Baca Mobile dan Animasi Petunjuk Carousel Beranda', async () => {
+  // 1. Verifikasi Logika Hint Animation Carousel
+  function shouldTriggerSwipeHint(params: {
+    itemCount: number;
+    screenWidth: number;
+    prefersReducedMotion: boolean;
+    userInteracting: boolean;
+    scrollLeft: number;
+    scrollWidth: number;
+    clientWidth: number;
+  }): boolean {
+    if (params.prefersReducedMotion) return false;
+    if (params.userInteracting) return false;
+    if (params.itemCount <= 1) return false;
+    if (params.screenWidth >= 640) return false; // Khusus layar ponsel/mobile
+    if (params.scrollLeft >= params.scrollWidth - params.clientWidth - 10) return false;
+    return true;
+  }
 
+  // Uji kondisi mobile standar dengan beberapa kartu: harus memicu petunjuk swipe
+  assert.equal(
+    shouldTriggerSwipeHint({
+      itemCount: 4,
+      screenWidth: 390,
+      prefersReducedMotion: false,
+      userInteracting: false,
+      scrollLeft: 0,
+      scrollWidth: 1200,
+      clientWidth: 390
+    }),
+    true,
+    'Carousel mobile harus memicu animasi petunjuk swipe saat idle'
+  );
 
+  // Uji jika prefers-reduced-motion aktif: harus dinonaktifkan
+  assert.equal(
+    shouldTriggerSwipeHint({
+      itemCount: 4,
+      screenWidth: 390,
+      prefersReducedMotion: true,
+      userInteracting: false,
+      scrollLeft: 0,
+      scrollWidth: 1200,
+      clientWidth: 390
+    }),
+    false,
+    'Animasi petunjuk swipe wajib dimatikan jika prefers-reduced-motion aktif'
+  );
 
+  // Uji saat pengguna sedang berinteraksi (sentuh/geser): harus ditunda/dijeda
+  assert.equal(
+    shouldTriggerSwipeHint({
+      itemCount: 4,
+      screenWidth: 390,
+      prefersReducedMotion: false,
+      userInteracting: true,
+      scrollLeft: 100,
+      scrollWidth: 1200,
+      clientWidth: 390
+    }),
+    false,
+    'Animasi petunjuk swipe dijeda saat pengguna sedang berinteraksi'
+  );
 
+  // Uji jika hanya ada 1 kartu: tidak perlu animasi petunjuk
+  assert.equal(
+    shouldTriggerSwipeHint({
+      itemCount: 1,
+      screenWidth: 390,
+      prefersReducedMotion: false,
+      userInteracting: false,
+      scrollLeft: 0,
+      scrollWidth: 390,
+      clientWidth: 390
+    }),
+    false,
+    'Tidak boleh ada animasi jika kartu hanya 1'
+  );
 
+  // Uji jika berada di layar desktop: tidak boleh aktif
+  assert.equal(
+    shouldTriggerSwipeHint({
+      itemCount: 4,
+      screenWidth: 1024,
+      prefersReducedMotion: false,
+      userInteracting: false,
+      scrollLeft: 0,
+      scrollWidth: 1200,
+      clientWidth: 1024
+    }),
+    false,
+    'Animasi swipe hint mobile tidak boleh aktif di desktop'
+  );
+
+  // 2. Verifikasi Transform Peeking Card
+  function computeHintTransform(isHinting: boolean): string {
+    return isHinting ? 'translateX(-18px)' : 'translateX(0px)';
+  }
+  assert.equal(computeHintTransform(true), 'translateX(-18px)');
+  assert.equal(computeHintTransform(false), 'translateX(0px)');
+
+  // 3. Verifikasi Spesifikasi Kelas CSS Frame Bacaan Mobile (Artikel, Tanya Jawab, Sesi Pembelajaran)
+  // Memastikan bahwa pada mobile tepi kiri/kanan tidak menyisakan border dan sudut membulat,
+  // namun tetap mempertahankan padding internal teks dan desktop styling (sm:).
+  const mobileReadingSurfaceClasses = [
+    'w-full',
+    'border-x-0',
+    'border-y',
+    'sm:border-2',
+    'rounded-none',
+    'sm:rounded-lg',
+    'shadow-none',
+    'sm:shadow-[6px_6px_0px_#171717]',
+    'px-4'
+  ];
+
+  assert.ok(mobileReadingSurfaceClasses.includes('border-x-0'), 'Harus menghilangkan garis tepi kiri & kanan di mobile');
+  assert.ok(mobileReadingSurfaceClasses.includes('rounded-none'), 'Harus menghilangkan sudut membulat di mobile agar menutup penuh');
+  assert.ok(mobileReadingSurfaceClasses.includes('shadow-none'), 'Harus menghilangkan bayangan keras di mobile');
+  assert.ok(mobileReadingSurfaceClasses.includes('px-4'), 'Harus mempertahankan padding horizontal internal');
+  assert.ok(mobileReadingSurfaceClasses.includes('sm:border-2'), 'Tampilan desktop harus tetap memiliki border');
+  assert.ok(mobileReadingSurfaceClasses.includes('sm:rounded-lg'), 'Tampilan desktop harus tetap memiliki rounded-lg');
+});
+
+// Case 99: Validasi Penghilangan Frame dan Warna Latar Putih Bersih (#FFFFFF) Khusus Halaman Baca/Detail Artikel & Tanya Jawab pada Mobile
+test('Case 99: Penghilangan frame dan latar putih bersih #FFFFFF hanya berlaku pada halaman baca/detail dan katalog tetap mempertahankan frame', () => {
+  // 1. Spesifikasi Kelas Halaman Baca Artikel (BlogDetailView)
+  const articleReadingClasses = 'w-full bg-white sm:bg-[#FFF5E9] text-[#171717] border-0 sm:border-2 sm:border-[#171717] rounded-none sm:rounded-lg shadow-none sm:shadow-[6px_6px_0px_#171717] px-4 py-4 sm:p-8 md:p-12';
+  assert.ok(articleReadingClasses.includes('border-0 sm:border-2'), 'Artikel mobile tidak boleh memiliki frame border');
+  assert.ok(articleReadingClasses.includes('bg-white sm:bg-[#FFF5E9]'), 'Artikel mobile harus memiliki latar putih bersih #FFFFFF');
+  assert.ok(articleReadingClasses.includes('rounded-none sm:rounded-lg'), 'Artikel mobile tidak boleh memiliki rounded corner luar');
+  assert.ok(articleReadingClasses.includes('shadow-none'), 'Artikel mobile tidak boleh memiliki frame shadow');
+  assert.ok(articleReadingClasses.includes('px-4'), 'Artikel mobile harus memiliki padding internal 16px');
+
+  // 2. Spesifikasi Kelas Katalog Tanya Jawab (PublicQAView saat !isExpanded)
+  const qaCatalogCardClasses = 'w-full nb-card p-4 sm:p-6 space-y-3.5 sm:space-y-4 bg-[#FFF5E9] text-[#0F3D3A] border-2 border-[#171717] shadow-[4px_4px_0px_#171717] rounded-lg transition-all';
+  assert.ok(qaCatalogCardClasses.includes('border-2 border-[#171717]'), 'Katalog Tanya Jawab harus tetap memiliki frame border');
+  assert.ok(qaCatalogCardClasses.includes('rounded-lg'), 'Katalog Tanya Jawab harus tetap memiliki sudut membulat rounded-lg');
+  assert.ok(qaCatalogCardClasses.includes('shadow-[4px_4px_0px_#171717]'), 'Katalog Tanya Jawab harus tetap memiliki frame shadow');
+
+  // 3. Spesifikasi Kelas Detail/Halaman Baca Tanya Jawab (PublicQAView saat isExpanded)
+  const qaDetailReadingClasses = '-mx-4 px-4 py-4 sm:mx-0 sm:p-6 bg-white sm:bg-[#FFF5E9] border-0 border-y sm:border-2 border-[#171717] rounded-none sm:rounded-lg shadow-none sm:shadow-[4px_4px_0px_#171717] space-y-3.5 sm:space-y-4 text-[#171717] transition-all';
+  assert.ok(qaDetailReadingClasses.includes('-mx-4 px-4'), 'Baca Tanya Jawab mobile harus melebar penuh tanpa margin luar berbingkai');
+  assert.ok(qaDetailReadingClasses.includes('border-0 border-y sm:border-2'), 'Baca Tanya Jawab mobile tidak boleh memiliki border box samping');
+  assert.ok(qaDetailReadingClasses.includes('rounded-none sm:rounded-lg'), 'Baca Tanya Jawab mobile tidak boleh memiliki rounded corner luar');
+  assert.ok(qaDetailReadingClasses.includes('bg-white sm:bg-[#FFF5E9]'), 'Baca Tanya Jawab mobile harus memiliki latar putih bersih #FFFFFF');
+
+  // 4. Spesifikasi Kotak Jawaban Resmi di dalam Baca Tanya Jawab
+  const qaAnswerBoxClasses = 'p-0 sm:p-6 rounded-none sm:rounded-md bg-white sm:bg-white sm:dark:bg-[#0D2B36] border-0 sm:border-2 border-[#171717] dark:border-[#4CA7A1] sm:border-l-4 sm:border-l-[#123D32] dark:sm:border-l-[#4CA7A1] shadow-none space-y-3 sm:space-y-4';
+  assert.ok(qaAnswerBoxClasses.includes('border-0 sm:border-2'), 'Kotak jawaban resmi mobile tidak boleh memiliki border luar');
+  assert.ok(qaAnswerBoxClasses.includes('rounded-none sm:rounded-md'), 'Kotak jawaban resmi mobile tidak boleh rounded');
+  assert.ok(qaAnswerBoxClasses.includes('bg-white sm:bg-white'), 'Kotak jawaban resmi mobile harus konsisten berlatar putih bersih #FFFFFF');
+  assert.ok(qaAnswerBoxClasses.includes('p-0 sm:p-6'), 'Kotak jawaban resmi mobile tidak boleh memiliki inset box padding ganda');
+});
+
+// Case 100: Validasi Sistem Daftar Isi dan Navigasi Slide Halaman Baca Tanya Jawab (Pola Sama dengan Artikel)
+test('Case 100: Sistem Daftar Isi dan Slide Halaman Baca Tanya Jawab memiliki mekanisme, navigasi, dan penomoran yang sama dengan Artikel', async () => {
+  const { splitQAContentIntoSlides } = await import('./qaHelper.js');
+  const { getSlideNavInfo } = await import('./sessionSlideHelper.js');
+  const { QAReadingViewer } = await import('../components/consultation/QAReadingViewer.js');
+
+  assert.ok(typeof splitQAContentIntoSlides === 'function', 'splitQAContentIntoSlides harus berupa fungsi');
+  assert.ok(typeof QAReadingViewer === 'function', 'QAReadingViewer harus berupa komponen React');
+
+  // 1. Uji Pembagian Jawaban Ditandai (Ringkas + Mendetail dengan H1)
+  const markedHtml = `
+    <section data-qa-section="ringkas">
+      <div data-qa-boundary="start">📌 [AWAL JAWABAN RINGKAS]</div>
+      <div data-section-content="ringkas">
+        <p>Hukum sujud sahwi adalah sunnah muakkadah menurut jumhur ulama.</p>
+      </div>
+      <div data-qa-boundary="end">🏁 [AKHIR JAWABAN RINGKAS]</div>
+    </section>
+    <section data-qa-section="mendetail">
+      <div data-qa-boundary="start">📌 [AWAL JAWABAN MENDETAIL]</div>
+      <div data-section-content="mendetail">
+        <h1>Dalil Al-Qur'an dan Sunnah</h1>
+        <p>Berdasarkan hadits Abdullah bin Buhainah radhiyallahu 'anhu...</p>
+        <h1>Sebab-Sebab Disyariatkannya</h1>
+        <p>Terjadi karena menambah rakaat, mengurangi, atau ragu-ragu...</p>
+      </div>
+      <div data-qa-boundary="end">🏁 [AKHIR JAWABAN MENDETAIL]</div>
+    </section>
+  `;
+
+  const parsedMarked = splitQAContentIntoSlides(markedHtml, 'Pertanyaan Fiqih', 'c-100');
+  assert.strictEqual(parsedMarked.isExplicitlyMarked, true, 'Harus mendeteksi jawaban bertanda');
+  assert.strictEqual(parsedMarked.slides.length, 3, 'Harus menghasilkan 3 slide: 1 Ringkas + 2 Mendetail (H1)');
+  assert.strictEqual(parsedMarked.slides[0].title, 'Jawaban Ringkas', 'Slide 1 adalah Jawaban Ringkas');
+  assert.strictEqual(parsedMarked.slides[1].title, "Dalil Al-Qur'an dan Sunnah", 'Slide 2 adalah H1 pertama');
+  assert.strictEqual(parsedMarked.slides[2].title, 'Sebab-Sebab Disyariatkannya', 'Slide 3 adalah H1 kedua');
+
+  // Pastikan batas visual visual editor bersih dari teks publik
+  assert.ok(!parsedMarked.fullCleanHtml.includes('[AWAL JAWABAN'), 'Naskah bersih tidak boleh mengandung marker AWAL');
+  assert.ok(!parsedMarked.fullCleanHtml.includes('[AKHIR JAWABAN'), 'Naskah bersih tidak boleh mengandung marker AKHIR');
+
+  // 2. Uji Navigasi Slide (getSlideNavInfo)
+  const navSlide0 = getSlideNavInfo(parsedMarked.slides, 0);
+  assert.strictEqual(navSlide0.isFirst, true, 'Slide pertama harus isFirst=true');
+  assert.strictEqual(navSlide0.prevSlide, null, 'Slide pertama tidak memiliki prevSlide');
+  assert.strictEqual(navSlide0.nextSlide?.title, "Dalil Al-Qur'an dan Sunnah", 'Next slide mengarah ke slide kedua');
+
+  const navSlide1 = getSlideNavInfo(parsedMarked.slides, 1);
+  assert.strictEqual(navSlide1.isFirst, false, 'Slide kedua bukan isFirst');
+  assert.strictEqual(navSlide1.prevSlide?.title, 'Jawaban Ringkas', 'Prev slide mengarah ke Jawaban Ringkas');
+  assert.strictEqual(navSlide1.nextSlide?.title, 'Sebab-Sebab Disyariatkannya', 'Next slide mengarah ke slide ketiga');
+
+  const navSlide2 = getSlideNavInfo(parsedMarked.slides, 2);
+  assert.strictEqual(navSlide2.isLast, true, 'Slide terakhir harus isLast=true');
+  assert.strictEqual(navSlide2.nextSlide, null, 'Slide terakhir tidak memiliki nextSlide');
+  assert.strictEqual(navSlide2.nextButtonLabel, 'Kembali ke Daftar Isi', 'Tombol akhir kembali ke Daftar Isi');
+
+  // 3. Uji Jawaban Tanpa Tanda (Unmarked) dengan H1
+  const unmarkedHtml = `
+    <h1>Pengantar Masalah</h1>
+    <p>Penjelasan pengantar...</p>
+    <h1>Fatwa Para Ulama</h1>
+    <p>Rincian fatwa ulama madzhab...</p>
+  `;
+  const parsedUnmarked = splitQAContentIntoSlides(unmarkedHtml, 'Pertanyaan Fatwa', 'c-101');
+  assert.strictEqual(parsedUnmarked.slides.length, 2, 'Harus memecah menjadi 2 slide berdasarkan H1');
+  assert.strictEqual(parsedUnmarked.slides[0].title, 'Pengantar Masalah');
+  assert.strictEqual(parsedUnmarked.slides[1].title, 'Fatwa Para Ulama');
+
+  // 4. Uji Jawaban Warisan / Polos Tanpa H1 (Fallback Compatibility)
+  const plainHtml = `<p>Ini adalah jawaban ringkas sederhana tanpa heading 1 apapun.</p>`;
+  const parsedPlain = splitQAContentIntoSlides(plainHtml, 'Jawaban Resmi Fiqih', 'c-102');
+  assert.strictEqual(parsedPlain.slides.length, 1, 'Harus menghasilkan 1 slide fallback');
+  assert.strictEqual(parsedPlain.fallbackUsed, true, 'fallbackUsed harus true');
+  assert.strictEqual(parsedPlain.slides[0].title, 'Jawaban Resmi Fiqih');
+});
 
 

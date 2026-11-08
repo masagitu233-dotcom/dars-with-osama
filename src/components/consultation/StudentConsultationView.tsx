@@ -25,6 +25,7 @@ import { ShareQAModal } from './ShareQAModal';
 import { ReadingFontControls, useReadingFontSize } from '../common/ReadingFontControls';
 import { splitQAAnswer } from '../../utils/qaHelper';
 import { QATableOfContents } from './QATableOfContents';
+import { QAReadingViewer } from './QAReadingViewer';
 
 interface StudentConsultationViewProps {
   onNavigateToPublicQA?: () => void;
@@ -396,78 +397,34 @@ export const StudentConsultationView: React.FC<StudentConsultationViewProps> = (
                       </div>
 
                       {/* Admin Reply Box if Answered */}
-                      {item.replyContent && (() => {
-                        const qaSections = splitQAAnswer(item.replyContent, item.id);
-                        return (
-                          <div className="p-3.5 sm:p-5 bg-white dark:bg-[#0D2B36] border-2 border-[#171717] dark:border-[#4CA7A1] border-l-4 border-l-[#123D32] dark:border-l-[#4CA7A1] rounded-md space-y-3 mt-2">
-                            <div className="flex items-center justify-between text-[11px] font-bold text-[#123D32] dark:text-[#CEFEF1] pb-2 border-b border-[#171717]/15 dark:border-[#4CA7A1]/30">
-                              <span className="flex items-center gap-1.5">
-                                <ShieldCheck className="w-3.5 h-3.5 text-[#123D32] dark:text-[#4CA7A1]" />
-                                <span>Balasan {item.repliedBy || 'Ustaz / Admin'}:</span>
+                      {item.replyContent && (
+                        <div className="p-0 sm:p-5 bg-transparent sm:bg-white sm:dark:bg-[#0D2B36] border-0 sm:border-2 border-[#171717] dark:border-[#4CA7A1] sm:border-l-4 sm:border-l-[#123D32] dark:sm:border-l-[#4CA7A1] rounded-none sm:rounded-md space-y-3 mt-2">
+                          <div className="flex items-center justify-between text-[11px] font-bold text-[#123D32] dark:text-[#CEFEF1] pb-2 border-b border-[#171717]/15 dark:border-[#4CA7A1]/30">
+                            <span className="flex items-center gap-1.5">
+                              <ShieldCheck className="w-3.5 h-3.5 text-[#123D32] dark:text-[#4CA7A1]" />
+                              <span>Balasan {item.repliedBy || 'Ustaz / Admin'}:</span>
+                            </span>
+                            {item.repliedAt && (
+                              <span className="text-[10px] font-normal text-[#525855] dark:text-[#A6D6C9]">
+                                {new Date(item.repliedAt).toLocaleDateString('id-ID', {
+                                  day: 'numeric',
+                                  month: 'short',
+                                  year: 'numeric'
+                                })}
                               </span>
-                              {item.repliedAt && (
-                                <span className="text-[10px] font-normal text-[#525855] dark:text-[#A6D6C9]">
-                                  {new Date(item.repliedAt).toLocaleDateString('id-ID', {
-                                    day: 'numeric',
-                                    month: 'short',
-                                    year: 'numeric'
-                                  })}
-                                </span>
-                              )}
-                            </div>
-
-                            {/* DAFTAR ISI JAWABAN (Ditempatkan tepat setelah label Jawaban dan sebelum isi jawaban) */}
-                            {qaSections.sections.length > 0 && (
-                              <QATableOfContents sections={qaSections.sections} />
                             )}
-
-                            {/* Isi Jawaban Utuh & Berurutan */}
-                            <div className="space-y-4 pt-1">
-                              {/* Fallback untuk jawaban warisan / belum ditandai secara eksplisit */}
-                              {!qaSections.hasRingkas && !qaSections.hasMendetail && (
-                                <div
-                                  className="prose dark:prose-invert max-w-none text-[#171717] dark:text-[#CEFEF1] leading-relaxed space-y-2 font-sans blog-content"
-                                  dangerouslySetInnerHTML={{ __html: autoWrapArabicText(qaSections.unmarkedHtml || item.replyContent) }}
-                                />
-                              )}
-
-                              {/* Bagian 1: Jawaban Ringkas (Hanya jika ditentukan / terisi) */}
-                              {qaSections.hasRingkas && (
-                                <div id={`jawaban-ringkas-${item.id}`} className="scroll-mt-28 space-y-1.5">
-                                  {qaSections.hasMendetail && (
-                                    <div className="flex items-center gap-2 text-xs font-bold font-serif text-[#123D32] dark:text-[#4CA7A1] pb-1 border-b border-[#171717]/10 dark:border-[#4CA7A1]/20">
-                                      <span className="w-2 h-2 rounded-full bg-[#123D32] dark:bg-[#4CA7A1]" />
-                                      <span>Jawaban Ringkas</span>
-                                    </div>
-                                  )}
-                                  <div
-                                    className="prose dark:prose-invert max-w-none text-[#171717] dark:text-[#CEFEF1] leading-relaxed space-y-2 font-sans blog-content"
-                                    dangerouslySetInnerHTML={{ __html: autoWrapArabicText(qaSections.ringkasHtml) }}
-                                  />
-                                </div>
-                              )}
-
-                              {/* Bagian 2: Jawaban Mendetail (Hanya jika ditentukan / terisi) */}
-                              {qaSections.hasMendetail && (
-                                <div
-                                  id={`jawaban-mendetail-${item.id}`}
-                                  className={`scroll-mt-28 space-y-1.5 ${
-                                    qaSections.hasRingkas ? 'pt-3 border-t-2 border-[#171717]/15 dark:border-[#4CA7A1]/30' : ''
-                                  }`}
-                                >
-                                  <div className="flex items-center gap-2 text-xs sm:text-sm font-bold font-serif text-[#123D32] dark:text-[#CEFEF1] pb-1 border-b border-[#171717]/10 dark:border-[#4CA7A1]/20">
-                                    <span className="w-2 h-2 rounded-full bg-[#D6AD52]" />
-                                    <span>Jawaban Mendetail & Pembahasan Lengkap</span>
-                                  </div>
-                                  <div
-                                    className="prose dark:prose-invert max-w-none text-[#171717] dark:text-[#CEFEF1] leading-relaxed space-y-2 font-sans blog-content"
-                                    dangerouslySetInnerHTML={{ __html: autoWrapArabicText(qaSections.mendetailHtml) }}
-                                  />
-                                </div>
-                              )}                            </div>
                           </div>
-                        );
-                      })()}
+
+                          {/* SISTEM DAFTAR ISI DAN NAVIGASI SLIDE JAWABAN */}
+                          <QAReadingViewer
+                            replyContent={item.replyContent}
+                            consultationId={item.id}
+                            questionTitle={item.title}
+                            fontControl={fontControl}
+                            isAdmin={userProfile?.role === 'admin'}
+                          />
+                        </div>
+                      )}
 
                       {/* Sharing actions if approved learning QA */}
                       {item.category === 'learning' && item.isPublished && item.replyContent && (

@@ -302,14 +302,14 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
   }, [post.content, isAdmin]);
 
   return (
-    <div className="max-w-4xl mx-auto px-2.5 sm:px-6 lg:px-8 space-y-5 sm:space-y-8 py-4 sm:py-6 pb-16 animate-fade-in font-sans">
+    <div className="max-w-4xl mx-auto px-0 sm:px-6 lg:px-8 space-y-4 sm:space-y-8 py-3 sm:py-6 pb-16 animate-fade-in font-sans">
       {/* BREADCRUMB & TOP ACTIONS */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-3.5 sm:px-0">
         <button
           onClick={onBack}
-          className="px-3.5 py-2 text-xs font-extrabold rounded-md border-2 border-[#F5DABF] text-[#F5DABF] bg-transparent hover:bg-[#F5DABF] hover:text-[#6C151E] transition-all inline-flex items-center gap-2 cursor-pointer shadow-[2px_2px_0px_#171717]"
+          className="px-3.5 py-2 text-xs font-extrabold rounded-md border-2 border-[#171717] sm:border-[#F5DABF] text-[#171717] sm:text-[#F5DABF] bg-white sm:bg-transparent hover:bg-[#F5DABF] hover:text-[#6C151E] transition-all inline-flex items-center gap-2 cursor-pointer shadow-[2px_2px_0px_#171717]"
         >
-          <ArrowLeft className="w-4 h-4 text-[#F5DABF]" />
+          <ArrowLeft className="w-4 h-4 text-[#171717] sm:text-[#F5DABF]" />
           <span>Kembali ke Daftar Artikel</span>
         </button>
 
@@ -317,10 +317,10 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
           {/* Salin Link Button */}
           <button
             onClick={handleCopyLink}
-            className="px-3.5 py-2 text-xs font-extrabold rounded-md border-2 border-[#F5DABF] text-[#F5DABF] bg-transparent hover:bg-[#F5DABF] hover:text-[#6C151E] transition-all inline-flex items-center gap-2 cursor-pointer shadow-[2px_2px_0px_#171717]"
+            className="px-3.5 py-2 text-xs font-extrabold rounded-md border-2 border-[#171717] sm:border-[#F5DABF] text-[#171717] sm:text-[#F5DABF] bg-white sm:bg-transparent hover:bg-[#F5DABF] hover:text-[#6C151E] transition-all inline-flex items-center gap-2 cursor-pointer shadow-[2px_2px_0px_#171717]"
             title="Salin tautan permanen artikel ini"
           >
-            {copied ? <Check className="w-4 h-4 text-[#F5DABF]" /> : <Copy className="w-4 h-4 text-[#F5DABF]" />}
+            {copied ? <Check className="w-4 h-4 text-[#123D32] sm:text-[#F5DABF]" /> : <Copy className="w-4 h-4 text-[#171717] sm:text-[#F5DABF]" />}
             <span>{copied ? 'Link Disalin!' : 'Salin Link'}</span>
           </button>
 
@@ -338,7 +338,7 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
 
       {/* COPIED TOAST NOTIFICATION BANNER */}
       {copied && (
-        <div className="p-3.5 rounded-md bg-[#FAF7F0] border-2 border-[#171717] text-[#6C151E] text-xs flex items-center justify-between shadow-[4px_4px_0px_#171717] animate-fade-in font-bold">
+        <div className="mx-3.5 sm:mx-0 p-3.5 rounded-md bg-[#FAF7F0] border-2 border-[#171717] text-[#6C151E] text-xs flex items-center justify-between shadow-[4px_4px_0px_#171717] animate-fade-in font-bold">
           <div className="flex items-center gap-2.5">
             <Check className="w-4 h-4 text-[#6C151E] shrink-0" />
             <div>
@@ -354,7 +354,7 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
       {/* EDITORIAL ARTICLE READING CARD */}
       <article
         style={fontControl.style}
-        className="p-5 sm:p-8 md:p-12 space-y-5 sm:space-y-8 bg-[#FFF5E9] text-[#171717] rounded-lg border-2 border-[#171717] shadow-[6px_6px_0px_#171717]"
+        className="w-full bg-white sm:bg-[#FFF5E9] text-[#171717] border-0 sm:border-2 sm:border-[#171717] rounded-none sm:rounded-lg shadow-none sm:shadow-[6px_6px_0px_#171717] px-4 py-4 sm:p-8 md:p-12 space-y-5 sm:space-y-8"
       >
         {/* Editorial Header */}
         <div className="space-y-4 border-b-2 border-[#171717] pb-6">
@@ -412,7 +412,7 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
           )}
 
           <p
-            className="reading-scalable-excerpt text-[#0F3D3A] border-2 border-[#171717] border-l-4 border-l-[#6C151E] pl-3 sm:pl-4 py-2.5 pr-3 bg-[#FAF7F0] rounded-md font-medium"
+            className="reading-scalable-excerpt text-[#0F3D3A] border-y sm:border-2 border-[#171717] border-l-4 border-l-[#6C151E] pl-3 sm:pl-4 py-2.5 pr-3 bg-white sm:bg-[#FAF7F0] rounded-none sm:rounded-md font-medium"
             dangerouslySetInnerHTML={{ __html: preparedExcerptHtml }}
           />
         </div>
@@ -549,11 +549,13 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
       </article>
 
       {/* ARTICLE READER COMMENTS & MODERATION SECTION */}
-      <ArticleCommentsSection articleId={post.id} articleTitle={post.title} />
+      <div className="px-3.5 sm:px-0">
+        <ArticleCommentsSection articleId={post.id} articleTitle={post.title} />
+      </div>
 
       {/* RELATED ARTICLES SECTION */}
       {relatedArticles.length > 0 && (
-        <div className="space-y-4 pt-4">
+        <div className="space-y-4 pt-4 px-3.5 sm:px-0">
           <h3 className="text-lg font-bold font-serif text-[#171717] dark:text-[#CEFEF1] flex items-center gap-2">
             <BookOpen className="w-5 h-5 text-[#123D32] dark:text-[#4CA7A1]" />
             <span>Artikel Terkait Lainnya</span>

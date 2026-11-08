@@ -340,6 +340,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
           <MobileCarousel
             desktopGridClass="sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-5"
             ariaLabel="Materi Pembelajaran Pilihan"
+            showSwipeHint={true}
           >
             {courses.slice(0, 4).map((course) => (
               <CourseCard
@@ -388,6 +389,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
             <MobileCarousel
               desktopGridClass="sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-5"
               ariaLabel="Artikel Ilmiah Terbaru"
+              showSwipeHint={true}
             >
               {publishedArticles.slice(0, 3).map((article) => (
                 <HomeArticleCard
@@ -460,6 +462,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
             <MobileCarousel
               desktopGridClass="sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-5"
               ariaLabel="Tanya Jawab Pilihan"
+              showSwipeHint={true}
             >
               {publishedQA.slice(0, 3).map((item) => (
                 <HomeQACard

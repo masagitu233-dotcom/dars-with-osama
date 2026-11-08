@@ -113,7 +113,7 @@ export const ArticleReadingViewer: React.FC<ArticleReadingViewerProps> = ({
       {readingMode === 'toc' && (
         <div
           data-testid="article-toc-view"
-          className="nb-reading-surface p-4 sm:p-6 md:p-8 space-y-6 bg-white dark:bg-[#102C2B] border-2 border-[#171717] dark:border-[#4CA7A1] shadow-[5px_5px_0px_#171717] dark:shadow-[5px_5px_0px_#071918] rounded-lg transition-all"
+          className="space-y-5 sm:space-y-6 bg-white sm:bg-white sm:dark:bg-[#102C2B] border-0 sm:border-2 border-[#171717] dark:border-[#4CA7A1] shadow-none sm:shadow-[5px_5px_0px_#171717] dark:sm:shadow-[5px_5px_0px_#071918] rounded-none sm:rounded-lg p-0 sm:p-6 md:p-8 transition-all"
         >
           {/* Top Bar: Title, Count, "Baca Semua" button, and Font Controls */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b-2 border-[#171717]/15 dark:border-[#4CA7A1]/30 pb-4">
@@ -233,7 +233,7 @@ export const ArticleReadingViewer: React.FC<ArticleReadingViewerProps> = ({
       {readingMode === 'slide' && currentSlide && navInfo && (
         <div
           data-testid="article-slide-view"
-          className="nb-reading-surface p-4 sm:p-6 md:p-8 space-y-6 bg-white dark:bg-[#102C2B] border-2 border-[#171717] dark:border-[#4CA7A1] shadow-[5px_5px_0px_#171717] dark:shadow-[5px_5px_0px_#071918] rounded-lg transition-all"
+          className="space-y-5 sm:space-y-6 bg-white sm:bg-white sm:dark:bg-[#102C2B] border-0 sm:border-2 border-[#171717] dark:border-[#4CA7A1] shadow-none sm:shadow-[5px_5px_0px_#171717] dark:sm:shadow-[5px_5px_0px_#071918] rounded-none sm:rounded-lg p-0 sm:p-6 md:p-8 transition-all"
         >
           {/* Top Control Bar */}
           <div className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-[#171717] dark:border-[#4CA7A1] pb-4">
@@ -383,7 +383,7 @@ export const ArticleReadingViewer: React.FC<ArticleReadingViewerProps> = ({
           className="space-y-6 animate-fade-in"
         >
           {/* Top Control Bar for Full Mode */}
-          <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 bg-[#FAF7F0] dark:bg-[#102C2B] rounded-lg border-2 border-[#171717] dark:border-[#4CA7A1] shadow-[3px_3px_0px_#171717]">
+          <div className="flex flex-wrap items-center justify-between gap-3 py-2.5 sm:p-3.5 bg-white sm:bg-[#FAF7F0] sm:dark:bg-[#102C2B] rounded-none sm:rounded-lg border-0 border-b-2 sm:border-2 border-[#171717] dark:border-[#4CA7A1] shadow-none sm:shadow-[3px_3px_0px_#171717]">
             <div className="flex items-center gap-2.5">
               <button
                 type="button"

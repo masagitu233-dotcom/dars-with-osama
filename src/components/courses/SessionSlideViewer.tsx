@@ -72,7 +72,7 @@ export const SessionSlideViewer: React.FC<SessionSlideViewerProps> = ({
     <div
       ref={containerRef}
       style={fontControl.style}
-      className="nb-reading-surface p-4 sm:p-6 md:p-8 space-y-5 bg-white dark:bg-[#1F5F63] border-2 border-[#171717] dark:border-[#4CA7A1] shadow-[5px_5px_0px_#171717] dark:shadow-[5px_5px_0px_#001722] rounded-lg transition-all"
+      className="w-full border-x-0 border-y sm:border-2 rounded-none sm:rounded-lg shadow-none sm:shadow-[5px_5px_0px_#171717] dark:sm:shadow-[5px_5px_0px_#001722] px-4 py-5 sm:p-6 md:p-8 space-y-5 bg-white dark:bg-[#1F5F63] border-[#171717] dark:border-[#4CA7A1] transition-all"
     >
       {/* =========================================================================
           VIEW A: DAFTAR ISI OTOMATIS (Initial & Table of Contents Overview)

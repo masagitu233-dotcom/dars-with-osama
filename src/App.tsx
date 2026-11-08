@@ -814,7 +814,7 @@ function MainApp() {
       case 'quiz-view':
         return 'bg-[#0F3D3A] text-[#FFF5E9]';
       case 'blog-detail':
-        return 'bg-[#6C151E] text-[#FFF5E9]';
+        return 'bg-white sm:bg-[#6C151E] text-[#171717] sm:text-[#FFF5E9]';
       case 'public-qa':
       case 'consultation':
         return 'bg-[#F5DABF] text-[#0F3D3A]';

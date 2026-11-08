@@ -26,6 +26,7 @@ import { FeatureShareModal } from '../common/FeatureShareModal';
 import { TANYA_JAWAB_SHARE_CONFIG } from '../../utils/featureShareHelper';
 import { splitQAAnswer } from '../../utils/qaHelper';
 import { QATableOfContents } from './QATableOfContents';
+import { QAReadingViewer } from './QAReadingViewer';
 
 interface PublicQAViewProps {
   onNavigateToConsultation: () => void;
@@ -158,7 +159,7 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
   });
 
   return (
-    <div className="max-w-5xl mx-auto px-2.5 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8 animate-fade-in font-sans">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8 animate-fade-in font-sans">
       {/* HEADER HERO BANNER */}
       <div className="relative overflow-hidden rounded-lg bg-[#0F3D3A] text-[#F5DABF] p-6 sm:p-10 border-2 border-[#171717] shadow-[6px_6px_0px_#171717]">
         <div className="relative z-10 max-w-2xl space-y-4">
@@ -204,7 +205,7 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
       </div>
 
       {/* SEARCH & FILTER BAR + READING FONT CONTROLS */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 nb-card p-4 sm:p-5 bg-[#FFF5E9] border-2 border-[#171717] shadow-[4px_4px_0px_#171717] text-[#0F3D3A]">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 nb-card p-4 sm:p-5 bg-[#FFF5E9] border-2 border-[#171717] shadow-[4px_4px_0px_#171717] rounded-lg text-[#0F3D3A]">
         <div className="relative w-full md:max-w-md flex-1">
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#123D32] dark:text-[#4CA7A1]" />
           <input
@@ -298,11 +299,15 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
               <div
                 key={item.id}
                 id={`qa-${item.id}`}
-                className={`nb-card p-3.5 sm:p-6 space-y-3.5 sm:space-y-4 bg-[#FFF5E9] text-[#0F3D3A] border-2 border-[#171717] shadow-[4px_4px_0px_#171717] ${
-                  isDirectTarget
-                    ? 'ring-2 ring-[#0F3D3A]'
-                    : ''
-                }`}
+                className={
+                  isExpanded
+                    ? `-mx-4 px-4 py-4 sm:mx-0 sm:p-6 bg-white sm:bg-[#FFF5E9] border-0 border-y sm:border-2 border-[#171717] rounded-none sm:rounded-lg shadow-none sm:shadow-[4px_4px_0px_#171717] space-y-3.5 sm:space-y-4 text-[#171717] transition-all ${
+                        isDirectTarget ? 'ring-2 ring-[#0F3D3A]' : ''
+                      }`
+                    : `w-full nb-card p-4 sm:p-6 space-y-3.5 sm:space-y-4 bg-[#FFF5E9] text-[#0F3D3A] border-2 border-[#171717] shadow-[4px_4px_0px_#171717] rounded-lg transition-all ${
+                        isDirectTarget ? 'ring-2 ring-[#0F3D3A]' : ''
+                      }`
+                }
               >
                 {/* QA Header */}
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
@@ -426,7 +431,7 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
                   /* Expanded Full Detail */
                   <div className="space-y-4 pt-3 border-t-2 border-[#171717] dark:border-[#4CA7A1] animate-fade-in">
                     {/* Full Question Body */}
-                    <div className="p-3.5 sm:p-4 rounded-md bg-[#FAF7F0] dark:bg-[#0D2B36] border-2 border-[#171717] dark:border-[#4CA7A1] space-y-1.5">
+                    <div className="p-0 pb-3 sm:p-4 rounded-none sm:rounded-md bg-white sm:bg-[#FAF7F0] sm:dark:bg-[#0D2B36] border-0 border-b border-[#171717]/15 dark:border-[#4CA7A1]/20 sm:border sm:border-[#171717] dark:sm:border-[#4CA7A1] space-y-1.5">
                       <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#123D32] dark:text-[#A6D6C9] block">
                         Pertanyaan Lengkap:
                       </span>
@@ -436,73 +441,29 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
                       />
                     </div>
 
-                    {/* Full Formatted Rich-Text Answer with Automatic Table of Contents */}
-                    {item.replyContent && (() => {
-                      const qaSections = splitQAAnswer(item.replyContent, item.id);
-                      return (
-                        <div className="p-4 sm:p-6 rounded-md bg-white dark:bg-[#0D2B36] border-2 border-[#171717] dark:border-[#4CA7A1] border-l-4 border-l-[#123D32] dark:border-l-[#4CA7A1] space-y-3 sm:space-y-4">
-                          <div className="flex items-center justify-between pb-2.5 border-b-2 border-[#171717] dark:border-[#4CA7A1]">
-                            <div className="flex items-center gap-2 text-xs sm:text-sm font-bold font-serif text-[#123D32] dark:text-[#CEFEF1]">
-                              <ShieldCheck className="w-4 h-4 text-[#123D32] dark:text-[#4CA7A1]" />
-                              <span>Jawaban Resmi Ustaz / Pembimbing Dars with Osama:</span>
-                            </div>
-                            {item.repliedAt && (
-                              <span className="text-[11px] font-bold text-[#525855] dark:text-[#A6D6C9]">
-                                {new Date(item.repliedAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
-                              </span>
-                            )}
+                    {/* Full Formatted Rich-Text Answer with Automatic Table of Contents & Slide System */}
+                    {item.replyContent && (
+                      <div className="p-0 sm:p-6 rounded-none sm:rounded-md bg-white sm:bg-white sm:dark:bg-[#0D2B36] border-0 sm:border-2 border-[#171717] dark:border-[#4CA7A1] sm:border-l-4 sm:border-l-[#123D32] dark:sm:border-l-[#4CA7A1] shadow-none space-y-3 sm:space-y-4">
+                        <div className="flex items-center justify-between pb-2.5 border-b-2 border-[#171717] dark:border-[#4CA7A1]">
+                          <div className="flex items-center gap-2 text-xs sm:text-sm font-bold font-serif text-[#123D32] dark:text-[#CEFEF1]">
+                            <ShieldCheck className="w-4 h-4 text-[#123D32] dark:text-[#4CA7A1]" />
+                            <span>Jawaban Resmi Ustaz / Pembimbing Dars with Osama:</span>
                           </div>
-
-                          {/* DAFTAR ISI JAWABAN (Ditempatkan tepat setelah label Jawaban dan sebelum isi jawaban) */}
-                          {qaSections.sections.length > 0 && (
-                            <QATableOfContents sections={qaSections.sections} />
+                          {item.repliedAt && (
+                            <span className="text-[11px] font-bold text-[#525855] dark:text-[#A6D6C9]">
+                              {new Date(item.repliedAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </span>
                           )}
+                        </div>
 
-                          {/* Isi Jawaban Utuh & Berurutan: Jawaban Ringkas & Jawaban Mendetail */}
-                          <div className="space-y-6 pt-1">
-                            {/* Fallback untuk jawaban warisan / belum ditandai secara eksplisit */}
-                            {!qaSections.hasRingkas && !qaSections.hasMendetail && (
-                              <div
-                                className="prose dark:prose-invert max-w-none text-[#171717] dark:text-[#CEFEF1] leading-relaxed space-y-3 font-sans blog-content"
-                                dangerouslySetInnerHTML={{ __html: autoWrapArabicText(qaSections.unmarkedHtml || item.replyContent) }}
-                              />
-                            )}
-
-                            {/* Bagian 1: Jawaban Ringkas (Hanya jika ditentukan / terisi) */}
-                            {qaSections.hasRingkas && (
-                              <div id={`jawaban-ringkas-${item.id}`} className="scroll-mt-28 space-y-2">
-                                {qaSections.hasMendetail && (
-                                  <div className="flex items-center gap-2 text-xs font-bold font-serif text-[#123D32] dark:text-[#4CA7A1] pb-1 border-b border-[#171717]/10 dark:border-[#4CA7A1]/20">
-                                    <span className="w-2 h-2 rounded-full bg-[#123D32] dark:bg-[#4CA7A1]" />
-                                    <span>Jawaban Ringkas</span>
-                                  </div>
-                                )}
-                                <div
-                                  className="prose dark:prose-invert max-w-none text-[#171717] dark:text-[#CEFEF1] leading-relaxed space-y-3 font-sans blog-content"
-                                  dangerouslySetInnerHTML={{ __html: autoWrapArabicText(qaSections.ringkasHtml) }}
-                                />
-                              </div>
-                            )}
-
-                            {/* Bagian 2: Jawaban Mendetail (Hanya jika ditentukan / terisi) */}
-                            {qaSections.hasMendetail && (
-                              <div
-                                id={`jawaban-mendetail-${item.id}`}
-                                className={`scroll-mt-28 space-y-2 ${
-                                  qaSections.hasRingkas ? 'pt-4 border-t-2 border-[#171717]/15 dark:border-[#4CA7A1]/30' : ''
-                                }`}
-                              >
-                                <div className="flex items-center gap-2 text-xs sm:text-sm font-bold font-serif text-[#123D32] dark:text-[#CEFEF1] pb-1 border-b border-[#171717]/10 dark:border-[#4CA7A1]/20">
-                                  <span className="w-2 h-2 rounded-full bg-[#D6AD52]" />
-                                  <span>Jawaban Mendetail & Pembahasan Lengkap</span>
-                                </div>
-                                <div
-                                  className="prose dark:prose-invert max-w-none text-[#171717] dark:text-[#CEFEF1] leading-relaxed space-y-3 font-sans blog-content"
-                                  dangerouslySetInnerHTML={{ __html: autoWrapArabicText(qaSections.mendetailHtml) }}
-                                />
-                              </div>
-                            )}
-                          </div>
+                        {/* SISTEM DAFTAR ISI DAN NAVIGASI SLIDE JAWABAN */}
+                        <QAReadingViewer
+                          replyContent={item.replyContent}
+                          consultationId={item.id}
+                          questionTitle={item.title}
+                          fontControl={fontControl}
+                          isAdmin={isAdmin}
+                        />
 
                           {/* ACTION TOOLBAR: Bagikan Pertanyaan & Salin Link */}
                         <div className="pt-4 border-t-2 border-[#171717] dark:border-[#4CA7A1] flex flex-col sm:flex-row items-center justify-between gap-3">
@@ -540,8 +501,7 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
                           </span>
                         </div>
                       </div>
-                    );
-                  })()}
+                    )}
                 </div>
               )}
               </div>

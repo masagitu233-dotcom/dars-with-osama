@@ -69,7 +69,7 @@ export const QATableOfContents: React.FC<QATableOfContentsProps> = ({
     <nav
       data-testid="qa-table-of-contents"
       aria-label="Daftar Isi Jawaban"
-      className={`p-3.5 sm:p-4 rounded-md bg-[#FAF7F0] dark:bg-[#102C2B] border-2 border-[#171717] dark:border-[#4CA7A1] shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#071918] space-y-3 transition-all ${className}`}
+      className={`p-0 pb-3 sm:p-4 rounded-none sm:rounded-md bg-white sm:bg-[#FAF7F0] sm:dark:bg-[#102C2B] border-0 border-b sm:border-2 border-[#171717] dark:border-[#4CA7A1] shadow-none sm:shadow-[3px_3px_0px_#171717] dark:sm:shadow-[3px_3px_0px_#071918] space-y-3 transition-all ${className}`}
     >
       {/* Header bar */}
       <div className="flex items-center justify-between gap-2 border-b border-[#171717]/15 dark:border-[#4CA7A1]/30 pb-2">
@@ -103,7 +103,7 @@ export const QATableOfContents: React.FC<QATableOfContentsProps> = ({
           return (
             <div
               key={sec.targetId}
-              className="p-2.5 sm:p-3 rounded bg-white dark:bg-[#163835] border border-[#171717]/30 dark:border-[#4CA7A1]/50 shadow-2xs space-y-2 flex flex-col justify-between"
+              className="p-2 sm:p-3 rounded-none sm:rounded bg-white sm:bg-white sm:dark:bg-[#163835] border-0 sm:border border-[#171717]/30 dark:border-[#4CA7A1]/50 shadow-none sm:shadow-2xs space-y-2 flex flex-col justify-between"
             >
               {/* Main Section Link Button */}
               <a

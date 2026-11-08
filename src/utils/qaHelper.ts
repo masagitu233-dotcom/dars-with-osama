@@ -13,6 +13,13 @@
  */
 
 import { Consultation } from '../types';
+import {
+  hasMeaningfulContent,
+  splitSessionContentIntoSlides,
+  getSlideNavInfo,
+  SessionSlide,
+  SlideNavInfo
+} from './sessionSlideHelper.js';
 
 export interface ConsultationCounts {
   unansweredCount: number;
@@ -471,5 +478,168 @@ ${directUrl}`;
   return {
     plainText,
     shareUrl: directUrl
+  };
+}
+
+export interface QASlide extends SessionSlide {
+  sectionType?: 'ringkas' | 'mendetail' | 'general';
+}
+
+export interface QASlideResult {
+  hasMultipleSlides: boolean;
+  slides: QASlide[];
+  fallbackUsed: boolean;
+  isExplicitlyMarked: boolean;
+  fullCleanHtml: string;
+}
+
+/**
+ * Splits Q&A answer HTML into structured slides for the reading viewer.
+ *
+ * Rules:
+ * 1. If explicitly marked (Ringkas / Mendetail):
+ *    - Ringkas section: if it has <h1>, split into H1 slides; otherwise 1 slide named "Jawaban Ringkas".
+ *    - Mendetail section: if it has <h1>, split into H1 slides; otherwise 1 slide named "Jawaban Mendetail & Pembahasan Lengkap".
+ *    - Visual boundary indicators ([AWAL ...], [AKHIR ...]) are cleanly excluded.
+ * 2. If unmarked:
+ *    - If it has <h1> headings, split by <h1> using splitSessionContentIntoSlides.
+ *    - If no <h1> headings, fallback to a single slide named fallbackTitle ("Jawaban Resmi Ustaz").
+ * 3. Builds clean combined HTML for full reading mode ("Baca Semua").
+ */
+export function splitQAContentIntoSlides(
+  rawHtml: string | undefined | null,
+  fallbackTitle: string = 'Jawaban Resmi Ustaz',
+  consultationId: string = 'qa'
+): QASlideResult {
+  if (!rawHtml || typeof rawHtml !== 'string') {
+    return {
+      hasMultipleSlides: false,
+      slides: [],
+      fallbackUsed: false,
+      isExplicitlyMarked: false,
+      fullCleanHtml: ''
+    };
+  }
+
+  const clean = rawHtml.trim();
+  if (!hasMeaningfulContent(clean)) {
+    return {
+      hasMultipleSlides: false,
+      slides: [],
+      fallbackUsed: false,
+      isExplicitlyMarked: false,
+      fullCleanHtml: ''
+    };
+  }
+
+  const qaAnswer = splitQAAnswer(clean, consultationId);
+
+  // Case 1: Explicitly marked sections (Ringkas / Mendetail)
+  if (qaAnswer.isExplicitlyMarked && (qaAnswer.hasRingkas || qaAnswer.hasMendetail)) {
+    const slides: QASlide[] = [];
+
+    // Process Jawaban Ringkas
+    if (qaAnswer.hasRingkas) {
+      const ringkasSlideResult = splitSessionContentIntoSlides(
+        qaAnswer.ringkasHtml,
+        'Jawaban Ringkas'
+      );
+
+      if (ringkasSlideResult.hasH1 && ringkasSlideResult.slides.length > 0) {
+        ringkasSlideResult.slides.forEach((s) => {
+          slides.push({
+            ...s,
+            sectionType: 'ringkas'
+          });
+        });
+      } else {
+        slides.push({
+          id: `qa-slide-ringkas`,
+          title: 'Jawaban Ringkas',
+          titleHtml: 'Jawaban Ringkas',
+          htmlContent: qaAnswer.ringkasHtml,
+          index: slides.length,
+          sectionType: 'ringkas'
+        });
+      }
+    }
+
+    // Process Jawaban Mendetail
+    if (qaAnswer.hasMendetail) {
+      const mendetailSlideResult = splitSessionContentIntoSlides(
+        qaAnswer.mendetailHtml,
+        'Jawaban Mendetail & Pembahasan Lengkap'
+      );
+
+      if (mendetailSlideResult.hasH1 && mendetailSlideResult.slides.length > 0) {
+        mendetailSlideResult.slides.forEach((s) => {
+          slides.push({
+            ...s,
+            sectionType: 'mendetail'
+          });
+        });
+      } else {
+        slides.push({
+          id: `qa-slide-mendetail`,
+          title: 'Jawaban Mendetail & Pembahasan Lengkap',
+          titleHtml: 'Jawaban Mendetail & Pembahasan Lengkap',
+          htmlContent: qaAnswer.mendetailHtml,
+          index: slides.length,
+          sectionType: 'mendetail'
+        });
+      }
+    }
+
+    // Normalize indices and IDs
+    const normalizedSlides: QASlide[] = slides.map((slide, idx) => ({
+      ...slide,
+      id: `qa-slide-${idx + 1}`,
+      index: idx
+    }));
+
+    // Build clean HTML for full reading mode
+    let fullCleanHtml = '';
+    if (qaAnswer.hasRingkas) {
+      fullCleanHtml += `<div class="qa-section-ringkas mb-6 space-y-2">
+        ${qaAnswer.hasMendetail ? '<div class="flex items-center gap-2 text-xs font-bold font-serif text-[#123D32] dark:text-[#4CA7A1] pb-1 border-b border-[#171717]/10 dark:border-[#4CA7A1]/20"><span class="w-2 h-2 rounded-full bg-[#123D32] dark:bg-[#4CA7A1]"></span><span>Jawaban Ringkas</span></div>' : ''}
+        <div class="prose dark:prose-invert max-w-none text-[#171717] dark:text-[#CEFEF1] leading-relaxed space-y-3 font-sans blog-content">${qaAnswer.ringkasHtml}</div>
+      </div>`;
+    }
+    if (qaAnswer.hasMendetail) {
+      fullCleanHtml += `<div class="qa-section-mendetail space-y-2 ${qaAnswer.hasRingkas ? 'pt-4 border-t-2 border-[#171717]/15 dark:border-[#4CA7A1]/30' : ''}">
+        <div class="flex items-center gap-2 text-xs sm:text-sm font-bold font-serif text-[#123D32] dark:text-[#CEFEF1] pb-1 border-b border-[#171717]/10 dark:border-[#4CA7A1]/20"><span class="w-2 h-2 rounded-full bg-[#D6AD52]"></span><span>Jawaban Mendetail & Pembahasan Lengkap</span></div>
+        <div class="prose dark:prose-invert max-w-none text-[#171717] dark:text-[#CEFEF1] leading-relaxed space-y-3 font-sans blog-content">${qaAnswer.mendetailHtml}</div>
+      </div>`;
+    }
+
+    return {
+      hasMultipleSlides: normalizedSlides.length > 1,
+      slides: normalizedSlides,
+      fallbackUsed: false,
+      isExplicitlyMarked: true,
+      fullCleanHtml
+    };
+  }
+
+  // Case 2: Unmarked answer (Zero-guessing rule)
+  // Splits by <h1> if present, or creates a single fallback slide
+  const sessionResult = splitSessionContentIntoSlides(
+    clean,
+    fallbackTitle || 'Jawaban Resmi Ustaz'
+  );
+
+  const normalizedSlides: QASlide[] = sessionResult.slides.map((s, idx) => ({
+    ...s,
+    id: `qa-slide-${idx + 1}`,
+    index: idx,
+    sectionType: 'general'
+  }));
+
+  return {
+    hasMultipleSlides: normalizedSlides.length > 1,
+    slides: normalizedSlides,
+    fallbackUsed: sessionResult.fallbackUsed,
+    isExplicitlyMarked: false,
+    fullCleanHtml: clean
   };
 }
