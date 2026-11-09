@@ -23,7 +23,12 @@ import {
   Heading1 as Heading1Icon,
   HelpCircle,
   Hash,
-  BookmarkCheck
+  BookmarkCheck,
+  Phone,
+  Copy,
+  ExternalLink,
+  Check,
+  Globe
 } from 'lucide-react';
 import { Consultation } from '../../types';
 import {
@@ -40,7 +45,10 @@ import { QATableOfContents } from '../consultation/QATableOfContents';
 import {
   getAnswerSectionStats,
   splitQAAnswer,
-  unmarkSectionInHtml
+  unmarkSectionInHtml,
+  getConsultationAdminStatus,
+  buildAdminWhatsAppUrl,
+  normalizeWhatsAppForWaMe
 } from '../../utils/qaHelper';
 import { useAuth } from '../../context/AuthContext';
 
@@ -61,7 +69,16 @@ export const AdminConsultationManager: React.FC<AdminConsultationManagerProps> =
   // Filters
   const [categoryFilter, setCategoryFilter] = useState<'all' | 'learning' | 'private'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'answered' | 'closed'>('all');
+  const [publicationFilter, setPublicationFilter] = useState<'all' | 'published' | 'unpublished'>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  // Confirmation modal for publishing private consultations
+  const [confirmPrivatePublishItem, setConfirmPrivatePublishItem] = useState<Consultation | null>(null);
+
+  // WhatsApp dispatch modal state
+  const [whatsappModalItem, setWhatsappModalItem] = useState<Consultation | null>(null);
+  const [whatsappDraftMessage, setWhatsappDraftMessage] = useState<string>('');
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   // Active modal for reply/manage
   const [selectedConsultation, setSelectedConsultation] = useState<Consultation | null>(null);
@@ -102,6 +119,51 @@ export const AdminConsultationManager: React.FC<AdminConsultationManagerProps> =
     setSelectedConsultation(null);
     setReplyInput('');
     setShowPreview(false);
+  };
+
+  const openWhatsAppModal = (item: Consultation) => {
+    if (!item.whatsappNumber) return;
+    setWhatsappModalItem(item);
+    const name = item.studentName || 'Bapak/Ibu/Saudara/i';
+    const hasReply = Boolean(item.replyContent && item.replyContent.trim().length > 0);
+    const consultationLink = item.isPublished
+      ? `https://darswithosama.com/qa/${item.id}`
+      : `https://darswithosama.com/`;
+
+    const defaultMessage = `Assalamu'alaikum Warahmatullahi Wabarakatuh ${name},
+
+Pemberitahuan dari Dars with Osama seputar konsultasi Anda:
+*Topik:* ${item.title}
+
+${hasReply ? 'Alhamdulillah, balasan dan arahan resmi untuk pertanyaan Anda telah selesai dijawab oleh Ustaz / Admin Dars with Osama di website.' : 'Pertanyaan Anda telah kami terima dan sedang ditinjau oleh Ustaz / Admin Dars with Osama.'}
+
+${item.isPublished ? `Anda juga dapat membaca pertanyaan dan jawaban lengkap melalui tautan berikut:\n${consultationLink}` : 'Silakan masuk ke Ruang Konsultasi pada akun website Anda untuk membaca balasan lengkap.'}
+
+Jazakumullahu khairan.
+_Admin Dars with Osama_`;
+
+    setWhatsappDraftMessage(defaultMessage);
+    setCopiedKey(null);
+  };
+
+  const closeWhatsAppModal = () => {
+    setWhatsappModalItem(null);
+    setWhatsappDraftMessage('');
+    setCopiedKey(null);
+  };
+
+  const handleCopyText = (text: string, key: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedKey(key);
+    setTimeout(() => {
+      setCopiedKey((prev) => (prev === key ? null : prev));
+    }, 2500);
+  };
+
+  const handleOpenWhatsAppUrl = () => {
+    if (!whatsappModalItem?.whatsappNumber) return;
+    const url = buildAdminWhatsAppUrl(whatsappModalItem, whatsappDraftMessage);
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   const editorRef = React.useRef<RichTextEditorRef>(null);
@@ -179,25 +241,54 @@ export const AdminConsultationManager: React.FC<AdminConsultationManagerProps> =
     }
   };
 
-  const handleTogglePublish = async (item: Consultation) => {
-    if (item.category === 'private') {
-      setErrorMessage('Konsultasi bersifat pribadi dan TIDAK BOLEH dipublikasikan!');
-      return;
-    }
-
+  const handleRequestTogglePublish = (item: Consultation) => {
+    setErrorMessage('');
     const nextState = !item.isPublished;
+
+    if (nextState) {
+      const hasReply = Boolean(item.replyContent && item.replyContent.trim().length > 0);
+      if (!hasReply) {
+        setErrorMessage('Konsultasi belum memiliki balasan dari admin. Tuliskan jawaban terlebih dahulu sebelum memublikasikannya.');
+        return;
+      }
+
+      if (item.category === 'private') {
+        setConfirmPrivatePublishItem(item);
+        return;
+      }
+
+      handleExecutePublish(item, true, false);
+    } else {
+      handleExecutePublish(item, false, false);
+    }
+  };
+
+  const handleExecutePublish = async (item: Consultation, nextState: boolean, withConsent: boolean = false) => {
     setActionLoading(`publish-${item.id}`);
+    setErrorMessage('');
     try {
-      await togglePublishConsultation(item.id, nextState);
+      await togglePublishConsultation(item.id, nextState, withConsent);
       setToastMessage(
         nextState
-          ? 'Pertanyaan berhasil dipublikasikan ke Cloud Firebase (Halaman Q&A Publik)!'
-          : 'Pertanyaan berhasil disembunyikan di Cloud Firebase.'
+          ? item.category === 'private'
+            ? 'Konsultasi privat berhasil dipublikasikan dengan persetujuan penanya (identitas penanya dianonimkan untuk publik)!'
+            : 'Pertanyaan berhasil dipublikasikan ke Cloud Firebase (Halaman Q&A Publik)!'
+          : 'Pertanyaan berhasil disembunyikan dari Q&A Publik di Cloud Firebase.'
       );
+      setConfirmPrivatePublishItem(null);
       await loadConsultations();
       onConsultationUpdated?.();
       if (selectedConsultation?.id === item.id) {
-        setSelectedConsultation((prev) => (prev ? { ...prev, isPublished: nextState } : null));
+        setSelectedConsultation((prev) =>
+          prev
+            ? {
+                ...prev,
+                isPublished: nextState,
+                publishedWithConsent: withConsent ? true : prev.publishedWithConsent,
+                publishedWithConsentAt: withConsent ? new Date().toISOString() : prev.publishedWithConsentAt
+              }
+            : null
+        );
       }
     } catch (err: any) {
       setErrorMessage(err?.message || 'Gagal mengubah status publikasi.');
@@ -226,13 +317,16 @@ export const AdminConsultationManager: React.FC<AdminConsultationManagerProps> =
   const filteredList = consultations.filter((item) => {
     if (categoryFilter !== 'all' && item.category !== categoryFilter) return false;
     if (statusFilter !== 'all' && item.status !== statusFilter) return false;
+    if (publicationFilter === 'published' && !item.isPublished) return false;
+    if (publicationFilter === 'unpublished' && item.isPublished) return false;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       const matchTitle = item.title.toLowerCase().includes(q);
       const matchContent = item.content.toLowerCase().includes(q);
       const matchName = (item.studentName || '').toLowerCase().includes(q);
       const matchEmail = (item.studentEmail || '').toLowerCase().includes(q);
-      return matchTitle || matchContent || matchName || matchEmail;
+      const matchPhone = (item.whatsappNumber || '').toLowerCase().includes(q);
+      return matchTitle || matchContent || matchName || matchEmail || matchPhone;
     }
     return true;
   });
@@ -275,44 +369,57 @@ export const AdminConsultationManager: React.FC<AdminConsultationManagerProps> =
       )}
 
       {/* FILTER & SEARCH CONTROLS */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 nb-card bg-white dark:bg-[#16263D] p-4">
-        {/* Search Input (Col 5) */}
-        <div className="md:col-span-5 relative">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-3 nb-card bg-white dark:bg-[#16263D] p-4">
+        {/* Search Input (Col 4) */}
+        <div className="md:col-span-4 relative">
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-gray dark:text-blue-gray" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Cari judul, isi, nama atau email siswa..."
+            placeholder="Cari judul, nama, email, nomor WA..."
             className="nb-input w-full pl-10 pr-3 py-2 text-xs"
           />
         </div>
 
-        {/* Category Filter (Col 4) */}
-        <div className="md:col-span-4 flex items-center gap-2">
+        {/* Category Filter (Col 3) */}
+        <div className="md:col-span-3 flex items-center gap-1.5">
           <Filter className="w-4 h-4 text-[#123D32] dark:text-[#D6AD52] shrink-0" />
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value as any)}
-            className="nb-input w-full px-3 py-2 text-xs font-bold"
+            className="nb-input w-full px-2.5 py-2 text-xs font-bold"
           >
             <option value="all">Semua Kategori</option>
-            <option value="learning">📖 Materi & Pembelajaran</option>
-            <option value="private">🔒 Konsultasi Pribadi</option>
+            <option value="learning">📖 Materi & Pelajaran</option>
+            <option value="private">🔒 Konsultasi Privat</option>
           </select>
         </div>
 
-        {/* Status Filter (Col 3) */}
-        <div className="md:col-span-3">
+        {/* Status Filter (Col 2) */}
+        <div className="md:col-span-2">
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as any)}
-            className="nb-input w-full px-3 py-2 text-xs font-bold"
+            className="nb-input w-full px-2.5 py-2 text-xs font-bold"
           >
-            <option value="all">Semua Status</option>
+            <option value="all">Semua Respon</option>
             <option value="pending">⏳ Menunggu</option>
             <option value="answered">✓ Sudah Dijawab</option>
             <option value="closed">Selesai</option>
+          </select>
+        </div>
+
+        {/* Publication Filter (Col 3) */}
+        <div className="md:col-span-3">
+          <select
+            value={publicationFilter}
+            onChange={(e) => setPublicationFilter(e.target.value as any)}
+            className="nb-input w-full px-2.5 py-2 text-xs font-bold"
+          >
+            <option value="all">Semua Status Publikasi</option>
+            <option value="published">👁 Terbit di Q&A Publik</option>
+            <option value="unpublished">🔒 Belum Terbit (Privat/Draft)</option>
           </select>
         </div>
       </div>
@@ -334,169 +441,183 @@ export const AdminConsultationManager: React.FC<AdminConsultationManagerProps> =
         </div>
       ) : (
         <div className="space-y-4">
-          {filteredList.map((item) => (
-            <div
-              key={item.id}
-              className="nb-card bg-white dark:bg-[#16263D] p-5 space-y-4"
-            >
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="space-y-1.5 flex-1">
-                  {/* Badges */}
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span
-                      className={`nb-badge ${
-                        item.category === 'private'
-                          ? 'bg-[#F04438] text-white'
-                          : 'bg-[#123D32] text-[#D6AD52]'
-                      }`}
-                    >
-                      {item.category === 'private' ? '🔒 Konsultasi Pribadi' : '📖 Materi & Pembelajaran'}
-                    </span>
-
-                    <span
-                      className={`nb-badge ${
-                        item.status === 'answered'
-                          ? 'bg-[#D6AD52] text-charcoal'
-                          : item.status === 'closed'
-                          ? 'bg-[#FAF7F0] dark:bg-[#243A56] text-charcoal dark:text-offwhite'
-                          : 'bg-[#3478F6] text-white'
-                      }`}
-                    >
-                      {item.status === 'answered'
-                        ? '✓ Sudah Dijawab'
-                        : item.status === 'closed'
-                        ? 'Selesai'
-                        : '⏳ Menunggu Balasan'}
-                    </span>
-
-                    {item.isPublished && (
-                      <span className="nb-badge bg-[#3478F6] text-white">
-                        <Eye className="w-3 h-3" />
-                        <span>Terbit di Q&A Publik</span>
+          {filteredList.map((item) => {
+            const statusInfo = getConsultationAdminStatus(item);
+            return (
+              <div
+                key={item.id}
+                className="nb-card bg-white dark:bg-[#16263D] p-5 space-y-4"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="space-y-1.5 flex-1">
+                    {/* Clear Separate Badges: Privacy vs Resolution */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      {/* Privacy Badge */}
+                      <span className={`nb-badge ${statusInfo.privacyBadgeClass}`}>
+                        {item.category === 'private' ? (
+                          <Lock className="w-3 h-3 inline mr-1 shrink-0" />
+                        ) : (
+                          <Globe className="w-3 h-3 inline mr-1 shrink-0" />
+                        )}
+                        <span>{statusInfo.privacyLabel}</span>
                       </span>
-                    )}
-                  </div>
 
-                  <h3 className="text-base font-extrabold font-serif-brand text-charcoal dark:text-offwhite">
-                    {item.title}
-                  </h3>
+                      {/* Resolution Badge */}
+                      <span className={`nb-badge ${statusInfo.resolutionBadgeClass}`}>
+                        {statusInfo.isAnswered ? (
+                          <CheckCircle2 className="w-3 h-3 inline mr-1 shrink-0" />
+                        ) : (
+                          <AlertCircle className="w-3 h-3 inline mr-1 shrink-0" />
+                        )}
+                        <span>{statusInfo.resolutionLabel}</span>
+                      </span>
 
-                  {/* Student Identity Information */}
-                  <div className="flex flex-wrap items-center gap-3 text-xs text-slate-gray dark:text-blue-gray font-medium">
-                    <span className="flex items-center gap-1">
-                      <User className="w-3.5 h-3.5 text-[#123D32] dark:text-[#D6AD52]" />
-                      <strong>{item.studentName}</strong>
-                    </span>
-                    {item.studentEmail && (
+                      {/* Explicit Consent Badge for Private Consultations */}
+                      {item.publishedWithConsent && (
+                        <span className="nb-badge bg-[#D6AD52] text-charcoal border-charcoal font-bold text-[10px]">
+                          <Check className="w-3 h-3 inline mr-0.5 shrink-0" />
+                          <span>Izin Publikasi Diperoleh</span>
+                        </span>
+                      )}
+                    </div>
+
+                    <h3 className="text-base font-extrabold font-serif-brand text-charcoal dark:text-offwhite">
+                      {item.title}
+                    </h3>
+
+                    {/* Student Identity Information (Admin Only) */}
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-slate-gray dark:text-blue-gray font-medium">
                       <span className="flex items-center gap-1">
-                        <Mail className="w-3.5 h-3.5" />
-                        <span>{item.studentEmail}</span>
+                        <User className="w-3.5 h-3.5 text-[#123D32] dark:text-[#D6AD52]" />
+                        <strong>{item.studentName}</strong>
                       </span>
-                    )}
-                    <span className="flex items-center gap-1">
-                      <Calendar className="w-3.5 h-3.5" />
-                      <span>
-                        {new Date(item.createdAt).toLocaleDateString('id-ID', {
-                          day: 'numeric',
-                          month: 'short',
-                          year: 'numeric'
-                        })}
+                      {item.studentEmail && (
+                        <span className="flex items-center gap-1">
+                          <Mail className="w-3.5 h-3.5" />
+                          <span>{item.studentEmail}</span>
+                        </span>
+                      )}
+                      {item.whatsappNumber ? (
+                        <span className="flex items-center gap-1 text-[#25D366] font-bold">
+                          <Phone className="w-3.5 h-3.5" />
+                          <span>{item.whatsappNumber}</span>
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1 text-slate-400 text-[11px] italic">
+                          <span>(Tanpa WhatsApp)</span>
+                        </span>
+                      )}
+                      <span className="flex items-center gap-1">
+                        <Calendar className="w-3.5 h-3.5" />
+                        <span>
+                          {new Date(item.createdAt).toLocaleDateString('id-ID', {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric'
+                          })}
+                        </span>
                       </span>
-                    </span>
+                    </div>
+                  </div>
+
+                  {/* Actions Button Bar */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => openManageModal(item)}
+                      className="nb-btn nb-btn-primary px-3.5 py-2 text-xs"
+                    >
+                      <MessageSquare className="w-3.5 h-3.5 text-[#D6AD52]" />
+                      <span>{item.replyContent ? 'Edit Balasan' : 'Jawab Pertanyaan'}</span>
+                    </button>
                   </div>
                 </div>
 
-                {/* Actions Button Bar */}
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    onClick={() => openManageModal(item)}
-                    className="nb-btn nb-btn-primary px-3.5 py-2 text-xs"
-                  >
-                    <MessageSquare className="w-3.5 h-3.5 text-[#D6AD52]" />
-                    <span>{item.replyContent ? 'Edit Balasan' : 'Jawab Pertanyaan'}</span>
-                  </button>
+                {/* Question Preview */}
+                <div className="p-3.5 bg-[#FAF7F0] dark:bg-[#243A56] border-2 border-charcoal dark:border-[#34465D] rounded-md text-xs text-charcoal dark:text-offwhite line-clamp-3 whitespace-pre-line font-sans">
+                  {item.content}
                 </div>
-              </div>
 
-              {/* Question Preview */}
-              <div className="p-3.5 bg-[#FAF7F0] dark:bg-[#243A56] border-2 border-charcoal dark:border-[#34465D] rounded-md text-xs text-charcoal dark:text-offwhite line-clamp-3 whitespace-pre-line font-sans">
-                {item.content}
-              </div>
+                {/* Admin Reply Preview */}
+                {item.replyContent && (
+                  <div className="p-3.5 bg-white dark:bg-[#243A56] border-2 border-charcoal border-l-4 border-l-[#D6AD52] rounded-md text-xs text-charcoal dark:text-offwhite space-y-1 font-sans">
+                    <span className="font-extrabold text-[11px] text-[#123D32] dark:text-[#D6AD52] block">
+                      Balasan Admin Saat Ini:
+                    </span>
+                    <p className="line-clamp-2 whitespace-pre-line">{item.replyContent}</p>
+                  </div>
+                )}
 
-              {/* Admin Reply Preview */}
-              {item.replyContent && (
-                <div className="p-3.5 bg-white dark:bg-[#243A56] border-2 border-charcoal border-l-4 border-l-[#D6AD52] rounded-md text-xs text-charcoal dark:text-offwhite space-y-1 font-sans">
-                  <span className="font-extrabold text-[11px] text-[#123D32] dark:text-[#D6AD52] block">
-                    Balasan Admin Saat Ini:
-                  </span>
-                  <p className="line-clamp-2 whitespace-pre-line">{item.replyContent}</p>
-                </div>
-              )}
-
-              {/* Publication Control for Learning Category */}
-              <div className="pt-3 border-t-2 border-slate-200 dark:border-slate-700/60 flex flex-wrap items-center justify-between gap-2 text-xs">
-                {item.category === 'private' ? (
-                  <span className="text-[11px] text-[#F04438] font-extrabold flex items-center gap-1">
-                    <Lock className="w-3.5 h-3.5" />
-                    <span>Konsultasi Pribadi (Dilarang Dipublikasi)</span>
-                  </span>
-                ) : (
-                  <button
-                    onClick={() => handleTogglePublish(item)}
-                    disabled={actionLoading === `publish-${item.id}`}
-                    className={`nb-btn px-3 py-1.5 text-xs ${
-                      item.isPublished
-                        ? 'nb-btn-danger'
-                        : 'nb-btn-gold'
-                    }`}
-                  >
+                {/* Publication Control & WhatsApp Action Bar */}
+                <div className="pt-3 border-t-2 border-slate-200 dark:border-slate-700/60 flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <div className="flex flex-wrap items-center gap-2">
                     {item.isPublished ? (
-                      <>
+                      <button
+                        type="button"
+                        onClick={() => handleRequestTogglePublish(item)}
+                        disabled={actionLoading === `publish-${item.id}`}
+                        className="nb-btn nb-btn-danger px-3 py-1.5 text-xs flex items-center gap-1.5"
+                      >
                         <EyeOff className="w-3.5 h-3.5" />
                         <span>Sembunyikan dari Q&A Publik</span>
-                      </>
+                      </button>
                     ) : (
-                      <>
+                      <button
+                        type="button"
+                        onClick={() => handleRequestTogglePublish(item)}
+                        disabled={actionLoading === `publish-${item.id}`}
+                        className={`nb-btn px-3 py-1.5 text-xs flex items-center gap-1.5 ${
+                          item.category === 'private'
+                            ? 'bg-[#123D32] hover:bg-[#1a4f41] text-[#D6AD52] border-2 border-charcoal'
+                            : 'nb-btn-gold'
+                        }`}
+                      >
                         <Eye className="w-3.5 h-3.5" />
-                        <span>Setujui & Terbitkan ke Q&A Publik</span>
-                      </>
+                        <span>
+                          {item.category === 'private'
+                            ? 'Publikasikan Konsultasi (Perlu Izin)'
+                            : 'Setujui & Terbitkan ke Q&A Publik'}
+                        </span>
+                      </button>
                     )}
-                  </button>
-                )}
 
-                {item.isPublished && item.category === 'learning' && item.replyContent && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedQaForShare(item);
-                      setShareTab('share');
-                      setShareModalOpen(true);
-                    }}
-                    className="nb-btn bg-[#3478F6] text-white border-2 border-charcoal px-3 py-1.5 text-xs"
-                    title="Bagikan Tautan / Buat Gambar Kartu Dakwah"
-                  >
-                    <Share2 className="w-3.5 h-3.5" />
-                    <span>Bagikan / Buat Kartu</span>
-                  </button>
-                )}
+                    {item.isPublished && item.replyContent && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedQaForShare(item);
+                          setShareTab('share');
+                          setShareModalOpen(true);
+                        }}
+                        className="nb-btn bg-[#3478F6] text-white border-2 border-charcoal px-3 py-1.5 text-xs"
+                        title="Bagikan Tautan / Buat Gambar Kartu Dakwah"
+                      >
+                        <Share2 className="w-3.5 h-3.5" />
+                        <span>Bagikan / Buat Kartu</span>
+                      </button>
+                    )}
+                  </div>
 
-                <a
-                  href={getWhatsAppConsultationUrl({
-                    id: item.id,
-                    title: item.title,
-                    category: item.category,
-                    studentName: item.studentName
-                  })}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-[11px] text-[#123D32] dark:text-[#D6AD52] font-extrabold hover:underline"
-                >
-                  <MessageCircle className="w-3.5 h-3.5" />
-                  <span>Hubungi Siswa di WhatsApp</span>
-                </a>
+                  {/* WhatsApp Direct Contact / Notification Button */}
+                  {item.whatsappNumber ? (
+                    <button
+                      type="button"
+                      onClick={() => openWhatsAppModal(item)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#25D366]/10 hover:bg-[#25D366]/20 border border-[#25D366]/50 text-xs text-[#123D32] dark:text-[#CEFEF1] font-extrabold transition cursor-pointer"
+                      title="Buka dialog pengiriman balasan ke nomor WhatsApp siswa"
+                    >
+                      <MessageCircle className="w-4 h-4 text-[#25D366]" />
+                      <span>Hubungi Siswa di WhatsApp</span>
+                    </button>
+                  ) : (
+                    <span className="text-[11px] text-slate-400 italic flex items-center gap-1.5">
+                      <MessageCircle className="w-3.5 h-3.5 opacity-40" />
+                      <span>Nomor WhatsApp tidak dicantumkan oleh penanya</span>
+                    </span>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -551,6 +672,12 @@ export const AdminConsultationManager: React.FC<AdminConsultationManagerProps> =
 
               <p className="text-charcoal dark:text-offwhite">
                 <strong>Nama:</strong> {selectedConsultation.studentName} ({selectedConsultation.studentEmail || 'Tanpa Email'})
+                {selectedConsultation.whatsappNumber && (
+                  <span className="ml-2 inline-flex items-center gap-1 font-bold text-[#25D366]">
+                    <Phone className="w-3.5 h-3.5" />
+                    <span>WA: {selectedConsultation.whatsappNumber}</span>
+                  </span>
+                )}
               </p>
 
               <div className="pt-1">
@@ -846,22 +973,34 @@ export const AdminConsultationManager: React.FC<AdminConsultationManagerProps> =
 
             {/* Actions */}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t-2 border-charcoal dark:border-[#D6AD52]/50">
-              {selectedConsultation.category === 'learning' ? (
+              {selectedConsultation.isPublished ? (
                 <button
                   type="button"
-                  onClick={() => handleTogglePublish(selectedConsultation)}
-                  className={`nb-btn px-3.5 py-2 text-xs ${
-                    selectedConsultation.isPublished
-                      ? 'nb-btn-danger'
+                  onClick={() => handleRequestTogglePublish(selectedConsultation)}
+                  disabled={actionLoading === `publish-${selectedConsultation.id}`}
+                  className="nb-btn nb-btn-danger px-3.5 py-2 text-xs flex items-center gap-1.5"
+                >
+                  <EyeOff className="w-3.5 h-3.5" />
+                  <span>Sembunyikan dari Publik</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleRequestTogglePublish(selectedConsultation)}
+                  disabled={actionLoading === `publish-${selectedConsultation.id}`}
+                  className={`nb-btn px-3.5 py-2 text-xs flex items-center gap-1.5 ${
+                    selectedConsultation.category === 'private'
+                      ? 'bg-[#123D32] hover:bg-[#1a4f41] text-[#D6AD52] border-2 border-charcoal'
                       : 'nb-btn-gold'
                   }`}
                 >
-                  {selectedConsultation.isPublished ? 'Sembunyikan dari Publik' : 'Terbitkan ke Q&A Publik'}
+                  <Eye className="w-3.5 h-3.5" />
+                  <span>
+                    {selectedConsultation.category === 'private'
+                      ? 'Publikasikan Konsultasi (Perlu Izin)'
+                      : 'Terbitkan ke Q&A Publik'}
+                  </span>
                 </button>
-              ) : (
-                <span className="text-[11px] text-[#F04438] font-extrabold">
-                  🔒 Privat (TIDAK Boleh Dipublikasi)
-                </span>
               )}
 
               <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -880,6 +1019,165 @@ export const AdminConsultationManager: React.FC<AdminConsultationManagerProps> =
                 >
                   <Send className="w-3.5 h-3.5 text-[#D6AD52]" />
                   <span>{actionLoading === 'reply' ? 'Menyimpan...' : 'Kirim Balasan'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DIALOG KONFIRMASI PUBLIKASI KONSULTASI PRIBADI */}
+      {confirmPrivatePublishItem && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-fade-in">
+          <div className="relative w-full max-w-lg nb-card bg-white dark:bg-[#16263D] p-6 space-y-5 border-3 border-charcoal shadow-[6px_6px_0px_#292D2B]">
+            <div className="flex items-center gap-3 text-[#B42318] dark:text-[#F04438] border-b-2 border-charcoal/20 pb-3">
+              <ShieldAlert className="w-6 h-6 shrink-0" />
+              <div>
+                <h3 className="font-extrabold text-base font-serif-brand text-charcoal dark:text-offwhite">
+                  Konfirmasi Publikasi Konsultasi Pribadi
+                </h3>
+                <p className="text-[11px] text-slate-500 font-mono">
+                  ID: {confirmPrivatePublishItem.id}
+                </p>
+              </div>
+            </div>
+
+            {/* Exact Prompt Required by User Brief */}
+            <div className="p-4 rounded-md bg-[#FFF5E9] dark:bg-[#201515] border-2 border-[#D6AD52] text-xs text-charcoal dark:text-offwhite leading-relaxed space-y-2">
+              <p className="font-bold text-[#6C151E] dark:text-[#FFB3B8]">
+                Pertanyaan ini merupakan konsultasi pribadi. Pastikan Anda telah menghubungi penanya dan memperoleh persetujuannya untuk menampilkan pertanyaan beserta jawaban kepada publik.
+              </p>
+              <div className="pt-2 border-t border-charcoal/10 text-[11px] text-slate-600 dark:text-slate-300 space-y-1">
+                <p>
+                  <strong>Catatan Privasi:</strong> Ketika dipublikasikan, identitas penanya akan secara otomatis diubah menjadi <em>"Penanya (Anonim)"</em> pada tampilan publik, dan seluruh nomor WhatsApp serta email siswa tetap terlindungi (hanya dapat diakses oleh Admin).
+                </p>
+                <p>
+                  <strong>Topik:</strong> {confirmPrivatePublishItem.title}
+                </p>
+                <p>
+                  <strong>Penanya:</strong> {confirmPrivatePublishItem.studentName}
+                </p>
+              </div>
+            </div>
+
+            {/* Action Buttons with Exact Labels */}
+            <div className="flex flex-col sm:flex-row items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setConfirmPrivatePublishItem(null)}
+                className="w-full sm:w-auto nb-btn nb-btn-secondary px-4 py-2.5 text-xs font-bold"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={() => handleExecutePublish(confirmPrivatePublishItem, true, true)}
+                disabled={actionLoading === `publish-${confirmPrivatePublishItem.id}`}
+                className="w-full sm:w-auto nb-btn px-4 py-2.5 text-xs font-extrabold bg-[#123D32] hover:bg-[#1a4f41] text-[#D6AD52] border-2 border-charcoal shadow-2xs"
+              >
+                Saya telah memperoleh persetujuan, lanjutkan publikasi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL PENGIRIMAN BALASAN KE WHATSAPP SISWA */}
+      {whatsappModalItem && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-fade-in">
+          <div className="relative w-full max-w-lg nb-card bg-white dark:bg-[#16263D] p-6 space-y-5 border-3 border-charcoal shadow-[6px_6px_0px_#292D2B]">
+            <div className="flex items-center justify-between border-b-2 border-charcoal/20 pb-3">
+              <div className="flex items-center gap-2.5 text-[#123D32] dark:text-[#25D366]">
+                <MessageCircle className="w-6 h-6 shrink-0" />
+                <div>
+                  <h3 className="font-extrabold text-base font-serif-brand text-charcoal dark:text-offwhite">
+                    Hubungi Siswa di WhatsApp
+                  </h3>
+                  <p className="text-[11px] text-slate-500 font-mono">
+                    Tujuan: {normalizeWhatsAppForWaMe(whatsappModalItem.whatsappNumber)}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={closeWhatsAppModal}
+                className="nb-btn nb-btn-secondary p-1.5"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Recipient Details Card */}
+            <div className="p-3 rounded-md bg-[#FAF7F0] dark:bg-[#243A56] border-2 border-charcoal text-xs space-y-1 text-charcoal dark:text-offwhite">
+              <div className="flex items-center justify-between">
+                <span><strong>Penerima:</strong> {whatsappModalItem.studentName}</span>
+                <span className="nb-badge bg-[#25D366] text-charcoal font-bold text-[10px]">
+                  {whatsappModalItem.whatsappNumber}
+                </span>
+              </div>
+              <p className="line-clamp-1"><strong>Topik:</strong> {whatsappModalItem.title}</p>
+            </div>
+
+            {/* Draft Message Editor */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs font-extrabold text-charcoal dark:text-offwhite">
+                <span>Pratinjau / Sesuaikan Isi Pesan WhatsApp:</span>
+                <span className="text-[10px] text-slate-500 font-normal">Dapat diedit bebas</span>
+              </div>
+              <textarea
+                value={whatsappDraftMessage}
+                onChange={(e) => setWhatsappDraftMessage(e.target.value)}
+                rows={8}
+                className="nb-input w-full p-3 text-xs leading-relaxed font-sans"
+                placeholder="Tuliskan pesan..."
+              />
+              <p className="text-[11px] text-slate-500 italic">
+                * Pesan tidak akan dikirim otomatis oleh sistem. Mengklik tombol di bawah akan membuka aplikasi WhatsApp resmi dengan pesan yang sudah terisi.
+              </p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-charcoal/15">
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleCopyText(whatsappDraftMessage, 'msg')}
+                  className="nb-btn nb-btn-secondary px-3 py-1.5 text-xs flex items-center gap-1.5"
+                >
+                  {copiedKey === 'msg' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedKey === 'msg' ? 'Tersalin!' : 'Salin Pesan'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const link = whatsappModalItem.isPublished
+                      ? `https://darswithosama.com/qa/${whatsappModalItem.id}`
+                      : `https://darswithosama.com/`;
+                    handleCopyText(link, 'link');
+                  }}
+                  className="nb-btn nb-btn-secondary px-3 py-1.5 text-xs flex items-center gap-1.5"
+                >
+                  {copiedKey === 'link' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedKey === 'link' ? 'Tautan Tersalin!' : 'Salin Tautan'}</span>
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={closeWhatsAppModal}
+                  className="nb-btn nb-btn-secondary px-3.5 py-1.5 text-xs"
+                >
+                  Tutup
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleOpenWhatsAppUrl}
+                  className="nb-btn px-4 py-1.5 text-xs flex items-center gap-1.5 bg-[#25D366] hover:bg-[#20ba5a] text-charcoal border-2 border-charcoal font-extrabold shadow-2xs"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>Buka WhatsApp</span>
                 </button>
               </div>
             </div>

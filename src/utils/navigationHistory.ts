@@ -7,6 +7,7 @@ export interface DarsRouteState {
   blogPostSlug?: string | null;
   genre?: string | null;
   qaId?: string | null;
+  consultationId?: string | null;
   filterCategoryId?: string;
   searchQuery?: string;
 }
@@ -56,8 +57,16 @@ export function isDarsHistoryState(state: unknown): state is DarsHistoryState {
  * Parses a URL pathname and query string into a normalized DarsRouteState.
  */
 export function parseUrlToRouteState(pathname: string, search: string): DarsRouteState {
-  const cleanPath = (pathname || '/').trim();
-  const params = new URLSearchParams(search || '');
+  let cleanPath = (pathname || '/').trim();
+  let searchStr = search || '';
+  if (cleanPath.includes('?')) {
+    const qIndex = cleanPath.indexOf('?');
+    if (!searchStr) {
+      searchStr = cleanPath.slice(qIndex);
+    }
+    cleanPath = cleanPath.slice(0, qIndex);
+  }
+  const params = new URLSearchParams(searchStr);
 
   const urlCourseId = params.get('courseId') || null;
   const urlSessionParam = params.get('session') || params.get('sessionId') || null;
@@ -66,6 +75,7 @@ export function parseUrlToRouteState(pathname: string, search: string): DarsRout
   const urlArticleId = params.get('id') || null;
   const urlGenre = params.get('genre') || null;
   const urlQaId = params.get('qaId') || null;
+  const urlConsultationId = params.get('consultationId') || null;
   const urlView = params.get('view') || null;
   const filterCategoryId = params.get('category') || 'all';
   const searchQuery = params.get('q') || '';
@@ -233,6 +243,33 @@ export function parseUrlToRouteState(pathname: string, search: string): DarsRout
     };
   }
 
+  if (cleanPath.startsWith('/consultation/')) {
+    const rawConsId = cleanPath.slice('/consultation/'.length).replace(/\/+$/, '');
+    const decodedConsId = rawConsId ? decodeURIComponent(rawConsId) : urlConsultationId;
+    return {
+      view: 'consultation',
+      consultationId: decodedConsId || null,
+      filterCategoryId,
+      searchQuery
+    };
+  }
+
+  if (
+    cleanPath === '/consultation' ||
+    cleanPath === '/consultation/' ||
+    cleanPath === '/konsultasi' ||
+    cleanPath === '/konsultasi/' ||
+    urlConsultationId ||
+    urlView === 'consultation'
+  ) {
+    return {
+      view: 'consultation',
+      consultationId: urlConsultationId,
+      filterCategoryId,
+      searchQuery
+    };
+  }
+
   if (urlView) {
     return {
       view: urlView,
@@ -242,6 +279,7 @@ export function parseUrlToRouteState(pathname: string, search: string): DarsRout
       blogPostId: urlArticleId,
       blogPostSlug: urlArticle,
       qaId: urlQaId,
+      consultationId: urlConsultationId,
       filterCategoryId,
       searchQuery
     };
@@ -326,8 +364,12 @@ export function buildUrlFromRouteState(route: DarsRouteState): string {
       return '/?view=public-qa';
     }
 
-    case 'consultation':
+    case 'consultation': {
+      if (route.consultationId) {
+        return `/consultation/${encodeURIComponent(route.consultationId)}`;
+      }
       return '/?view=consultation';
+    }
 
     case 'student-dashboard':
       return '/?view=student-dashboard';
@@ -374,6 +416,8 @@ export function isSameRouteState(a: DarsRouteState, b: DarsRouteState): boolean 
       return (a.quizId || '') === (b.quizId || '');
     case 'public-qa':
       return (a.qaId || '') === (b.qaId || '');
+    case 'consultation':
+      return (a.consultationId || '') === (b.consultationId || '');
     case 'courses':
       return (
         (a.filterCategoryId || 'all') === (b.filterCategoryId || 'all') &&

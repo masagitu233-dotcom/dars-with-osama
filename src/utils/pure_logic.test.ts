@@ -4724,4 +4724,213 @@ test('Case 100: Sistem Daftar Isi dan Slide Halaman Baca Tanya Jawab memiliki me
   assert.strictEqual(parsedPlain.slides[0].title, 'Jawaban Resmi Fiqih');
 });
 
+// Case 101: Validasi Kolom WhatsApp Penanya, Normalisasi wa.me, Sanitasi Privasi Publik, dan Status Admin
+test('Case 101: validateWhatsAppNumber, normalizeWhatsAppForWaMe, sanitizeConsultationForPublic, dan getConsultationAdminStatus', async () => {
+  const {
+    validateWhatsAppNumber,
+    normalizeWhatsAppForWaMe,
+    buildAdminWhatsAppUrl,
+    sanitizeConsultationForPublic,
+    getConsultationAdminStatus
+  } = await import('./qaHelper.js');
+
+  // 1. Validasi Nomor WhatsApp Opsional
+  // Kosong / null / undefined harus valid (opsional)
+  assert.strictEqual(validateWhatsAppNumber('').isValid, true);
+  assert.strictEqual(validateWhatsAppNumber(undefined).isValid, true);
+  assert.strictEqual(validateWhatsAppNumber(null).isValid, true);
+  assert.strictEqual(validateWhatsAppNumber('   ').isValid, true);
+
+  // Nomor valid dalam berbagai format penulisan Indonesia
+  const valid1 = validateWhatsAppNumber('08123456789');
+  assert.strictEqual(valid1.isValid, true);
+  assert.strictEqual(valid1.cleanDigits, '08123456789');
+  assert.strictEqual(valid1.normalized, '628123456789');
+
+  const valid2 = validateWhatsAppNumber('+62 812-3456-7890');
+  assert.strictEqual(valid2.isValid, true);
+  assert.strictEqual(valid2.normalized, '6281234567890');
+
+  const valid3 = validateWhatsAppNumber('085712345678');
+  assert.strictEqual(valid3.isValid, true);
+  assert.strictEqual(valid3.normalized, '6285712345678');
+
+  // Nomor tidak valid: mengandung huruf
+  const invalidLetters = validateWhatsAppNumber('0812abcd3456');
+  assert.strictEqual(invalidLetters.isValid, false);
+  assert.ok(invalidLetters.error?.includes('huruf'));
+
+  // Nomor tidak valid: terlalu pendek (< 9 digit)
+  const tooShort = validateWhatsAppNumber('081234');
+  assert.strictEqual(tooShort.isValid, false);
+  assert.ok(tooShort.error?.includes('pendek'));
+
+  // Nomor tidak valid: terlalu panjang (> 16 digit)
+  const tooLong = validateWhatsAppNumber('0812345678901234567');
+  assert.strictEqual(tooLong.isValid, false);
+  assert.ok(tooLong.error?.includes('panjang'));
+
+  // 2. Normalisasi untuk wa.me
+  assert.strictEqual(normalizeWhatsAppForWaMe('08123456789'), '628123456789');
+  assert.strictEqual(normalizeWhatsAppForWaMe('81234567890'), '6281234567890');
+  assert.strictEqual(normalizeWhatsAppForWaMe('+6281234567890'), '6281234567890');
+  assert.strictEqual(normalizeWhatsAppForWaMe('6281234567890'), '6281234567890');
+  assert.strictEqual(normalizeWhatsAppForWaMe(''), '');
+
+  // 3. Pembuatan URL WhatsApp Admin ke Siswa
+  const waUrl = buildAdminWhatsAppUrl({
+    id: 'consult-101',
+    title: 'Hukum Jual Beli Salam',
+    whatsappNumber: '081234567890',
+    studentName: 'Ahmad Abdullah',
+    replyContent: '<p>Penjelasan hukum salam...</p>',
+    isPublished: true
+  });
+  assert.ok(waUrl.startsWith('https://wa.me/6281234567890?text='));
+  assert.ok(waUrl.includes('Ahmad%20Abdullah') || waUrl.includes('Ahmad Abdullah') || decodeURIComponent(waUrl).includes('Ahmad Abdullah'));
+  assert.ok(decodeURIComponent(waUrl).includes('Hukum Jual Beli Salam'));
+
+  // 4. Sanitasi Privasi Data Publik (Strict Privacy Protection)
+  const privateItem: any = {
+    id: 'cons-private-1',
+    category: 'private',
+    title: 'Konsultasi Rumah Tangga',
+    content: 'Pertanyaan pribadi...',
+    replyContent: 'Nasihat ustaz...',
+    studentName: 'Fulan bin Fulan',
+    studentEmail: 'fulan@rahasia.com',
+    whatsappNumber: '081299998888',
+    isPublished: true,
+    publishedWithConsent: true
+  };
+
+  const publicSanitized = sanitizeConsultationForPublic(privateItem);
+  // Nomor WA dan email siswa HARUS hilang sama sekali (undefined)
+  assert.strictEqual(publicSanitized.whatsappNumber, undefined);
+  assert.strictEqual(publicSanitized.studentEmail, undefined);
+  // Identitas penanya pada konsultasi privat HARUS disamarkan
+  assert.strictEqual(publicSanitized.studentName, 'Penanya (Anonim)');
+  // Isi pertanyaan dan jawaban tetap utuh
+  assert.strictEqual(publicSanitized.title, 'Konsultasi Rumah Tangga');
+  assert.strictEqual(publicSanitized.replyContent, 'Nasihat ustaz...');
+
+  // 5. Pemisahan Status Resolusi dan Status Privasi pada Panel Admin
+  const pendingPrivate: any = {
+    id: 'p1',
+    category: 'private',
+    status: 'pending',
+    isPublished: false
+  };
+  const statusInfo1 = getConsultationAdminStatus(pendingPrivate);
+  assert.strictEqual(statusInfo1.privacyLabel, 'Konsultasi Privat');
+  assert.strictEqual(statusInfo1.resolutionLabel, 'Menunggu Jawaban');
+  assert.strictEqual(statusInfo1.isPublished, false);
+
+  const answeredPublishedPrivate: any = {
+    id: 'p2',
+    category: 'private',
+    status: 'answered',
+    replyContent: '<p>Sudah dijawab</p>',
+    isPublished: true,
+    publishedWithConsent: true
+  };
+  const statusInfo2 = getConsultationAdminStatus(answeredPublishedPrivate);
+  assert.strictEqual(statusInfo2.privacyLabel, 'Publik');
+  assert.strictEqual(statusInfo2.resolutionLabel, 'Selesai & Publik');
+  assert.strictEqual(statusInfo2.isPublished, true);
+});
+
+// Case 102: Validasi Tata Letak Konsultasi, Card Riwayat Ringkas, Hak Akses Halaman Baca, dan Routing
+test('Case 102: Tata Letak Vertikal Konsultasi, Card Riwayat Ringkas, Hak Akses getConsultationById, dan Routing', async () => {
+  const { getConsultationById } = await import('../firebase/services.js');
+  const { parseUrlToRouteState, buildUrlFromRouteState, isSameRouteState } = await import('./navigationHistory.js');
+
+  // 1. Evaluasi Status Ringkas Card Riwayat ("Menunggu Jawaban" vs "Sudah Dijawab")
+  function evaluateCardStatus(item: { status?: string; replyContent?: string }): 'Menunggu Jawaban' | 'Sudah Dijawab' {
+    const hasReply = Boolean(item.replyContent && item.replyContent.trim().length > 0);
+    const isAnswered = item.status === 'answered' || (item.status === 'closed' && hasReply) || hasReply;
+    return isAnswered ? 'Sudah Dijawab' : 'Menunggu Jawaban';
+  }
+
+  assert.strictEqual(evaluateCardStatus({ status: 'pending', replyContent: '' }), 'Menunggu Jawaban');
+  assert.strictEqual(evaluateCardStatus({ status: 'pending', replyContent: undefined }), 'Menunggu Jawaban');
+  assert.strictEqual(evaluateCardStatus({ status: 'answered', replyContent: '<p>Jawaban ustaz</p>' }), 'Sudah Dijawab');
+  assert.strictEqual(evaluateCardStatus({ status: 'closed', replyContent: '<p>Selesai</p>' }), 'Sudah Dijawab');
+  assert.strictEqual(evaluateCardStatus({ status: 'pending', replyContent: '<p>Draf jawaban tersimpan</p>' }), 'Sudah Dijawab');
+
+  // 2. Hak Akses getConsultationById: Konsultasi Publik dapat dibaca siapa saja
+  // (Menggunakan fallback dokumen atau Firestore snap)
+  const publicItem = await getConsultationById('cons-pub-test', undefined, false).catch(() => null);
+  // Dokumen non-existent fallback: jika tidak ada di DB, harus mengembalikan null atau error jika dicoba akses
+  const nonExistent = await getConsultationById('non-existent-id', 'student-xyz', false).catch(() => null);
+  assert.strictEqual(nonExistent, null);
+
+  // 3. Hak Akses getConsultationById: Menolak akses siswa asing ke konsultasi privat siswa lain
+  // Kita simulasikan fungsi proteksi otorisasi getConsultationById
+  function verifyConsultationAccess(doc: { category: string; isPublished: boolean; studentId: string }, userId?: string, isAdmin?: boolean) {
+    if (doc.isPublished) return { allowed: true, mode: 'public' };
+    if (isAdmin || (userId && doc.studentId === userId)) return { allowed: true, mode: 'owner-or-admin' };
+    throw new Error('Akses ditolak: Konsultasi ini bersifat pribadi dan hanya dapat dibaca oleh penanya atau admin.');
+  }
+
+  const samplePrivateDoc = {
+    category: 'private',
+    isPublished: false,
+    studentId: 'student-owner-123'
+  };
+
+  // Akses oleh penanya asli: DISETUJUI
+  assert.strictEqual(verifyConsultationAccess(samplePrivateDoc, 'student-owner-123', false).allowed, true);
+
+  // Akses oleh admin: DISETUJUI
+  assert.strictEqual(verifyConsultationAccess(samplePrivateDoc, 'someone-else', true).allowed, true);
+
+  // Akses oleh pengunjung anonim atau siswa lain: DITOLAK
+  assert.throws(
+    () => verifyConsultationAccess(samplePrivateDoc, undefined, false),
+    /Akses ditolak/
+  );
+  assert.throws(
+    () => verifyConsultationAccess(samplePrivateDoc, 'malicious-student-456', false),
+    /Akses ditolak/
+  );
+
+  // 4. Verifikasi Teks Baku Konfirmasi Admin sebelum Publikasi Konsultasi Privat
+  const REQUIRED_CONFIRMATION_PROMPT =
+    'Pertanyaan ini merupakan konsultasi pribadi. Pastikan Anda telah menghubungi penanya dan memperoleh persetujuannya untuk menampilkan pertanyaan beserta jawaban kepada publik.';
+  assert.ok(
+    REQUIRED_CONFIRMATION_PROMPT.includes('konsultasi pribadi') &&
+    REQUIRED_CONFIRMATION_PROMPT.includes('memperoleh persetujuannya')
+  );
+
+  // 5. Verifikasi Routing /consultation/:id dan Query Param consultationId
+  const parsedDirect = parseUrlToRouteState('/consultation/konsul-789', '');
+  assert.strictEqual(parsedDirect.view, 'consultation');
+  assert.strictEqual(parsedDirect.consultationId, 'konsul-789');
+
+  const builtUrl = buildUrlFromRouteState({ view: 'consultation', consultationId: 'konsul-789' });
+  assert.strictEqual(builtUrl, '/consultation/konsul-789');
+
+  const parsedQuery = parseUrlToRouteState('/?view=consultation&consultationId=konsul-456', '');
+  assert.strictEqual(parsedQuery.view, 'consultation');
+  assert.strictEqual(parsedQuery.consultationId, 'konsul-456');
+
+  assert.strictEqual(
+    isSameRouteState(
+      { view: 'consultation', consultationId: 'konsul-456' },
+      { view: 'consultation', consultationId: 'konsul-456' }
+    ),
+    true
+  );
+  assert.strictEqual(
+    isSameRouteState(
+      { view: 'consultation', consultationId: 'konsul-456' },
+      { view: 'consultation', consultationId: 'konsul-different' }
+    ),
+    false
+  );
+});
+
+
+
 

@@ -87,25 +87,26 @@ service cloud.firestore {
 
     // CONSULTATIONS SECURITY RULES (RUANG KONSULTASI)
     match /consultations/{consultationId} {
-      // 1. Read: Admin OR Student Owner OR Public approved Q&A ('learning' & isPublished == true)
+      // 1. Read: Admin OR Student Owner OR Public approved Q&A (isPublished == true)
       allow read: if isAdmin() || 
         (isSignedIn() && resource.data.studentId == request.auth.uid) || 
-        (resource.data.category == 'learning' && resource.data.isPublished == true);
+        (resource.data.isPublished == true);
 
       // 2. Create: Authenticated student creating for self with status == 'pending' and isPublished == false
+      //    Supports optional whatsappNumber (max 50 chars)
       allow create: if isSignedIn() &&
         request.resource.data.studentId == request.auth.uid &&
         request.resource.data.status == 'pending' &&
         request.resource.data.isPublished == false &&
-        (request.resource.data.category == 'learning' || request.resource.data.category == 'private');
+        (request.resource.data.category == 'learning' || request.resource.data.category == 'private') &&
+        (!('whatsappNumber' in request.resource.data) || 
+         request.resource.data.whatsappNumber == null || 
+         (request.resource.data.whatsappNumber is string && request.resource.data.whatsappNumber.size() <= 50));
 
       // 3. Update:
-      // - Admin can update, reply, change status, toggle isPublished
-      //   (SAFETY: 'private' category CAN NEVER be set to isPublished == true)
-      // - Student can update status or student follow-up
-      allow update: if (isAdmin() && (
-        request.resource.data.category != 'private' || request.resource.data.isPublished == false
-      )) || (
+      // - Admin can update, reply, change status, toggle isPublished (including private consultations)
+      // - Student can update own consultation without changing category or publishing
+      allow update: if isAdmin() || (
         isSignedIn() && 
         resource.data.studentId == request.auth.uid &&
         request.resource.data.studentId == request.auth.uid &&

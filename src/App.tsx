@@ -164,8 +164,9 @@ function MainApp() {
     setWelcomeModalOpen(true);
   };
 
-  // Target direct link QA State
+  // Target direct link QA State & Consultation State
   const [targetQaId, setTargetQaId] = useState<string | null>(null);
+  const [targetConsultationId, setTargetConsultationId] = useState<string | null>(null);
 
   // Initialize AOS once at root level with proper trigger offsets and repeated scroll responsiveness
   useEffect(() => {
@@ -222,6 +223,8 @@ function MainApp() {
   selectedQuizRef.current = selectedQuiz;
   const targetQaIdRef = useRef<string | null>(targetQaId);
   targetQaIdRef.current = targetQaId;
+  const targetConsultationIdRef = useRef<string | null>(targetConsultationId);
+  targetConsultationIdRef.current = targetConsultationId;
   const selectedGenreRef = useRef<string | null>(selectedGenre);
   selectedGenreRef.current = selectedGenre;
 
@@ -275,6 +278,12 @@ function MainApp() {
       if (route.view === 'public-qa') {
         setTargetQaId(route.qaId || null);
         setCurrentView('public-qa');
+        return;
+      }
+
+      if (route.view === 'consultation') {
+        setTargetConsultationId(route.consultationId || null);
+        setCurrentView('consultation');
         return;
       }
 
@@ -370,6 +379,7 @@ function MainApp() {
             blogPostSlug: selectedBlogPostRef.current?.slug || null,
             genre: selectedGenreRef.current || null,
             qaId: targetQaIdRef.current || null,
+            consultationId: targetConsultationIdRef.current || null,
             filterCategoryId: filterCategoryIdRef.current,
             searchQuery: searchQueryRef.current,
             index: 0,
@@ -405,6 +415,7 @@ function MainApp() {
         blogPostSlug: nextRoute.blogPostSlug ?? null,
         genre: nextRoute.genre ?? null,
         qaId: nextRoute.qaId ?? null,
+        consultationId: nextRoute.consultationId ?? null,
         filterCategoryId: nextRoute.filterCategoryId ?? filterCategoryIdRef.current,
         searchQuery: nextRoute.searchQuery ?? searchQueryRef.current,
         index: nextIndex,
@@ -1178,8 +1189,17 @@ function MainApp() {
                   {/* VIEW 9: STUDENT CONSULTATION */}
                   {currentView === 'consultation' && (
                     <StudentConsultationView
+                      initialConsultationId={targetConsultationId}
                       onNavigateToPublicQA={() => {
                         navigateTo({ view: 'public-qa' });
+                      }}
+                      onSelectConsultation={(cId) => {
+                        setTargetConsultationId(cId);
+                        if (cId) {
+                          navigateTo({ view: 'consultation', consultationId: cId });
+                        } else {
+                          navigateTo({ view: 'consultation' });
+                        }
                       }}
                     />
                   )}

@@ -198,6 +198,7 @@ export interface Consultation {
   studentId: string;
   studentName?: string;
   studentEmail?: string;
+  whatsappNumber?: string;
   title: string;
   content: string;
   category: 'learning' | 'private';
@@ -206,7 +207,9 @@ export interface Consultation {
   repliedAt?: string;
   repliedBy?: string;
   isPublished: boolean;
-  publishedAt?: string;
+  publishedAt?: string | null;
+  publishedWithConsent?: boolean;
+  publishedWithConsentAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }

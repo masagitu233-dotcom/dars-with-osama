@@ -177,6 +177,7 @@
         "studentId": { "type": "string", "maxLength": 128 },
         "studentName": { "type": "string", "maxLength": 200 },
         "studentEmail": { "type": "string", "maxLength": 200 },
+        "whatsappNumber": { "type": "string", "maxLength": 50 },
         "title": { "type": "string", "maxLength": 300 },
         "content": { "type": "string", "maxLength": 10000 },
         "category": { "type": "string", "enum": ["learning", "private"] },
@@ -186,6 +187,8 @@
         "repliedBy": { "type": "string", "maxLength": 200 },
         "isPublished": { "type": "boolean" },
         "publishedAt": { "type": "string", "maxLength": 100 },
+        "publishedWithConsent": { "type": "boolean" },
+        "publishedWithConsentAt": { "type": "string", "maxLength": 100 },
         "createdAt": { "type": "string", "maxLength": 100 },
         "updatedAt": { "type": "string", "maxLength": 100 }
       },

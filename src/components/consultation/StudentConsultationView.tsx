@@ -14,25 +14,36 @@ import {
   Share2,
   Image as ImageIcon,
   Copy,
-  Check
+  Check,
+  ArrowLeft,
+  ShieldAlert,
+  Calendar,
+  UserCheck
 } from 'lucide-react';
 import { Consultation } from '../../types';
-import { createConsultation, getStudentConsultations } from '../../firebase/services';
+import {
+  createConsultation,
+  getStudentConsultations,
+  getConsultationById
+} from '../../firebase/services';
 import { getWhatsAppConsultationUrl } from '../../config/whatsappConfig';
 import { autoWrapArabicText } from '../../utils/arabicFontHelper';
 import { useAuth } from '../../context/AuthContext';
 import { ShareQAModal } from './ShareQAModal';
 import { ReadingFontControls, useReadingFontSize } from '../common/ReadingFontControls';
-import { splitQAAnswer } from '../../utils/qaHelper';
-import { QATableOfContents } from './QATableOfContents';
+import { validateWhatsAppNumber } from '../../utils/qaHelper';
 import { QAReadingViewer } from './QAReadingViewer';
 
 interface StudentConsultationViewProps {
   onNavigateToPublicQA?: () => void;
+  initialConsultationId?: string | null;
+  onSelectConsultation?: (consultationId: string | null) => void;
 }
 
 export const StudentConsultationView: React.FC<StudentConsultationViewProps> = ({
-  onNavigateToPublicQA
+  onNavigateToPublicQA,
+  initialConsultationId,
+  onSelectConsultation
 }) => {
   const { user, userProfile, loading: authLoading, openAuthModal, showToast } = useAuth();
 
@@ -42,10 +53,18 @@ export const StudentConsultationView: React.FC<StudentConsultationViewProps> = (
   const [successMsg, setSuccessMsg] = useState<string>('');
   const [errorMsg, setErrorMsg] = useState<string>('');
 
+  // Form states
   const [title, setTitle] = useState<string>('');
   const [content, setContent] = useState<string>('');
+  const [whatsappNumber, setWhatsappNumber] = useState<string>('');
   const [category, setCategory] = useState<'learning' | 'private'>('learning');
 
+  // Reading page state
+  const [selectedReadingConsultation, setSelectedReadingConsultation] = useState<Consultation | null>(null);
+  const [readingLoading, setReadingLoading] = useState<boolean>(false);
+  const [readingError, setReadingError] = useState<string | null>(null);
+
+  // Share Modal state
   const [shareModalOpen, setShareModalOpen] = useState<boolean>(false);
   const [shareItem, setShareItem] = useState<Consultation | null>(null);
   const [shareTab, setShareTab] = useState<'share' | 'card'>('share');
@@ -86,6 +105,73 @@ export const StudentConsultationView: React.FC<StudentConsultationViewProps> = (
     loadMyConsultations();
   }, [user]);
 
+  // Deep-link or selection resolution when initialConsultationId is set
+  useEffect(() => {
+    if (!initialConsultationId) {
+      if (selectedReadingConsultation && !initialConsultationId) {
+        setSelectedReadingConsultation(null);
+      }
+      return;
+    }
+
+    // Try finding within already loaded consultations
+    const existing = consultations.find((c) => c.id === initialConsultationId);
+    if (existing) {
+      setSelectedReadingConsultation(existing);
+      setReadingError(null);
+      return;
+    }
+
+    // Otherwise fetch specifically from Firestore with security validation
+    let isCancelled = false;
+    setReadingLoading(true);
+    setReadingError(null);
+
+    getConsultationById(initialConsultationId, user?.uid, userProfile?.role === 'admin')
+      .then((item) => {
+        if (isCancelled) return;
+        if (item) {
+          setSelectedReadingConsultation(item);
+          setReadingError(null);
+        } else {
+          setReadingError('Pertanyaan konsultasi tidak ditemukan atau telah dihapus.');
+        }
+      })
+      .catch((err: any) => {
+        if (isCancelled) return;
+        console.warn('Unauthorized consultation view attempt:', err);
+        setReadingError(
+          err?.message ||
+            'Akses ditolak: Konsultasi ini bersifat pribadi dan hanya dapat dibaca oleh penanya yang bersangkutan atau admin Dars with Osama.'
+        );
+      })
+      .finally(() => {
+        if (!isCancelled) setReadingLoading(false);
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [initialConsultationId, consultations, user?.uid, userProfile?.role]);
+
+  const handleOpenReadingView = (item: Consultation) => {
+    setSelectedReadingConsultation(item);
+    setReadingError(null);
+    onSelectConsultation?.(item.id);
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handleCloseReadingView = () => {
+    setSelectedReadingConsultation(null);
+    setReadingError(null);
+    onSelectConsultation?.(null);
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) {
@@ -98,6 +184,17 @@ export const StudentConsultationView: React.FC<StudentConsultationViewProps> = (
       return;
     }
 
+    if (whatsappNumber.trim()) {
+      const waCheck = validateWhatsAppNumber(whatsappNumber);
+      if (!waCheck.isValid) {
+        setErrorMsg(
+          waCheck.error ||
+            'Format nomor WhatsApp tidak valid. Masukkan nomor telepon yang benar (contoh: 08xxxxxxxxxx).'
+        );
+        return;
+      }
+    }
+
     setSubmitting(true);
     setErrorMsg('');
     setSuccessMsg('');
@@ -106,13 +203,17 @@ export const StudentConsultationView: React.FC<StudentConsultationViewProps> = (
       await createConsultation({
         title: title.trim(),
         content: content.trim(),
-        category
+        category,
+        whatsappNumber: whatsappNumber.trim() || undefined
       });
 
       setTitle('');
       setContent('');
+      setWhatsappNumber('');
       setCategory('learning');
-      setSuccessMsg('Pertanyaan konsultasi Anda telah berhasil dikirim! Ustaz/Admin akan memberikan balasan segera.');
+      setSuccessMsg(
+        'Pertanyaan konsultasi Anda telah berhasil dikirim! Ustaz/Admin akan memberikan balasan segera.'
+      );
       await loadMyConsultations();
     } catch (err: any) {
       setErrorMsg(err?.message || 'Gagal mengirim pertanyaan. Silakan coba kembali.');
@@ -122,10 +223,10 @@ export const StudentConsultationView: React.FC<StudentConsultationViewProps> = (
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-2.5 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8 animate-fade-in font-sans">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8 animate-fade-in font-sans">
       {/* HEADER BANNER */}
       <div className="relative overflow-hidden rounded-lg bg-[#0F3D3A] text-[#F5DABF] p-6 sm:p-10 border-2 border-[#171717] shadow-[6px_6px_0px_#171717]">
-        <div className="relative z-10 max-w-2xl space-y-4">
+        <div className="relative z-10 max-w-2xl space-y-3 sm:space-y-4">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#D6AD52] border-2 border-[#171717] text-[#0F3D3A] text-xs font-extrabold uppercase tracking-wider">
             <Sparkles className="w-3.5 h-3.5 text-[#0F3D3A]" />
             <span>Ruang Bimbingan & Konsultasi Syar'i</span>
@@ -142,8 +243,9 @@ export const StudentConsultationView: React.FC<StudentConsultationViewProps> = (
           {onNavigateToPublicQA && (
             <div className="pt-2">
               <button
+                type="button"
                 onClick={onNavigateToPublicQA}
-                className="nb-btn nb-btn-gold px-4 py-2.5 text-xs"
+                className="nb-btn nb-btn-gold px-4 py-2.5 text-xs inline-flex items-center gap-2"
               >
                 <BookOpen className="w-4 h-4" />
                 <span>Lihat Arsip Tanya Jawab Publik (Q&A)</span>
@@ -155,9 +257,11 @@ export const StudentConsultationView: React.FC<StudentConsultationViewProps> = (
       </div>
 
       {authLoading ? (
-        <div className="max-w-3xl mx-auto px-4 py-16 text-center space-y-4">
+        <div className="max-w-2xl mx-auto px-4 py-16 text-center space-y-4">
           <div className="w-10 h-10 border-3 border-[#123D32] dark:border-[#4CA7A1] border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-sm text-[#171717] dark:text-[#CEFEF1] font-bold">Memeriksa status akun siswa...</p>
+          <p className="text-sm text-[#171717] dark:text-[#CEFEF1] font-bold">
+            Memeriksa status akun siswa...
+          </p>
         </div>
       ) : !user ? (
         /* NON-LOGGED IN STATE NOTICE */
@@ -188,326 +292,524 @@ export const StudentConsultationView: React.FC<StudentConsultationViewProps> = (
             </button>
           </div>
         </div>
-      ) : (
-        /* LOGGED IN STUDENT CONSULTATION INTERFACE */
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* LEFT: FORM KONSULTASI BARU */}
-          <div className="lg:col-span-5 space-y-6 relative">
-            <div className="nb-card p-6 space-y-5 lg:sticky lg:top-20">
-              <div className="flex items-center gap-2 border-b-2 border-[#171717] dark:border-[#4CA7A1] pb-3">
-                <MessageSquare className="w-5 h-5 text-[#123D32] dark:text-[#4CA7A1]" />
-                <h3 className="font-bold text-base font-serif text-[#171717] dark:text-[#CEFEF1]">
-                  Kirim Pertanyaan Baru
-                </h3>
-              </div>
-
-              {successMsg && (
-                <div className="p-3.5 bg-[#0D2B36] border-2 border-[#4CA7A1] text-[#CEFEF1] text-xs font-bold rounded-md flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 shrink-0 text-[#4CA7A1] mt-0.5" />
-                  <span>{successMsg}</span>
-                </div>
-              )}
-
-              {errorMsg && (
-                <div className="p-3.5 bg-[#C94A4A]/20 border-2 border-[#C94A4A] text-[#171717] dark:text-[#CEFEF1] text-xs font-bold rounded-md flex items-start gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0 text-[#C94A4A] mt-0.5" />
-                  <span>{errorMsg}</span>
-                </div>
-              )}
-
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Category Radio / Selector */}
-                <div className="space-y-2">
-                  <label className="text-xs font-extrabold uppercase tracking-wider text-[#171717] dark:text-[#CEFEF1]">
-                    Kategori Konsultasi
-                  </label>
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <button
-                      type="button"
-                      onClick={() => setCategory('learning')}
-                      className={`p-3 rounded-md border-2 text-xs font-bold flex flex-col items-start gap-1 transition cursor-pointer text-left ${
-                        category === 'learning'
-                          ? 'bg-[#4CA7A1] text-[#001722] border-[#171717] dark:border-[#001722] shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#001722]'
-                          : 'bg-[#FAF7F0] dark:bg-[#0D2B36] border-[#171717] dark:border-[#4CA7A1] text-[#171717] dark:text-[#A6D6C9]'
-                      }`}
-                    >
-                      <span className="font-extrabold flex items-center gap-1">
-                        <BookOpen className="w-3.5 h-3.5" />
-                        <span>Materi & Pelajaran</span>
-                      </span>
-                      <span className="text-[10px] opacity-90">Dapat dipublikasikan di Q&A jika disetujui</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setCategory('private')}
-                      className={`p-3 rounded-md border-2 text-xs font-bold flex flex-col items-start gap-1 transition cursor-pointer text-left ${
-                        category === 'private'
-                          ? 'bg-[#4CA7A1] text-[#001722] border-[#171717] dark:border-[#001722] shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#001722]'
-                          : 'bg-[#FAF7F0] dark:bg-[#0D2B36] border-[#171717] dark:border-[#4CA7A1] text-[#171717] dark:text-[#A6D6C9]'
-                      }`}
-                    >
-                      <span className="font-extrabold flex items-center gap-1">
-                        <Lock className="w-3.5 h-3.5" />
-                        <span>Konsultasi Pribadi</span>
-                      </span>
-                      <span className="text-[10px] opacity-90">Privat 100% dan TIDAK AKAN dipublikasi</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Title Input */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-extrabold uppercase tracking-wider text-[#171717] dark:text-[#CEFEF1] block">
-                    Judul Pertanyaan / Topik
-                  </label>
-                  <input
-                    type="text"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="Contoh: Hukum Fiqih seputar Masalah X..."
-                    maxLength={200}
-                    required
-                    className="nb-input px-3.5 py-2.5 text-xs"
-                  />
-                </div>
-
-                {/* Content Input */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-extrabold uppercase tracking-wider text-[#171717] dark:text-[#CEFEF1] block">
-                    Isi Pertanyaan / Penjelasan Detail
-                  </label>
-                  <textarea
-                    value={content}
-                    onChange={(e) => setContent(e.target.value)}
-                    placeholder="Tuliskan pertanyaan Anda dengan jelas dan santun..."
-                    rows={5}
-                    maxLength={5000}
-                    required
-                    className="nb-input px-3.5 py-2.5 text-xs resize-none"
-                  />
-                </div>
-
-                {/* Submit Button */}
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="w-full px-4 py-3 text-xs sm:text-sm font-extrabold uppercase tracking-wider rounded-md border-2 border-[#171717] dark:border-[#001722] bg-[#4CA7A1] hover:bg-[#5EBEB7] text-[#001722] shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#001722] transition-all flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <Send className="w-4 h-4" />
-                  <span>{submitting ? 'Mengirim...' : 'Ajukan Pertanyaan'}</span>
-                </button>
-              </form>
+      ) : readingLoading ? (
+        /* LOADING READING VIEW */
+        <div className="nb-card p-12 text-center space-y-4">
+          <div className="w-10 h-10 border-3 border-[#123D32] dark:border-[#4CA7A1] border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-xs font-bold text-[#525855] dark:text-[#A6D6C9]">
+            Memuat naskah konsultasi...
+          </p>
+        </div>
+      ) : readingError ? (
+        /* ERROR / ACCESS DENIED VIEW */
+        <div className="nb-card p-8 space-y-5 border-2 border-[#C94A4A] bg-[#FFF5E9] dark:bg-[#1C1618]">
+          <div className="flex items-center gap-3 text-[#B42318] dark:text-[#F04438]">
+            <ShieldAlert className="w-8 h-8 shrink-0" />
+            <div>
+              <h3 className="font-extrabold text-base sm:text-lg font-serif text-[#171717] dark:text-[#CEFEF1]">
+                Akses Konsultasi Terbatas
+              </h3>
+              <p className="text-xs text-[#B42318] dark:text-[#F04438] font-bold">
+                {readingError}
+              </p>
             </div>
           </div>
+          <p className="text-xs text-[#525855] dark:text-[#A6D6C9] leading-relaxed">
+            Konsultasi pribadi dilindungi oleh sistem keamanan Firebase dan hanya dapat diakses oleh penanya asli atau admin berwenang.
+          </p>
+          <button
+            type="button"
+            onClick={handleCloseReadingView}
+            className="nb-btn nb-btn-primary px-4 py-2 text-xs inline-flex items-center gap-2"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Kembali ke Riwayat Konsultasi</span>
+          </button>
+        </div>
+      ) : selectedReadingConsultation ? (
+        /* ======================================================== */
+        /* 3. HALAMAN BACA KONSULTASI (FULL READING PAGE VIEW)      */
+        /* Format konsisten dengan Halaman Baca Tanya Jawab Biasa    */
+        /* ======================================================== */
+        (() => {
+          const item = selectedReadingConsultation;
+          const hasReply = Boolean(item.replyContent && item.replyContent.trim().length > 0);
+          const isAnswered = item.status === 'answered' || (item.status === 'closed' && hasReply) || hasReply;
 
-          {/* RIGHT: RIWAYAT KONSULTASI SISWA */}
-          <div className="lg:col-span-7 space-y-6">
-            <div className="nb-card p-6 space-y-5">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-[#171717] dark:border-[#4CA7A1] pb-3">
-                <div className="flex items-center gap-2">
-                  <Clock className="w-5 h-5 text-[#123D32] dark:text-[#4CA7A1]" />
-                  <h3 className="font-bold text-base font-serif text-[#171717] dark:text-[#CEFEF1]">
-                    Riwayat Konsultasi Saya ({consultations.length})
-                  </h3>
+          return (
+            <div className="space-y-6 animate-fade-in font-sans">
+              {/* Top Navigation & Text Resizer Controls */}
+              <div className="flex flex-wrap items-center justify-between gap-3 nb-card p-3.5 sm:p-4 bg-white dark:bg-[#16263D]">
+                <button
+                  type="button"
+                  onClick={handleCloseReadingView}
+                  className="nb-btn nb-btn-secondary px-3.5 py-2 text-xs flex items-center gap-2 font-extrabold"
+                  title="Kembali ke formulir dan riwayat konsultasi saya"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  <span>Kembali ke Riwayat Konsultasi</span>
+                </button>
+
+                <div className="flex items-center gap-2 ml-auto">
+                  <span className="text-[11px] font-bold text-slate-500 hidden sm:inline">
+                    Ukuran Teks:
+                  </span>
+                  <ReadingFontControls
+                    step={fontControl.step}
+                    percentage={fontControl.percentage}
+                    canDecrease={fontControl.canDecrease}
+                    canIncrease={fontControl.canIncrease}
+                    isDefault={fontControl.isDefault}
+                    onDecrease={fontControl.decrease}
+                    onIncrease={fontControl.increase}
+                    onReset={fontControl.reset}
+                    compact={true}
+                  />
                 </div>
+              </div>
 
-                <ReadingFontControls
-                  step={fontControl.step}
-                  percentage={fontControl.percentage}
-                  canDecrease={fontControl.canDecrease}
-                  canIncrease={fontControl.canIncrease}
-                  isDefault={fontControl.isDefault}
-                  onDecrease={fontControl.decrease}
-                  onIncrease={fontControl.increase}
-                  onReset={fontControl.reset}
-                  compact={true}
+              {/* Main Reading Card */}
+              <article className="nb-card p-5 sm:p-8 bg-white dark:bg-[#16263D] space-y-6 border-2 border-charcoal dark:border-[#34465D]">
+                {/* Header Information: Badges, Title, & Metadata */}
+                <header className="space-y-3 pb-4 border-b-2 border-charcoal dark:border-[#34465D]">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {/* Category Badge */}
+                    <span
+                      className={`nb-badge ${
+                        item.category === 'private'
+                          ? 'bg-[#001722] text-[#CEFEF1] border-[#171717]'
+                          : 'bg-[#0D2B36] text-[#CEFEF1] border-[#171717]'
+                      }`}
+                    >
+                      {item.category === 'private' ? (
+                        <>
+                          <Lock className="w-3 h-3 inline mr-1 shrink-0" />
+                          <span>Konsultasi Pribadi</span>
+                        </>
+                      ) : (
+                        <>
+                          <BookOpen className="w-3 h-3 inline mr-1 shrink-0" />
+                          <span>Materi & Pelajaran</span>
+                        </>
+                      )}
+                    </span>
+
+                    {/* Answer Status Badge: Menunggu Jawaban vs Sudah Dijawab */}
+                    <span
+                      className={`nb-badge ${
+                        isAnswered
+                          ? 'bg-[#123D32] text-[#D6AD52] dark:bg-[#4CA7A1] dark:text-[#001722]'
+                          : 'bg-[#C94A4A] text-white'
+                      }`}
+                    >
+                      {isAnswered ? (
+                        <>
+                          <CheckCircle2 className="w-3 h-3 inline mr-1 shrink-0" />
+                          <span>Sudah Dijawab</span>
+                        </>
+                      ) : (
+                        <>
+                          <Clock className="w-3 h-3 inline mr-1 shrink-0" />
+                          <span>Menunggu Jawaban</span>
+                        </>
+                      )}
+                    </span>
+
+                    {/* Publication Status Badge */}
+                    {item.isPublished && (
+                      <span className="nb-badge bg-[#3478F6] text-white">
+                        <span>👁 Terbit di Q&A Publik</span>
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Title / Topic */}
+                  <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold font-serif-brand text-charcoal dark:text-offwhite leading-tight">
+                    {item.title}
+                  </h1>
+
+                  {/* Metadata Row: Anonymous Identity & Question Date */}
+                  <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 dark:text-slate-400 font-medium">
+                    <span className="flex items-center gap-1.5 font-bold text-charcoal dark:text-offwhite">
+                      <UserCheck className="w-4 h-4 text-[#123D32] dark:text-[#4CA7A1]" />
+                      <span>Penanya: Penanya (Anonim)</span>
+                    </span>
+
+                    <span className="flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                      <span>
+                        Diajukan pada{' '}
+                        {new Date(item.createdAt).toLocaleDateString('id-ID', {
+                          day: 'numeric',
+                          month: 'long',
+                          year: 'numeric'
+                        })}
+                      </span>
+                    </span>
+                  </div>
+                </header>
+
+                {/* Section: Pertanyaan Lengkap */}
+                <section className="space-y-2">
+                  <div className="p-4 sm:p-5 rounded-md bg-[#FAF7F0] dark:bg-[#0D2B36] border-2 border-charcoal dark:border-[#4CA7A1] space-y-2">
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#123D32] dark:text-[#A6D6C9] block border-b border-charcoal/15 dark:border-[#4CA7A1]/20 pb-1.5">
+                      Pertanyaan Lengkap:
+                    </span>
+                    <div
+                      style={fontControl.style}
+                      className="reading-scalable-text text-[#171717] dark:text-[#CEFEF1] leading-relaxed whitespace-pre-line font-sans text-xs sm:text-sm"
+                      dangerouslySetInnerHTML={{ __html: autoWrapArabicText(item.content) }}
+                    />
+                  </div>
+                </section>
+
+                {/* Section: Jawaban Resmi Ustaz / Pembimbing */}
+                {hasReply ? (
+                  <section className="space-y-4 pt-2">
+                    <div className="p-4 sm:p-6 rounded-md bg-white dark:bg-[#0D2B36] border-2 border-charcoal dark:border-[#4CA7A1] border-l-4 border-l-[#123D32] dark:border-l-[#4CA7A1] space-y-4">
+                      {/* Answer Header Bar */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b-2 border-charcoal dark:border-[#4CA7A1]">
+                        <div className="flex items-center gap-2 text-xs sm:text-sm font-bold font-serif text-[#123D32] dark:text-[#CEFEF1]">
+                          <ShieldCheck className="w-4 h-4 text-[#123D32] dark:text-[#4CA7A1]" />
+                          <span>Jawaban Resmi Ustaz / Pembimbing Dars with Osama:</span>
+                        </div>
+                        {item.repliedAt && (
+                          <span className="text-[11px] font-bold text-slate-500 dark:text-[#A6D6C9]">
+                            {new Date(item.repliedAt).toLocaleDateString('id-ID', {
+                              day: 'numeric',
+                              month: 'long',
+                              year: 'numeric'
+                            })}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* SISTEM DAFTAR ISI DAN NAVIGASI SLIDE JAWABAN */}
+                      <QAReadingViewer
+                        replyContent={item.replyContent}
+                        consultationId={item.id}
+                        questionTitle={item.title}
+                        fontControl={fontControl}
+                        isAdmin={userProfile?.role === 'admin'}
+                      />
+                    </div>
+                  </section>
+                ) : (
+                  /* Answer Not Yet Available Notice */
+                  <section className="p-6 rounded-md bg-[#FAF7F0] dark:bg-[#0D2B36] border-2 border-charcoal dark:border-[#4CA7A1] border-l-4 border-l-amber-500 space-y-2.5">
+                    <div className="flex items-center gap-2 text-xs sm:text-sm font-extrabold font-serif text-amber-800 dark:text-amber-400">
+                      <Clock className="w-4 h-4 animate-pulse" />
+                      <span>Jawaban Belum Tersedia</span>
+                    </div>
+                    <p className="text-xs text-slate-600 dark:text-[#A6D6C9] leading-relaxed font-sans">
+                      Pertanyaan Anda telah kami terima dan saat ini sedang dalam proses penelaahan oleh Ustaz & Pembimbing Dars with Osama. Silakan kembali ke halaman ini secara berkala untuk membaca jawaban resmi.
+                    </p>
+                  </section>
+                )}
+
+                {/* Bottom Action Footer */}
+                <footer className="pt-4 border-t-2 border-charcoal dark:border-[#34465D] flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <button
+                    type="button"
+                    onClick={handleCloseReadingView}
+                    className="nb-btn nb-btn-secondary px-4 py-2 text-xs flex items-center gap-2 w-full sm:w-auto justify-center font-extrabold"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    <span>Kembali ke Riwayat Konsultasi</span>
+                  </button>
+
+                  <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
+                    {/* Share Button if published */}
+                    {item.isPublished && (
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShareItem(item);
+                            setShareTab('share');
+                            setShareModalOpen(true);
+                          }}
+                          className="nb-btn nb-btn-gold px-3.5 py-2 text-xs flex items-center gap-1.5"
+                        >
+                          <Share2 className="w-3.5 h-3.5" />
+                          <span>Bagikan Jawaban</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleCopyDirectLink(item)}
+                          className="nb-btn nb-btn-secondary px-3.5 py-2 text-xs flex items-center gap-1.5"
+                        >
+                          {copiedId === item.id ? (
+                            <Check className="w-3.5 h-3.5 text-emerald-600" />
+                          ) : (
+                            <Copy className="w-3.5 h-3.5" />
+                          )}
+                          <span>{copiedId === item.id ? 'Tersalin' : 'Salin Tautan'}</span>
+                        </button>
+                      </div>
+                    )}
+
+                    {/* WhatsApp Support Followup Link */}
+                    <a
+                      href={getWhatsAppConsultationUrl({
+                        id: item.id,
+                        title: item.title,
+                        category: item.category,
+                        studentName: userProfile?.displayName || user?.displayName || 'Santri'
+                      })}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="nb-btn px-3.5 py-2 text-xs flex items-center gap-1.5 bg-[#25D366]/20 hover:bg-[#25D366]/30 text-charcoal dark:text-offwhite border-2 border-charcoal"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5 text-[#25D366]" />
+                      <span>Tanya via WhatsApp</span>
+                    </a>
+                  </div>
+                </footer>
+              </article>
+            </div>
+          );
+        })()
+      ) : (
+        /* ======================================================== */
+        /* VERTICAL STACKED LAYOUT (DESKTOP & MOBILE)               */
+        /* 1. Formulir "Kirim Pertanyaan Baru" di BAGIAN ATAS      */
+        /* 2. Bagian "Riwayat Konsultasi Saya" di BAWAH FORMULIR    */
+        /* ======================================================== */
+        <div className="space-y-8 animate-fade-in font-sans">
+          {/* 1. FORMULIR KIRIM PERTANYAAN BARU (TOP SECTION) */}
+          <section className="nb-card p-6 sm:p-8 space-y-5 bg-white dark:bg-[#16263D] border-2 border-charcoal dark:border-[#34465D]">
+            <div className="flex items-center gap-2.5 border-b-2 border-charcoal dark:border-[#4CA7A1] pb-3.5">
+              <MessageSquare className="w-5 h-5 text-[#123D32] dark:text-[#4CA7A1]" />
+              <h2 className="font-extrabold text-base sm:text-lg font-serif-brand text-charcoal dark:text-offwhite">
+                Kirim Pertanyaan Baru
+              </h2>
+            </div>
+
+            {successMsg && (
+              <div className="p-4 bg-[#0D2B36] border-2 border-[#4CA7A1] text-[#CEFEF1] text-xs font-bold rounded-md flex items-start gap-2.5">
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-[#4CA7A1] mt-0.5" />
+                <span>{successMsg}</span>
+              </div>
+            )}
+
+            {errorMsg && (
+              <div className="p-4 bg-[#C94A4A]/20 border-2 border-[#C94A4A] text-[#171717] dark:text-[#CEFEF1] text-xs font-bold rounded-md flex items-start gap-2.5">
+                <AlertCircle className="w-4 h-4 shrink-0 text-[#C94A4A] mt-0.5" />
+                <span>{errorMsg}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-5">
+              {/* Category Radio Selector */}
+              <div className="space-y-2">
+                <label className="text-xs font-extrabold uppercase tracking-wider text-charcoal dark:text-offwhite block">
+                  Kategori Konsultasi:
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setCategory('learning')}
+                    className={`p-3.5 rounded-md border-2 text-xs font-bold flex flex-col items-start gap-1 transition cursor-pointer text-left ${
+                      category === 'learning'
+                        ? 'bg-[#4CA7A1] text-[#001722] border-[#171717] dark:border-[#001722] shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#001722]'
+                        : 'bg-[#FAF7F0] dark:bg-[#0D2B36] border-[#171717] dark:border-[#4CA7A1] text-charcoal dark:text-[#A6D6C9]'
+                    }`}
+                  >
+                    <span className="font-extrabold flex items-center gap-1.5 text-xs sm:text-sm">
+                      <BookOpen className="w-4 h-4" />
+                      <span>Materi & Pelajaran</span>
+                    </span>
+                    <span className="text-[11px] opacity-90 leading-snug">
+                      Dapat dipublikasikan di Q&A publik jika telah disetujui & diverifikasi
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setCategory('private')}
+                    className={`p-3.5 rounded-md border-2 text-xs font-bold flex flex-col items-start gap-1 transition cursor-pointer text-left ${
+                      category === 'private'
+                        ? 'bg-[#4CA7A1] text-[#001722] border-[#171717] dark:border-[#001722] shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#001722]'
+                        : 'bg-[#FAF7F0] dark:bg-[#0D2B36] border-[#171717] dark:border-[#4CA7A1] text-charcoal dark:text-[#A6D6C9]'
+                    }`}
+                  >
+                    <span className="font-extrabold flex items-center gap-1.5 text-xs sm:text-sm">
+                      <Lock className="w-4 h-4" />
+                      <span>Konsultasi Pribadi</span>
+                    </span>
+                    <span className="text-[11px] opacity-90 leading-snug">
+                      Tertutup secara default, hanya dibaca Anda & Admin
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Title Input */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-extrabold uppercase tracking-wider text-charcoal dark:text-offwhite block">
+                  Judul Pertanyaan / Topik:
+                </label>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Contoh: Hukum Fiqih seputar Masalah X..."
+                  maxLength={200}
+                  required
+                  className="nb-input w-full px-3.5 py-2.5 text-xs"
                 />
               </div>
 
-              {loading ? (
-                <div className="py-12 text-center text-xs font-bold text-[#525855] dark:text-[#A6D6C9]">
-                  Memuat riwayat konsultasi Anda...
+              {/* Content Input */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-extrabold uppercase tracking-wider text-charcoal dark:text-offwhite block">
+                  Isi Pertanyaan / Penjelasan Detail:
+                </label>
+                <textarea
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  placeholder="Tuliskan pertanyaan Anda dengan jelas, santun, dan terperinci..."
+                  rows={5}
+                  maxLength={5000}
+                  required
+                  className="nb-input w-full px-3.5 py-2.5 text-xs resize-none leading-relaxed"
+                />
+              </div>
+
+              {/* WhatsApp Number Input (Opsional) */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-extrabold uppercase tracking-wider text-charcoal dark:text-offwhite flex items-center gap-1.5">
+                    <MessageCircle className="w-3.5 h-3.5 text-[#123D32] dark:text-[#4CA7A1]" />
+                    <span>Nomor WhatsApp:</span>
+                  </label>
+                  <span className="text-[10px] font-bold text-slate-500 dark:text-[#A6D6C9] bg-[#FAF7F0] dark:bg-[#0D2B36] px-2 py-0.5 rounded border border-[#171717]/20 dark:border-[#4CA7A1]/30">
+                    Opsional
+                  </span>
                 </div>
-              ) : consultations.length === 0 ? (
-                <div className="py-12 text-center space-y-2 border-2 border-dashed border-[#171717] dark:border-[#4CA7A1] rounded-md p-6 bg-[#FAF7F0] dark:bg-[#0D2B36]">
-                  <MessageSquare className="w-8 h-8 text-[#123D32] dark:text-[#4CA7A1] mx-auto" />
-                  <p className="text-xs font-bold font-serif text-[#171717] dark:text-[#CEFEF1]">
-                    Belum Ada Pertanyaan Konsultasi
-                  </p>
-                  <p className="text-[11px] text-[#525855] dark:text-[#A6D6C9]">
-                    Gunakan formulir di samping untuk mengajukan pertanyaan pertama Anda.
-                  </p>
-                </div>
-              ) : (
-                <div style={fontControl.style} className="space-y-4 max-h-[600px] overflow-y-auto pr-1">
-                  {consultations.map((item) => (
+                <input
+                  type="tel"
+                  value={whatsappNumber}
+                  onChange={(e) => setWhatsappNumber(e.target.value)}
+                  placeholder="Contoh: 08xxxxxxxxxx"
+                  maxLength={25}
+                  className="nb-input w-full px-3.5 py-2.5 text-xs"
+                />
+                <p className="text-[11px] text-[#525855] dark:text-[#A6D6C9] leading-relaxed bg-[#FAF7F0] dark:bg-[#0D2B36] p-2.5 rounded border border-[#171717]/15 dark:border-[#4CA7A1]/20">
+                  Nomor WhatsApp (opsional). Jika Anda mencantumkannya, admin dapat mengirimkan jawaban secara langsung melalui WhatsApp setelah konsultasi selesai.
+                </p>
+              </div>
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full px-4 py-3 text-xs sm:text-sm font-extrabold uppercase tracking-wider rounded-md border-2 border-[#171717] dark:border-[#001722] bg-[#4CA7A1] hover:bg-[#5EBEB7] text-[#001722] shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#001722] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                <Send className="w-4 h-4" />
+                <span>{submitting ? 'Mengirim Pertanyaan...' : 'Ajukan Pertanyaan'}</span>
+              </button>
+            </form>
+          </section>
+
+          {/* 2. BAGIAN RIWAYAT KONSULTASI SAYA (UNDERNEATH FORM) */}
+          <section className="nb-card p-6 sm:p-8 space-y-5 bg-white dark:bg-[#16263D] border-2 border-charcoal dark:border-[#34465D]">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-charcoal dark:border-[#4CA7A1] pb-3.5">
+              <div className="flex items-center gap-2.5">
+                <Clock className="w-5 h-5 text-[#123D32] dark:text-[#4CA7A1]" />
+                <h2 className="font-extrabold text-base sm:text-lg font-serif-brand text-charcoal dark:text-offwhite">
+                  Riwayat Konsultasi Saya ({consultations.length})
+                </h2>
+              </div>
+            </div>
+
+            {loading ? (
+              <div className="py-12 text-center text-xs font-bold text-slate-500 dark:text-[#A6D6C9]">
+                Memuat riwayat konsultasi Anda...
+              </div>
+            ) : consultations.length === 0 ? (
+              <div className="py-12 text-center space-y-2 border-2 border-dashed border-charcoal dark:border-[#4CA7A1] rounded-md p-6 bg-[#FAF7F0] dark:bg-[#0D2B36]">
+                <MessageSquare className="w-8 h-8 text-[#123D32] dark:text-[#4CA7A1] mx-auto" />
+                <p className="text-xs font-bold font-serif text-charcoal dark:text-offwhite">
+                  Belum Ada Pertanyaan Konsultasi
+                </p>
+                <p className="text-[11px] text-slate-500 dark:text-[#A6D6C9]">
+                  Gunakan formulir di atas untuk mengajukan pertanyaan pertama Anda.
+                </p>
+              </div>
+            ) : (
+              /* Kumpulan Card Sederhana & Ringkas */
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                {consultations.map((item) => {
+                  const hasReply = Boolean(item.replyContent && item.replyContent.trim().length > 0);
+                  const isAnswered =
+                    item.status === 'answered' || (item.status === 'closed' && hasReply) || hasReply;
+                  const statusLabel = isAnswered ? 'Sudah Dijawab' : 'Menunggu Jawaban';
+
+                  return (
                     <div
                       key={item.id}
-                      className="p-4 sm:p-5 bg-[#FAF7F0] dark:bg-[#1F5F63] border-2 border-[#171717] dark:border-[#4CA7A1] rounded-md space-y-3 shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#001722]"
+                      onClick={() => handleOpenReadingView(item)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          handleOpenReadingView(item);
+                        }
+                      }}
+                      className="nb-card p-4 sm:p-5 bg-white dark:bg-[#16263D] hover:-translate-y-0.5 hover:shadow-[5px_5px_0px_#171717] dark:hover:shadow-[5px_5px_0px_#001722] transition-all cursor-pointer flex flex-col justify-between gap-3 text-left border-2 border-charcoal dark:border-[#34465D]"
                     >
-                      {/* Header Row: Status Badge & Category Tag */}
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
+                      <div className="space-y-2">
+                        {/* Header: Status Badge & Date */}
+                        <div className="flex items-center justify-between gap-2">
                           <span
-                            className={`px-2.5 py-0.5 text-[10px] font-extrabold uppercase rounded border ${
-                              item.category === 'private'
-                                ? 'bg-[#001722] text-[#CEFEF1] border-[#171717] dark:border-[#4CA7A1]'
-                                : 'bg-[#0D2B36] text-[#CEFEF1] border-[#171717] dark:border-[#4CA7A1]'
+                            className={`nb-badge text-[10px] font-extrabold ${
+                              isAnswered
+                                ? 'bg-[#123D32] text-[#D6AD52] dark:bg-[#4CA7A1] dark:text-[#001722]'
+                                : 'bg-[#C94A4A] text-white'
                             }`}
                           >
-                            {item.category === 'private' ? '🔒 Konsultasi Pribadi' : '📖 Materi & Pembelajaran'}
-                          </span>
-
-                          <span
-                            className={`px-2.5 py-0.5 text-[10px] font-extrabold uppercase rounded border ${
-                              item.status === 'answered'
-                                ? 'bg-[#4CA7A1] text-[#001722] border-[#171717] dark:border-[#001722]'
-                                : item.status === 'closed'
-                                ? 'bg-white text-[#171717] border-[#171717]'
-                                : 'bg-[#001722] text-[#A6D6C9] border-[#171717] dark:border-[#4CA7A1]'
-                            }`}
-                          >
-                            {item.status === 'answered'
-                              ? '✓ Sudah Dijawab'
-                              : item.status === 'closed'
-                              ? 'Selesai'
-                              : '⏳ Menunggu Jawaban'}
-                          </span>
-                        </div>
-
-                        <span className="text-[11px] font-bold text-[#525855] dark:text-[#A6D6C9]">
-                          {new Date(item.createdAt).toLocaleDateString('id-ID', {
-                            day: 'numeric',
-                            month: 'short',
-                            year: 'numeric'
-                          })}
-                        </span>
-                      </div>
-
-                      {/* Question Title & Content */}
-                      <div className="space-y-1">
-                        <h4 className="font-bold text-sm sm:text-base text-[#171717] dark:text-[#CEFEF1] font-serif">
-                          {item.title}
-                        </h4>
-                        <div
-                          className="reading-scalable-text text-[#171717] dark:text-[#CEFEF1] leading-relaxed font-sans whitespace-pre-line"
-                          dangerouslySetInnerHTML={{ __html: autoWrapArabicText(item.content) }}
-                        />
-                      </div>
-
-                      {/* Admin Reply Box if Answered */}
-                      {item.replyContent && (
-                        <div className="p-0 sm:p-5 bg-transparent sm:bg-white sm:dark:bg-[#0D2B36] border-0 sm:border-2 border-[#171717] dark:border-[#4CA7A1] sm:border-l-4 sm:border-l-[#123D32] dark:sm:border-l-[#4CA7A1] rounded-none sm:rounded-md space-y-3 mt-2">
-                          <div className="flex items-center justify-between text-[11px] font-bold text-[#123D32] dark:text-[#CEFEF1] pb-2 border-b border-[#171717]/15 dark:border-[#4CA7A1]/30">
-                            <span className="flex items-center gap-1.5">
-                              <ShieldCheck className="w-3.5 h-3.5 text-[#123D32] dark:text-[#4CA7A1]" />
-                              <span>Balasan {item.repliedBy || 'Ustaz / Admin'}:</span>
-                            </span>
-                            {item.repliedAt && (
-                              <span className="text-[10px] font-normal text-[#525855] dark:text-[#A6D6C9]">
-                                {new Date(item.repliedAt).toLocaleDateString('id-ID', {
-                                  day: 'numeric',
-                                  month: 'short',
-                                  year: 'numeric'
-                                })}
-                              </span>
+                            {isAnswered ? (
+                              <>
+                                <CheckCircle2 className="w-3 h-3 inline mr-1 shrink-0" />
+                                <span>{statusLabel}</span>
+                              </>
+                            ) : (
+                              <>
+                                <Clock className="w-3 h-3 inline mr-1 shrink-0" />
+                                <span>{statusLabel}</span>
+                              </>
                             )}
-                          </div>
-
-                          {/* SISTEM DAFTAR ISI DAN NAVIGASI SLIDE JAWABAN */}
-                          <QAReadingViewer
-                            replyContent={item.replyContent}
-                            consultationId={item.id}
-                            questionTitle={item.title}
-                            fontControl={fontControl}
-                            isAdmin={userProfile?.role === 'admin'}
-                          />
-                        </div>
-                      )}
-
-                      {/* Sharing actions if approved learning QA */}
-                      {item.category === 'learning' && item.isPublished && item.replyContent && (
-                        <div className="pt-2 border-t border-[#171717] dark:border-[#4CA7A1] flex flex-wrap items-center justify-between gap-2">
-                          <span className="text-[10px] text-[#123D32] dark:text-[#CEFEF1] font-bold flex items-center gap-1">
-                            <CheckCircle2 className="w-3 h-3 text-[#4CA7A1]" />
-                            <span>Dipublikasikan ke Tanya Jawab Publik</span>
                           </span>
 
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setShareItem(item);
-                                setShareTab('share');
-                                setShareModalOpen(true);
-                              }}
-                              className="px-2.5 py-1 bg-[#0D2B36] text-[#CEFEF1] border border-[#171717] dark:border-[#4CA7A1] rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer"
-                            >
-                              <Share2 className="w-3 h-3" />
-                              <span>Bagikan Jawaban</span>
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setShareItem(item);
-                                setShareTab('card');
-                                setShareModalOpen(true);
-                              }}
-                              className="px-2.5 py-1 bg-[#4CA7A1] text-[#001722] border border-[#171717] dark:border-[#001722] rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer"
-                            >
-                              <ImageIcon className="w-3 h-3" />
-                              <span>Buat Gambar</span>
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => handleCopyDirectLink(item)}
-                              className="px-2 py-1 bg-white dark:bg-[#0D2B36] border border-[#171717] dark:border-[#4CA7A1] text-[#171717] dark:text-[#CEFEF1] rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer"
-                            >
-                              {copiedId === item.id ? (
-                                <>
-                                  <Check className="w-3 h-3 text-[#123D32] dark:text-[#4CA7A1]" />
-                                  <span>Tersalin</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Copy className="w-3 h-3 text-[#123D32] dark:text-[#4CA7A1]" />
-                                  <span>Salin Tautan</span>
-                                </>
-                              )}
-                            </button>
-                          </div>
+                          <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                            {new Date(item.createdAt).toLocaleDateString('id-ID', {
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric'
+                            })}
+                          </span>
                         </div>
-                      )}
 
-                      {/* WhatsApp Escalation Action */}
-                      <div className="pt-2 border-t border-[#171717] dark:border-[#4CA7A1] flex items-center justify-between">
-                        <span className="text-[10px] font-bold text-[#525855] dark:text-[#A6D6C9]">
-                          Ingin respon langsung di WhatsApp?
-                        </span>
-                        <a
-                          href={getWhatsAppConsultationUrl({
-                            id: item.id,
-                            title: item.title,
-                            category: item.category,
-                            studentName: userProfile?.displayName || user?.displayName || 'Santri'
-                          })}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#0D2B36] text-[#CEFEF1] border border-[#171717] dark:border-[#4CA7A1] rounded text-[11px] font-extrabold transition cursor-pointer hover:bg-[#4CA7A1] hover:text-[#001722]"
-                        >
-                          <MessageCircle className="w-3.5 h-3.5 text-[#4CA7A1]" />
-                          <span>Lanjut ke WhatsApp Admin</span>
-                        </a>
+                        {/* Title Only - Strictly No Full Question or Full Answer Inside Card */}
+                        <h3 className="font-extrabold text-sm sm:text-base text-charcoal dark:text-offwhite font-serif-brand line-clamp-2 leading-snug">
+                          {item.title}
+                        </h3>
+                      </div>
+
+                      {/* Footer Cue: Click to open */}
+                      <div className="pt-2 border-t border-slate-200 dark:border-slate-700/60 flex items-center justify-between text-xs text-[#123D32] dark:text-[#4CA7A1] font-extrabold">
+                        <span>Buka Konsultasi</span>
+                        <ChevronRight className="w-4 h-4" />
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
         </div>
       )}
 

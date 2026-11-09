@@ -643,3 +643,191 @@ export function splitQAContentIntoSlides(
     fullCleanHtml: clean
   };
 }
+
+/**
+ * Validates an optional WhatsApp number for student consultations.
+ * - Empty/null/undefined is valid because WhatsApp number is optional.
+ * - If provided, checks that it only contains allowed digits/symbols and has reasonable length (9-16 digits).
+ */
+export function validateWhatsAppNumber(phone: string | undefined | null): {
+  isValid: boolean;
+  cleanDigits?: string;
+  normalized?: string;
+  error?: string;
+} {
+  if (!phone || typeof phone !== 'string') {
+    return { isValid: true, cleanDigits: '', normalized: '' };
+  }
+
+  const trimmed = phone.trim();
+  if (!trimmed) {
+    return { isValid: true, cleanDigits: '', normalized: '' };
+  }
+
+  // Must not contain letters
+  if (/[a-zA-Z]/.test(trimmed)) {
+    return {
+      isValid: false,
+      error: 'Nomor WhatsApp tidak boleh mengandung huruf. Masukkan nomor telepon yang valid.'
+    };
+  }
+
+  // Extract all digits
+  const cleanDigits = trimmed.replace(/\D/g, '');
+
+  // Reasonable length check: Indonesian & international numbers are between 9 and 16 digits
+  if (cleanDigits.length < 9) {
+    return {
+      isValid: false,
+      error: 'Nomor WhatsApp terlalu pendek. Masukkan minimal 9 digit (contoh: 08xxxxxxxxxx).'
+    };
+  }
+
+  if (cleanDigits.length > 16) {
+    return {
+      isValid: false,
+      error: 'Nomor WhatsApp terlalu panjang (maksimal 16 digit).'
+    };
+  }
+
+  const normalized = normalizeWhatsAppForWaMe(trimmed);
+
+  return {
+    isValid: true,
+    cleanDigits,
+    normalized
+  };
+}
+
+/**
+ * Normalizes a phone number for wa.me URL consumption:
+ * E.g.:
+ * - '081234567890' -> '6281234567890'
+ * - '+6281234567890' -> '6281234567890'
+ * - '81234567890' -> '6281234567890'
+ * - '6281234567890' -> '6281234567890'
+ */
+export function normalizeWhatsAppForWaMe(phone: string | undefined | null): string {
+  if (!phone || typeof phone !== 'string') return '';
+  const digits = phone.trim().replace(/\D/g, '');
+  if (!digits) return '';
+
+  if (digits.startsWith('0')) {
+    return `62${digits.slice(1)}`;
+  }
+  if (digits.startsWith('8')) {
+    return `62${digits}`;
+  }
+  return digits;
+}
+
+/**
+ * Builds an official WhatsApp link for admin to initiate contact with the student penanya.
+ */
+export function buildAdminWhatsAppUrl(
+  consultation: {
+    id: string;
+    title: string;
+    whatsappNumber?: string;
+    studentName?: string;
+    replyContent?: string;
+    isPublished?: boolean;
+  },
+  customMessage?: string
+): string {
+  const normalizedNumber = normalizeWhatsAppForWaMe(consultation.whatsappNumber);
+  if (!normalizedNumber) return '';
+
+  if (customMessage && customMessage.trim()) {
+    return `https://wa.me/${normalizedNumber}?text=${encodeURIComponent(customMessage.trim())}`;
+  }
+
+  const name = consultation.studentName || 'Bapak/Ibu/Saudara/i';
+  const hasReply = Boolean(consultation.replyContent && consultation.replyContent.trim().length > 0);
+  const consultationLink = consultation.isPublished
+    ? `https://darswithosama.com/qa/${consultation.id}`
+    : `https://darswithosama.com/`;
+
+  const defaultMessage = `Assalamu'alaikum Warahmatullahi Wabarakatuh ${name},
+
+Pemberitahuan dari Dars with Osama seputar konsultasi Anda:
+*Topik:* ${consultation.title}
+
+${hasReply ? 'Alhamdulillah, balasan dan arahan resmi untuk pertanyaan Anda telah selesai dijawab oleh Ustaz / Admin Dars with Osama di website.' : 'Pertanyaan Anda telah kami terima dan sedang ditinjau oleh Ustaz / Admin Dars with Osama.'}
+
+${consultation.isPublished ? `Anda juga dapat membaca pertanyaan dan jawaban lengkap melalui tautan berikut:\n${consultationLink}` : 'Silakan masuk ke Ruang Konsultasi pada akun website Anda untuk membaca balasan lengkap.'}
+
+Jazakumullahu khairan.
+_Admin Dars with Osama_`;
+
+  return `https://wa.me/${normalizedNumber}?text=${encodeURIComponent(defaultMessage)}`;
+}
+
+export interface ConsultationAdminStatusInfo {
+  isPrivate: boolean;
+  isPublished: boolean;
+  privacyLabel: 'Konsultasi Privat' | 'Publik' | 'Materi & Pelajaran';
+  privacyBadgeClass: string;
+  isAnswered: boolean;
+  resolutionLabel: 'Menunggu Jawaban' | 'Selesai' | 'Selesai & Publik';
+  resolutionBadgeClass: string;
+}
+
+/**
+ * Returns clean, unmixed consultation status labels distinguishing resolution from privacy.
+ */
+export function getConsultationAdminStatus(item: Consultation): ConsultationAdminStatusInfo {
+  const isPublished = Boolean(item.isPublished);
+  const isPrivate = item.category === 'private';
+  const hasReply = Boolean(item.replyContent && item.replyContent.trim().length > 0);
+  const isAnswered = item.status === 'answered' || item.status === 'closed' || hasReply;
+
+  let privacyLabel: 'Konsultasi Privat' | 'Publik' | 'Materi & Pelajaran' = 'Materi & Pelajaran';
+  let privacyBadgeClass = 'bg-[#0D2B36] text-[#CEFEF1] border-[#171717] dark:border-[#4CA7A1]';
+
+  if (isPublished) {
+    privacyLabel = 'Publik';
+    privacyBadgeClass = 'bg-[#123D32] text-[#CEFEF1] border-[#171717] dark:border-[#4CA7A1]';
+  } else if (isPrivate) {
+    privacyLabel = 'Konsultasi Privat';
+    privacyBadgeClass = 'bg-[#6C151E] text-[#FFF5E9] border-[#171717]';
+  }
+
+  let resolutionLabel: 'Menunggu Jawaban' | 'Selesai' | 'Selesai & Publik' = 'Menunggu Jawaban';
+  let resolutionBadgeClass = 'bg-[#3478F6] text-white border-[#171717]';
+
+  if (isPublished && isAnswered) {
+    resolutionLabel = 'Selesai & Publik';
+    resolutionBadgeClass = 'bg-[#123D32] text-[#CEFEF1] border-[#171717]';
+  } else if (isAnswered) {
+    resolutionLabel = 'Selesai';
+    resolutionBadgeClass = 'bg-[#D6AD52] text-[#171717] border-[#171717]';
+  } else {
+    resolutionLabel = 'Menunggu Jawaban';
+    resolutionBadgeClass = 'bg-[#C94A4A] text-white border-[#171717]';
+  }
+
+  return {
+    isPrivate,
+    isPublished,
+    privacyLabel,
+    privacyBadgeClass,
+    isAnswered,
+    resolutionLabel,
+    resolutionBadgeClass
+  };
+}
+
+/**
+ * Sanitizes consultation data for public views.
+ * Strictly guarantees that WhatsApp numbers, student emails, and private identities are never leaked.
+ */
+export function sanitizeConsultationForPublic(item: Consultation): Consultation {
+  return {
+    ...item,
+    whatsappNumber: undefined,
+    studentEmail: undefined,
+    studentName: item.category === 'private' ? 'Penanya (Anonim)' : (item.studentName || 'Penanya (Anonim)')
+  };
+}
+

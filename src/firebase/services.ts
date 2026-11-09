@@ -53,7 +53,7 @@ import { SEED_CATEGORIES, SEED_COURSES, SEED_SESSIONS, SEED_QUIZZES } from '../d
 import { matchesSessionIdentifier, canAccessSessionPublicly } from '../utils/sessionShareHelper';
 import { sanitizeRichTextHtml } from '../utils/richTextHelper';
 import { normalizeArticleHtmlImages } from '../utils/googleDriveHelper';
-import { computeConsultationCounts, ConsultationCounts } from '../utils/qaHelper';
+import { computeConsultationCounts, ConsultationCounts, sanitizeConsultationForPublic } from '../utils/qaHelper';
 import {
   DEFAULT_INSTRUCTOR_PROFILE_ID,
   getDefaultInstructorProfile,
@@ -2740,6 +2740,7 @@ export async function createConsultation(data: {
   title: string;
   content: string;
   category: 'learning' | 'private';
+  whatsappNumber?: string;
 }): Promise<string> {
   if (!auth.currentUser) {
     throw new Error('Harus login terlebih dahulu untuk mengajukan pertanyaan konsultasi.');
@@ -2753,6 +2754,7 @@ export async function createConsultation(data: {
     studentId: auth.currentUser.uid,
     studentName: auth.currentUser.displayName || 'Santri',
     studentEmail: auth.currentUser.email || '',
+    whatsappNumber: data.whatsappNumber ? data.whatsappNumber.trim() : undefined,
     title: data.title.trim(),
     content: data.content.trim(),
     category: data.category,
@@ -2783,6 +2785,60 @@ export async function getStudentConsultations(studentId: string): Promise<Consul
   } catch (error) {
     console.warn('getStudentConsultations live fetch notice:', error);
     return PRODUCTION_CONSULTATIONS.filter(c => c.studentId === studentId);
+  }
+}
+
+export async function getConsultationById(
+  consultationId: string,
+  currentUserId?: string,
+  isAdminUser = false
+): Promise<Consultation | null> {
+  try {
+    const docRef = doc(db, 'consultations', consultationId);
+    const snap = await getDoc(docRef);
+
+    if (snap.exists()) {
+      const data = { id: snap.id, ...snap.data() } as Consultation;
+
+      // Public access if published
+      if (data.isPublished) {
+        return sanitizeConsultationForPublic(data);
+      }
+
+      // Owner or Admin access for private consultations
+      if (isAdminUser || (currentUserId && data.studentId === currentUserId)) {
+        return data;
+      }
+
+      // Explicitly reject unauthorized access to other people's private consultations
+      throw new Error('Akses ditolak: Konsultasi ini bersifat pribadi dan hanya dapat dibaca oleh penanya atau admin.');
+    }
+
+    // Fallback lookup in production consultations if Firestore doc not yet created
+    const fallback = PRODUCTION_CONSULTATIONS.find(c => c.id === consultationId);
+    if (!fallback) return null;
+
+    if (fallback.isPublished) {
+      return sanitizeConsultationForPublic(fallback);
+    }
+
+    if (isAdminUser || (currentUserId && fallback.studentId === currentUserId)) {
+      return fallback;
+    }
+
+    throw new Error('Akses ditolak: Konsultasi ini bersifat pribadi dan hanya dapat dibaca oleh penanya atau admin.');
+  } catch (error: any) {
+    if (error?.message && error.message.includes('Akses ditolak')) {
+      throw error;
+    }
+    console.warn('getConsultationById live fetch notice:', error);
+    const fallback = PRODUCTION_CONSULTATIONS.find(c => c.id === consultationId);
+    if (fallback) {
+      if (fallback.isPublished) return sanitizeConsultationForPublic(fallback);
+      if (isAdminUser || (currentUserId && fallback.studentId === currentUserId)) return fallback;
+      throw new Error('Akses ditolak: Konsultasi ini bersifat pribadi dan hanya dapat dibaca oleh penanya atau admin.');
+    }
+    return null;
   }
 }
 
@@ -2841,19 +2897,21 @@ export async function getPublishedPublicQA(forceRefresh = false): Promise<Consul
 
   const fallbackQA = PRODUCTION_CONSULTATIONS
     .filter(c => c.isPublished)
+    .map(c => sanitizeConsultationForPublic(c))
     .sort((a, b) => new Date(b.publishedAt || b.createdAt).getTime() - new Date(a.publishedAt || a.createdAt).getTime());
 
   try {
     const q = query(
       collection(db, 'consultations'),
-      where('category', '==', 'learning'),
       where('isPublished', '==', true)
     );
     const snapshot = await getDocs(q);
     if (snapshot.empty && snapshot.metadata?.fromCache) {
       throw new Error('Client is offline and local cache is empty for consultations');
     }
-    const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Consultation));
+    const list = snapshot.docs
+      .map(d => ({ id: d.id, ...d.data() } as Consultation))
+      .map(c => sanitizeConsultationForPublic(c));
     list.sort((a, b) => new Date(b.publishedAt || b.createdAt).getTime() - new Date(a.publishedAt || a.createdAt).getTime());
     publicQACache = { data: list, timestamp: now };
     recordFeatureDataSource('consultations', snapshot.metadata?.fromCache ? 'memory-cache' : 'firestore-server');
@@ -2901,7 +2959,8 @@ export async function replyConsultation(
 
 export async function togglePublishConsultation(
   consultationId: string,
-  isPublished: boolean
+  isPublished: boolean,
+  withConsent: boolean = false
 ): Promise<void> {
   const path = `consultations/${consultationId}`;
   const now = new Date().toISOString();
@@ -2913,18 +2972,25 @@ export async function togglePublishConsultation(
     const snap = await getDoc(docRef);
     if (snap.exists()) {
       const data = snap.data() as Consultation;
-      // Private consultations can NEVER be published
-      if (data.category === 'private' && isPublished) {
-        throw new Error('Konsultasi bersifat pribadi dan tidak diperkenankan untuk dipublikasikan.');
+      // Requirement: "Publikasi harus mencakup pertanyaan dan jawaban admin agar pembaca memahami konteks pembahasannya."
+      if (isPublished && (!data.replyContent || !data.replyContent.trim())) {
+        throw new Error('Pertanyaan harus memiliki balasan/jawaban admin terlebih dahulu agar pembaca memahami konteks pembahasannya sebelum dipublikasikan.');
       }
     }
 
+    const updatePayload: Partial<Consultation> = {
+      isPublished,
+      publishedAt: isPublished ? now : null,
+      updatedAt: now
+    };
+
+    if (isPublished && withConsent) {
+      updatePayload.publishedWithConsent = true;
+      updatePayload.publishedWithConsentAt = now;
+    }
+
     await executeWithFreshAuthRetry(() =>
-      updateDoc(docRef, {
-        isPublished,
-        publishedAt: isPublished ? now : null,
-        updatedAt: now
-      })
+      updateDoc(docRef, updatePayload)
     );
     invalidateServicesCache('qa');
     logCrudDiagnostic('togglePublishConsultation', path, 'success');
