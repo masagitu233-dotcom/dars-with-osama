@@ -793,10 +793,10 @@ export const StudentConsultationView: React.FC<StudentConsultationViewProps> = (
                           </span>
                         </div>
 
-                        {/* Title Only - Strictly No Full Question or Full Answer Inside Card */}
-                        <h3 className="font-extrabold text-sm sm:text-base text-charcoal dark:text-offwhite font-serif-brand line-clamp-2 leading-snug">
-                          {item.title}
-                        </h3>
+                        {/* Original Question Content - Truncated with line-clamp */}
+                        <p className="font-medium text-xs sm:text-sm text-charcoal dark:text-offwhite line-clamp-3 leading-relaxed font-sans">
+                          {item.content}
+                        </p>
                       </div>
 
                       {/* Footer Cue: Click to open */}
