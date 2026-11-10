@@ -10,17 +10,21 @@ import {
   Check,
   X,
   Sparkles,
-  Info
+  Info,
+  CornerDownRight,
+  ShieldCheck
 } from 'lucide-react';
 import { ArticleComment } from '../../types';
 import {
   createArticleComment,
+  createArticleCommentReply,
   getApprovedArticleComments,
   getAllArticleCommentsForAdmin,
   moderateArticleComment,
-  deleteArticleComment
+  deleteArticleCommentWithReplies
 } from '../../firebase/services';
 import { useAuth } from '../../context/AuthContext';
+import { ConfirmModal } from '../common/ConfirmModal';
 
 interface ArticleCommentsSectionProps {
   articleId: string;
@@ -44,11 +48,25 @@ export const ArticleCommentsSection: React.FC<ArticleCommentsSectionProps> = ({
   const [lastSubmitTime, setLastSubmitTime] = useState<number>(0);
   const [showAdminAll, setShowAdminAll] = useState<boolean>(false);
 
+  // Reply state
+  const [replyingTo, setReplyingTo] = useState<ArticleComment | null>(null);
+  const [replyAuthorName, setReplyAuthorName] = useState<string>('');
+  const [replyContent, setReplyContent] = useState<string>('');
+  const [replySubmitting, setReplySubmitting] = useState<boolean>(false);
+
+  // Delete modal state
+  const [commentToDelete, setCommentToDelete] = useState<ArticleComment | null>(null);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
+
   useEffect(() => {
-    if (!authorName && (userProfile?.displayName || user?.displayName)) {
-      setAuthorName(userProfile?.displayName || user?.displayName || '');
+    const defaultName = userProfile?.displayName || user?.displayName || (isAdmin ? 'Ustaz / Admin' : '');
+    if (!authorName && defaultName) {
+      setAuthorName(defaultName);
     }
-  }, [userProfile, user]);
+    if (!replyAuthorName && defaultName) {
+      setReplyAuthorName(defaultName);
+    }
+  }, [userProfile, user, isAdmin]);
 
   const loadComments = async () => {
     setLoading(true);
@@ -110,7 +128,8 @@ export const ArticleCommentsSection: React.FC<ArticleCommentsSectionProps> = ({
         articleId,
         authorName: trimmedName,
         content: trimmedContent,
-        userId: user?.uid
+        userId: user?.uid,
+        isAdminReply: isAdmin
       });
 
       const tempComment: ArticleComment = {
@@ -118,29 +137,74 @@ export const ArticleCommentsSection: React.FC<ArticleCommentsSectionProps> = ({
         articleId,
         authorName: trimmedName,
         content: trimmedContent,
-        status: 'pending',
+        status: isAdmin ? 'approved' : 'pending',
         createdAt: new Date().toISOString(),
-        userId: user?.uid
+        userId: user?.uid,
+        isAdminReply: isAdmin
       };
 
-      setRecentlySubmitted(tempComment);
-      setContent('');
-      setLastSubmitTime(now);
-      setSuccessMsg(
-        'Alhamdulillah, komentar Anda telah berhasil dikirim! Komentar akan ditinjau oleh moderator sebelum tampil untuk publik.'
-      );
-      if (showToast) {
-        showToast('Komentar berhasil dikirim untuk moderasi.');
+      if (!isAdmin) {
+        setRecentlySubmitted(tempComment);
+        setSuccessMsg(
+          'Alhamdulillah, komentar Anda telah berhasil dikirim! Komentar akan ditinjau oleh moderator sebelum tampil untuk publik.'
+        );
+      } else {
+        setSuccessMsg('Komentar berhasil dipublikasikan.');
       }
 
-      if (isAdmin && showAdminAll) {
-        await loadComments();
+      setContent('');
+      setLastSubmitTime(now);
+      if (showToast) {
+        showToast(isAdmin ? 'Komentar berhasil dipublikasikan.' : 'Komentar berhasil dikirim untuk moderasi.');
       }
+
+      await loadComments();
     } catch (err: any) {
       console.error('Error submitting comment:', err);
       setErrorMsg(err?.message || 'Gagal mengirim komentar. Silakan periksa koneksi lalu coba lagi.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleReplySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!replyingTo) return;
+
+    const trimmedName = replyAuthorName.trim();
+    const trimmedContent = replyContent.trim();
+
+    if (!trimmedName || trimmedName.length < 2) {
+      alert('Nama atau kunyah harus minimal 2 karakter.');
+      return;
+    }
+    if (!trimmedContent || trimmedContent.length < 3) {
+      alert('Isi balasan harus minimal 3 karakter.');
+      return;
+    }
+
+    setReplySubmitting(true);
+    try {
+      await createArticleCommentReply({
+        articleId,
+        parentCommentId: replyingTo.id,
+        replyToAuthorName: replyingTo.authorName,
+        authorName: trimmedName,
+        content: trimmedContent,
+        userId: user?.uid,
+        isAdminReply: isAdmin
+      });
+
+      if (showToast) {
+        showToast(isAdmin ? 'Balasan admin berhasil dipublikasikan.' : 'Balasan dikirim untuk moderasi.');
+      }
+      setReplyContent('');
+      setReplyingTo(null);
+      await loadComments();
+    } catch (err: any) {
+      alert('Gagal mengirim balasan: ' + (err.message || String(err)));
+    } finally {
+      setReplySubmitting(false);
     }
   };
 
@@ -157,19 +221,26 @@ export const ArticleCommentsSection: React.FC<ArticleCommentsSectionProps> = ({
     }
   };
 
-  const handleDelete = async (commentId: string) => {
-    if (!isAdmin) return;
-    if (!window.confirm('Yakin ingin menghapus komentar ini secara permanen?')) return;
+  const handleConfirmDelete = async () => {
+    if (!commentToDelete) return;
+    setIsDeleting(true);
     try {
-      await deleteArticleComment(commentId);
+      await deleteArticleCommentWithReplies(commentToDelete.id, user?.uid, isAdmin);
       if (showToast) {
-        showToast('Komentar telah dihapus.');
+        showToast('Komentar berhasil dihapus secara permanen.');
       }
+      setCommentToDelete(null);
       await loadComments();
     } catch (err: any) {
       alert(`Gagal menghapus komentar: ${err.message}`);
+    } finally {
+      setIsDeleting(false);
     }
   };
+
+  // Group comments: top-level vs child replies
+  const topLevelComments = comments.filter((c) => !c.parentCommentId);
+  const getRepliesForParent = (parentId: string) => comments.filter((c) => c.parentCommentId === parentId);
 
   return (
     <section
@@ -237,7 +308,7 @@ export const ArticleCommentsSection: React.FC<ArticleCommentsSectionProps> = ({
             <div className="w-8 h-8 border-3 border-[#123D32] dark:border-[#D6AD52] border-t-transparent rounded-full animate-spin mx-auto" />
             <p className="text-xs text-slate-gray dark:text-blue-gray font-bold">Memuat komentar pembaca...</p>
           </div>
-        ) : comments.length === 0 ? (
+        ) : topLevelComments.length === 0 ? (
           <div className="py-10 px-4 text-center border-2 border-dashed border-slate-300 dark:border-[#34465D] rounded-md space-y-2 bg-[#EFE5D2]/60 dark:bg-[#16263D]/60">
             <MessageSquare className="w-8 h-8 text-[#123D32] dark:text-[#D6AD52] mx-auto" />
             <h4 className="text-sm font-bold font-serif text-charcoal dark:text-offwhite">
@@ -248,64 +319,88 @@ export const ArticleCommentsSection: React.FC<ArticleCommentsSectionProps> = ({
             </p>
           </div>
         ) : (
-          <div className="space-y-3.5">
-            {comments.map((comment) => {
+          <div className="space-y-6">
+            {topLevelComments.map((comment) => {
+              const childReplies = getRepliesForParent(comment.id);
               const dateStr = new Date(comment.createdAt).toLocaleDateString('id-ID', {
                 day: 'numeric',
                 month: 'short',
                 year: 'numeric'
               });
+              const canDelete = isAdmin || (user && comment.userId === user.uid);
+              const isAdminAuthor = comment.isAdminReply;
 
               return (
-                <div
-                  key={comment.id}
-                  className="bg-[#FAF7F0] dark:bg-[#214743] border-2 border-[#171717] dark:border-[#B8E8D8] rounded-md p-4 sm:p-5 space-y-2.5 shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#071918]"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded bg-[#123D32] text-[#F2D98A] border-2 border-[#171717] dark:border-[#B8E8D8] font-bold text-xs flex items-center justify-center uppercase shrink-0">
-                        {comment.authorName.charAt(0)}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h5 className="font-bold text-xs sm:text-sm text-[#171717] dark:text-[#F0F7F5] font-sans">
-                            {comment.authorName}
-                          </h5>
-                          {isAdmin && (
-                            <span
-                              className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider border ${
-                                comment.status === 'approved'
-                                  ? 'bg-[#123D32] text-[#F2D98A] border-[#171717] dark:border-[#B8E8D8]'
-                                  : comment.status === 'rejected'
-                                  ? 'bg-[#F04438] text-white border-[#171717] dark:border-[#B8E8D8]'
-                                  : 'bg-[#F2D98A] text-[#102C2B] border-[#171717] dark:border-[#B8E8D8]'
-                              }`}
-                            >
-                              {comment.status}
-                            </span>
-                          )}
+                <div key={comment.id} className="space-y-3">
+                  {/* Parent Comment */}
+                  <div
+                    className={`bg-[#FAF7F0] dark:bg-[#214743] border-2 ${
+                      isAdminAuthor ? 'border-[#D6AD52]' : 'border-[#171717] dark:border-[#B8E8D8]'
+                    } rounded-md p-4 sm:p-5 space-y-3 shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#071918]`}
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2.5">
+                        <div
+                          className={`w-8 h-8 rounded ${
+                            isAdminAuthor ? 'bg-[#D6AD52] text-charcoal' : 'bg-[#123D32] text-[#F2D98A]'
+                          } border-2 border-[#171717] dark:border-[#B8E8D8] font-bold text-xs flex items-center justify-center uppercase shrink-0`}
+                        >
+                          {comment.authorName.charAt(0)}
                         </div>
-                        <span className="text-[11px] font-medium text-[#525856] dark:text-[#B9C9C5]">
-                          {dateStr}
-                        </span>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h5 className="font-bold text-xs sm:text-sm text-[#171717] dark:text-[#F0F7F5] font-sans flex items-center gap-1.5">
+                              <span>{comment.authorName}</span>
+                              {isAdminAuthor && (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#123D32] text-[#D6AD52] border border-[#D6AD52] text-[10px] font-extrabold uppercase">
+                                  <ShieldCheck className="w-3 h-3" />
+                                  Ustaz / Admin
+                                </span>
+                              )}
+                            </h5>
+                            {isAdmin && (
+                              <span
+                                className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider border ${
+                                  comment.status === 'approved'
+                                    ? 'bg-[#123D32] text-[#F2D98A] border-[#171717] dark:border-[#B8E8D8]'
+                                    : comment.status === 'rejected'
+                                    ? 'bg-[#F04438] text-white border-[#171717] dark:border-[#B8E8D8]'
+                                    : 'bg-[#F2D98A] text-[#102C2B] border-[#171717] dark:border-[#B8E8D8]'
+                                }`}
+                              >
+                                {comment.status}
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-[11px] font-medium text-[#525856] dark:text-[#B9C9C5]">
+                            {dateStr}
+                          </span>
+                        </div>
                       </div>
-                    </div>
 
-                    {/* Admin Moderation Actions */}
-                    {isAdmin && (
+                      {/* Action buttons (Reply / Moderate / Delete) */}
                       <div className="flex items-center gap-1.5 self-end sm:self-center">
-                        {comment.status !== 'approved' && (
+                        <button
+                          type="button"
+                          onClick={() => setReplyingTo(replyingTo?.id === comment.id ? null : comment)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-[#123D32] text-[#D6AD52] border border-[#171717] dark:border-[#B8E8D8] rounded text-xs font-bold cursor-pointer hover:bg-[#1a5244] transition"
+                        >
+                          <CornerDownRight className="w-3.5 h-3.5" />
+                          <span>Balas</span>
+                        </button>
+
+                        {isAdmin && comment.status !== 'approved' && (
                           <button
                             type="button"
                             onClick={() => handleModerate(comment.id, 'approved')}
                             className="inline-flex items-center gap-1 px-2.5 py-1 bg-[#123D32] text-[#F2D98A] border border-[#171717] dark:border-[#B8E8D8] rounded text-xs font-bold cursor-pointer"
-                            title="Setujui komentar agar tampil ke publik"
+                            title="Setujui komentar"
                           >
                             <Check className="w-3.5 h-3.5" />
                             <span>Setujui</span>
                           </button>
                         )}
-                        {comment.status !== 'rejected' && (
+                        {isAdmin && comment.status !== 'rejected' && (
                           <button
                             type="button"
                             onClick={() => handleModerate(comment.id, 'rejected')}
@@ -316,21 +411,151 @@ export const ArticleCommentsSection: React.FC<ArticleCommentsSectionProps> = ({
                             <span>Tolak</span>
                           </button>
                         )}
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(comment.id)}
-                          className="p-1.5 bg-[#F04438] text-white border border-[#171717] dark:border-[#B8E8D8] rounded transition cursor-pointer"
-                          title="Hapus komentar permanen"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+
+                        {canDelete && (
+                          <button
+                            type="button"
+                            onClick={() => setCommentToDelete(comment)}
+                            className="p-1.5 bg-[#F04438] text-white border border-[#171717] dark:border-[#B8E8D8] rounded transition cursor-pointer hover:bg-red-700"
+                            title="Hapus komentar permanen"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
+                    </div>
+
+                    <p className="text-xs sm:text-sm text-[#171717] dark:text-[#F0F7F5] leading-relaxed pl-0 sm:pl-10 pt-1 sm:pt-0 whitespace-pre-line font-sans">
+                      {comment.content}
+                    </p>
+
+                    {/* Inline Reply Form */}
+                    {replyingTo?.id === comment.id && (
+                      <form
+                        onSubmit={handleReplySubmit}
+                        className="mt-3 p-3.5 bg-white dark:bg-[#16263D] border-2 border-[#123D32] dark:border-[#D6AD52] rounded-md space-y-3 animate-fade-in"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-[#123D32] dark:text-[#D6AD52] flex items-center gap-1.5">
+                            <CornerDownRight className="w-3.5 h-3.5" />
+                            Membalas {comment.authorName}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setReplyingTo(null)}
+                            className="text-xs font-bold text-slate-gray hover:text-charcoal cursor-pointer"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+
+                        <div>
+                          <input
+                            type="text"
+                            required
+                            maxLength={100}
+                            value={replyAuthorName}
+                            onChange={(e) => setReplyAuthorName(e.target.value)}
+                            placeholder="Nama Anda / Kunyah"
+                            className="nb-input py-1.5 px-3 text-xs min-h-[36px]"
+                          />
+                        </div>
+
+                        <div>
+                          <textarea
+                            required
+                            rows={2}
+                            maxLength={800}
+                            value={replyContent}
+                            onChange={(e) => setReplyContent(e.target.value)}
+                            placeholder={`Tuliskan balasan untuk ${comment.authorName}...`}
+                            className="nb-input p-2.5 text-xs resize-y min-h-[70px]"
+                          />
+                        </div>
+
+                        <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setReplyingTo(null)}
+                            className="nb-btn nb-btn-secondary px-3 py-1.5 text-xs min-h-[32px]"
+                          >
+                            Batal
+                          </button>
+                          <button
+                            type="submit"
+                            disabled={replySubmitting}
+                            className="nb-btn nb-btn-primary px-4 py-1.5 text-xs min-h-[32px]"
+                          >
+                            {replySubmitting ? 'Mengirim...' : 'Kirim Balasan'}
+                          </button>
+                        </div>
+                      </form>
                     )}
                   </div>
 
-                  <p className="text-xs sm:text-sm text-[#171717] dark:text-[#F0F7F5] leading-relaxed pl-0 sm:pl-10 pt-1 sm:pt-0 whitespace-pre-line font-sans">
-                    {comment.content}
-                  </p>
+                  {/* Child Threaded Replies */}
+                  {childReplies.length > 0 && (
+                    <div className="pl-4 sm:pl-8 border-l-3 border-[#123D32] dark:border-[#D6AD52] space-y-2.5 pt-1">
+                      {childReplies.map((reply) => {
+                        const replyDate = new Date(reply.createdAt).toLocaleDateString('id-ID', {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric'
+                        });
+                        const canDeleteReply = isAdmin || (user && reply.userId === user.uid);
+                        const isReplyAdmin = reply.isAdminReply;
+
+                        return (
+                          <div
+                            key={reply.id}
+                            className={`bg-white dark:bg-[#1a3330] border-2 ${
+                              isReplyAdmin ? 'border-[#D6AD52]' : 'border-slate-300 dark:border-slate-700'
+                            } rounded-md p-3.5 space-y-2`}
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2">
+                                <div
+                                  className={`w-6 h-6 rounded ${
+                                    isReplyAdmin ? 'bg-[#D6AD52] text-charcoal' : 'bg-[#123D32] text-[#F2D98A]'
+                                  } font-bold text-[10px] flex items-center justify-center uppercase shrink-0`}
+                                >
+                                  {reply.authorName.charAt(0)}
+                                </div>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-bold text-xs text-[#171717] dark:text-[#F0F7F5]">
+                                    {reply.authorName}
+                                  </span>
+                                  {isReplyAdmin && (
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded bg-[#123D32] text-[#D6AD52] border border-[#D6AD52] text-[9px] font-extrabold uppercase">
+                                      Ustaz / Admin
+                                    </span>
+                                  )}
+                                  <span className="text-[10px] text-slate-gray dark:text-blue-gray">
+                                    {replyDate}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {canDeleteReply && (
+                                <button
+                                  type="button"
+                                  onClick={() => setCommentToDelete(reply)}
+                                  className="p-1 text-red-600 hover:text-red-800 cursor-pointer"
+                                  title="Hapus balasan"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+
+                            <p className="text-xs text-[#171717] dark:text-[#F0F7F5] leading-relaxed whitespace-pre-line font-sans pl-8">
+                              {reply.content}
+                            </p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -338,7 +563,7 @@ export const ArticleCommentsSection: React.FC<ArticleCommentsSectionProps> = ({
         )}
       </div>
 
-      {/* ADD COMMENT FORM */}
+      {/* ADD MAIN COMMENT FORM */}
       <div className="pt-6 border-t-2 border-[#171717] dark:border-[#B8E8D8] space-y-4">
         <div className="space-y-1">
           <h4 className="text-base sm:text-lg font-bold font-serif text-[#171717] dark:text-[#F0F7F5] flex items-center gap-2">
@@ -437,6 +662,18 @@ export const ArticleCommentsSection: React.FC<ArticleCommentsSectionProps> = ({
           </div>
         </form>
       </div>
+
+      {/* DELETE CONFIRMATION MODAL */}
+      <ConfirmModal
+        isOpen={Boolean(commentToDelete)}
+        onClose={() => setCommentToDelete(null)}
+        onConfirm={handleConfirmDelete}
+        title="Hapus Komentar Pembaca"
+        message={`Apakah Anda yakin ingin menghapus komentar dari "${commentToDelete?.authorName}" secara permanen? Jika komentar ini memiliki balasan, seluruh balasan di bawahnya juga akan dihapus.`}
+        confirmText="Ya, Hapus Komentar"
+        isDangerous={true}
+        loading={isDeleting}
+      />
     </section>
   );
 };

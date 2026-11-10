@@ -40,6 +40,7 @@ import {
   UserProfile,
   BlogPost,
   Consultation,
+  ConsultationFollowup,
   ArticleComment,
   InstructorProfile,
   EmailNotification,
@@ -2749,12 +2750,11 @@ export async function createConsultation(data: {
   const newRef = doc(collection(db, 'consultations'));
   const now = new Date().toISOString();
   
-  const payload: Consultation = {
+  const payload: Record<string, any> = {
     id: newRef.id,
     studentId: auth.currentUser.uid,
     studentName: auth.currentUser.displayName || 'Santri',
     studentEmail: auth.currentUser.email || '',
-    whatsappNumber: data.whatsappNumber ? data.whatsappNumber.trim() : undefined,
     title: data.title.trim(),
     content: data.content.trim(),
     category: data.category,
@@ -2763,6 +2763,11 @@ export async function createConsultation(data: {
     createdAt: now,
     updatedAt: now
   };
+
+  const cleanWa = data.whatsappNumber ? data.whatsappNumber.trim() : '';
+  if (cleanWa) {
+    payload.whatsappNumber = cleanWa;
+  }
 
   const path = `consultations/${newRef.id}`;
   try {
@@ -3026,6 +3031,137 @@ export async function updateConsultationStatus(
   }
 }
 
+/**
+ * Permanently deletes a main consultation document and ALL related subcollection follow-up discussion threads in a single atomic batch.
+ */
+export async function deleteConsultation(
+  consultationId: string,
+  currentUserId?: string,
+  isAdminUser = false
+): Promise<void> {
+  const path = `consultations/${consultationId}`;
+  logCrudDiagnostic('deleteConsultation', path, 'start');
+
+  try {
+    const mainRef = doc(db, 'consultations', consultationId);
+    await ensureFreshFirestoreAuthToken();
+    const snap = await getDoc(mainRef);
+
+    if (snap.exists()) {
+      const data = snap.data() as Consultation;
+      if (!isAdminUser && (!currentUserId || data.studentId !== currentUserId)) {
+        throw new Error('Akses ditolak: Anda tidak memiliki wewenang untuk menghapus pertanyaan konsultasi ini.');
+      }
+    }
+
+    // Query all subcollection followups to delete entire thread
+    const followupsSnapshot = await getDocs(collection(db, 'consultations', consultationId, 'followups'));
+    const batch = writeBatch(db);
+
+    followupsSnapshot.docs.forEach((fDoc) => {
+      batch.delete(fDoc.ref);
+    });
+
+    batch.delete(mainRef);
+    await executeWithFreshAuthRetry(() => batch.commit());
+
+    invalidateServicesCache('qa');
+    logCrudDiagnostic('deleteConsultation', path, 'success');
+  } catch (error) {
+    logCrudDiagnostic('deleteConsultation', path, 'failed', error);
+    handleFirestoreError(error, OperationType.DELETE, path);
+    throw error;
+  }
+}
+
+/**
+ * Creates a follow-up discussion question under an existing parent consultation thread.
+ */
+export async function createConsultationFollowup(data: {
+  consultationId: string;
+  content: string;
+}): Promise<string> {
+  if (!auth.currentUser) {
+    throw new Error('Harus login terlebih dahulu untuk mengajukan pertanyaan lanjutan.');
+  }
+
+  const cleanContent = data.content.trim();
+  if (!cleanContent || cleanContent.length < 5 || cleanContent.length > 5000) {
+    throw new Error('Isi pertanyaan lanjutan harus antara 5 hingga 5000 karakter.');
+  }
+
+  const newRef = doc(collection(db, 'consultations', data.consultationId, 'followups'));
+  const now = new Date().toISOString();
+
+  const payload: ConsultationFollowup = {
+    id: newRef.id,
+    consultationId: data.consultationId,
+    studentId: auth.currentUser.uid,
+    studentName: auth.currentUser.displayName || 'Santri',
+    content: cleanContent,
+    createdAt: now,
+    updatedAt: now
+  };
+
+  const path = `consultations/${data.consultationId}/followups/${newRef.id}`;
+  try {
+    await executeWithFreshAuthRetry(() => setDoc(newRef, payload));
+    return newRef.id;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+    throw error;
+  }
+}
+
+/**
+ * Fetches all follow-up discussion items under a parent consultation.
+ */
+export async function getConsultationFollowups(consultationId: string): Promise<ConsultationFollowup[]> {
+  const path = `consultations/${consultationId}/followups`;
+  try {
+    const q = query(
+      collection(db, 'consultations', consultationId, 'followups')
+    );
+    const snapshot = await getDocs(q);
+    const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ConsultationFollowup));
+    list.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    return list;
+  } catch (error) {
+    logFirestoreDiagnostic({ operation: 'getConsultationFollowups', collection: 'followups', path }, error);
+    return [];
+  }
+}
+
+/**
+ * Admin replies to a specific follow-up question in a consultation discussion thread.
+ */
+export async function replyConsultationFollowup(
+  consultationId: string,
+  followupId: string,
+  replyContent: string
+): Promise<void> {
+  const path = `consultations/${consultationId}/followups/${followupId}`;
+  const now = new Date().toISOString();
+  logCrudDiagnostic('replyConsultationFollowup', path, 'start');
+
+  try {
+    const docRef = doc(db, 'consultations', consultationId, 'followups', followupId);
+    await executeWithFreshAuthRetry(() =>
+      updateDoc(docRef, {
+        replyContent: replyContent.trim(),
+        repliedAt: now,
+        repliedBy: 'Ustaz / Admin',
+        updatedAt: now
+      })
+    );
+    logCrudDiagnostic('replyConsultationFollowup', path, 'success');
+  } catch (error) {
+    logCrudDiagnostic('replyConsultationFollowup', path, 'failed', error);
+    handleFirestoreError(error, OperationType.WRITE, path);
+    throw error;
+  }
+}
+
 // ==========================================
 // ARTICLE COMMENTS SERVICES (Komentar Pembaca)
 // ==========================================
@@ -3035,6 +3171,7 @@ export async function createArticleComment(data: {
   authorName: string;
   content: string;
   userId?: string;
+  isAdminReply?: boolean;
 }): Promise<string> {
   const cleanName = data.authorName.trim();
   const cleanContent = data.content.trim();
@@ -3055,15 +3192,61 @@ export async function createArticleComment(data: {
     articleId: data.articleId,
     authorName: cleanName,
     content: cleanContent,
-    status: 'pending',
+    status: data.isAdminReply ? 'approved' : 'pending',
     createdAt: now,
     updatedAt: now,
+    ...(data.isAdminReply ? { isAdminReply: true } : {}),
     ...(data.userId ? { userId: data.userId } : {})
   };
 
   const path = `articleComments/${newRef.id}`;
   try {
     await setDoc(newRef, payload);
+    return newRef.id;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+    throw error;
+  }
+}
+
+export async function createArticleCommentReply(data: {
+  articleId: string;
+  parentCommentId: string;
+  content: string;
+  authorName?: string;
+  userId?: string;
+  replyToAuthorName?: string;
+  isAdmin?: boolean;
+  isAdminReply?: boolean;
+}): Promise<string> {
+  const cleanContent = data.content.trim();
+  const cleanName = (data.authorName || 'Ustaz / Admin').trim();
+  const isAdm = Boolean(data.isAdmin || data.isAdminReply);
+
+  if (!cleanContent || cleanContent.length < 3 || cleanContent.length > 1000) {
+    throw new Error('Isi balasan komentar harus antara 3 hingga 1000 karakter.');
+  }
+
+  const newRef = doc(collection(db, 'articleComments'));
+  const now = new Date().toISOString();
+
+  const payload: ArticleComment = {
+    id: newRef.id,
+    articleId: data.articleId,
+    parentCommentId: data.parentCommentId,
+    authorName: cleanName,
+    content: cleanContent,
+    status: isAdm ? 'approved' : 'pending',
+    isAdminReply: isAdm,
+    createdAt: now,
+    updatedAt: now,
+    ...(data.userId ? { userId: data.userId } : {}),
+    ...(data.replyToAuthorName ? { replyToAuthorName: data.replyToAuthorName } : {})
+  };
+
+  const path = `articleComments/${newRef.id}`;
+  try {
+    await executeWithFreshAuthRetry(() => setDoc(newRef, payload));
     return newRef.id;
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
@@ -3081,13 +3264,13 @@ export async function getApprovedArticleComments(articleId: string): Promise<Art
     );
     const snapshot = await getDocs(q);
     const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ArticleComment));
-    list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    list.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
     return list;
   } catch (error) {
     logFirestoreDiagnostic({ operation: 'getApprovedArticleComments', collection: 'articleComments', path }, error);
     return (PRODUCTION_COMMENTS || [])
       .filter(c => c.articleId === articleId && c.status === 'approved')
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
   }
 }
 
@@ -3140,14 +3323,56 @@ export async function moderateArticleComment(
 }
 
 export async function deleteArticleComment(commentId: string): Promise<void> {
+  return deleteArticleCommentWithReplies(commentId, undefined, true);
+}
+
+export async function deleteArticleCommentWithReplies(
+  commentId: string,
+  currentUserId?: string,
+  isAdminUser = false
+): Promise<void> {
   const path = `articleComments/${commentId}`;
-  logCrudDiagnostic('deleteArticleComment', path, 'start');
+  logCrudDiagnostic('deleteArticleCommentWithReplies', path, 'start');
+
   try {
-    const docRef = doc(db, 'articleComments', commentId);
-    await executeWithFreshAuthRetry(() => deleteDoc(docRef));
-    logCrudDiagnostic('deleteArticleComment', path, 'success');
+    const mainRef = doc(db, 'articleComments', commentId);
+    await ensureFreshFirestoreAuthToken();
+    const snap = await getDoc(mainRef);
+
+    if (snap.exists()) {
+      const data = snap.data() as ArticleComment;
+      const isOwner = currentUserId && data.userId === currentUserId;
+      let isParentOwner = false;
+      if (!isOwner && data.parentCommentId && currentUserId) {
+        const parentSnap = await getDoc(doc(db, 'articleComments', data.parentCommentId));
+        if (parentSnap.exists() && parentSnap.data().userId === currentUserId) {
+          isParentOwner = true;
+        }
+      }
+
+      if (!isAdminUser && !isOwner && !isParentOwner) {
+        throw new Error('Akses ditolak: Anda tidak memiliki izin untuk menghapus komentar ini.');
+      }
+    }
+
+    // Query child replies if this is a parent comment
+    const repliesQuery = query(
+      collection(db, 'articleComments'),
+      where('parentCommentId', '==', commentId)
+    );
+    const repliesSnapshot = await getDocs(repliesQuery);
+
+    const batch = writeBatch(db);
+    repliesSnapshot.docs.forEach((rDoc) => {
+      batch.delete(rDoc.ref);
+    });
+
+    batch.delete(mainRef);
+    await executeWithFreshAuthRetry(() => batch.commit());
+
+    logCrudDiagnostic('deleteArticleCommentWithReplies', path, 'success');
   } catch (error) {
-    logCrudDiagnostic('deleteArticleComment', path, 'failed', error);
+    logCrudDiagnostic('deleteArticleCommentWithReplies', path, 'failed', error);
     handleFirestoreError(error, OperationType.DELETE, path);
     throw error;
   }

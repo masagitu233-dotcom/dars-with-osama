@@ -15,7 +15,7 @@ import { ArticleComment, BlogPost } from '../../types';
 import {
   getAllArticleCommentsForAdmin,
   moderateArticleComment,
-  deleteArticleComment
+  deleteArticleCommentWithReplies
 } from '../../firebase/services';
 import { useAuth } from '../../context/AuthContext';
 import { ConfirmModal } from '../common/ConfirmModal';
@@ -104,11 +104,11 @@ export const AdminCommentsManager: React.FC<AdminCommentsManagerProps> = ({
     setIsDeleting(true);
     setFeedback(null);
     try {
-      await deleteArticleComment(commentToDelete.id);
-      setComments(prev => prev.filter(c => c.id !== commentToDelete.id));
+      await deleteArticleCommentWithReplies(commentToDelete.id, user?.uid, true);
+      setComments(prev => prev.filter(c => c.id !== commentToDelete.id && c.parentCommentId !== commentToDelete.id));
       setFeedback({
         type: 'success',
-        text: `Komentar dari "${commentToDelete.authorName}" berhasil dihapus secara permanen dari Cloud Firebase.`
+        text: `Komentar dari "${commentToDelete.authorName}" beserta balasan terkait berhasil dihapus secara permanen.`
       });
       if (showToast) {
         showToast('Komentar berhasil dihapus dari Cloud Firebase.');

@@ -28,20 +28,26 @@ import {
   Copy,
   ExternalLink,
   Check,
-  Globe
+  Globe,
+  Trash2,
+  CornerDownRight
 } from 'lucide-react';
-import { Consultation } from '../../types';
+import { Consultation, ConsultationFollowup } from '../../types';
 import {
   getAllConsultationsForAdmin,
   replyConsultation,
   togglePublishConsultation,
   updateConsultationStatus,
-  dispatchNotificationEmail
+  dispatchNotificationEmail,
+  deleteConsultation,
+  getConsultationFollowups,
+  replyConsultationFollowup
 } from '../../firebase/services';
 import { getWhatsAppConsultationUrl } from '../../config/whatsappConfig';
 import { RichTextEditor, RichTextEditorRef } from './RichTextEditor';
 import { ShareQAModal } from '../consultation/ShareQAModal';
 import { QATableOfContents } from '../consultation/QATableOfContents';
+import { ConfirmModal } from '../common/ConfirmModal';
 import {
   getAnswerSectionStats,
   splitQAAnswer,
@@ -75,6 +81,10 @@ export const AdminConsultationManager: React.FC<AdminConsultationManagerProps> =
   // Confirmation modal for publishing private consultations
   const [confirmPrivatePublishItem, setConfirmPrivatePublishItem] = useState<Consultation | null>(null);
 
+  // Deletion modal state
+  const [consultationToDelete, setConsultationToDelete] = useState<Consultation | null>(null);
+  const [isDeletingConsultation, setIsDeletingConsultation] = useState<boolean>(false);
+
   // WhatsApp dispatch modal state
   const [whatsappModalItem, setWhatsappModalItem] = useState<Consultation | null>(null);
   const [whatsappDraftMessage, setWhatsappDraftMessage] = useState<string>('');
@@ -84,6 +94,12 @@ export const AdminConsultationManager: React.FC<AdminConsultationManagerProps> =
   const [selectedConsultation, setSelectedConsultation] = useState<Consultation | null>(null);
   const [replyInput, setReplyInput] = useState<string>('');
   const [showPreview, setShowPreview] = useState<boolean>(false);
+
+  // Follow-up thread state for selected consultation
+  const [followups, setFollowups] = useState<ConsultationFollowup[]>([]);
+  const [followupsLoading, setFollowupsLoading] = useState<boolean>(false);
+  const [followupReplyInputs, setFollowupReplyInputs] = useState<Record<string, string>>({});
+  const [replyingFollowupId, setReplyingFollowupId] = useState<string | null>(null);
 
   // Share & Dakwah Card Modal State for Admin
   const [shareModalOpen, setShareModalOpen] = useState<boolean>(false);
@@ -100,6 +116,72 @@ export const AdminConsultationManager: React.FC<AdminConsultationManagerProps> =
       console.warn('Error loading admin consultations:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadFollowups = async (cId: string) => {
+    setFollowupsLoading(true);
+    try {
+      const list = await getConsultationFollowups(cId);
+      setFollowups(list);
+      // Initialize inputs with existing replies if any
+      const initialInputs: Record<string, string> = {};
+      list.forEach((f) => {
+        initialInputs[f.id] = f.replyContent || '';
+      });
+      setFollowupReplyInputs(initialInputs);
+    } catch (err) {
+      console.warn('Error loading followups:', err);
+    } finally {
+      setFollowupsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedConsultation) {
+      loadFollowups(selectedConsultation.id);
+    } else {
+      setFollowups([]);
+    }
+  }, [selectedConsultation?.id]);
+
+  const handleConfirmDeleteConsultation = async () => {
+    if (!consultationToDelete) return;
+    setIsDeletingConsultation(true);
+    setErrorMessage('');
+    try {
+      await deleteConsultation(consultationToDelete.id, user?.uid, true);
+      setToastMessage('Pertanyaan beserta seluruh rangkaian diskusi berhasil dihapus secara permanen dari Cloud Firestore.');
+      if (selectedConsultation?.id === consultationToDelete.id) {
+        closeManageModal();
+      }
+      setConsultationToDelete(null);
+      await loadConsultations();
+      onConsultationUpdated?.();
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'Gagal menghapus pertanyaan.');
+    } finally {
+      setIsDeletingConsultation(false);
+    }
+  };
+
+  const handleSendFollowupReply = async (followupId: string) => {
+    if (!selectedConsultation) return;
+    const replyText = followupReplyInputs[followupId]?.trim();
+    if (!replyText) {
+      alert('Isi balasan diskusi lanjutan tidak boleh kosong.');
+      return;
+    }
+
+    setReplyingFollowupId(followupId);
+    try {
+      await replyConsultationFollowup(selectedConsultation.id, followupId, replyText);
+      setToastMessage('Balasan diskusi lanjutan berhasil disimpan!');
+      await loadFollowups(selectedConsultation.id);
+    } catch (err: any) {
+      alert(err?.message || 'Gagal menyimpan balasan diskusi lanjutan.');
+    } finally {
+      setReplyingFollowupId(null);
     }
   };
 
@@ -523,11 +605,21 @@ _Admin Dars with Osama_`;
                   {/* Actions Button Bar */}
                   <div className="flex items-center gap-2 shrink-0">
                     <button
+                      type="button"
                       onClick={() => openManageModal(item)}
                       className="nb-btn nb-btn-primary px-3.5 py-2 text-xs"
                     >
                       <MessageSquare className="w-3.5 h-3.5 text-[#D6AD52]" />
                       <span>{item.replyContent ? 'Edit Balasan' : 'Jawab Pertanyaan'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConsultationToDelete(item)}
+                      className="nb-btn nb-btn-danger px-3 py-2 text-xs flex items-center gap-1"
+                      title="Hapus pertanyaan ini secara permanen beserta seluruh rangkaian diskusi"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Hapus</span>
                     </button>
                   </div>
                 </div>
@@ -971,6 +1063,86 @@ _Admin Dars with Osama_`;
               );
             })()}
 
+            {/* Follow-up Discussion Thread (Rangkaian Diskusi Lanjutan) */}
+            <div className="p-4 rounded-md bg-[#FAF7F0] dark:bg-[#243A56] border-2 border-charcoal dark:border-[#34465D] space-y-4">
+              <div className="flex items-center justify-between border-b border-charcoal/15 dark:border-[#34465D] pb-2">
+                <div className="flex items-center gap-2 text-xs font-extrabold text-[#123D32] dark:text-[#D6AD52] font-serif">
+                  <CornerDownRight className="w-4 h-4" />
+                  <span>Rangkaian Diskusi Lanjutan ({followups.length})</span>
+                </div>
+                {followupsLoading && (
+                  <span className="text-[10px] text-slate-500 animate-pulse">Memuat diskusi...</span>
+                )}
+              </div>
+
+              {followups.length === 0 ? (
+                <p className="text-xs text-slate-500 italic text-center py-2">
+                  Belum ada pertanyaan lanjutan dari siswa untuk konsultasi ini.
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  {followups.map((f, idx) => (
+                    <div
+                      key={f.id}
+                      className="p-3.5 bg-white dark:bg-[#16263D] border-2 border-charcoal dark:border-[#34465D] rounded-md space-y-3"
+                    >
+                      <div className="flex items-center justify-between gap-2 text-[11px] font-bold text-slate-500">
+                        <span className="text-[#123D32] dark:text-[#CEFEF1] font-extrabold">
+                          #{idx + 1} Pertanyaan Lanjutan ({f.studentName || 'Siswa'})
+                        </span>
+                        <span>
+                          {new Date(f.createdAt).toLocaleDateString('id-ID', {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </span>
+                      </div>
+
+                      <p className="text-xs text-charcoal dark:text-offwhite font-sans whitespace-pre-line leading-relaxed">
+                        {f.content}
+                      </p>
+
+                      {/* Followup Admin Reply */}
+                      <div className="pt-2 border-t border-slate-200 dark:border-slate-700/60 space-y-2">
+                        <label className="text-[11px] font-extrabold text-[#123D32] dark:text-[#D6AD52] block">
+                          Jawaban Admin / Ustaz untuk Diskusi Lanjutan Ini:
+                        </label>
+                        <textarea
+                          rows={2}
+                          value={followupReplyInputs[f.id] || ''}
+                          onChange={(e) =>
+                            setFollowupReplyInputs((prev) => ({ ...prev, [f.id]: e.target.value }))
+                          }
+                          placeholder="Tuliskan balasan admin untuk pertanyaan lanjutan ini..."
+                          className="nb-input w-full p-2.5 text-xs resize-none"
+                        />
+                        <div className="flex justify-end">
+                          <button
+                            type="button"
+                            disabled={replyingFollowupId === f.id}
+                            onClick={() => handleSendFollowupReply(f.id)}
+                            className="nb-btn nb-btn-gold px-3 py-1.5 text-xs inline-flex items-center gap-1.5"
+                          >
+                            <Send className="w-3.5 h-3.5" />
+                            <span>
+                              {replyingFollowupId === f.id
+                                ? 'Menyimpan...'
+                                : f.replyContent
+                                ? 'Perbarui Balasan Diskusi'
+                                : 'Kirim Balasan Diskusi'}
+                            </span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Actions */}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t-2 border-charcoal dark:border-[#D6AD52]/50">
               {selectedConsultation.isPublished ? (
@@ -1191,6 +1363,19 @@ _Admin Dars with Osama_`;
         onClose={() => setShareModalOpen(false)}
         consultation={selectedQaForShare}
         initialTab={shareTab}
+      />
+
+      {/* CONFIRMATION MODAL FOR DELETING CONSULTATION */}
+      <ConfirmModal
+        isOpen={Boolean(consultationToDelete)}
+        onClose={() => setConsultationToDelete(null)}
+        onConfirm={handleConfirmDeleteConsultation}
+        title="Hapus Pertanyaan & Rangkaian Diskusi"
+        itemName={consultationToDelete?.title}
+        message="Apakah Anda yakin ingin menghapus pertanyaan ini beserta seluruh pertanyaan lanjutan dan jawaban admin di dalamnya? Seluruh data rangkaian diskusi akan dihapus secara permanen dari Cloud Firestore dan tidak dapat dikembalikan."
+        confirmText="Hapus Permanen Rangkaian Diskusi"
+        isDangerous={true}
+        loading={isDeletingConsultation}
       />
     </div>
   );

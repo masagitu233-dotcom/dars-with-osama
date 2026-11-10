@@ -114,8 +114,26 @@ service cloud.firestore {
         request.resource.data.isPublished == false
       );
 
-      // 4. Delete: Admin only
-      allow delete: if isAdmin();
+      // 4. Delete: Admin OR Student Owner
+      allow delete: if isAdmin() || (isSignedIn() && resource.data.studentId == request.auth.uid);
+
+      // 5. Followups Subcollection (Rangkaian Diskusi Lanjutan)
+      match /followups/{followupId} {
+        allow read: if isAdmin() ||
+          (isSignedIn() && get(/databases/$(database)/documents/consultations/$(consultationId)).data.studentId == request.auth.uid) ||
+          (get(/databases/$(database)/documents/consultations/$(consultationId)).data.isPublished == true);
+
+        allow create: if (isSignedIn() &&
+          request.resource.data.studentId == request.auth.uid &&
+          request.resource.data.studentId == get(/databases/$(database)/documents/consultations/$(consultationId)).data.studentId &&
+          request.resource.data.content is string &&
+          request.resource.data.content.size() >= 5 &&
+          request.resource.data.content.size() <= 5000) || isAdmin();
+
+        allow update: if isAdmin();
+
+        allow delete: if isAdmin() || (isSignedIn() && get(/databases/$(database)/documents/consultations/$(consultationId)).data.studentId == request.auth.uid);
+      }
     }
 
     // ARTICLE COMMENTS (KOMENTAR PEMBACA ARTIKEL)
@@ -123,10 +141,9 @@ service cloud.firestore {
       // 1. Read: Admin can read all comments; Public can only read approved comments
       allow read: if isAdmin() || resource.data.status == 'approved';
 
-      // 2. Create: Anyone can submit a comment, but:
-      //    - status MUST be 'pending' (cannot self-approve)
-      //    - authorName, content, articleId must be non-empty and bounded
-      allow create: if request.resource.data.status == 'pending' &&
+      // 2. Create: User comment (status == 'pending') OR Admin reply (isAdmin() with status == 'approved')
+      allow create: if (
+        request.resource.data.status == 'pending' &&
         request.resource.data.authorName is string &&
         request.resource.data.authorName.size() >= 2 &&
         request.resource.data.authorName.size() <= 100 &&
@@ -135,10 +152,17 @@ service cloud.firestore {
         request.resource.data.content.size() <= 1000 &&
         request.resource.data.articleId is string &&
         request.resource.data.articleId.size() > 0 &&
-        request.resource.data.articleId.size() <= 128;
+        request.resource.data.articleId.size() <= 128
+      ) || isAdmin();
 
-      // 3. Update & Delete: Admin only (for moderating status or deleting comments)
-      allow update, delete: if isAdmin();
+      // 3. Update: Admin only
+      allow update: if isAdmin();
+
+      // 4. Delete: Admin OR comment author OR parent comment author
+      allow delete: if isAdmin() ||
+        (isSignedIn() && 'userId' in resource.data && resource.data.userId == request.auth.uid) ||
+        (isSignedIn() && 'parentCommentId' in resource.data && resource.data.parentCommentId != null && 
+         get(/databases/$(database)/documents/articleComments/$(resource.data.parentCommentId)).data.userId == request.auth.uid);
     }
 
     // EMAIL NOTIFICATIONS & AUDIT LOGS

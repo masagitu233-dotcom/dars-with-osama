@@ -214,6 +214,19 @@ export interface Consultation {
   updatedAt: string;
 }
 
+export interface ConsultationFollowup {
+  id: string;
+  consultationId: string;
+  studentId: string;
+  studentName?: string;
+  content: string;
+  replyContent?: string;
+  repliedAt?: string;
+  repliedBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ArticleComment {
   id: string;
   articleId: string;
@@ -225,6 +238,9 @@ export interface ArticleComment {
   userId?: string;
   moderatedAt?: string;
   moderatedBy?: string;
+  parentCommentId?: string | null;
+  isAdminReply?: boolean;
+  replyToAuthorName?: string;
 }
 
 export interface InstructorProfileImage {

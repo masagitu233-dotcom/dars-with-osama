@@ -18,13 +18,18 @@ import {
   ArrowLeft,
   ShieldAlert,
   Calendar,
-  UserCheck
+  UserCheck,
+  Trash2,
+  CornerDownRight
 } from 'lucide-react';
-import { Consultation } from '../../types';
+import { Consultation, ConsultationFollowup } from '../../types';
 import {
   createConsultation,
   getStudentConsultations,
-  getConsultationById
+  getConsultationById,
+  deleteConsultation,
+  createConsultationFollowup,
+  getConsultationFollowups
 } from '../../firebase/services';
 import { getWhatsAppConsultationUrl } from '../../config/whatsappConfig';
 import { autoWrapArabicText } from '../../utils/arabicFontHelper';
@@ -33,6 +38,7 @@ import { ShareQAModal } from './ShareQAModal';
 import { ReadingFontControls, useReadingFontSize } from '../common/ReadingFontControls';
 import { validateWhatsAppNumber } from '../../utils/qaHelper';
 import { QAReadingViewer } from './QAReadingViewer';
+import { ConfirmModal } from '../common/ConfirmModal';
 
 interface StudentConsultationViewProps {
   onNavigateToPublicQA?: () => void;
@@ -70,6 +76,86 @@ export const StudentConsultationView: React.FC<StudentConsultationViewProps> = (
   const [shareTab, setShareTab] = useState<'share' | 'card'>('share');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const fontControl = useReadingFontSize();
+
+  // User deletion state
+  const [consultationToDelete, setConsultationToDelete] = useState<Consultation | null>(null);
+  const [deleting, setDeleting] = useState<boolean>(false);
+
+  // Followups thread state
+  const [followups, setFollowups] = useState<ConsultationFollowup[]>([]);
+  const [followupsLoading, setFollowupsLoading] = useState<boolean>(false);
+  const [followupInput, setFollowupInput] = useState<string>('');
+  const [submittingFollowup, setSubmittingFollowup] = useState<boolean>(false);
+  const [followupSuccess, setFollowupSuccess] = useState<string>('');
+  const [followupError, setFollowupError] = useState<string>('');
+
+  const loadFollowups = async (cId: string) => {
+    setFollowupsLoading(true);
+    try {
+      const list = await getConsultationFollowups(cId);
+      setFollowups(list);
+    } catch (err) {
+      console.warn('Error loading consultation followups:', err);
+    } finally {
+      setFollowupsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedReadingConsultation?.id) {
+      loadFollowups(selectedReadingConsultation.id);
+    } else {
+      setFollowups([]);
+      setFollowupInput('');
+      setFollowupSuccess('');
+      setFollowupError('');
+    }
+  }, [selectedReadingConsultation?.id]);
+
+  const handleConfirmDeleteUserConsultation = async () => {
+    if (!consultationToDelete || !user) return;
+    setDeleting(true);
+    try {
+      await deleteConsultation(consultationToDelete.id, user.uid, userProfile?.role === 'admin');
+      showToast('Pertanyaan beserta seluruh rangkaian diskusi berhasil dihapus.');
+      setConsultations((prev) => prev.filter((c) => c.id !== consultationToDelete.id));
+      if (selectedReadingConsultation?.id === consultationToDelete.id) {
+        handleCloseReadingView();
+      }
+      setConsultationToDelete(null);
+    } catch (err: any) {
+      showToast(err?.message || 'Gagal menghapus pertanyaan.');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleSendFollowup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedReadingConsultation || !user) return;
+    if (!followupInput.trim() || followupInput.trim().length < 5) {
+      setFollowupError('Isi pertanyaan lanjutan minimal 5 karakter.');
+      return;
+    }
+
+    setSubmittingFollowup(true);
+    setFollowupError('');
+    setFollowupSuccess('');
+
+    try {
+      await createConsultationFollowup({
+        consultationId: selectedReadingConsultation.id,
+        content: followupInput.trim()
+      });
+      setFollowupInput('');
+      setFollowupSuccess('Pertanyaan lanjutan berhasil terkirim ke rangkaian diskusi ini!');
+      await loadFollowups(selectedReadingConsultation.id);
+    } catch (err: any) {
+      setFollowupError(err?.message || 'Gagal mengirim pertanyaan lanjutan.');
+    } finally {
+      setSubmittingFollowup(false);
+    }
+  };
 
   const handleCopyDirectLink = async (item: Consultation) => {
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://darswithosama.com';
@@ -507,6 +593,126 @@ export const StudentConsultationView: React.FC<StudentConsultationViewProps> = (
                   </section>
                 )}
 
+                {/* SECTION: RANGKAIAN DISKUSI LANJUTAN */}
+                <section className="p-4 sm:p-6 rounded-md bg-[#FAF7F0] dark:bg-[#0D2B36] border-2 border-charcoal dark:border-[#4CA7A1] space-y-4 font-sans">
+                  <div className="flex items-center justify-between border-b-2 border-charcoal/15 dark:border-[#4CA7A1]/30 pb-3">
+                    <div className="flex items-center gap-2 text-xs sm:text-sm font-extrabold font-serif text-[#123D32] dark:text-[#CEFEF1]">
+                      <CornerDownRight className="w-4.5 h-4.5 text-[#123D32] dark:text-[#4CA7A1]" />
+                      <span>Rangkaian Diskusi Lanjutan ({followups.length})</span>
+                    </div>
+                    {followupsLoading && (
+                      <span className="text-[11px] text-slate-500 dark:text-[#A6D6C9] font-bold animate-pulse">
+                        Memuat diskusi...
+                      </span>
+                    )}
+                  </div>
+
+                  {followups.length > 0 && (
+                    <div className="space-y-4">
+                      {followups.map((f, idx) => (
+                        <div
+                          key={f.id}
+                          className="p-4 rounded-md bg-white dark:bg-[#16263D] border-2 border-charcoal dark:border-[#34465D] space-y-3 shadow-2xs"
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500 dark:text-[#A6D6C9] font-bold pb-2 border-b border-slate-200 dark:border-slate-700/60">
+                            <span className="text-[#123D32] dark:text-[#CEFEF1]">
+                              #{idx + 1} Pertanyaan Lanjutan ({f.studentName || 'Penanya'})
+                            </span>
+                            <span>
+                              {new Date(f.createdAt).toLocaleDateString('id-ID', {
+                                day: 'numeric',
+                                month: 'short',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                          </div>
+
+                          <p className="text-xs sm:text-sm text-[#171717] dark:text-[#CEFEF1] leading-relaxed whitespace-pre-line font-sans">
+                            {f.content}
+                          </p>
+
+                          {/* Admin Reply to Followup if present */}
+                          {f.replyContent ? (
+                            <div className="p-3.5 rounded-md bg-[#FAF7F0] dark:bg-[#0D2B36] border-2 border-charcoal dark:border-[#4CA7A1] border-l-4 border-l-[#123D32] space-y-1.5 mt-2">
+                              <div className="flex items-center justify-between gap-2 text-[11px] font-extrabold text-[#123D32] dark:text-[#4CA7A1]">
+                                <span className="flex items-center gap-1.5">
+                                  <ShieldCheck className="w-3.5 h-3.5" />
+                                  <span>Jawaban Ustaz / Admin:</span>
+                                </span>
+                                {f.repliedAt && (
+                                  <span className="font-normal text-slate-500 dark:text-[#A6D6C9]">
+                                    {new Date(f.repliedAt).toLocaleDateString('id-ID', {
+                                      day: 'numeric',
+                                      month: 'short',
+                                      year: 'numeric'
+                                    })}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs text-[#171717] dark:text-[#CEFEF1] leading-relaxed whitespace-pre-line font-sans">
+                                {f.replyContent}
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="p-2.5 rounded bg-amber-50 dark:bg-[#0D2B36] border border-amber-300 dark:border-amber-600/50 text-amber-800 dark:text-amber-400 text-[11px] font-extrabold flex items-center gap-1.5">
+                              <Clock className="w-3.5 h-3.5 animate-pulse shrink-0" />
+                              <span>Menunggu Balasan Ustaz / Admin untuk pertanyaan lanjutan ini</span>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Input Form for Owner of Consultation */}
+                  {user && (item.studentId === user.uid || userProfile?.role === 'admin') ? (
+                    <form onSubmit={handleSendFollowup} className="pt-2 space-y-3">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-extrabold uppercase tracking-wider text-charcoal dark:text-offwhite block">
+                          Ajukan Pertanyaan Lanjutan / Lanjutkan Diskusi:
+                        </label>
+                        <textarea
+                          rows={3}
+                          value={followupInput}
+                          onChange={(e) => setFollowupInput(e.target.value)}
+                          placeholder="Tuliskan pertanyaan tambahan atau tanggapan Anda mengenai penjelasan di atas..."
+                          maxLength={5000}
+                          className="nb-input w-full px-3.5 py-2.5 text-xs resize-none leading-relaxed"
+                        />
+                      </div>
+
+                      {followupError && (
+                        <div className="p-2.5 bg-[#C94A4A]/20 border border-[#C94A4A] text-[#171717] dark:text-[#CEFEF1] text-xs font-bold rounded-md flex items-center gap-2">
+                          <AlertCircle className="w-4 h-4 shrink-0 text-[#C94A4A]" />
+                          <span>{followupError}</span>
+                        </div>
+                      )}
+
+                      {followupSuccess && (
+                        <div className="p-2.5 bg-[#0D2B36] border border-[#4CA7A1] text-[#CEFEF1] text-xs font-bold rounded-md flex items-center gap-2">
+                          <CheckCircle2 className="w-4 h-4 shrink-0 text-[#4CA7A1]" />
+                          <span>{followupSuccess}</span>
+                        </div>
+                      )}
+
+                      <div className="flex justify-end">
+                        <button
+                          type="submit"
+                          disabled={submittingFollowup}
+                          className="nb-btn nb-btn-gold px-4 py-2.5 text-xs font-extrabold inline-flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                          <span>
+                            {submittingFollowup ? 'Mengirim Diskusi...' : 'Kirim Pertanyaan Lanjutan'}
+                          </span>
+                        </button>
+                      </div>
+                    </form>
+                  ) : null}
+                </section>
+
                 {/* Bottom Action Footer */}
                 <footer className="pt-4 border-t-2 border-charcoal dark:border-[#34465D] flex flex-col sm:flex-row items-center justify-between gap-3">
                   <button
@@ -784,13 +990,29 @@ export const StudentConsultationView: React.FC<StudentConsultationViewProps> = (
                             )}
                           </span>
 
-                          <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
-                            {new Date(item.createdAt).toLocaleDateString('id-ID', {
-                              day: 'numeric',
-                              month: 'short',
-                              year: 'numeric'
-                            })}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                              {new Date(item.createdAt).toLocaleDateString('id-ID', {
+                                day: 'numeric',
+                                month: 'short',
+                                year: 'numeric'
+                              })}
+                            </span>
+
+                            {item.studentId === user?.uid && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setConsultationToDelete(item);
+                                }}
+                                className="p-1 rounded text-[#C94A4A] dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 border border-red-200 dark:border-red-900 transition cursor-pointer"
+                                title="Hapus pertanyaan ini dari riwayat saya"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
                         </div>
 
                         {/* Original Question Content - Truncated with line-clamp */}
@@ -819,6 +1041,19 @@ export const StudentConsultationView: React.FC<StudentConsultationViewProps> = (
         onClose={() => setShareModalOpen(false)}
         consultation={shareItem}
         initialTab={shareTab}
+      />
+
+      {/* Confirmation Modal for Student Deleting Own Question */}
+      <ConfirmModal
+        isOpen={Boolean(consultationToDelete)}
+        onClose={() => setConsultationToDelete(null)}
+        onConfirm={handleConfirmDeleteUserConsultation}
+        title="Hapus Pertanyaan Konsultasi Saya"
+        itemName={consultationToDelete?.title}
+        message="Apakah Anda yakin ingin menghapus pertanyaan ini secara permanen dari riwayat Anda? Seluruh balasan dan rangkaian diskusi lanjutan terkait juga akan terhapus secara permanen dari Cloud Firestore."
+        confirmText="Hapus Permanen"
+        isDangerous={true}
+        loading={deleting}
       />
     </div>
   );

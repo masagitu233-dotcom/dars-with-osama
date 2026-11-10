@@ -4931,6 +4931,60 @@ test('Case 102: Tata Letak Vertikal Konsultasi, Card Riwayat Ringkas, Hak Akses 
   );
 });
 
+test('createConsultation payload builder omits whatsappNumber key when empty and includes it when filled', () => {
+  function buildConsultationPayload(data: {
+    title: string;
+    content: string;
+    category: 'learning' | 'private';
+    whatsappNumber?: string;
+  }) {
+    const payload: Record<string, any> = {
+      title: data.title.trim(),
+      content: data.content.trim(),
+      category: data.category,
+      status: 'pending',
+      isPublished: false
+    };
+
+    const cleanWa = data.whatsappNumber ? data.whatsappNumber.trim() : '';
+    if (cleanWa) {
+      payload.whatsappNumber = cleanWa;
+    }
+
+    return payload;
+  }
+
+  // 1. When empty or spaces: whatsappNumber key MUST NOT exist in payload
+  const emptyPayload = buildConsultationPayload({
+    title: 'Pertanyaan Fiqih',
+    content: 'Bagaimana hukum...',
+    category: 'learning',
+    whatsappNumber: '   '
+  });
+  assert.strictEqual('whatsappNumber' in emptyPayload, false);
+  assert.strictEqual(emptyPayload.whatsappNumber, undefined);
+
+  // 2. When undefined: whatsappNumber key MUST NOT exist in payload
+  const undefinedPayload = buildConsultationPayload({
+    title: 'Pertanyaan Fiqih',
+    content: 'Bagaimana hukum...',
+    category: 'learning',
+    whatsappNumber: undefined
+  });
+  assert.strictEqual('whatsappNumber' in undefinedPayload, false);
+
+  // 3. When valid number: whatsappNumber key exists and holds trimmed value
+  const validPayload = buildConsultationPayload({
+    title: 'Pertanyaan Fiqih',
+    content: 'Bagaimana hukum...',
+    category: 'learning',
+    whatsappNumber: '  081234567890  '
+  });
+  assert.strictEqual('whatsappNumber' in validPayload, true);
+  assert.strictEqual(validPayload.whatsappNumber, '081234567890');
+});
+
+
 
 
 
