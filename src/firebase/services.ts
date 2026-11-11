@@ -2796,11 +2796,23 @@ export async function getStudentConsultations(studentId: string): Promise<Consul
 export async function getConsultationById(
   consultationId: string,
   currentUserId?: string,
-  isAdminUser = false
+  isAdminUser = false,
+  forceServer = false
 ): Promise<Consultation | null> {
+  if (!consultationId) return null;
+
   try {
     const docRef = doc(db, 'consultations', consultationId);
-    const snap = await getDoc(docRef);
+    let snap;
+    if (forceServer) {
+      try {
+        snap = await getDocFromServer(docRef);
+      } catch {
+        snap = await getDoc(docRef);
+      }
+    } else {
+      snap = await getDoc(docRef);
+    }
 
     if (snap.exists()) {
       const data = { id: snap.id, ...snap.data() } as Consultation;

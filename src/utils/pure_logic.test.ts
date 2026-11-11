@@ -4984,6 +4984,29 @@ test('createConsultation payload builder omits whatsappNumber key when empty and
   assert.strictEqual(validPayload.whatsappNumber, '081234567890');
 });
 
+test('Case 104: Audit dan verifikasi parseUrlToRouteState untuk deep link Instagram /tanya-jawab/:id dan /qa/:id', async () => {
+  const { parseUrlToRouteState, buildUrlFromRouteState } = await import('./navigationHistory.js');
+
+  // Test 1: Path /tanya-jawab/qa-10nov-2026
+  const routeTJ = parseUrlToRouteState('/tanya-jawab/qa-10nov-2026', '');
+  assert.strictEqual(routeTJ.view, 'public-qa');
+  assert.strictEqual(routeTJ.qaId, 'qa-10nov-2026');
+
+  // Test 2: Path /qa/qa-10nov-2026?fbclid=IwAR123456
+  const routeQA = parseUrlToRouteState('/qa/qa-10nov-2026', '?fbclid=IwAR123456');
+  assert.strictEqual(routeQA.view, 'public-qa');
+  assert.strictEqual(routeQA.qaId, 'qa-10nov-2026');
+
+  // Test 3: Path /?view=public-qa&qaId=qa-10nov-2026&igshid=xyz
+  const routeQuery = parseUrlToRouteState('/', '?view=public-qa&qaId=qa-10nov-2026&igshid=xyz');
+  assert.strictEqual(routeQuery.view, 'public-qa');
+  assert.strictEqual(routeQuery.qaId, 'qa-10nov-2026');
+
+  // Test 4: Re-building URL for QA deep link
+  const url = buildUrlFromRouteState({ view: 'public-qa', qaId: 'qa-10nov-2026' });
+  assert.strictEqual(url, '/qa/qa-10nov-2026');
+});
+
 
 
 

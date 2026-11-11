@@ -13,7 +13,7 @@ import {
   Check
 } from 'lucide-react';
 import { Consultation } from '../../types';
-import { getPublishedPublicQA } from '../../firebase/services';
+import { getPublishedPublicQA, getConsultationById } from '../../firebase/services';
 import { classifyFirestoreError } from '../../firebase/config';
 import { useAuth } from '../../context/AuthContext';
 import { autoWrapArabicText } from '../../utils/arabicFontHelper';
@@ -59,6 +59,9 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
   const [selectedQaForShare, setSelectedQaForShare] = useState<Consultation | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
+  const [notFoundTargetId, setNotFoundTargetId] = useState<string | null>(null);
+  const [deepLinkLoading, setDeepLinkLoading] = useState<boolean>(false);
+
   const activeQAForSEO = qaList.find(q => q.id === expandedId) || null;
   useQASEO(activeQAForSEO);
 
@@ -88,24 +91,84 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
   };
 
   useEffect(() => {
-    loadPublicQA();
-  }, []);
+    let isCancelled = false;
+
+    const resolveTargetQA = async () => {
+      let targetId = initialQaId || null;
+      if (!targetId && typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search);
+        targetId = urlParams.get('qaId');
+        if (!targetId && (window.location.pathname.startsWith('/qa/') || window.location.pathname.startsWith('/tanya-jawab/'))) {
+          const prefix = window.location.pathname.startsWith('/qa/') ? '/qa/' : '/tanya-jawab/';
+          const raw = window.location.pathname.slice(prefix.length).replace(/\/+$/, '');
+          if (raw) targetId = decodeURIComponent(raw);
+        }
+      }
+
+      setLoading(true);
+      setNotFoundTargetId(null);
+
+      try {
+        const list = await getPublishedPublicQA();
+        if (isCancelled) return;
+        setQaList(list);
+        setQaError(null);
+
+        if (targetId) {
+          const existing = list.find((q) => q.id === targetId);
+          if (existing) {
+            setExpandedId(existing.id);
+            setNotFoundTargetId(null);
+          } else {
+            // Document not in initial list snapshot - fetch directly from Firestore server by exact ID
+            setDeepLinkLoading(true);
+            try {
+              const directDoc = await getConsultationById(targetId, user?.uid, isAdmin, true);
+              if (isCancelled) return;
+              if (directDoc && directDoc.isPublished) {
+                setQaList((prev) => [directDoc, ...prev.filter((q) => q.id !== directDoc.id)]);
+                setExpandedId(directDoc.id);
+                setNotFoundTargetId(null);
+              } else {
+                setNotFoundTargetId(targetId);
+              }
+            } catch (err) {
+              if (isCancelled) return;
+              console.warn('Failed to fetch direct QA document:', err);
+              setNotFoundTargetId(targetId);
+            } finally {
+              if (!isCancelled) setDeepLinkLoading(false);
+            }
+          }
+        }
+      } catch (err) {
+        if (isCancelled) return;
+        console.warn('Error loading public Q&A:', err);
+        const diag = classifyFirestoreError(err);
+        setQaError(diag);
+      } finally {
+        if (!isCancelled) setLoading(false);
+      }
+    };
+
+    resolveTargetQA();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [initialQaId, user?.uid, isAdmin]);
 
   useEffect(() => {
-    if (!initialQaId && typeof window === 'undefined') return;
-    const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-    const targetId = initialQaId || urlParams?.get('qaId');
-
-    if (targetId) {
-      setExpandedId(targetId);
-      setTimeout(() => {
-        const el = document.getElementById(`qa-${targetId}`);
+    if (expandedId && typeof window !== 'undefined') {
+      const timer = setTimeout(() => {
+        const el = document.getElementById(`qa-${expandedId}`);
         if (el) {
           el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
-      }, 500);
+      }, 350);
+      return () => clearTimeout(timer);
     }
-  }, [initialQaId, qaList]);
+  }, [expandedId]);
 
   const handleToggleExpand = (itemId: string) => {
     if (expandedId === itemId) {
@@ -246,6 +309,19 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
           mode="banner"
           hasExistingData={true}
         />
+      )}
+
+      {/* DEEP LINK NOT FOUND ALERT BANNER */}
+      {notFoundTargetId && (
+        <div className="p-4 bg-[#F04438]/15 border-2 border-[#F04438] rounded-lg text-charcoal dark:text-offwhite space-y-2 text-xs">
+          <div className="flex items-center gap-2 font-bold text-[#F04438]">
+            <HelpCircle className="w-4 h-4 shrink-0" />
+            <span>Pertanyaan Tidak Ditemukan</span>
+          </div>
+          <p className="text-xs leading-relaxed">
+            Tautan pertanyaan yang Anda buka (ID: <code className="font-mono bg-black/10 px-1 py-0.5 rounded">{notFoundTargetId}</code>) tidak ditemukan atau mungkin telah dihapus. Di bawah ini adalah daftar seluruh tanya jawab publik yang tersedia.
+          </p>
+        </div>
       )}
 
       {/* QA LIST ACCORDION */}

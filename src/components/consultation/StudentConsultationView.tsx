@@ -159,7 +159,7 @@ export const StudentConsultationView: React.FC<StudentConsultationViewProps> = (
 
   const handleCopyDirectLink = async (item: Consultation) => {
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://darswithosama.com';
-    const directUrl = `${origin}?view=public-qa&qaId=${item.id}`;
+    const directUrl = `${origin}/qa/${encodeURIComponent(item.id)}`;
 
     try {
       await navigator.clipboard.writeText(directUrl);

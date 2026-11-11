@@ -125,8 +125,9 @@ export function parseUrlToRouteState(pathname: string, search: string): DarsRout
     };
   }
 
-  if (cleanPath.startsWith('/qa/')) {
-    const rawQa = cleanPath.slice('/qa/'.length).replace(/\/+$/, '');
+  if (cleanPath.startsWith('/qa/') || cleanPath.startsWith('/tanya-jawab/')) {
+    const prefix = cleanPath.startsWith('/qa/') ? '/qa/' : '/tanya-jawab/';
+    const rawQa = cleanPath.slice(prefix.length).replace(/\/+$/, '');
     const decodedQa = rawQa ? decodeURIComponent(rawQa) : urlQaId;
     return {
       view: 'public-qa',
