@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Search,
   ShieldCheck,
@@ -65,7 +65,7 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
   const activeQAForSEO = qaList.find(q => q.id === expandedId) || null;
   useQASEO(activeQAForSEO);
 
-  const loadPublicQA = async (isManualRetry = false) => {
+  const loadPublicQA = useCallback(async (isManualRetry = false, forceRefresh = false) => {
     if (isManualRetry) {
       if (!canAttemptRetry(lastFetchTimestamp, DEFAULT_RETRY_COOLDOWN_SECONDS)) {
         return;
@@ -77,7 +77,7 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
     setLastFetchTimestamp(Date.now());
 
     try {
-      const list = await getPublishedPublicQA();
+      const list = await getPublishedPublicQA(forceRefresh);
       setQaList(list);
       setQaError(null);
     } catch (err) {
@@ -88,75 +88,85 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
       setLoading(false);
       setIsRetrying(false);
     }
-  };
+  }, [lastFetchTimestamp]);
 
+  // Initial list fetch on mount
   useEffect(() => {
-    let isCancelled = false;
+    loadPublicQA(false, false);
+  }, []);
 
-    const resolveTargetQA = async () => {
-      let targetId = initialQaId || null;
-      if (!targetId && typeof window !== 'undefined') {
-        const urlParams = new URLSearchParams(window.location.search);
-        targetId = urlParams.get('qaId');
-        if (!targetId && (window.location.pathname.startsWith('/qa/') || window.location.pathname.startsWith('/tanya-jawab/'))) {
-          const prefix = window.location.pathname.startsWith('/qa/') ? '/qa/' : '/tanya-jawab/';
-          const raw = window.location.pathname.slice(prefix.length).replace(/\/+$/, '');
-          if (raw) targetId = decodeURIComponent(raw);
-        }
-      }
+  // When user or admin auth state resolves or changes, refresh list with authenticated permissions
+  useEffect(() => {
+    if (user) {
+      loadPublicQA(false, true);
+    }
+  }, [user?.uid, isAdmin]);
 
-      setLoading(true);
+  // Helper to resolve target deep link ID from props or browser URL
+  const getDeepLinkId = useCallback((): string | null => {
+    if (initialQaId) return initialQaId;
+    if (typeof window === 'undefined') return null;
+    const urlParams = new URLSearchParams(window.location.search);
+    const qId = urlParams.get('qaId');
+    if (qId) return qId;
+    const path = window.location.pathname;
+    if (path.startsWith('/qa/') || path.startsWith('/tanya-jawab/')) {
+      const prefix = path.startsWith('/qa/') ? '/qa/' : '/tanya-jawab/';
+      const raw = path.slice(prefix.length).replace(/\/+$/, '');
+      if (raw) return decodeURIComponent(raw);
+    }
+    return null;
+  }, [initialQaId]);
+
+  // Separate, decoupled deep-link effect
+  useEffect(() => {
+    const targetId = getDeepLinkId();
+    if (!targetId) {
       setNotFoundTargetId(null);
+      return;
+    }
 
-      try {
-        const list = await getPublishedPublicQA();
+    // A. Check if already present in current qaList
+    const existing = qaList.find((q) => q.id === targetId);
+    if (existing) {
+      setExpandedId(existing.id);
+      setNotFoundTargetId(null);
+      return;
+    }
+
+    // B. Wait until main list finishes initial loading before single doc fallback
+    if (loading) return;
+
+    // C. Document not present in initial list -> fetch directly by ID from Firestore
+    let isCancelled = false;
+    setDeepLinkLoading(true);
+
+    getConsultationById(targetId, user?.uid, isAdmin, true)
+      .then((directDoc) => {
         if (isCancelled) return;
-        setQaList(list);
-        setQaError(null);
-
-        if (targetId) {
-          const existing = list.find((q) => q.id === targetId);
-          if (existing) {
-            setExpandedId(existing.id);
-            setNotFoundTargetId(null);
-          } else {
-            // Document not in initial list snapshot - fetch directly from Firestore server by exact ID
-            setDeepLinkLoading(true);
-            try {
-              const directDoc = await getConsultationById(targetId, user?.uid, isAdmin, true);
-              if (isCancelled) return;
-              if (directDoc && directDoc.isPublished) {
-                setQaList((prev) => [directDoc, ...prev.filter((q) => q.id !== directDoc.id)]);
-                setExpandedId(directDoc.id);
-                setNotFoundTargetId(null);
-              } else {
-                setNotFoundTargetId(targetId);
-              }
-            } catch (err) {
-              if (isCancelled) return;
-              console.warn('Failed to fetch direct QA document:', err);
-              setNotFoundTargetId(targetId);
-            } finally {
-              if (!isCancelled) setDeepLinkLoading(false);
-            }
-          }
+        if (directDoc && directDoc.isPublished) {
+          setQaList((prev) => [directDoc, ...prev.filter((q) => q.id !== directDoc.id)]);
+          setExpandedId(directDoc.id);
+          setNotFoundTargetId(null);
+        } else {
+          setNotFoundTargetId(targetId);
+          setExpandedId(null);
         }
-      } catch (err) {
+      })
+      .catch((err) => {
         if (isCancelled) return;
-        console.warn('Error loading public Q&A:', err);
-        const diag = classifyFirestoreError(err);
-        setQaError(diag);
-      } finally {
-        if (!isCancelled) setLoading(false);
-      }
-    };
-
-    resolveTargetQA();
+        console.warn('Failed to fetch direct QA document:', err);
+        setNotFoundTargetId(targetId);
+        setExpandedId(null);
+      })
+      .finally(() => {
+        if (!isCancelled) setDeepLinkLoading(false);
+      });
 
     return () => {
       isCancelled = true;
     };
-  }, [initialQaId, user?.uid, isAdmin]);
+  }, [initialQaId, qaList, loading, user?.uid, isAdmin, getDeepLinkId]);
 
   useEffect(() => {
     if (expandedId && typeof window !== 'undefined') {

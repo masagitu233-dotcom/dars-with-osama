@@ -2737,6 +2737,33 @@ export async function seedDefaultBlogPostsIfEmpty(): Promise<BlogPost[]> {
 // CONSULTATION SERVICES (Ruang Konsultasi)
 // ==========================================
 
+export const KNOWN_PUBLIC_QA_IDS_STORAGE_KEY = 'dars_known_public_qa_ids_v1';
+
+export function getKnownPublicQAIds(): string[] {
+  if (typeof window === 'undefined' || !window.localStorage) return [];
+  try {
+    const raw = localStorage.getItem(KNOWN_PUBLIC_QA_IDS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+export function registerKnownPublicQAId(id: string): void {
+  if (typeof window === 'undefined' || !window.localStorage || !id) return;
+  try {
+    const existing = new Set(getKnownPublicQAIds());
+    if (!existing.has(id)) {
+      existing.add(id);
+      localStorage.setItem(KNOWN_PUBLIC_QA_IDS_STORAGE_KEY, JSON.stringify(Array.from(existing)));
+    }
+  } catch (err) {
+    console.warn('[registerKnownPublicQAId] notice writing storage:', err);
+  }
+}
+
 export async function createConsultation(data: {
   title: string;
   content: string;
@@ -2819,6 +2846,7 @@ export async function getConsultationById(
 
       // Public access if published
       if (data.isPublished) {
+        registerKnownPublicQAId(data.id);
         return sanitizeConsultationForPublic(data);
       }
 
@@ -2932,9 +2960,81 @@ export async function getPublishedPublicQA(forceRefresh = false): Promise<Consul
     list.sort((a, b) => new Date(b.publishedAt || b.createdAt).getTime() - new Date(a.publishedAt || a.createdAt).getTime());
     publicQACache = { data: list, timestamp: now };
     recordFeatureDataSource('consultations', snapshot.metadata?.fromCache ? 'memory-cache' : 'firestore-server');
+    for (const item of list) {
+      registerKnownPublicQAId(item.id);
+    }
     return list;
   } catch (error) {
     logFirestoreDiagnostic({ operation: 'getPublishedPublicQA', collection: 'consultations' }, error);
+
+    // 1. If admin is currently logged in, fetch live documents via admin service and filter published ones
+    try {
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        const adminList = await getAllConsultationsForAdmin();
+        const published = adminList
+          .filter(c => c.isPublished)
+          .map(c => sanitizeConsultationForPublic(c))
+          .sort((a, b) => new Date(b.publishedAt || b.createdAt).getTime() - new Date(a.publishedAt || a.createdAt).getTime());
+        if (published.length > 0) {
+          publicQACache = { data: published, timestamp: now };
+          recordFeatureDataSource('consultations', 'firestore-server', 'Admin live fetch');
+          for (const item of published) {
+            registerKnownPublicQAId(item.id);
+          }
+          return published;
+        }
+      }
+    } catch {
+      // Continue to next recovery strategy
+    }
+
+    // 2. Fetch known published Q&A documents directly by ID from Firestore (single doc gets succeed unauthenticated!)
+    try {
+      const knownIds = Array.from(new Set([
+        ...PRODUCTION_CONSULTATIONS.filter(c => c.isPublished).map(c => c.id),
+        ...getKnownPublicQAIds()
+      ]));
+
+      const docSnaps = await Promise.all(
+        knownIds.map(async (id) => {
+          try {
+            return await getDoc(doc(db, 'consultations', id));
+          } catch {
+            return null;
+          }
+        })
+      );
+
+      const liveMap = new Map<string, Consultation>();
+      for (const snap of docSnaps) {
+        if (snap && snap.exists()) {
+          const d = { id: snap.id, ...snap.data() } as Consultation;
+          if (d.isPublished) {
+            liveMap.set(d.id, sanitizeConsultationForPublic(d));
+            registerKnownPublicQAId(d.id);
+          }
+        }
+      }
+
+      // Merge any fallback items whose IDs were not yet in Firestore
+      for (const fb of fallbackQA) {
+        if (!liveMap.has(fb.id)) {
+          liveMap.set(fb.id, fb);
+        }
+      }
+
+      const mergedList = Array.from(liveMap.values());
+      if (mergedList.length > 0) {
+        mergedList.sort((a, b) => new Date(b.publishedAt || b.createdAt).getTime() - new Date(a.publishedAt || a.createdAt).getTime());
+        publicQACache = { data: mergedList, timestamp: now };
+        recordFeatureDataSource('consultations', 'firestore-server', 'Direct doc resolution');
+        return mergedList;
+      }
+    } catch {
+      // Continue to in-memory / static fallback
+    }
+
     if (publicQACache && Array.isArray(publicQACache.data) && publicQACache.data.length > 0) {
       recordFeatureDataSource('consultations', 'memory-cache', 'Retained in-memory cache');
       return publicQACache.data;

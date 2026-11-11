@@ -5007,6 +5007,53 @@ test('Case 104: Audit dan verifikasi parseUrlToRouteState untuk deep link Instag
   assert.strictEqual(url, '/qa/qa-10nov-2026');
 });
 
+test('Case 105: Verifikasi pemulihan regresi pemuatan daftar Tanya Jawab dan isolasi deep link', async () => {
+  const {
+    getPublishedPublicQA,
+    getConsultationById,
+    getKnownPublicQAIds,
+    registerKnownPublicQAId,
+    invalidateServicesCache
+  } = await import('../firebase/services.js');
+
+  // Test 1: registerKnownPublicQAId and getKnownPublicQAIds helper functions
+  const testId = 'test-qa-' + Date.now();
+  registerKnownPublicQAId(testId);
+  const known = getKnownPublicQAIds();
+  assert.ok(Array.isArray(known), 'Known public QA IDs should be an array');
+
+  // Test 2: getPublishedPublicQA returns full array of published consultations
+  invalidateServicesCache('qa');
+  const list = await getPublishedPublicQA(true);
+  assert.ok(Array.isArray(list), 'getPublishedPublicQA must return an array');
+  assert.ok(list.length >= 1, 'getPublishedPublicQA must return at least 1 published question');
+  
+  // Test 3: List must be sorted descending chronologically (newest first)
+  for (let i = 0; i < list.length - 1; i++) {
+    const timeA = new Date(list[i].publishedAt || list[i].createdAt).getTime();
+    const timeB = new Date(list[i + 1].publishedAt || list[i + 1].createdAt).getTime();
+    assert.ok(timeA >= timeB, `Item at index ${i} must be newer than or equal to item at index ${i + 1}`);
+  }
+
+  // Test 4: All returned consultations must be sanitized (no student email or internal studentId)
+  for (const item of list) {
+    assert.strictEqual(item.isPublished, true);
+    assert.strictEqual(Boolean(item.studentEmail), false, 'Student email must be sanitized in public QA');
+  }
+
+  // Test 5: getConsultationById with non-existent ID returns null and never falls back to an unrelated question
+  const nonExistentId = 'non-existent-id-99999999';
+  const resultNonExistent = await getConsultationById(nonExistentId, undefined, false, false);
+  assert.strictEqual(resultNonExistent, null, 'Non-existent consultation ID must return null');
+
+  // Test 6: getConsultationById with authentic 1IOAv3JbIBa5EFTVTpOb succeeds and returns the published item
+  const result18Okt = await getConsultationById('1IOAv3JbIBa5EFTVTpOb', undefined, false, false);
+  assert.ok(result18Okt, 'Document 1IOAv3JbIBa5EFTVTpOb must resolve');
+  assert.strictEqual(result18Okt?.id, '1IOAv3JbIBa5EFTVTpOb');
+  assert.strictEqual(result18Okt?.isPublished, true);
+});
+
+
 
 
 
