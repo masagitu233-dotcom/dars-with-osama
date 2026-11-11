@@ -87,12 +87,23 @@ service cloud.firestore {
 
     // CONSULTATIONS SECURITY RULES (RUANG KONSULTASI)
     match /consultations/{consultationId} {
-      // 1. Read: Admin OR Student Owner OR Public approved Q&A (isPublished == true)
-      allow read: if isAdmin() || 
-        (isSignedIn() && resource.data.studentId == request.auth.uid) || 
-        (resource.data.isPublished == true);
+      // 1. Kueri Koleksi (list):
+      // - Pengunjung publik (anonim & siswa) diizinkan membaca dokumen dengan filter where('isPublished', '==', true)
+      // - Siswa terautentikasi dapat menjalankan kueri where('studentId', '==', request.auth.uid) untuk konsultasi pribadinya
+      // - Admin dapat membaca seluruh kueri konsultasi
+      allow list: if (resource.data.isPublished == true) ||
+        (isSignedIn() && resource.data.studentId == request.auth.uid) ||
+        isAdmin();
 
-      // 2. Create: Authenticated student creating for self with status == 'pending' and isPublished == false
+      // 2. Pembacaan Dokumen Tunggal (get):
+      // - Publik dapat membaca dokumen apa saja yang berstatus isPublished == true
+      // - Siswa pemilik dokumen dapat membaca konsultasi privat miliknya
+      // - Admin dapat membaca dokumen konsultasi apa pun
+      allow get: if (resource.data.isPublished == true) ||
+        (isSignedIn() && resource.data.studentId == request.auth.uid) ||
+        isAdmin();
+
+      // 3. Create: Authenticated student creating for self with status == 'pending' and isPublished == false
       //    Supports optional whatsappNumber (max 50 chars)
       allow create: if isSignedIn() &&
         request.resource.data.studentId == request.auth.uid &&
@@ -103,7 +114,7 @@ service cloud.firestore {
          request.resource.data.whatsappNumber == null || 
          (request.resource.data.whatsappNumber is string && request.resource.data.whatsappNumber.size() <= 50));
 
-      // 3. Update:
+      // 4. Update:
       // - Admin can update, reply, change status, toggle isPublished (including private consultations)
       // - Student can update own consultation without changing category or publishing
       allow update: if isAdmin() || (
@@ -114,14 +125,14 @@ service cloud.firestore {
         request.resource.data.isPublished == false
       );
 
-      // 4. Delete: Admin OR Student Owner
+      // 5. Delete: Admin OR Student Owner
       allow delete: if isAdmin() || (isSignedIn() && resource.data.studentId == request.auth.uid);
 
-      // 5. Followups Subcollection (Rangkaian Diskusi Lanjutan)
+      // 6. Followups Subcollection (Rangkaian Diskusi Lanjutan)
       match /followups/{followupId} {
-        allow read: if isAdmin() ||
+        allow get, list: if (get(/databases/$(database)/documents/consultations/$(consultationId)).data.isPublished == true) ||
           (isSignedIn() && get(/databases/$(database)/documents/consultations/$(consultationId)).data.studentId == request.auth.uid) ||
-          (get(/databases/$(database)/documents/consultations/$(consultationId)).data.isPublished == true);
+          isAdmin();
 
         allow create: if (isSignedIn() &&
           request.resource.data.studentId == request.auth.uid &&
