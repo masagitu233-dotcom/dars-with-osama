@@ -474,13 +474,13 @@ export const SessionView: React.FC<SessionViewProps> = ({
           </div>
         )}
 
-        {/* Sticky Mobile Video Wrapper: sticks directly below AppHeader (--app-header-height) on mobile (< lg), static on desktop (lg:) */}
+        {/* Sticky Mobile Video Wrapper: true edge-to-edge 100% width on mobile (< lg), static on desktop (lg:) */}
         <div
           data-testid="session-video-sticky-wrapper"
-          className={`sticky top-[var(--app-header-height,57px)] z-20 lg:static lg:z-auto -mx-3 px-3 py-2 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0 lg:py-0 bg-white/95 dark:bg-[#0D2B36]/95 lg:bg-transparent dark:lg:bg-transparent backdrop-blur-md lg:backdrop-blur-none border-b-2 border-[#171717] dark:border-[#4CA7A1] lg:border-none shadow-sm lg:shadow-none transition-all duration-300 ${playlistMarginClass} mb-4 lg:mb-6`}
+          className={`sticky top-[var(--app-header-height,58px)] z-20 lg:static lg:z-auto mx-0 px-0 py-0 sm:-mx-6 sm:px-0 lg:mx-0 lg:px-0 lg:py-0 bg-[#0F3D3A] lg:bg-transparent dark:lg:bg-transparent border-none shadow-none transition-all duration-300 ${playlistMarginClass} mb-4 lg:mb-6`}
         >
           {authLoading ? (
-            <div className="w-full aspect-video rounded-lg bg-white dark:bg-[#1F5F63] border-2 border-[#171717] dark:border-[#4CA7A1] flex flex-col items-center justify-center p-6 text-center space-y-3 max-lg:max-h-[min(36dvh,calc(100dvh-var(--app-header-height,57px)-11rem))] max-lg:mx-auto">
+            <div className="w-full aspect-video rounded-none lg:rounded-2xl bg-white dark:bg-[#1F5F63] border-0 lg:border-2 lg:border-[#171717] dark:lg:border-[#4CA7A1] flex flex-col items-center justify-center p-6 text-center space-y-3">
               <div className="w-8 h-8 border-3 border-[#123D32] dark:border-[#4CA7A1] border-t-transparent rounded-full animate-spin" />
               <p className="text-xs text-[#525855] dark:text-[#A6D6C9] font-bold">Memeriksa status akun siswa...</p>
             </div>
@@ -488,7 +488,7 @@ export const SessionView: React.FC<SessionViewProps> = ({
             <YouTubeEmbed
               url={session.youtubeUrl}
               title={session.title}
-              className="max-lg:max-h-[min(36dvh,calc(100dvh-var(--app-header-height,57px)-11rem))] max-lg:mx-auto"
+              seamlessMobile
               isGuest={!user}
               sessionId={session.id}
               courseId={course.id}

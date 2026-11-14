@@ -829,22 +829,22 @@ export const AdminDashboard: React.FC<{
       {/* ========================================================= */}
       {/* MOBILE TOP BAR (Logo acts as Sidebar Toggle) */}
       {/* ========================================================= */}
-      <div className="lg:hidden sticky top-0 z-30 bg-white dark:bg-[#0D2B36] text-charcoal dark:text-[#CEFEF1] border-b-2 border-charcoal dark:border-[#1F5F63] px-4 py-3 flex items-center justify-between gap-3 shadow-[0_3px_0_#292D2B]">
+      <div className="lg:hidden sticky top-0 z-30 bg-white dark:bg-[#0D2B36] text-charcoal dark:text-[#CEFEF1] border-b-2 border-charcoal dark:border-[#1F5F63] px-2.5 md:px-4 h-14 md:h-16 flex items-center justify-between gap-2 md:gap-3 shadow-[0_2px_0_#292D2B] md:shadow-[0_3px_0_#292D2B]">
         <button
           type="button"
           onClick={() => setSidebarOpen(!sidebarOpen)}
           aria-label={sidebarOpen ? "Tutup Sidebar Admin" : "Buka Sidebar Admin"}
           title={sidebarOpen ? "Tutup Sidebar Admin" : "Buka Sidebar Admin"}
-          className="flex items-center gap-2.5 p-1 -ml-1 rounded-md border-2 border-transparent hover:border-charcoal dark:hover:border-[#4CA7A1] hover:bg-[#EFE5D2] dark:hover:bg-[#1F5F63] active:translate-x-[1px] active:translate-y-[1px] transition cursor-pointer text-left group"
+          className="flex items-center gap-1.5 md:gap-2.5 py-0.5 px-1 md:p-1 -ml-0.5 md:-ml-1 rounded-md border-2 border-transparent hover:border-charcoal dark:hover:border-[#4CA7A1] hover:bg-[#EFE5D2] dark:hover:bg-[#1F5F63] active:translate-x-[1px] active:translate-y-[1px] transition cursor-pointer text-left group"
         >
-          <div className="w-8 h-8 rounded-md border-2 border-charcoal dark:border-[#4CA7A1] shadow-[2px_2px_0px_#292D2B] bg-[#123D32] dark:bg-[#1F5F63] flex items-center justify-center transition-transform group-hover:scale-105 shrink-0">
-            <LogoSymbol className="w-7 h-7" />
+          <div className="w-7 h-7 md:w-8 md:h-8 rounded-md border-[1.5px] md:border-2 border-charcoal dark:border-[#4CA7A1] shadow-[1.5px_1.5px_0px_#292D2B] md:shadow-[2px_2px_0px_#292D2B] bg-[#123D32] dark:bg-[#1F5F63] flex items-center justify-center transition-transform group-hover:scale-105 shrink-0">
+            <LogoSymbol className="w-6 h-6 md:w-7 md:h-7" />
           </div>
           <div className="flex flex-col">
-            <span className="font-serif-brand font-bold text-sm tracking-tight text-charcoal dark:text-[#CEFEF1] group-hover:text-[#237A70] dark:group-hover:text-[#4CA7A1] transition-colors">
+            <span className="font-serif-brand font-bold text-xs md:text-sm leading-none tracking-tight text-charcoal dark:text-[#CEFEF1] group-hover:text-[#237A70] dark:group-hover:text-[#4CA7A1] transition-colors">
               Dars with Osama
             </span>
-            <span className="text-[9px] text-[#237A70] dark:text-[#A6D6C9] font-extrabold tracking-wider uppercase">
+            <span className="text-[7px] md:text-[9px] leading-none text-[#237A70] dark:text-[#A6D6C9] font-extrabold tracking-wider uppercase mt-0.5 md:mt-1">
               Admin Panel {sidebarOpen ? '• Tutup' : '• Menu'}
             </span>
           </div>

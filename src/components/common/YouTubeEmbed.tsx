@@ -8,6 +8,7 @@ interface YouTubeEmbedProps {
   isGuest?: boolean;
   sessionId?: string;
   courseId?: string;
+  seamlessMobile?: boolean;
   onOpenLogin?: () => void;
   onOpenRegister?: () => void;
 }
@@ -33,6 +34,7 @@ export const YouTubeEmbed: React.FC<YouTubeEmbedProps> = ({
   isGuest = false,
   sessionId,
   courseId,
+  seamlessMobile = false,
   onOpenLogin,
   onOpenRegister
 }) => {
@@ -209,9 +211,17 @@ export const YouTubeEmbed: React.FC<YouTubeEmbedProps> = ({
     };
   }, [videoId, isGuest, isExpired]);
 
+  const fallbackFrameClasses = seamlessMobile
+    ? 'rounded-none lg:rounded-2xl border-0 lg:border lg:border-stone-200 dark:lg:border-stone-800'
+    : 'rounded-2xl border border-stone-200 dark:border-stone-800';
+
+  const playerFrameClasses = seamlessMobile
+    ? 'rounded-none lg:rounded-2xl shadow-none lg:shadow-lg border-0 lg:border-2 lg:border-[#171717] dark:lg:border-[#4CA7A1]'
+    : 'rounded-2xl shadow-lg border-2 border-[#171717] dark:border-[#4CA7A1]';
+
   if (!url) {
     return (
-      <div className={`bg-stone-100 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 aspect-video rounded-2xl flex flex-col items-center justify-center text-stone-500 dark:text-stone-400 p-6 ${className}`}>
+      <div className={`bg-stone-100 dark:bg-stone-900 aspect-video flex flex-col items-center justify-center text-stone-500 dark:text-stone-400 p-6 ${fallbackFrameClasses} ${className}`}>
         <Video className="w-12 h-12 mb-3 text-stone-400 dark:text-stone-600" />
         <p className="text-sm font-medium">Belum ada video rekaman untuk sesi ini</p>
       </div>
@@ -220,7 +230,7 @@ export const YouTubeEmbed: React.FC<YouTubeEmbedProps> = ({
 
   if (!videoId) {
     return (
-      <div className={`bg-stone-100 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 aspect-video rounded-2xl flex flex-col items-center justify-center text-stone-800 dark:text-stone-200 p-6 ${className}`}>
+      <div className={`bg-stone-100 dark:bg-stone-900 aspect-video flex flex-col items-center justify-center text-stone-800 dark:text-stone-200 p-6 ${fallbackFrameClasses} ${className}`}>
         <Video className="w-12 h-12 mb-3 text-emerald-600 dark:text-emerald-400" />
         <p className="text-base font-semibold mb-2">Tautan Video Eksternal</p>
         <a
@@ -239,7 +249,7 @@ export const YouTubeEmbed: React.FC<YouTubeEmbedProps> = ({
   const remainingSeconds = Math.max(0, GUEST_MAX_PREVIEW_SECONDS - playedSeconds);
 
   return (
-    <div className={`relative w-full aspect-video rounded-2xl overflow-hidden bg-black shadow-lg border-2 border-[#171717] dark:border-[#4CA7A1] ${className}`}>
+    <div className={`relative w-full aspect-video overflow-hidden bg-black ${playerFrameClasses} ${className}`}>
       {/* 60s Preview Expired Overlay */}
       {isGuest && isExpired ? (
         <div className="absolute inset-0 z-30 bg-[#123D32] dark:bg-[#0D2B36] text-[#FAF7F0] dark:text-[#CEFEF1] flex flex-col items-center justify-center p-4 sm:p-8 text-center animate-fade-in select-none">
@@ -291,7 +301,7 @@ export const YouTubeEmbed: React.FC<YouTubeEmbedProps> = ({
           <iframe
             ref={iframeRef}
             id={`yt-player-${videoId}`}
-            className="w-full h-full"
+            className="w-full h-full block border-0"
             src={`https://www.youtube-nocookie.com/embed/${videoId}?rel=0&modestbranding=1&enablejsapi=1&origin=${typeof window !== 'undefined' ? window.location.origin : ''}`}
             title={title}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
