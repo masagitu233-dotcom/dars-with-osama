@@ -3,10 +3,8 @@ import {
   ArrowRight,
   Sparkles,
   BookMarked,
-  BookOpen,
   Clock,
   Calendar,
-  ExternalLink,
   HeartHandshake,
   Library,
   MessageSquare,
@@ -21,6 +19,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Category, Course, Enrollment, BlogPost, Consultation, LibraryBook } from '../../types';
 import { HeroSection } from './HeroSection';
 import { CourseCard } from '../courses/CourseCard';
+import { LibraryCard } from '../library/LibraryCard';
 import { MobileCarousel } from '../common/MobileCarousel';
 import { useSmoothScroll } from '../../context/SmoothScrollContext';
 import { useAuth } from '../../context/AuthContext';
@@ -28,8 +27,6 @@ import { getPublishedPublicQA } from '../../firebase/services';
 import { classifyFirestoreError } from '../../firebase/config';
 import { canAttemptRetry, DEFAULT_RETRY_COOLDOWN_SECONDS } from '../../utils/serviceDisruptionHelper';
 import { ResilientGoogleDriveImage } from '../common/ResilientGoogleDriveImage';
-import { getLibraryCoverAspectClass } from '../../utils/libraryHelper';
-import { autoWrapArabicText } from '../../utils/arabicFontHelper';
 import AOS from 'aos';
 
 gsap.registerPlugin(ScrollTrigger);
@@ -211,91 +208,6 @@ const HomeArticleCard: React.FC<{
         </span>
       </div>
     </div>
-  );
-};
-
-// Subcomponent: Individual Library Book Card for Home Page (Always opens Halaman Detail Kitab)
-const HomeLibraryCard: React.FC<{
-  book: LibraryBook;
-  onSelect?: (book: LibraryBook) => void;
-}> = ({ book, onSelect }) => {
-  const aspectClass = getLibraryCoverAspectClass(book.coverAspectRatio);
-  const isExternalDrive = book.sourceType === 'google_drive' && Boolean(book.googleDriveUrl);
-
-  return (
-    <button
-      type="button"
-      onClick={() => onSelect?.(book)}
-      data-card-type="library"
-      data-testid={`home-library-card-${book.id}`}
-      className="nb-card-interactive overflow-hidden flex flex-col justify-between group cursor-pointer h-full w-full text-left bg-white dark:bg-[#0D2B36] border-2 border-[#171717] dark:border-[#4CA7A1] shadow-[4px_4px_0px_#171717] dark:shadow-[4px_4px_0px_#001722]"
-    >
-      {/* Book Cover preserving 3:4 or 9:16 proportion without cropping */}
-      <div className="w-full bg-[#FAF7F0] dark:bg-[#001722] border-b-2 border-[#171717] dark:border-[#4CA7A1] p-2.5 sm:p-3 flex items-center justify-center">
-        <div
-          className={`w-full ${aspectClass} rounded-sm overflow-hidden bg-[#EFE5D2]/70 dark:bg-[#0D2B36] border border-[#171717]/20 dark:border-[#4CA7A1]/30 relative flex items-center justify-center`}
-        >
-          {book.coverImageUrl ? (
-            <ResilientGoogleDriveImage
-              src={book.coverImageUrl}
-              alt={book.title}
-              aspectRatioClass={aspectClass}
-              objectFit="contain"
-              className="w-full h-full bg-[#FAF7F0] dark:bg-[#0D2B36]"
-              imageClassName="w-full h-full object-contain group-hover:scale-[1.02] transition-transform duration-300"
-            />
-          ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center text-[#123D32] dark:text-[#A6D6C9] gap-2">
-              <BookOpen className="w-8 h-8 opacity-60" />
-              <span className="text-[11px] font-bold opacity-75 line-clamp-2">
-                {book.title}
-              </span>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Book Title & Subtle Metadata */}
-      <div className="p-3.5 sm:p-4 space-y-2 flex-1 flex flex-col justify-between bg-white dark:bg-[#0D2B36]">
-        <div className="space-y-1">
-          <h3
-            className="font-serif font-bold text-sm sm:text-base text-[#171717] dark:text-[#CEFEF1] group-hover:text-[#123D32] dark:group-hover:text-[#D6AD52] leading-snug line-clamp-2 transition-colors"
-            dangerouslySetInnerHTML={{ __html: autoWrapArabicText(book.title) }}
-          />
-          {book.titleAr && (
-            <p
-              dir="rtl"
-              className="font-amiri text-sm text-[#123D32] dark:text-[#A6D6C9] font-bold truncate leading-relaxed"
-            >
-              {book.titleAr}
-            </p>
-          )}
-          {book.author && (
-            <p className="text-[11px] font-semibold text-[#525855] dark:text-[#A6D6C9]/85 truncate">
-              {book.author}
-            </p>
-          )}
-        </div>
-
-        <div className="pt-2 border-t border-[#171717]/10 dark:border-[#4CA7A1]/25 flex items-center justify-between gap-2 text-[11px] font-extrabold text-[#123D32] dark:text-[#4CA7A1]">
-          {isExternalDrive ? (
-            <span className="inline-flex items-center gap-1">
-              <ExternalLink className="w-3 h-3 shrink-0" />
-              <span>Google Drive</span>
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1">
-              <Clock className="w-3 h-3 shrink-0" />
-              <span>{book.readingTimeMinutes || 1} min</span>
-            </span>
-          )}
-          <span className="inline-flex items-center gap-1">
-            <span>Detail</span>
-            <ArrowRight className="w-3 h-3 transition-transform group-hover:translate-x-0.5" />
-          </span>
-        </div>
-      </div>
-    </button>
   );
 };
 
@@ -486,15 +398,16 @@ export const HomeView: React.FC<HomeViewProps> = ({
             </div>
 
             <MobileCarousel
-              desktopGridClass="sm:grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 sm:gap-5"
-              mobileItemClassName="w-[66vw] max-w-[240px]"
+              desktopGridClass="sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-5"
+              mobileItemClassName="w-[78vw] max-w-[295px]"
               ariaLabel="Koleksi Library Digital"
               showSwipeHint={true}
             >
-              {publishedLibraryBooks.slice(0, 8).map((book) => (
-                <HomeLibraryCard
+              {publishedLibraryBooks.slice(0, 6).map((book) => (
+                <LibraryCard
                   key={book.id}
                   book={book}
+                  testIdPrefix="home-library-card"
                   onSelect={(selectedBook) => {
                     if (onSelectLibraryBook) {
                       onSelectLibraryBook(selectedBook);

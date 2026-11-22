@@ -5525,6 +5525,66 @@ test('Library Digital Case 4: Routing URL & riwayat navigasi untuk halaman Libra
   );
 });
 
+test('Library Digital Case 5: Fitur bagikan kitab selalu menghasilkan tautan halaman detail (/library/:slug) untuk kitab Google Drive maupun internal', async () => {
+  const {
+    buildLibraryBookShareUrl,
+    buildLibraryBookShareData
+  } = await import('./libraryHelper.js');
+
+  const origin = 'https://darswithosama.com';
+
+  // Kitab Google Drive -> tetap membagikan URL halaman detail kitab, BUKAN tautan Drive langsung
+  const driveBook = {
+    id: 'book-drive-1',
+    slug: 'kitab-usul-fiqih-drive',
+    title: 'Ringkasan Ushul Fiqih',
+    author: 'Osama',
+    sourceType: 'google_drive' as const,
+    googleDriveUrl: 'https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrStUvWxYz12345/view'
+  };
+  const driveShare = buildLibraryBookShareData(driveBook, origin);
+  assert.strictEqual(driveShare.url, 'https://darswithosama.com/library/kitab-usul-fiqih-drive');
+  assert.strictEqual(driveShare.url.includes('drive.google.com'), false);
+  assert.strictEqual(driveShare.url.endsWith('/baca'), false);
+  assert.ok(driveShare.text.includes('Ringkasan Ushul Fiqih'));
+  assert.ok(driveShare.text.includes('Osama'));
+
+  // Kitab internal -> juga membagikan URL halaman detail kitab, BUKAN langsung ke /baca
+  const internalBook = {
+    id: 'book-int-2',
+    slug: 'panduan-adab-penuntut-ilmu',
+    title: 'Panduan Adab Penuntut Ilmu'
+  };
+  const internalShare = buildLibraryBookShareData(internalBook, origin);
+  assert.strictEqual(internalShare.url, 'https://darswithosama.com/library/panduan-adab-penuntut-ilmu');
+  assert.strictEqual(internalShare.url.endsWith('/baca'), false);
+  assert.ok(internalShare.text.includes('Panduan Adab Penuntut Ilmu'));
+
+  // Fallback ke ID bila slug kosong & membersihkan trailing slash pada origin
+  assert.strictEqual(
+    buildLibraryBookShareUrl({ id: 'book-raw-id' }, 'https://darswithosama.com/'),
+    'https://darswithosama.com/library/book-raw-id'
+  );
+});
+
+test('Library Digital Case 6: parseLibraryBookCategories mendukung kategori bebas buatan admin dan kompatibel dengan kitab lama tanpa kategori', async () => {
+  const { parseLibraryBookCategories } = await import('./libraryHelper.js');
+
+  // Kategori tunggal bebas
+  assert.deepStrictEqual(parseLibraryBookCategories('Nahwu'), ['Nahwu']);
+  assert.deepStrictEqual(parseLibraryBookCategories('  Ushul Fiqih  '), ['Ushul Fiqih']);
+  assert.deepStrictEqual(parseLibraryBookCategories('Balaghah & Bayan'), ['Balaghah & Bayan']);
+
+  // Multi-kategori dipisahkan koma
+  assert.deepStrictEqual(parseLibraryBookCategories('Fiqih, Ushul Fiqih, '), ['Fiqih', 'Ushul Fiqih']);
+
+  // Kitab lama / kategori kosong -> array kosong (tidak ada badge kosong atau kategori otomatis)
+  assert.deepStrictEqual(parseLibraryBookCategories(undefined), []);
+  assert.deepStrictEqual(parseLibraryBookCategories(null), []);
+  assert.deepStrictEqual(parseLibraryBookCategories(''), []);
+  assert.deepStrictEqual(parseLibraryBookCategories('   ,  '), []);
+});
+
 
 
 

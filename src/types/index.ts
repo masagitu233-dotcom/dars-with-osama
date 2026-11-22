@@ -334,6 +334,7 @@ export interface LibraryBook {
   title: string;
   titleAr?: string;
   slug: string;
+  category?: string;
   author?: string;
   description?: string;
   coverImageUrl: string;

@@ -84,6 +84,19 @@ export function generateLibraryBookSlug(title: string, customSlug?: string): str
 }
 
 /**
+ * Parses an optional admin-defined category string into clean display labels.
+ * Supports single category ("Fiqih") or comma-separated categories ("Nahwu, Sharaf").
+ * Returns an empty array when unset/blank — never invents fallback categories.
+ */
+export function parseLibraryBookCategories(rawCategory?: string | null): string[] {
+  if (!rawCategory || typeof rawCategory !== 'string') return [];
+  return rawCategory
+    .split(',')
+    .map(item => item.trim())
+    .filter(Boolean);
+}
+
+/**
  * Validates an uploaded cover file's format and size before invoking Firebase Storage upload.
  */
 export function validateLibraryCoverFile(file: {
@@ -438,3 +451,35 @@ export function shouldRecordLibraryVisit(params: {
 export function resolveLibraryCoverUrl(rawUrl: string | null | undefined): string {
   return resolveDisplayImageUrl(rawUrl);
 }
+
+/**
+ * Builds the canonical shareable URL for a Library Digital book.
+ * ALWAYS points to the public Book Detail Page (`/library/:slug`), NEVER directly to Google Drive
+ * or the internal reader (`/baca`), so recipients see the book overview without needing to log in.
+ */
+export function buildLibraryBookShareUrl(
+  book: { id: string; slug?: string },
+  origin = 'https://darswithosama.com'
+): string {
+  const cleanOrigin = (origin || 'https://darswithosama.com').replace(/\/+$/, '');
+  const key = (book.slug || book.id || '').trim();
+  if (!key) return `${cleanOrigin}/library`;
+  return `${cleanOrigin}/library/${encodeURIComponent(key)}`;
+}
+
+/**
+ * Prepares Web Share API payload for sharing a Library Digital book (both Google Drive & internal).
+ */
+export function buildLibraryBookShareData(
+  book: { id: string; slug?: string; title: string; author?: string },
+  origin = 'https://darswithosama.com'
+): { title: string; text: string; url: string } {
+  const url = buildLibraryBookShareUrl(book, origin);
+  const title = (book.title || 'Kitab Library Digital').trim();
+  const author = (book.author || '').trim();
+  const text = author
+    ? `Yuk, baca kitab "${title}" karya ${author} di Library Digital Dars with Osama:`
+    : `Yuk, baca kitab "${title}" di Library Digital Dars with Osama:`;
+  return { title, text, url };
+}
+

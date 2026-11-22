@@ -13,7 +13,10 @@ import {
 import { LibraryBook } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { ResilientGoogleDriveImage } from '../common/ResilientGoogleDriveImage';
-import { getLibraryCoverAspectClass } from '../../utils/libraryHelper';
+import {
+  getLibraryCoverAspectClass,
+  parseLibraryBookCategories
+} from '../../utils/libraryHelper';
 import { autoWrapArabicText } from '../../utils/arabicFontHelper';
 
 interface LibraryBookDetailViewProps {
@@ -32,6 +35,7 @@ export const LibraryBookDetailView: React.FC<LibraryBookDetailViewProps> = ({
 
   const aspectClass = getLibraryCoverAspectClass(book.coverAspectRatio);
   const isExternalDrive = book.sourceType === 'google_drive' && Boolean(book.googleDriveUrl);
+  const categories = parseLibraryBookCategories(book.category);
   const trimmedDescription = (book.description || '').trim();
   const trimmedAuthor = (book.author || '').trim();
 
@@ -150,9 +154,15 @@ export const LibraryBookDetailView: React.FC<LibraryBookDetailViewProps> = ({
                   <span>Library Digital</span>
                 </span>
 
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[#EFE5D2] dark:bg-[#1F5F63] text-[#171717] dark:text-[#CEFEF1] border border-[#171717] dark:border-[#4CA7A1] text-[10px] uppercase tracking-wider">
-                  {isExternalDrive ? 'Dokumen Google Drive' : 'Kitab Baca Internal'}
-                </span>
+                {categories.map((catName, idx) => (
+                  <span
+                    key={idx}
+                    data-testid={`library-detail-category-${idx}`}
+                    className="inline-flex items-center px-2.5 py-1 rounded bg-[#F0BE49] text-[#0F3D3A] border border-[#171717] text-[10px] uppercase tracking-wider shadow-[1.5px_1.5px_0px_#171717]"
+                  >
+                    {catName}
+                  </span>
+                ))}
 
                 {book.status === 'draft' && isAdmin && (
                   <span className="px-2.5 py-1 rounded bg-[#D6AD52] text-[#171717] border border-[#171717] text-[10px] uppercase tracking-wider">

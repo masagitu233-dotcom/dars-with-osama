@@ -311,6 +311,7 @@
         "title": { "type": "string", "maxLength": 300 },
         "titleAr": { "type": "string", "maxLength": 300 },
         "slug": { "type": "string", "maxLength": 200 },
+        "category": { "type": "string", "maxLength": 150 },
         "author": { "type": "string", "maxLength": 200 },
         "description": { "type": "string", "maxLength": 2000 },
         "coverImageUrl": { "type": "string", "maxLength": 300000 },

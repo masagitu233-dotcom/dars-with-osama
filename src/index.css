@@ -287,6 +287,49 @@ div[data-card-type="qa"] {
   box-shadow: 4px 4px 0px #171717 !important;
 }
 
+/* D. Card Library Digital - Wheat Field Sunrise #F0BE49 */
+.library-card,
+.card-library,
+.nb-card-interactive.library-card,
+.nb-card-interactive.card-library,
+div[data-card-type="library"] {
+  background-color: #F0BE49 !important;
+  color: #0F3D3A !important;
+  border-color: #171717;
+  box-shadow: 4px 4px 0px #171717;
+}
+
+.library-card:hover,
+.card-library:hover,
+.nb-card-interactive.library-card:hover,
+.nb-card-interactive.card-library:hover,
+div[data-card-type="library"]:hover {
+  background-color: #F0BE49 !important;
+  border-color: #171717 !important;
+  box-shadow: 6px 6px 0px #171717 !important;
+}
+
+.dark .library-card,
+.dark .card-library,
+.dark .nb-card-interactive.library-card,
+.dark .nb-card-interactive.card-library,
+.dark div[data-card-type="library"] {
+  background-color: #F0BE49 !important;
+  color: #0F3D3A !important;
+  border-color: #171717 !important;
+  box-shadow: 4px 4px 0px #171717 !important;
+}
+
+.dark .library-card:hover,
+.dark .card-library:hover,
+.dark .nb-card-interactive.library-card:hover,
+.dark .nb-card-interactive.card-library:hover,
+.dark div[data-card-type="library"]:hover {
+  background-color: #F0BE49 !important;
+  border-color: #171717 !important;
+  box-shadow: 6px 6px 0px #171717 !important;
+}
+
 /* Content Cards Dark Mode Styling for other non-identity cards */
 .dark .stat-card,
 .dark .session-card,

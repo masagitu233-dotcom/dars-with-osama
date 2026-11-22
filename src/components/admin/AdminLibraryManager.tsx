@@ -79,6 +79,7 @@ export const AdminLibraryManager: React.FC<AdminLibraryManagerProps> = ({
   const [formData, setFormData] = useState<Partial<LibraryBook>>({
     title: '',
     titleAr: '',
+    category: '',
     author: 'Osama',
     description: '',
     coverImageUrl: '',
@@ -98,6 +99,7 @@ export const AdminLibraryManager: React.FC<AdminLibraryManagerProps> = ({
       const matchesSearch =
         !q ||
         book.title.toLowerCase().includes(q) ||
+        (book.category && book.category.toLowerCase().includes(q)) ||
         (book.author && book.author.toLowerCase().includes(q)) ||
         (book.slug && book.slug.toLowerCase().includes(q));
       const matchesStatus = statusFilter === 'all' || book.status === statusFilter;
@@ -121,6 +123,7 @@ export const AdminLibraryManager: React.FC<AdminLibraryManagerProps> = ({
       id: undefined,
       title: '',
       titleAr: '',
+      category: '',
       author: 'Osama',
       description: '',
       coverImageUrl: '',
@@ -268,6 +271,7 @@ export const AdminLibraryManager: React.FC<AdminLibraryManagerProps> = ({
       await saveLibraryBook({
         ...formData,
         title: titleText,
+        category: (formData.category || '').trim(),
         coverImageUrl: coverUrl,
         coverAspectRatio: (formData.coverAspectRatio === '9:16' ? '9:16' : '3:4') as LibraryCoverAspectRatio,
         sourceType,
@@ -540,6 +544,11 @@ export const AdminLibraryManager: React.FC<AdminLibraryManagerProps> = ({
                             <p className="font-extrabold text-charcoal dark:text-[#CEFEF1] truncate text-xs sm:text-sm">
                               {book.title}
                             </p>
+                            {book.category && book.category.trim() && (
+                              <span className="inline-block mt-0.5 mb-0.5 px-1.5 py-0.5 rounded bg-[#F0BE49] text-[#0F3D3A] border border-[#171717] text-[10px] font-extrabold uppercase tracking-wider">
+                                {book.category}
+                              </span>
+                            )}
                             {book.author && (
                               <p className="text-[11px] text-slate-gray dark:text-[#A6D6C9] truncate">
                                 {book.author}
@@ -711,6 +720,36 @@ export const AdminLibraryManager: React.FC<AdminLibraryManagerProps> = ({
                     dir="rtl"
                     className="nb-input w-full px-3.5 py-2.5 text-xs font-amiri font-bold text-[#06251D] dark:text-[#D9AC45]"
                   />
+                </div>
+
+                <div>
+                  <label className="text-xs font-extrabold text-[#171717] dark:text-[#F8F3E8] block mb-1">
+                    Kategori Kitab (Opsional)
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={150}
+                    list="library-category-suggestions"
+                    data-testid="admin-library-category-input"
+                    value={formData.category || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+                    placeholder="Contoh: Nahwu, Sharaf, Fiqih, Tafsir, Hadis, Akidah..."
+                    className="nb-input w-full px-3.5 py-2.5 text-xs font-semibold"
+                  />
+                  <datalist id="library-category-suggestions">
+                    <option value="Nahwu" />
+                    <option value="Sharaf" />
+                    <option value="Fiqih" />
+                    <option value="Tafsir" />
+                    <option value="Hadis" />
+                    <option value="Akidah" />
+                    <option value="Ushul Fiqih" />
+                    <option value="Adab & Akhlak" />
+                    <option value="Sirah Nabawiyah" />
+                  </datalist>
+                  <p className="text-[11px] text-[#525855] dark:text-[#A6D6C9] mt-1">
+                    Bebas menuliskan kategori sendiri. Kosongkan jika belum ingin menampilkan kategori.
+                  </p>
                 </div>
 
                 <div>
