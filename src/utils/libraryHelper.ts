@@ -483,3 +483,112 @@ export function buildLibraryBookShareData(
   return { title, text, url };
 }
 
+export type LibraryLoadErrorCategory =
+  | 'permission-denied'
+  | 'network-error'
+  | 'quota-exceeded'
+  | 'index-required'
+  | 'unknown-error';
+
+export interface LibraryLoadErrorInfo {
+  category: LibraryLoadErrorCategory;
+  code: string;
+  title: string;
+  message: string;
+  canRetry: boolean;
+}
+
+/**
+ * Classifies Firestore errors during public Library Digital reads so failures are NEVER
+ * disguised as an empty library collection or "book not found".
+ */
+export function classifyLibraryLoadError(error: unknown): LibraryLoadErrorInfo {
+  const rawMsg = error instanceof Error ? error.message : String(error || '');
+  const lowerMsg = rawMsg.toLowerCase();
+  const code = (error as any)?.code ? String((error as any).code).toLowerCase() : '';
+
+  if (
+    code.includes('permission-denied') ||
+    lowerMsg.includes('missing or insufficient permissions') ||
+    lowerMsg.includes('permission-denied')
+  ) {
+    return {
+      category: 'permission-denied',
+      code: code || 'permission-denied',
+      title: 'Akses Pembacaan Library Publik Ditolak',
+      message:
+        'Permintaan ke database Library ditolak oleh aturan keamanan Firestore (permission-denied). Pastikan aturan keamanan terbaru untuk koleksi libraryBooks sudah dipublikasikan pada database aktif.',
+      canRetry: true
+    };
+  }
+
+  if (
+    code.includes('resource-exhausted') ||
+    lowerMsg.includes('quota exceeded') ||
+    lowerMsg.includes('resource-exhausted')
+  ) {
+    return {
+      category: 'quota-exceeded',
+      code: code || 'resource-exhausted',
+      title: 'Kuota Pembacaan Server Tercapai',
+      message:
+        'Batas harian pembacaan database Firestore sedang tercapai sehingga koleksi Library belum dapat dimuat saat ini. Silakan coba lagi nanti.',
+      canRetry: true
+    };
+  }
+
+  if (
+    code.includes('unavailable') ||
+    code.includes('deadline-exceeded') ||
+    lowerMsg.includes('client is offline') ||
+    lowerMsg.includes('failed to get document') ||
+    lowerMsg.includes('network') ||
+    lowerMsg.includes('unavailable')
+  ) {
+    return {
+      category: 'network-error',
+      code: code || 'unavailable',
+      title: 'Gagal Terhubung ke Server Library',
+      message:
+        'Koneksi ke Cloud Firestore sedang terputus atau tidak stabil. Periksa koneksi internet Anda lalu coba muat ulang.',
+      canRetry: true
+    };
+  }
+
+  if (code.includes('failed-precondition') || lowerMsg.includes('requires an index')) {
+    return {
+      category: 'index-required',
+      code: code || 'failed-precondition',
+      title: 'Konfigurasi Indeks Kueri Belum Siap',
+      message:
+        'Kueri pencarian kitab membutuhkan indeks Firestore yang belum aktif. Silakan muat ulang atau hubungi administrator.',
+      canRetry: true
+    };
+  }
+
+  return {
+    category: 'unknown-error',
+    code: code || 'firestore-error',
+    title: 'Gagal Memuat Data Library Digital',
+    message:
+      'Terjadi kendala saat mengambil data koleksi kitab dari server. Silakan coba muat ulang beberapa saat lagi.',
+    canRetry: true
+  };
+}
+
+/**
+ * Matches a Library book against a URL slug or document ID safely (case-insensitive slug, exact ID).
+ */
+export function matchLibraryBookByIdentifier<T extends { id: string; slug?: string }>(
+  books: T[],
+  identifier: string | null | undefined
+): T | undefined {
+  const cleanId = (identifier || '').trim();
+  if (!cleanId) return undefined;
+  const cleanSlug = cleanId.toLowerCase();
+  return books.find(
+    b => b.id === cleanId || (b.slug || '').trim().toLowerCase() === cleanSlug
+  );
+}
+
+

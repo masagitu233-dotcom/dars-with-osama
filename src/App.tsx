@@ -79,6 +79,11 @@ import {
   computeInitialHistorySetup
 } from './utils/navigationHistory';
 import { recordLastReadArticle } from './utils/articleHistoryHelper';
+import {
+  classifyLibraryLoadError,
+  LibraryLoadErrorInfo,
+  matchLibraryBookByIdentifier
+} from './utils/libraryHelper';
 
 function MainApp() {
   const {
@@ -123,6 +128,9 @@ function MainApp() {
   const [selectedLibraryBook, setSelectedLibraryBook] = useState<LibraryBook | null>(null);
   const [libraryBookResolving, setLibraryBookResolving] = useState<boolean>(false);
   const [libraryBookNotFound, setLibraryBookNotFound] = useState<boolean>(false);
+  const [libraryBookError, setLibraryBookError] = useState<LibraryLoadErrorInfo | null>(null);
+  const [libraryError, setLibraryError] = useState<LibraryLoadErrorInfo | null>(null);
+  const [isRetryingLibrary, setIsRetryingLibrary] = useState<boolean>(false);
   const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
 
   // Certificate Modal State
@@ -276,12 +284,14 @@ function MainApp() {
         const targetView = route.view;
         const slugOrId = route.libraryBookSlug || route.libraryBookId;
         setLibraryBookNotFound(false);
+        setLibraryBookError(null);
 
         if (booksList.length > 0 && slugOrId) {
-          const targetBook = booksList.find(b => b.slug === slugOrId || b.id === slugOrId);
+          const targetBook = matchLibraryBookByIdentifier(booksList, slugOrId);
           if (targetBook && (targetBook.status === 'published' || adminFlag)) {
             setSelectedLibraryBook(targetBook);
             setLibraryBookResolving(false);
+            setLibraryBookError(null);
             setCurrentView(targetView);
             return;
           }
@@ -290,10 +300,11 @@ function MainApp() {
         if (
           selectedLibraryBookRef.current &&
           slugOrId &&
-          (selectedLibraryBookRef.current.slug === slugOrId || selectedLibraryBookRef.current.id === slugOrId) &&
+          matchLibraryBookByIdentifier([selectedLibraryBookRef.current], slugOrId) &&
           (selectedLibraryBookRef.current.status === 'published' || adminFlag)
         ) {
           setLibraryBookResolving(false);
+          setLibraryBookError(null);
           setCurrentView(targetView);
           return;
         }
@@ -306,20 +317,24 @@ function MainApp() {
               if (book && (book.status === 'published' || adminFlag)) {
                 setSelectedLibraryBook(book);
                 setLibraryBookNotFound(false);
+                setLibraryBookError(null);
               } else {
                 setSelectedLibraryBook(null);
+                setLibraryBookError(null);
                 setLibraryBookNotFound(true);
               }
             })
-            .catch(() => {
+            .catch(err => {
               setSelectedLibraryBook(null);
-              setLibraryBookNotFound(true);
+              setLibraryBookNotFound(false);
+              setLibraryBookError(classifyLibraryLoadError(err));
             })
             .finally(() => {
               setLibraryBookResolving(false);
             });
         } else {
           setLibraryBookResolving(false);
+          setLibraryBookError(null);
           setLibraryBookNotFound(true);
         }
 
@@ -615,6 +630,25 @@ function MainApp() {
     };
   }, []);
 
+  // Resolve direct Library deep links (/library/:slug and /library/:slug/baca) immediately on mount
+  // without waiting for auth, courses, or blogPosts to finish loading
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const initialRoute: DarsRouteState = isDarsHistoryState(window.history.state)
+      ? window.history.state
+      : parseUrlToRouteState(window.location.pathname, window.location.search);
+
+    if (initialRoute.view === 'library-detail' || initialRoute.view === 'library-read') {
+      applyRouteToState(
+        initialRoute,
+        blogPostsRef.current,
+        coursesRef.current,
+        isAdminRef.current,
+        libraryBooksRef.current
+      );
+    }
+  }, [applyRouteToState]);
+
   // Resolve route entities when initial Firestore data (blogPosts, courses, libraryBooks) finishes loading
   useEffect(() => {
     if (typeof window !== 'undefined' && (blogPosts.length > 0 || courses.length > 0 || libraryBooks.length > 0)) {
@@ -651,19 +685,26 @@ function MainApp() {
       if (bypassCache) {
         invalidateServicesCache('all');
       }
+      let libraryLoadErr: LibraryLoadErrorInfo | null = null;
       const [cats, crss, posts, books] = await Promise.all([
         getCategories(bypassCache),
         getCourses(isAdmin, bypassCache), // admins can view all courses including drafts
         getBlogPosts(false, bypassCache), // published only for public blog
         getLibraryBooks(false, bypassCache).catch(err => {
-          console.warn('Non-blocking public library load notice:', err);
-          return [] as LibraryBook[];
+          console.warn('Public library load error:', err);
+          libraryLoadErr = classifyLibraryLoadError(err);
+          return null as LibraryBook[] | null;
         })
       ]);
       setCategories(cats);
       setCourses(crss);
       setBlogPosts(posts);
-      setLibraryBooks(books);
+      if (books !== null) {
+        setLibraryBooks(books);
+        setLibraryError(null);
+      } else {
+        setLibraryError(libraryLoadErr);
+      }
 
       const sourceStatus = getDataSourceStatus();
       const latestDiag = getLatestFirestoreDiagnostic();
@@ -681,10 +722,12 @@ function MainApp() {
         if (!prev) return null;
         return posts.find(p => p.id === prev.id) || prev;
       });
-      setSelectedLibraryBook(prev => {
-        if (!prev) return null;
-        return books.find(b => b.id === prev.id) || prev;
-      });
+      if (books !== null) {
+        setSelectedLibraryBook(prev => {
+          if (!prev) return null;
+          return books.find(b => b.id === prev.id) || prev;
+        });
+      }
       const isDirectSessionRoute =
         typeof window !== 'undefined' &&
         (window.location.pathname.startsWith('/session/') ||
@@ -726,6 +769,30 @@ function MainApp() {
 
   const handleRetryLoadData = () => {
     loadData(true, true);
+  };
+
+  const handleRetryLoadLibrary = async () => {
+    setIsRetryingLibrary(true);
+    try {
+      invalidateServicesCache('library');
+      const books = await getLibraryBooks(false, true);
+      setLibraryBooks(books);
+      setLibraryError(null);
+    } catch (err) {
+      console.warn('Retry public library load error:', err);
+      setLibraryError(classifyLibraryLoadError(err));
+    } finally {
+      setIsRetryingLibrary(false);
+    }
+  };
+
+  const handleRetryResolveLibraryBook = () => {
+    if (typeof window === 'undefined') return;
+    invalidateServicesCache('library');
+    const activeRoute: DarsRouteState = isDarsHistoryState(window.history.state)
+      ? window.history.state
+      : parseUrlToRouteState(window.location.pathname, window.location.search);
+    applyRouteToState(activeRoute, blogPostsRef.current, coursesRef.current, isAdminRef.current, []);
   };
 
   useEffect(() => {
@@ -869,6 +936,7 @@ function MainApp() {
   const handleSelectLibraryBook = (book: LibraryBook) => {
     setSelectedLibraryBook(book);
     setLibraryBookNotFound(false);
+    setLibraryBookError(null);
     setLibraryBookResolving(false);
     navigateTo({
       view: 'library-detail',
@@ -880,6 +948,7 @@ function MainApp() {
   const handleOpenLibraryReader = (book: LibraryBook) => {
     setSelectedLibraryBook(book);
     setLibraryBookNotFound(false);
+    setLibraryBookError(null);
     setLibraryBookResolving(false);
     navigateTo({
       view: 'library-read',
@@ -1333,6 +1402,9 @@ function MainApp() {
                     <LibraryListView
                       books={libraryBooks}
                       loading={loading}
+                      error={libraryError}
+                      retrying={isRetryingLibrary}
+                      onRetry={handleRetryLoadLibrary}
                       onSelectBook={(book) => {
                         handleSelectLibraryBook(book);
                       }}
@@ -1353,6 +1425,40 @@ function MainApp() {
                           handleOpenLibraryReader(book);
                         }}
                       />
+                    ) : libraryBookError && !libraryBookResolving ? (
+                      <div
+                        data-testid="library-book-detail-error"
+                        data-error-category={libraryBookError.category}
+                        className="max-w-xl mx-auto px-4 py-14 text-center"
+                      >
+                        <div className="nb-card bg-white dark:bg-[#0D2B36] p-8 space-y-4">
+                          <h2 className="text-lg font-bold font-serif text-[#171717] dark:text-[#CEFEF1]">
+                            {libraryBookError.title}
+                          </h2>
+                          <p className="text-xs sm:text-sm text-[#525855] dark:text-[#A6D6C9] leading-relaxed">
+                            {libraryBookError.message}
+                          </p>
+                          <p className="text-[11px] font-mono text-[#525855]/80 dark:text-[#A6D6C9]/80">
+                            Kode: {libraryBookError.code}
+                          </p>
+                          <div className="flex flex-wrap items-center justify-center gap-2.5 pt-1">
+                            <button
+                              type="button"
+                              onClick={handleRetryResolveLibraryBook}
+                              className="nb-btn nb-btn-primary px-5 py-2.5 text-xs cursor-pointer"
+                            >
+                              Coba Muat Ulang
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => navigateTo({ view: 'library' })}
+                              className="nb-btn nb-btn-secondary px-5 py-2.5 text-xs cursor-pointer"
+                            >
+                              Kembali ke Library Digital
+                            </button>
+                          </div>
+                        </div>
+                      </div>
                     ) : libraryBookNotFound && !libraryBookResolving ? (
                       <div className="max-w-xl mx-auto px-4 py-14 text-center">
                         <div className="nb-card bg-white dark:bg-[#0D2B36] p-8 space-y-4">
@@ -1399,6 +1505,40 @@ function MainApp() {
                           })
                         }
                       />
+                    ) : libraryBookError && !libraryBookResolving ? (
+                      <div
+                        data-testid="library-book-reader-error"
+                        data-error-category={libraryBookError.category}
+                        className="max-w-xl mx-auto px-4 py-14 text-center"
+                      >
+                        <div className="nb-card bg-white dark:bg-[#0D2B36] p-8 space-y-4">
+                          <h2 className="text-lg font-bold font-serif text-[#171717] dark:text-[#CEFEF1]">
+                            {libraryBookError.title}
+                          </h2>
+                          <p className="text-xs sm:text-sm text-[#525855] dark:text-[#A6D6C9] leading-relaxed">
+                            {libraryBookError.message}
+                          </p>
+                          <p className="text-[11px] font-mono text-[#525855]/80 dark:text-[#A6D6C9]/80">
+                            Kode: {libraryBookError.code}
+                          </p>
+                          <div className="flex flex-wrap items-center justify-center gap-2.5 pt-1">
+                            <button
+                              type="button"
+                              onClick={handleRetryResolveLibraryBook}
+                              className="nb-btn nb-btn-primary px-5 py-2.5 text-xs cursor-pointer"
+                            >
+                              Coba Muat Ulang
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => navigateTo({ view: 'library' })}
+                              className="nb-btn nb-btn-secondary px-5 py-2.5 text-xs cursor-pointer"
+                            >
+                              Kembali ke Library Digital
+                            </button>
+                          </div>
+                        </div>
+                      </div>
                     ) : libraryBookNotFound && !libraryBookResolving ? (
                       <div className="max-w-xl mx-auto px-4 py-14 text-center">
                         <div className="nb-card bg-white dark:bg-[#0D2B36] p-8 space-y-4">

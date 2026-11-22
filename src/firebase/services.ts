@@ -3784,6 +3784,7 @@ function normalizeLibraryBookDoc(id: string, raw: Record<string, any>): LibraryB
  * Fetches Library Digital books from dedicated Firestore collection `libraryBooks`.
  * - Public (`includeDrafts = false`): queries ONLY `status == 'published'` so Firestore Security Rules
  *   allow anonymous & non-admin list queries without ever leaking drafts.
+ *   Never swallows permission/network errors into an empty array `[]` (avoids disguising failures as an empty library).
  * - Admin (`includeDrafts = true`): fetches all documents including drafts.
  */
 export async function getLibraryBooks(includeDrafts = false, forceRefresh = false): Promise<LibraryBook[]> {
@@ -3805,15 +3806,19 @@ export async function getLibraryBooks(includeDrafts = false, forceRefresh = fals
         data: list.filter(b => b.status === 'published'),
         timestamp: now
       };
+      recordFeatureDataSource('libraryBooks', 'firestore-server');
       return list;
     } catch (err) {
       logFirestoreDiagnostic({ operation: 'getLibraryBooks(admin)', collection: LIBRARY_BOOKS_COLLECTION }, err);
-      if (libraryBooksAdminCache) return libraryBooksAdminCache.data;
+      if (!forceRefresh && libraryBooksAdminCache && libraryBooksAdminCache.data.length > 0) {
+        recordFeatureDataSource('libraryBooks', 'memory-cache', 'fallback-after-error');
+        return libraryBooksAdminCache.data;
+      }
       throw err;
     }
   }
 
-  // Public query (published only)
+  // Public query (published only — works without any authentication)
   if (!forceRefresh && libraryBooksPublicCache && now - libraryBooksPublicCache.timestamp < CACHE_TTL_MS) {
     return libraryBooksPublicCache.data;
   }
@@ -3828,35 +3833,52 @@ export async function getLibraryBooks(includeDrafts = false, forceRefresh = fals
       snapshot.docs.map(d => normalizeLibraryBookDoc(d.id, d.data() as Record<string, any>))
     );
     libraryBooksPublicCache = { data: list, timestamp: now };
+    recordFeatureDataSource('libraryBooks', 'firestore-server');
     return list;
   } catch (err) {
     logFirestoreDiagnostic({ operation: 'getLibraryBooks(public)', collection: LIBRARY_BOOKS_COLLECTION }, err);
-    if (libraryBooksPublicCache) return libraryBooksPublicCache.data;
-    return [];
+    if (!forceRefresh && libraryBooksPublicCache && libraryBooksPublicCache.data.length > 0) {
+      recordFeatureDataSource('libraryBooks', 'memory-cache', 'fallback-after-error');
+      return libraryBooksPublicCache.data;
+    }
+    throw err;
   }
 }
 
+/**
+ * Resolves a single Library Digital book by slug or document ID directly from Firestore.
+ * - Works for both anonymous visitors (published books only) and admins (including drafts).
+ * - Distinguishes genuine "not found / unpublished" (`null`) from Firestore permission/network failures (throws error).
+ */
 export async function getLibraryBookBySlugOrId(
   identifier: string,
   includeDrafts = false
 ): Promise<LibraryBook | null> {
-  const cleanId = (identifier || '').trim();
+  let cleanId = (identifier || '').trim();
   if (!cleanId) return null;
+  try {
+    cleanId = decodeURIComponent(cleanId).trim();
+  } catch {
+    // Keep original identifier if URI decoding fails
+  }
   const cleanSlug = cleanId.toLowerCase();
 
   // Check in-memory cache first
   const cachedList = includeDrafts ? libraryBooksAdminCache?.data : libraryBooksPublicCache?.data;
-  if (cachedList) {
+  if (cachedList && cachedList.length > 0) {
     const found = cachedList.find(
-      b => b.id === cleanId || (b.slug || '').toLowerCase() === cleanSlug
+      b => b.id === cleanId || (b.slug || '').trim().toLowerCase() === cleanSlug
     );
     if (found && (found.status === 'published' || includeDrafts)) {
       return found;
     }
   }
 
+  let slugQuerySucceeded = false;
+  let slugQueryError: unknown = null;
+
+  // 1. Lookup by slug (public queries MUST include status == 'published' for Security Rules compliance)
   try {
-    // 1. Lookup by slug (must include status == 'published' for public rules compliance)
     const slugQuery = includeDrafts
       ? query(collection(db, LIBRARY_BOOKS_COLLECTION), where('slug', '==', cleanSlug))
       : query(
@@ -3865,6 +3887,7 @@ export async function getLibraryBookBySlugOrId(
           where('status', '==', 'published')
         );
     const slugSnap = await getDocs(slugQuery);
+    slugQuerySucceeded = true;
     if (!slugSnap.empty) {
       const docSnap = slugSnap.docs[0];
       const book = normalizeLibraryBookDoc(docSnap.id, docSnap.data() as Record<string, any>);
@@ -3872,20 +3895,65 @@ export async function getLibraryBookBySlugOrId(
         return book;
       }
     }
+  } catch (err) {
+    slugQueryError = err;
+    logFirestoreDiagnostic({ operation: 'getLibraryBookBySlugOrId(slug)', collection: LIBRARY_BOOKS_COLLECTION }, err);
+  }
 
-    // 2. Direct document ID lookup
+  // 2. Direct document ID lookup (works for /library/:id links even if slug lookup missed or needed an index)
+  let directLookupError: unknown = null;
+  try {
     const directSnap = await getDoc(doc(db, LIBRARY_BOOKS_COLLECTION, cleanId));
     if (directSnap.exists()) {
       const book = normalizeLibraryBookDoc(directSnap.id, directSnap.data() as Record<string, any>);
       if (book.status === 'published' || includeDrafts) {
         return book;
       }
+      return null;
     }
-    return null;
+    // Document genuinely does not exist and read was permitted
+    if (slugQuerySucceeded) {
+      return null;
+    }
   } catch (err) {
-    logFirestoreDiagnostic({ operation: 'getLibraryBookBySlugOrId', collection: LIBRARY_BOOKS_COLLECTION }, err);
-    return null;
+    directLookupError = err;
+    // Note: Under `allow get: if (resource != null && resource.data.status == 'published') || isAdmin()`,
+    // requesting a non-existent or draft document ID returns permission-denied.
+    // If `slugQuerySucceeded` is already true, public read access IS working -> treat as not found/draft.
+    const errCode = String((err as any)?.code || '').toLowerCase();
+    if (slugQuerySucceeded && errCode.includes('permission-denied')) {
+      return null;
+    }
+    logFirestoreDiagnostic({ operation: 'getLibraryBookBySlugOrId(id)', path: `${LIBRARY_BOOKS_COLLECTION}/${cleanId}` }, err);
   }
+
+  // 3. Fallback via single-field published list query (handles case where compound slug+status query
+  //    hits failed-precondition or slug casing differs in legacy documents)
+  if (slugQueryError) {
+    const slugErrCode = String((slugQueryError as any)?.code || '').toLowerCase();
+    const slugErrMsg = String((slugQueryError as any)?.message || '').toLowerCase();
+    const isPrecondition = slugErrCode.includes('failed-precondition') || slugErrMsg.includes('requires an index');
+
+    if (isPrecondition) {
+      const allBooks = await getLibraryBooks(includeDrafts, false);
+      const matched = allBooks.find(
+        b => b.id === cleanId || (b.slug || '').trim().toLowerCase() === cleanSlug
+      );
+      if (matched && (matched.status === 'published' || includeDrafts)) {
+        return matched;
+      }
+      return null;
+    }
+
+    // Re-throw real permission-denied / network / quota error so caller distinguishes error vs not-found
+    throw slugQueryError;
+  }
+
+  if (directLookupError && !slugQuerySucceeded) {
+    throw directLookupError;
+  }
+
+  return null;
 }
 
 export async function saveLibraryBook(

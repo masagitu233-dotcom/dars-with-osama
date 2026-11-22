@@ -3,13 +3,16 @@ import {
   Library,
   Search,
   BookOpen,
-  X
+  X,
+  AlertTriangle,
+  RefreshCw
 } from 'lucide-react';
 import { LibraryBook } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { recordLibraryVisit } from '../../firebase/services';
 import {
   LIBRARY_VISIT_SESSION_KEY,
+  LibraryLoadErrorInfo,
   shouldRecordLibraryVisit
 } from '../../utils/libraryHelper';
 import { LibraryCard } from './LibraryCard';
@@ -17,12 +20,18 @@ import { LibraryCard } from './LibraryCard';
 interface LibraryListViewProps {
   books: LibraryBook[];
   loading?: boolean;
+  error?: LibraryLoadErrorInfo | null;
+  retrying?: boolean;
+  onRetry?: () => void;
   onSelectBook: (book: LibraryBook) => void;
 }
 
 export const LibraryListView: React.FC<LibraryListViewProps> = ({
   books,
   loading = false,
+  error = null,
+  retrying = false,
+  onRetry,
   onSelectBook
 }) => {
   const { isAdmin, loading: authLoading } = useAuth();
@@ -146,6 +155,42 @@ export const LibraryListView: React.FC<LibraryListViewProps> = ({
               <div className="h-3 bg-[#171717]/10 dark:bg-[#0D2B36] rounded w-1/2" />
             </div>
           ))}
+        </div>
+      ) : error && publishedBooks.length === 0 ? (
+        /* DISTINCT ERROR STATE — NEVER DISGUISE PERMISSION OR NETWORK FAILURES AS EMPTY LIBRARY */
+        <div
+          data-testid="library-error-state"
+          data-error-category={error.category}
+          className="nb-card bg-white dark:bg-[#0D2B36] p-8 sm:p-12 text-center space-y-4 max-w-xl mx-auto border-2 border-[#171717] dark:border-[#D6AD52]"
+        >
+          <div className="w-14 h-14 mx-auto rounded-lg bg-[#FEF2F2] dark:bg-[#3A1E24] border-2 border-[#171717] dark:border-[#F87171] flex items-center justify-center shadow-[3px_3px_0px_#171717]">
+            <AlertTriangle className="w-7 h-7 text-[#B91C1C] dark:text-[#FCA5A5]" />
+          </div>
+          <div className="space-y-2">
+            <h3 className="text-lg font-bold font-serif text-[#171717] dark:text-[#CEFEF1]">
+              {error.title}
+            </h3>
+            <p className="text-xs sm:text-sm text-[#525855] dark:text-[#A6D6C9] leading-relaxed">
+              {error.message}
+            </p>
+            {error.code && (
+              <p className="text-[11px] font-mono text-[#525855]/80 dark:text-[#A6D6C9]/80">
+                Kode: {error.code}
+              </p>
+            )}
+          </div>
+          {error.canRetry && onRetry && (
+            <button
+              type="button"
+              data-testid="library-retry-btn"
+              disabled={retrying}
+              onClick={onRetry}
+              className="nb-btn nb-btn-primary px-5 py-2.5 text-xs inline-flex items-center gap-2 cursor-pointer disabled:opacity-60"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${retrying ? 'animate-spin' : ''}`} />
+              <span>{retrying ? 'Memuat Ulang...' : 'Coba Muat Ulang'}</span>
+            </button>
+          )}
         </div>
       ) : publishedBooks.length === 0 ? (
         /* CLEAN EMPTY STATE WHEN NO PUBLISHED BOOKS EXIST */

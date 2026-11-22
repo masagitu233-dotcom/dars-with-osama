@@ -5585,6 +5585,55 @@ test('Library Digital Case 6: parseLibraryBookCategories mendukung kategori beba
   assert.deepStrictEqual(parseLibraryBookCategories('   ,  '), []);
 });
 
+test('Library Digital Case 7: Klasifikasi error Firestore publik (tidak menyamar jadi kosong), pencocokan deep link, dan audit aturan firestore.rules', async () => {
+  const fs = await import('fs');
+  const {
+    classifyLibraryLoadError,
+    matchLibraryBookByIdentifier
+  } = await import('./libraryHelper.js');
+
+  // 1. Error permission-denied harus terklasifikasi jelas, bukan dianggap koleksi kosong
+  const permErr = classifyLibraryLoadError({ code: 'permission-denied', message: 'Missing or insufficient permissions.' });
+  assert.strictEqual(permErr.category, 'permission-denied');
+  assert.strictEqual(permErr.canRetry, true);
+  assert.ok(permErr.message.includes('libraryBooks'));
+
+  // 2. Error jaringan / offline
+  const netErr = classifyLibraryLoadError({ code: 'unavailable', message: 'Failed to get document because the client is offline.' });
+  assert.strictEqual(netErr.category, 'network-error');
+  assert.strictEqual(netErr.canRetry, true);
+
+  // 3. Error kuota
+  const quotaErr = classifyLibraryLoadError({ code: 'resource-exhausted', message: 'Quota exceeded.' });
+  assert.strictEqual(quotaErr.category, 'quota-exceeded');
+
+  // 4. Error indeks komposit
+  const idxErr = classifyLibraryLoadError({ code: 'failed-precondition', message: 'The query requires an index.' });
+  assert.strictEqual(idxErr.category, 'index-required');
+
+  // 5. Pencocokan deep link mendukung slug case-insensitive maupun ID dokumen langsung
+  const sampleBooks = [
+    { id: 'book-101', slug: 'ringkasan-nahwu-dasar' },
+    { id: 'book-202', slug: 'kitab-adab-santri' }
+  ];
+  assert.strictEqual(matchLibraryBookByIdentifier(sampleBooks, 'RINGKASAN-NAHWU-DASAR')?.id, 'book-101');
+  assert.strictEqual(matchLibraryBookByIdentifier(sampleBooks, 'book-202')?.slug, 'kitab-adab-santri');
+  assert.strictEqual(matchLibraryBookByIdentifier(sampleBooks, 'tidak-ada'), undefined);
+
+  // 6. Audit statis firestore.rules memastikan libraryBooks publik hanya published & tidak pakai allow read: if true
+  const rulesText = fs.readFileSync(new URL('../../firestore.rules', import.meta.url), 'utf8');
+  const libraryMatch = rulesText.match(/match \/libraryBooks\/\{bookId\}\s*\{[\s\S]*?\}/);
+  assert.ok(libraryMatch, 'Blok match /libraryBooks/{bookId} harus ada di firestore.rules');
+  const libraryBlock = libraryMatch[0];
+  assert.ok(libraryBlock.includes("resource.data.status == 'published'"), 'Rules libraryBooks harus membatasi akses publik ke status published');
+  assert.ok(libraryBlock.includes('allow create, update, delete: if isAdmin();'), 'Write libraryBooks harus khusus admin');
+  assert.strictEqual(libraryBlock.includes('allow read: if true'), false, 'Tidak boleh membuka draf dengan allow read: if true');
+
+  const statsMatch = rulesText.match(/match \/libraryStats\/\{statId\}\s*\{[\s\S]*?\}/);
+  assert.ok(statsMatch, 'Blok match /libraryStats/{statId} harus ada di firestore.rules');
+  assert.ok(statsMatch[0].includes('allow read: if isAdmin();'), 'Statistik kunjungan Library wajib tetap khusus admin');
+});
+
 
 
 

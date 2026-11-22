@@ -204,7 +204,7 @@ service cloud.firestore {
     // LIBRARY DIGITAL — KOLEKSI BUKU & KITAB
     match /libraryBooks/{bookId} {
       // Publik hanya dapat membaca buku berstatus 'published'; admin dapat membaca semua termasuk draft
-      allow get: if resource.data.status == 'published' || isAdmin();
+      allow get: if (resource != null && resource.data.status == 'published') || isAdmin();
       allow list: if resource.data.status == 'published' || isAdmin();
       allow create, update, delete: if isAdmin();
     }
