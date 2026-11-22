@@ -107,7 +107,9 @@
         "passed": { "type": "boolean" },
         "totalPoints": { "type": "number" },
         "maxPoints": { "type": "number" },
-        "attemptNumber": { "type": "number" }
+        "attemptNumber": { "type": "number" },
+        "isAdminAttempt": { "type": "boolean" },
+        "submitterRole": { "type": "string", "enum": ["admin", "student"] }
       },
       "required": ["userId", "quizId", "score", "passed"]
     },
@@ -299,6 +301,40 @@
         "senderEmail": { "type": "string", "maxLength": 200 }
       },
       "required": ["enabled"]
+    },
+    "LibraryBook": {
+      "title": "LibraryBook",
+      "description": "Digital library book or kitab managed by admin (external Google Drive link or internal rich-text book)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 300 },
+        "titleAr": { "type": "string", "maxLength": 300 },
+        "slug": { "type": "string", "maxLength": 200 },
+        "author": { "type": "string", "maxLength": 200 },
+        "description": { "type": "string", "maxLength": 2000 },
+        "coverImageUrl": { "type": "string", "maxLength": 300000 },
+        "coverAspectRatio": { "type": "string", "enum": ["3:4", "9:16"] },
+        "sourceType": { "type": "string", "enum": ["google_drive", "internal"] },
+        "googleDriveUrl": { "type": "string", "maxLength": 2000 },
+        "content": { "type": "string", "maxLength": 850000 },
+        "status": { "type": "string", "enum": ["published", "draft"] },
+        "readingTimeMinutes": { "type": "number" },
+        "publishedAt": { "type": "string", "maxLength": 100 },
+        "createdAt": { "type": "string", "maxLength": 100 },
+        "updatedAt": { "type": "string", "maxLength": 100 }
+      },
+      "required": ["id", "title", "slug", "coverAspectRatio", "sourceType", "status", "createdAt", "updatedAt"]
+    },
+    "LibraryVisitStats": {
+      "title": "LibraryVisitStats",
+      "description": "Aggregate visit counter for the public Library Digital page, readable only by verified admins",
+      "type": "object",
+      "properties": {
+        "totalVisits": { "type": "number" },
+        "updatedAt": { "type": "string", "maxLength": 100 }
+      },
+      "required": ["totalVisits", "updatedAt"]
     }
   },
   "firestore": {
@@ -369,6 +405,14 @@
     "/notificationSettings/{configId}": {
       "schema": { "$ref": "#/entities/NotificationSettings" },
       "description": "Platform settings for automated email notifications"
+    },
+    "/libraryBooks/{bookId}": {
+      "schema": { "$ref": "#/entities/LibraryBook" },
+      "description": "Digital library book collection (published readable publicly, drafts & writes admin-only)"
+    },
+    "/libraryStats/{statId}": {
+      "schema": { "$ref": "#/entities/LibraryVisitStats" },
+      "description": "Aggregate visit statistics for Library Digital (admin-only reads, atomic +1 public increments)"
     }
   }
 }

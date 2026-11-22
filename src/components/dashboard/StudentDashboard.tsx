@@ -27,7 +27,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   onSelectCourse,
   onExploreCourses
 }) => {
-  const { user, userProfile, loading: authLoading, openProfileModal, openGuestModal } = useAuth();
+  const { user, userProfile, isAdmin, loading: authLoading, openProfileModal, openGuestModal } = useAuth();
   useLanguage();
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [attempts, setPastAttempts] = useState<QuizAttempt[]>([]);
@@ -101,6 +101,11 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-10 space-y-8 sm:space-y-10 animate-in fade-in duration-200">
+      {isAdmin && (
+        <div className="p-4 rounded-lg bg-[#4CA7A1] text-[#001722] border-2 border-[#171717] shadow-[4px_4px_0px_#171717] text-xs font-bold">
+          <strong>Mode Pratinjau Admin:</strong> Halaman ini menampilkan riwayat akun Anda sendiri. Aktivitas pengerjaan kuis admin ditandai terpisah dan tidak masuk ke statistik nilai maupun progres pembelajaran santri.
+        </div>
+      )}
       {/* Welcome Banner */}
       <div className="nb-card bg-white dark:bg-[#16263D] text-[#292D2B] dark:text-[#F1F4F8] border-2 border-[#292D2B] dark:border-[#D6AD52] p-6 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-[4px_4px_0px_#292D2B] dark:shadow-[4px_4px_0px_#000000]">
         <div className="space-y-2.5">
@@ -291,7 +296,14 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     return (
                       <tr key={att.id} className="hover:bg-[#EFE5D2] dark:hover:bg-[#16263D]/60 transition">
                         <td className="px-5 py-4 min-w-[180px]">
-                          <p className="font-extrabold text-[#292D2B] dark:text-[#F1F4F8] break-words">{course?.title || att.courseId}</p>
+                          <p className="font-extrabold text-[#292D2B] dark:text-[#F1F4F8] break-words">
+                            {course?.title || att.courseId}
+                            {(att.isAdminAttempt || att.submitterRole === 'admin') && (
+                              <span className="ml-2 inline-block px-1.5 py-0.5 text-[10px] rounded bg-[#D6AD52] text-[#171717] border border-[#171717]">
+                                Admin
+                              </span>
+                            )}
+                          </p>
                           <p className="text-[11px] text-[#626A66] dark:text-[#B4C0D0] font-mono break-all">Kuis: {att.quizId}</p>
                         </td>
                         <td className="px-5 py-4 font-medium whitespace-nowrap">

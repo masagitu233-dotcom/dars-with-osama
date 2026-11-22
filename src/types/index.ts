@@ -124,6 +124,8 @@ export interface QuizAttempt {
   submittedAt: string;
   attemptNumber: number;
   timeSpentSeconds?: number;
+  isAdminAttempt?: boolean;
+  submitterRole?: 'admin' | 'student';
 }
 
 export interface UserProfile {
@@ -322,3 +324,34 @@ export interface NotificationDispatchPayload {
   recipientEmails?: string[];
   isManualBroadcast?: boolean;
 }
+
+export type LibraryBookSourceType = 'google_drive' | 'internal';
+
+export type LibraryCoverAspectRatio = '3:4' | '9:16';
+
+export interface LibraryBook {
+  id: string;
+  title: string;
+  titleAr?: string;
+  slug: string;
+  author?: string;
+  description?: string;
+  coverImageUrl: string;
+  coverAspectRatio: LibraryCoverAspectRatio;
+  sourceType: LibraryBookSourceType;
+  googleDriveUrl?: string;
+  content?: string;
+  status: 'published' | 'draft';
+  readingTimeMinutes?: number;
+  publishedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  _pendingSync?: boolean;
+}
+
+export interface LibraryVisitStats {
+  id: string;
+  totalVisits: number;
+  updatedAt: string;
+}
+

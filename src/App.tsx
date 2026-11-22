@@ -37,12 +37,15 @@ import { StudentDashboard } from './components/dashboard/StudentDashboard';
 import { AdminDashboard } from './components/admin/AdminDashboard';
 import { BlogListView } from './components/blog/BlogListView';
 import { BlogDetailView } from './components/blog/BlogDetailView';
+import { LibraryListView } from './components/library/LibraryListView';
+import { LibraryBookDetailView } from './components/library/LibraryBookDetailView';
+import { LibraryDetailView } from './components/library/LibraryDetailView';
 import { StudentConsultationView } from './components/consultation/StudentConsultationView';
 import { PublicQAView } from './components/consultation/PublicQAView';
 import { InstructorProfileView } from './components/profile/InstructorProfileView';
 import { SearchResultsView } from './components/search/SearchResultsView';
 import { UnsubscribePreferencesView } from './components/student/UnsubscribePreferencesView';
-import { Course, Category, Session, Quiz, Enrollment, BlogPost } from './types';
+import { Course, Category, Session, Quiz, Enrollment, BlogPost, LibraryBook } from './types';
 import AOS from 'aos';
 import 'aos/dist/aos.css';
 import {
@@ -55,6 +58,8 @@ import {
   getUserEnrollments,
   getBlogPosts,
   getBlogPostBySlug,
+  getLibraryBooks,
+  getLibraryBookBySlugOrId,
   invalidateServicesCache
 } from './firebase/services';
 import {
@@ -115,12 +120,15 @@ function MainApp() {
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [selectedQuiz, setSelectedQuiz] = useState<Quiz | null>(null);
   const [selectedBlogPost, setSelectedBlogPost] = useState<BlogPost | null>(null);
+  const [selectedLibraryBook, setSelectedLibraryBook] = useState<LibraryBook | null>(null);
+  const [libraryBookResolving, setLibraryBookResolving] = useState<boolean>(false);
+  const [libraryBookNotFound, setLibraryBookNotFound] = useState<boolean>(false);
   const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
 
   // Certificate Modal State
   const [certModalOpen, setCertModalOpen] = useState(false);
   const [certCourse, setCertCourse] = useState<Course | null>(null);
-  const [adminInitialTab, setAdminInitialTab] = useState<'dashboard' | 'courses' | 'categories' | 'sessions' | 'quizzes' | 'users' | 'attempts' | 'firebase' | 'blog' | 'consultation' | 'comments' | 'instructor-profile' | undefined>(undefined);
+  const [adminInitialTab, setAdminInitialTab] = useState<'dashboard' | 'courses' | 'categories' | 'sessions' | 'quizzes' | 'users' | 'attempts' | 'firebase' | 'blog' | 'library' | 'consultation' | 'comments' | 'instructor-profile' | undefined>(undefined);
 
   // Welcome & Video Intro Modal State (First visit in session, skipped on direct deep links)
   const [welcomeModalOpen, setWelcomeModalOpen] = useState<boolean>(() => {
@@ -130,7 +138,12 @@ function MainApp() {
       if (
         p.startsWith('/session/') ||
         p.startsWith('/article/') ||
+        p.startsWith('/library/') ||
         p.startsWith('/qa/') ||
+        p === '/library' ||
+        p === '/library/' ||
+        p === '/perpustakaan' ||
+        p === '/perpustakaan/' ||
         p === '/profil-pengajar' ||
         p === '/profil-pengajar/' ||
         p === '/profil' ||
@@ -147,6 +160,7 @@ function MainApp() {
         s.has('sessionId') ||
         s.has('view') ||
         s.has('article') ||
+        s.has('library') ||
         s.has('qaId')
       ) {
         return false;
@@ -188,6 +202,7 @@ function MainApp() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [courseSessions, setCourseSessions] = useState<Session[]>([]);
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
+  const [libraryBooks, setLibraryBooks] = useState<LibraryBook[]>([]);
   const [enrollmentsMap, setEnrollmentsMap] = useState<Record<string, Enrollment>>({});
   const [loading, setLoading] = useState<boolean>(true);
 
@@ -205,6 +220,8 @@ function MainApp() {
   currentViewRef.current = currentView;
   const blogPostsRef = useRef<BlogPost[]>(blogPosts);
   blogPostsRef.current = blogPosts;
+  const libraryBooksRef = useRef<LibraryBook[]>(libraryBooks);
+  libraryBooksRef.current = libraryBooks;
   const coursesRef = useRef<Course[]>(courses);
   coursesRef.current = courses;
   const isAdminRef = useRef<boolean>(isAdmin);
@@ -219,6 +236,8 @@ function MainApp() {
   selectedSessionRef.current = selectedSession;
   const selectedBlogPostRef = useRef<BlogPost | null>(selectedBlogPost);
   selectedBlogPostRef.current = selectedBlogPost;
+  const selectedLibraryBookRef = useRef<LibraryBook | null>(selectedLibraryBook);
+  selectedLibraryBookRef.current = selectedLibraryBook;
   const selectedQuizRef = useRef<Quiz | null>(selectedQuiz);
   selectedQuizRef.current = selectedQuiz;
   const targetQaIdRef = useRef<string | null>(targetQaId);
@@ -232,13 +251,14 @@ function MainApp() {
   const historyEntriesRef = useRef<Record<number, DarsHistoryState>>({});
   const lastNavTransitionTimeRef = useRef<number>(0);
 
-  // Synchronize React entities (selectedBlogPost, selectedCourse, selectedSession, etc.) with a DarsRouteState
+  // Synchronize React entities (selectedBlogPost, selectedLibraryBook, selectedCourse, selectedSession, etc.) with a DarsRouteState
   const applyRouteToState = useCallback(
     (
       route: DarsRouteState,
       postsList: BlogPost[],
       coursesList: Course[],
-      adminFlag: boolean
+      adminFlag: boolean,
+      booksList: LibraryBook[] = []
     ) => {
       if (route.filterCategoryId !== undefined) {
         setFilterCategoryId(route.filterCategoryId);
@@ -249,6 +269,61 @@ function MainApp() {
 
       if (route.view === 'search') {
         setCurrentView('search');
+        return;
+      }
+
+      if (route.view === 'library-detail' || route.view === 'library-read') {
+        const targetView = route.view;
+        const slugOrId = route.libraryBookSlug || route.libraryBookId;
+        setLibraryBookNotFound(false);
+
+        if (booksList.length > 0 && slugOrId) {
+          const targetBook = booksList.find(b => b.slug === slugOrId || b.id === slugOrId);
+          if (targetBook && (targetBook.status === 'published' || adminFlag)) {
+            setSelectedLibraryBook(targetBook);
+            setLibraryBookResolving(false);
+            setCurrentView(targetView);
+            return;
+          }
+        }
+
+        if (
+          selectedLibraryBookRef.current &&
+          slugOrId &&
+          (selectedLibraryBookRef.current.slug === slugOrId || selectedLibraryBookRef.current.id === slugOrId) &&
+          (selectedLibraryBookRef.current.status === 'published' || adminFlag)
+        ) {
+          setLibraryBookResolving(false);
+          setCurrentView(targetView);
+          return;
+        }
+
+        if (slugOrId) {
+          setSelectedLibraryBook(null);
+          setLibraryBookResolving(true);
+          getLibraryBookBySlugOrId(slugOrId, adminFlag)
+            .then(book => {
+              if (book && (book.status === 'published' || adminFlag)) {
+                setSelectedLibraryBook(book);
+                setLibraryBookNotFound(false);
+              } else {
+                setSelectedLibraryBook(null);
+                setLibraryBookNotFound(true);
+              }
+            })
+            .catch(() => {
+              setSelectedLibraryBook(null);
+              setLibraryBookNotFound(true);
+            })
+            .finally(() => {
+              setLibraryBookResolving(false);
+            });
+        } else {
+          setLibraryBookResolving(false);
+          setLibraryBookNotFound(true);
+        }
+
+        setCurrentView(targetView);
         return;
       }
 
@@ -377,6 +452,8 @@ function MainApp() {
             quizId: selectedQuizRef.current?.id || null,
             blogPostId: selectedBlogPostRef.current?.id || null,
             blogPostSlug: selectedBlogPostRef.current?.slug || null,
+            libraryBookId: selectedLibraryBookRef.current?.id || null,
+            libraryBookSlug: selectedLibraryBookRef.current?.slug || null,
             genre: selectedGenreRef.current || null,
             qaId: targetQaIdRef.current || null,
             consultationId: targetConsultationIdRef.current || null,
@@ -399,7 +476,7 @@ function MainApp() {
 
       // Avoid pushing duplicate consecutive entries for the exact same route
       if (!options?.replace && isSameRouteState(currentState, nextRoute)) {
-        applyRouteToState(nextRoute, blogPostsRef.current, coursesRef.current, isAdminRef.current);
+        applyRouteToState(nextRoute, blogPostsRef.current, coursesRef.current, isAdminRef.current, libraryBooksRef.current);
         window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
       }
@@ -413,6 +490,8 @@ function MainApp() {
         quizId: nextRoute.quizId ?? null,
         blogPostId: nextRoute.blogPostId ?? null,
         blogPostSlug: nextRoute.blogPostSlug ?? null,
+        libraryBookId: nextRoute.libraryBookId ?? null,
+        libraryBookSlug: nextRoute.libraryBookSlug ?? null,
         genre: nextRoute.genre ?? null,
         qaId: nextRoute.qaId ?? null,
         consultationId: nextRoute.consultationId ?? null,
@@ -433,7 +512,7 @@ function MainApp() {
       }
       historyEntriesRef.current[nextIndex] = nextState;
 
-      applyRouteToState(nextState, blogPostsRef.current, coursesRef.current, isAdminRef.current);
+      applyRouteToState(nextState, blogPostsRef.current, coursesRef.current, isAdminRef.current, libraryBooksRef.current);
     },
     [applyRouteToState]
   );
@@ -491,7 +570,8 @@ function MainApp() {
         poppedState,
         blogPostsRef.current,
         coursesRef.current,
-        isAdminRef.current
+        isAdminRef.current,
+        libraryBooksRef.current
       );
     };
 
@@ -535,16 +615,16 @@ function MainApp() {
     };
   }, []);
 
-  // Resolve route entities when initial Firestore data (blogPosts, courses) finishes loading
+  // Resolve route entities when initial Firestore data (blogPosts, courses, libraryBooks) finishes loading
   useEffect(() => {
-    if (typeof window !== 'undefined' && (blogPosts.length > 0 || courses.length > 0)) {
+    if (typeof window !== 'undefined' && (blogPosts.length > 0 || courses.length > 0 || libraryBooks.length > 0)) {
       const activeRoute: DarsRouteState = isDarsHistoryState(window.history.state)
         ? window.history.state
         : parseUrlToRouteState(window.location.pathname, window.location.search);
 
-      applyRouteToState(activeRoute, blogPosts, courses, isAdmin);
+      applyRouteToState(activeRoute, blogPosts, courses, isAdmin, libraryBooks);
     }
-  }, [blogPosts, courses, isAdmin, applyRouteToState]);
+  }, [blogPosts, courses, libraryBooks, isAdmin, applyRouteToState]);
 
   // Recalculate and re-scan newly mounted elements on view transitions and dynamic data loads
   useEffect(() => {
@@ -552,7 +632,7 @@ function MainApp() {
       AOS.refreshHard();
     }, 150);
     return () => clearTimeout(timer);
-  }, [currentView, selectedCourse, selectedSession, selectedBlogPost, courses.length, blogPosts.length, loading]);
+  }, [currentView, selectedCourse, selectedSession, selectedBlogPost, selectedLibraryBook, courses.length, blogPosts.length, libraryBooks.length, loading]);
 
   // Fetch initial categories, published courses, and blog posts from Cloud Firestore
   const loadData = async (isManualRetry = false, forceRefresh = false) => {
@@ -571,14 +651,19 @@ function MainApp() {
       if (bypassCache) {
         invalidateServicesCache('all');
       }
-      const [cats, crss, posts] = await Promise.all([
+      const [cats, crss, posts, books] = await Promise.all([
         getCategories(bypassCache),
-        getCourses(false, bypassCache), // published only for main app
-        getBlogPosts(false, bypassCache) // published only for public blog
+        getCourses(isAdmin, bypassCache), // admins can view all courses including drafts
+        getBlogPosts(false, bypassCache), // published only for public blog
+        getLibraryBooks(false, bypassCache).catch(err => {
+          console.warn('Non-blocking public library load notice:', err);
+          return [] as LibraryBook[];
+        })
       ]);
       setCategories(cats);
       setCourses(crss);
       setBlogPosts(posts);
+      setLibraryBooks(books);
 
       const sourceStatus = getDataSourceStatus();
       const latestDiag = getLatestFirestoreDiagnostic();
@@ -595,6 +680,10 @@ function MainApp() {
       setSelectedBlogPost(prev => {
         if (!prev) return null;
         return posts.find(p => p.id === prev.id) || prev;
+      });
+      setSelectedLibraryBook(prev => {
+        if (!prev) return null;
+        return books.find(b => b.id === prev.id) || prev;
       });
       const isDirectSessionRoute =
         typeof window !== 'undefined' &&
@@ -674,7 +763,7 @@ function MainApp() {
     }
     setLastSessionFetchTimestamp(Date.now());
 
-    getSessionsByCourse(courseId, false, bypassCache)
+    getSessionsByCourse(courseId, isAdminRef.current, bypassCache)
       .then(sessions => {
         setCourseSessions(sessions);
         setSessionError(null);
@@ -711,7 +800,7 @@ function MainApp() {
       return;
     }
     loadCourseSessions(selectedCourse.id);
-  }, [selectedCourse]);
+  }, [selectedCourse, isAdmin]);
 
   // Handlers for navigation
   const handleSelectCourse = (course: Course) => {
@@ -777,6 +866,28 @@ function MainApp() {
     });
   };
 
+  const handleSelectLibraryBook = (book: LibraryBook) => {
+    setSelectedLibraryBook(book);
+    setLibraryBookNotFound(false);
+    setLibraryBookResolving(false);
+    navigateTo({
+      view: 'library-detail',
+      libraryBookId: book.id,
+      libraryBookSlug: book.slug
+    });
+  };
+
+  const handleOpenLibraryReader = (book: LibraryBook) => {
+    setSelectedLibraryBook(book);
+    setLibraryBookNotFound(false);
+    setLibraryBookResolving(false);
+    navigateTo({
+      view: 'library-read',
+      libraryBookId: book.id,
+      libraryBookSlug: book.slug
+    });
+  };
+
   // Smart in-app Back handlers: pop browser history if previous entry matches target section, else navigate cleanly
   const handleBackOrNavigate = (expectedPrevViews: string[], fallbackRoute: DarsRouteState) => {
     if (typeof window !== 'undefined' && isDarsHistoryState(window.history.state)) {
@@ -808,6 +919,10 @@ function MainApp() {
   const routeScrollKey =
     currentView === 'blog-detail'
       ? `blog-detail:${selectedBlogPost?.id || ''}`
+      : currentView === 'library-detail'
+      ? `library-detail:${selectedLibraryBook?.id || ''}`
+      : currentView === 'library-read'
+      ? `library-read:${selectedLibraryBook?.id || ''}`
       : currentView === 'blog'
       ? `blog:${selectedGenre || 'catalog'}`
       : currentView === 'course-detail'
@@ -826,6 +941,9 @@ function MainApp() {
         return 'bg-[#0F3D3A] text-[#FFF5E9]';
       case 'blog-detail':
         return 'bg-white sm:bg-[#6C151E] text-[#171717] sm:text-[#FFF5E9]';
+      case 'library-detail':
+      case 'library-read':
+        return 'bg-white sm:bg-[#FAF7F0] dark:bg-[#0D2B36] text-[#171717] dark:text-[#CEFEF1]';
       case 'public-qa':
       case 'consultation':
         return 'bg-[#F5DABF] text-[#0F3D3A]';
@@ -850,6 +968,26 @@ function MainApp() {
             }}
             onPreviewBlogPost={(post) => {
               handleSelectBlogPost(post);
+            }}
+            onPreviewLibraryBook={(book) => {
+              handleSelectLibraryBook(book);
+            }}
+            onPreviewQuiz={async (quiz, courseList, sessionsMap) => {
+              const matchedCourse =
+                courseList.find(c => c.id === quiz.courseId) ||
+                courses.find(c => c.id === quiz.courseId) ||
+                (quiz.courseId ? await getCourseById(quiz.courseId) : null);
+              if (matchedCourse) {
+                setSelectedCourse(matchedCourse);
+                const courseSessionsList = sessionsMap[matchedCourse.id] || [];
+                if (courseSessionsList.length > 0) {
+                  setCourseSessions(courseSessionsList);
+                }
+                const matchedSession = courseSessionsList.find(
+                  s => s.id === quiz.sessionId || s.quizId === quiz.id
+                );
+                handleStartQuiz(quiz, matchedSession);
+              }
             }}
             onRefreshData={() => {
               loadData(false, true);
@@ -912,10 +1050,14 @@ function MainApp() {
                       categories={categories}
                       courses={courses}
                       blogPosts={blogPosts}
+                      libraryBooks={libraryBooks}
                       enrollmentsMap={enrollmentsMap}
                       onSelectCourse={handleSelectCourse}
                       onSelectBlogPost={(post) => {
                         handleSelectBlogPost(post);
+                      }}
+                      onSelectLibraryBook={(book) => {
+                        handleSelectLibraryBook(book);
                       }}
                       onExplore={() => {
                         navigateTo({ view: 'courses' });
@@ -1183,6 +1325,105 @@ function MainApp() {
                           </p>
                         </div>
                       )
+                    )
+                  )}
+
+                  {/* VIEW 8B: LIBRARY DIGITAL CATALOG */}
+                  {currentView === 'library' && (
+                    <LibraryListView
+                      books={libraryBooks}
+                      loading={loading}
+                      onSelectBook={(book) => {
+                        handleSelectLibraryBook(book);
+                      }}
+                    />
+                  )}
+
+                  {/* VIEW 8C: LIBRARY DIGITAL BOOK DETAIL PAGE (/library/:slug) */}
+                  {currentView === 'library-detail' && (
+                    selectedLibraryBook ? (
+                      <LibraryBookDetailView
+                        book={selectedLibraryBook}
+                        onBack={() =>
+                          handleBackOrNavigate(['library', 'home'], {
+                            view: 'library'
+                          })
+                        }
+                        onOpenReader={(book) => {
+                          handleOpenLibraryReader(book);
+                        }}
+                      />
+                    ) : libraryBookNotFound && !libraryBookResolving ? (
+                      <div className="max-w-xl mx-auto px-4 py-14 text-center">
+                        <div className="nb-card bg-white dark:bg-[#0D2B36] p-8 space-y-4">
+                          <h2 className="text-lg font-bold font-serif text-[#171717] dark:text-[#CEFEF1]">
+                            Kitab Tidak Ditemukan
+                          </h2>
+                          <p className="text-xs sm:text-sm text-[#525855] dark:text-[#A6D6C9] leading-relaxed">
+                            Halaman detail kitab yang Anda cari tidak tersedia atau belum dipublikasikan.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => navigateTo({ view: 'library' })}
+                            className="nb-btn nb-btn-primary px-5 py-2.5 text-xs cursor-pointer"
+                          >
+                            Kembali ke Library Digital
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center space-y-4">
+                        <div className="w-10 h-10 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto" />
+                        <p className="text-sm text-stone-600 dark:text-stone-400 font-medium">
+                          Memuat detail kitab...
+                        </p>
+                      </div>
+                    )
+                  )}
+
+                  {/* VIEW 8D: LIBRARY DIGITAL INTERNAL BOOK READER (/library/:slug/baca) */}
+                  {currentView === 'library-read' && (
+                    selectedLibraryBook ? (
+                      <LibraryDetailView
+                        book={selectedLibraryBook}
+                        onBackToDetail={() =>
+                          handleBackOrNavigate(['library-detail'], {
+                            view: 'library-detail',
+                            libraryBookId: selectedLibraryBook.id,
+                            libraryBookSlug: selectedLibraryBook.slug
+                          })
+                        }
+                        onBack={() =>
+                          handleBackOrNavigate(['library', 'home'], {
+                            view: 'library'
+                          })
+                        }
+                      />
+                    ) : libraryBookNotFound && !libraryBookResolving ? (
+                      <div className="max-w-xl mx-auto px-4 py-14 text-center">
+                        <div className="nb-card bg-white dark:bg-[#0D2B36] p-8 space-y-4">
+                          <h2 className="text-lg font-bold font-serif text-[#171717] dark:text-[#CEFEF1]">
+                            Naskah Kitab Tidak Ditemukan
+                          </h2>
+                          <p className="text-xs sm:text-sm text-[#525855] dark:text-[#A6D6C9] leading-relaxed">
+                            Naskah baca internal yang Anda cari tidak tersedia atau belum dipublikasikan.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => navigateTo({ view: 'library' })}
+                            className="nb-btn nb-btn-primary px-5 py-2.5 text-xs cursor-pointer"
+                          >
+                            Kembali ke Library Digital
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center space-y-4">
+                        <div className="w-10 h-10 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto" />
+                        <p className="text-sm text-stone-600 dark:text-stone-400 font-medium">
+                          Memuat naskah kitab...
+                        </p>
+                      </div>
                     )
                   )}
 

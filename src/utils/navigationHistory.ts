@@ -5,6 +5,8 @@ export interface DarsRouteState {
   quizId?: string | null;
   blogPostId?: string | null;
   blogPostSlug?: string | null;
+  libraryBookId?: string | null;
+  libraryBookSlug?: string | null;
   genre?: string | null;
   qaId?: string | null;
   consultationId?: string | null;
@@ -73,6 +75,7 @@ export function parseUrlToRouteState(pathname: string, search: string): DarsRout
   const urlQuizId = params.get('quizId') || null;
   const urlArticle = params.get('article') || null;
   const urlArticleId = params.get('id') || null;
+  const urlLibrary = params.get('library') || params.get('book') || null;
   const urlGenre = params.get('genre') || null;
   const urlQaId = params.get('qaId') || null;
   const urlConsultationId = params.get('consultationId') || null;
@@ -120,6 +123,67 @@ export function parseUrlToRouteState(pathname: string, search: string): DarsRout
       view: 'blog-detail',
       blogPostSlug: identifier,
       blogPostId: identifier,
+      filterCategoryId,
+      searchQuery
+    };
+  }
+
+  if (cleanPath.startsWith('/library/')) {
+    const rawRemainder = cleanPath.slice('/library/'.length).replace(/\/+$/, '');
+    const segments = rawRemainder.split('/').filter(Boolean);
+    if (segments.length >= 2 && (segments[1] === 'baca' || segments[1] === 'read')) {
+      const decodedSlug = decodeURIComponent(segments[0]);
+      return {
+        view: 'library-read',
+        libraryBookSlug: decodedSlug,
+        libraryBookId: urlArticleId || decodedSlug,
+        filterCategoryId,
+        searchQuery
+      };
+    }
+    const decodedSlug = segments[0] ? decodeURIComponent(segments[0]) : null;
+    if (decodedSlug) {
+      return {
+        view: 'library-detail',
+        libraryBookSlug: decodedSlug,
+        libraryBookId: urlArticleId || decodedSlug,
+        filterCategoryId,
+        searchQuery
+      };
+    }
+  }
+
+  if (urlView === 'library-read') {
+    const identifier = urlLibrary || urlArticleId || null;
+    return {
+      view: 'library-read',
+      libraryBookSlug: identifier,
+      libraryBookId: identifier,
+      filterCategoryId,
+      searchQuery
+    };
+  }
+
+  if (urlLibrary || urlView === 'library-detail') {
+    const identifier = urlLibrary || urlArticleId || null;
+    return {
+      view: 'library-detail',
+      libraryBookSlug: identifier,
+      libraryBookId: identifier,
+      filterCategoryId,
+      searchQuery
+    };
+  }
+
+  if (
+    cleanPath === '/library' ||
+    cleanPath === '/library/' ||
+    cleanPath === '/perpustakaan' ||
+    cleanPath === '/perpustakaan/' ||
+    urlView === 'library'
+  ) {
+    return {
+      view: 'library',
       filterCategoryId,
       searchQuery
     };
@@ -321,6 +385,25 @@ export function buildUrlFromRouteState(route: DarsRouteState): string {
       return '/?view=blog';
     }
 
+    case 'library':
+      return '/library';
+
+    case 'library-detail': {
+      const key = route.libraryBookSlug || route.libraryBookId;
+      if (key) {
+        return `/library/${encodeURIComponent(key)}`;
+      }
+      return '/library';
+    }
+
+    case 'library-read': {
+      const key = route.libraryBookSlug || route.libraryBookId;
+      if (key) {
+        return `/library/${encodeURIComponent(key)}/baca`;
+      }
+      return '/library';
+    }
+
     case 'courses': {
       const params = new URLSearchParams();
       params.set('view', 'courses');
@@ -407,6 +490,12 @@ export function isSameRouteState(a: DarsRouteState, b: DarsRouteState): boolean 
     case 'blog-detail': {
       const aKey = a.blogPostSlug || a.blogPostId || '';
       const bKey = b.blogPostSlug || b.blogPostId || '';
+      return aKey === bKey;
+    }
+    case 'library-detail':
+    case 'library-read': {
+      const aKey = a.libraryBookSlug || a.libraryBookId || '';
+      const bKey = b.libraryBookSlug || b.libraryBookId || '';
       return aKey === bKey;
     }
     case 'course-detail':

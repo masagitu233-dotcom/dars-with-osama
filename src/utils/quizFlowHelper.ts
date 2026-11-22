@@ -1,4 +1,8 @@
-import { Session, Quiz, QuizAttempt } from '../types/index';
+import { Session, Quiz, QuizAttempt, UserProfile } from '../types/index';
+
+export interface QuizFlowOptions {
+  isAdmin?: boolean;
+}
 
 export type SessionQuizStatusType =
   | 'no_quiz'
@@ -119,13 +123,19 @@ export function evaluateSessionQuizStatus(
 
 /**
  * Determines whether a session can be marked complete by the user.
+ * Verified admins bypass sequential quiz completion locks.
  */
 export function canCompleteSession(
   session: Session,
   quiz: Quiz | null | undefined,
-  attempts: QuizAttempt[] = []
+  attempts: QuizAttempt[] = [],
+  options?: QuizFlowOptions
 ): { allowed: boolean; reason?: string; status: SessionQuizStatus } {
   const status = evaluateSessionQuizStatus(session, quiz, attempts);
+
+  if (options?.isAdmin === true) {
+    return { allowed: true, status };
+  }
 
   if (!status.hasQuiz) {
     return { allowed: true, status };
@@ -161,9 +171,10 @@ export function canCompleteSession(
 export function canAdvanceToNextSession(
   currentSession: Session,
   currentQuiz: Quiz | null | undefined,
-  attempts: QuizAttempt[] = []
+  attempts: QuizAttempt[] = [],
+  options?: QuizFlowOptions
 ): { allowed: boolean; reason?: string; status: SessionQuizStatus } {
-  const check = canCompleteSession(currentSession, currentQuiz, attempts);
+  const check = canCompleteSession(currentSession, currentQuiz, attempts, options);
   if (!check.allowed) {
     return {
       allowed: false,
@@ -181,12 +192,14 @@ export function canAdvanceToNextSession(
  * Checks all sessions preceding targetSession (i.e. sessions with order < targetSession.order,
  * or preceding it in the course syllabus) to see if any has an uncompleted or failed quiz.
  * Returns information about the first preceding session that has an uncompleted quiz.
+ * Verified admins bypass sequential locking (`options.isAdmin === true`).
  */
 export function findFirstUncompletedPrecedingQuizSession(
   allSessions: Session[],
   targetSession: Session,
   attempts: QuizAttempt[] = [],
-  quizzesMap: Record<string, Quiz> = {}
+  quizzesMap: Record<string, Quiz> = {},
+  options?: QuizFlowOptions
 ): {
   hasBlockingQuiz: boolean;
   blockingSession?: Session;
@@ -194,6 +207,10 @@ export function findFirstUncompletedPrecedingQuizSession(
   status?: SessionQuizStatus;
   message?: string;
 } {
+  if (options?.isAdmin === true) {
+    return { hasBlockingQuiz: false };
+  }
+
   if (!allSessions || allSessions.length === 0 || !targetSession) {
     return { hasBlockingQuiz: false };
   }
@@ -233,4 +250,120 @@ export function findFirstUncompletedPrecedingQuizSession(
   }
 
   return { hasBlockingQuiz: false };
+}
+
+/**
+ * Determines whether a quiz attempt belongs to an administrator account
+ * (either via explicit attempt flags or legacy admin userId/email attribution)
+ * so admin quiz activity never pollutes student progress or score statistics.
+ */
+export function isAdminQuizAttempt(
+  attempt: QuizAttempt,
+  adminUserIds?: Set<string>,
+  adminEmails?: Set<string>
+): boolean {
+  if (!attempt) return false;
+  if (attempt.isAdminAttempt === true || attempt.submitterRole === 'admin') {
+    return true;
+  }
+  if (adminUserIds && attempt.userId && adminUserIds.has(attempt.userId)) {
+    return true;
+  }
+  const cleanEmail = typeof attempt.userEmail === 'string' ? attempt.userEmail.trim().toLowerCase() : '';
+  if (cleanEmail && adminEmails && adminEmails.has(cleanEmail)) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Separates raw QuizAttempt records into studentAttempts vs adminAttempts
+ * without mutating historical data.
+ */
+export function separateQuizAttemptsByRole(
+  attempts: QuizAttempt[] = [],
+  users: UserProfile[] = [],
+  platformAdminEmails: string[] = []
+): {
+  studentAttempts: QuizAttempt[];
+  adminAttempts: QuizAttempt[];
+  adminUserIds: Set<string>;
+  adminEmails: Set<string>;
+} {
+  const adminUserIds = new Set<string>();
+  const adminEmails = new Set<string>();
+
+  for (const email of platformAdminEmails) {
+    if (typeof email === 'string' && email.trim().length > 0) {
+      adminEmails.add(email.trim().toLowerCase());
+    }
+  }
+
+  for (const u of users) {
+    const cleanEmail = typeof u?.email === 'string' ? u.email.trim().toLowerCase() : '';
+    const isUserAdmin = u?.role === 'admin' || (cleanEmail && adminEmails.has(cleanEmail));
+    if (isUserAdmin) {
+      if (u.id) adminUserIds.add(u.id);
+      if (cleanEmail) adminEmails.add(cleanEmail);
+    }
+  }
+
+  const studentAttempts: QuizAttempt[] = [];
+  const adminAttempts: QuizAttempt[] = [];
+
+  for (const att of attempts) {
+    if (isAdminQuizAttempt(att, adminUserIds, adminEmails)) {
+      adminAttempts.push(att);
+    } else {
+      studentAttempts.push(att);
+    }
+  }
+
+  return {
+    studentAttempts,
+    adminAttempts,
+    adminUserIds,
+    adminEmails
+  };
+}
+
+/**
+ * Computes aggregate quiz statistics exclusively from student attempts.
+ */
+export function computeStudentQuizStatistics(
+  attempts: QuizAttempt[] = [],
+  users: UserProfile[] = [],
+  platformAdminEmails: string[] = []
+): {
+  studentAttempts: QuizAttempt[];
+  adminAttempts: QuizAttempt[];
+  totalStudentAttempts: number;
+  averageScore: number;
+  passCount: number;
+  passRate: number;
+} {
+  const { studentAttempts, adminAttempts } = separateQuizAttemptsByRole(
+    attempts,
+    users,
+    platformAdminEmails
+  );
+  const totalStudentAttempts = studentAttempts.length;
+  const averageScore =
+    totalStudentAttempts > 0
+      ? Math.round(
+          studentAttempts.reduce((sum, a) => sum + (a.score || 0), 0) / totalStudentAttempts
+        )
+      : 0;
+  const passCount = studentAttempts.filter((a) => a.passed).length;
+  const passRate =
+    totalStudentAttempts > 0 ? Math.round((passCount / totalStudentAttempts) * 100) : 0;
+
+  return {
+    studentAttempts,
+    adminAttempts,
+    totalStudentAttempts,
+    averageScore,
+    passCount,
+    passRate
+  };
 }

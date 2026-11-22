@@ -256,12 +256,13 @@ export const SessionView: React.FC<SessionViewProps> = ({
       return;
     }
 
-    // Verify preceding sessions in this course do not have uncompleted quizzes
+    // Verify preceding sessions in this course do not have uncompleted quizzes (bypassed for verified admins)
     const blockCheck = findFirstUncompletedPrecedingQuizSession(
       allSessions,
       targetSession,
       userAttempts,
-      quizzesMap
+      quizzesMap,
+      { isAdmin }
     );
     if (blockCheck.hasBlockingQuiz && blockCheck.blockingSession) {
       setPendingBlockingSession(blockCheck.blockingSession);
@@ -293,12 +294,18 @@ export const SessionView: React.FC<SessionViewProps> = ({
       return;
     }
 
+    if (isAdmin) {
+      showToast('Mode Admin: Aktivitas pratinjau admin tidak mencatat atau mengubah progres penyelesaian sesi santri.');
+      return;
+    }
+
     // 1. Strict sequential validation: Verify preceding sessions in course have passed their quizzes
     const precedingQuizCheck = findFirstUncompletedPrecedingQuizSession(
       allSessions,
       session,
       userAttempts,
-      quizzesMap
+      quizzesMap,
+      { isAdmin: false }
     );
     if (precedingQuizCheck.hasBlockingQuiz && precedingQuizCheck.blockingSession) {
       showToast(
@@ -312,7 +319,7 @@ export const SessionView: React.FC<SessionViewProps> = ({
     }
 
     // 2. Mandatory current session quiz validation before marking session complete
-    const quizValidation = canCompleteSession(session, quiz, userAttempts);
+    const quizValidation = canCompleteSession(session, quiz, userAttempts, { isAdmin: false });
     if (!quizValidation.allowed) {
       showToast(
         quizValidation.reason ||
@@ -358,9 +365,10 @@ export const SessionView: React.FC<SessionViewProps> = ({
     allSessions,
     session,
     userAttempts,
-    quizzesMap
+    quizzesMap,
+    { isAdmin }
   );
-  const currentQuizCheck = canCompleteSession(session, quiz, userAttempts);
+  const currentQuizCheck = canCompleteSession(session, quiz, userAttempts, { isAdmin });
   const isCompletionEligible = !precedingCheck.hasBlockingQuiz && currentQuizCheck.allowed;
 
   const playlistMarginClass = isPlaylistOpen ? 'lg:mr-[340px] xl:mr-[400px]' : 'mr-0';

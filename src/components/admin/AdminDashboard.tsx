@@ -40,9 +40,10 @@ import {
   FileQuestion,
   MessageSquare,
   UserCheck,
-  Mail
+  Mail,
+  Library
 } from 'lucide-react';
-import { Category, Course, Session, Quiz, Question, UserProfile, QuizAttempt, BlogPost } from '../../types';
+import { Category, Course, Session, Quiz, Question, UserProfile, QuizAttempt, BlogPost, LibraryBook, LibraryVisitStats } from '../../types';
 import { AdminNotificationSettings } from './AdminNotificationSettings';
 import {
   getCategories,
@@ -66,7 +67,11 @@ import {
   getQuizById,
   getBlogPosts,
   seedDefaultBlogPostsIfEmpty,
-  invalidateServicesCache
+  getLibraryBooks,
+  getLibraryVisitStats,
+  invalidateServicesCache,
+  INITIAL_ADMIN_EMAILS,
+  isPlatformAdminEmail
 } from '../../firebase/services';
 import { firebaseConfig, getLatestFirestoreDiagnostic, getDataSourceStatus, ensureFreshFirestoreAuthToken } from '../../firebase/config';
 import { useAuth } from '../../context/AuthContext';
@@ -75,6 +80,7 @@ import { ConfirmModal } from '../common/ConfirmModal';
 import { Logo, LogoSymbol } from '../common/Logo';
 import { YouTubeEmbed } from '../common/YouTubeEmbed';
 import { AdminBlogManager } from './AdminBlogManager';
+import { AdminLibraryManager } from './AdminLibraryManager';
 import { AdminConsultationManager } from './AdminConsultationManager';
 import { AdminCommentsManager } from './AdminCommentsManager';
 import { AdminInstructorProfileManager } from './AdminInstructorProfileManager';
@@ -83,15 +89,18 @@ import { QuizImportModal } from './QuizImportModal';
 import { getAllArticleCommentsForAdmin, subscribeToConsultationsStats } from '../../firebase/services';
 import { auditBrowserStorageEntries } from '../../utils/dataAuditHelper';
 import { splitSessionContentIntoSlides } from '../../utils/sessionSlideHelper';
+import { computeStudentQuizStatistics } from '../../utils/quizFlowHelper';
 
 export const AdminDashboard: React.FC<{
   initialCourseId?: string;
-  initialTab?: 'dashboard' | 'courses' | 'categories' | 'sessions' | 'quizzes' | 'users' | 'attempts' | 'firebase' | 'blog' | 'consultation' | 'comments' | 'instructor-profile';
+  initialTab?: 'dashboard' | 'courses' | 'categories' | 'sessions' | 'quizzes' | 'users' | 'attempts' | 'firebase' | 'blog' | 'library' | 'consultation' | 'comments' | 'instructor-profile';
   autoOpenAddSession?: boolean;
   onClearAutoOpen?: () => void;
   onNavigateToSiswa?: () => void;
   onNavigateToInstructorProfile?: () => void;
   onPreviewBlogPost?: (post: BlogPost) => void;
+  onPreviewLibraryBook?: (book: LibraryBook) => void;
+  onPreviewQuiz?: (quiz: Quiz, courses: Course[], allSessionsMap: Record<string, Session[]>) => void;
   onRefreshData: () => void;
 }> = ({
   initialCourseId,
@@ -101,13 +110,15 @@ export const AdminDashboard: React.FC<{
   onNavigateToSiswa,
   onNavigateToInstructorProfile,
   onPreviewBlogPost,
+  onPreviewLibraryBook,
+  onPreviewQuiz,
   onRefreshData
 }) => {
   const { user, userProfile, isAdmin, openLogoutConfirmModal } = useAuth();
   const { theme, effectiveTheme, setTheme } = useTheme();
 
   // Active Menu / Tab in Sidebar
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'courses' | 'categories' | 'sessions' | 'quizzes' | 'users' | 'attempts' | 'firebase' | 'blog' | 'consultation' | 'comments' | 'instructor-profile' | 'email-notifications'>(initialTab || 'dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'courses' | 'categories' | 'sessions' | 'quizzes' | 'users' | 'attempts' | 'firebase' | 'blog' | 'library' | 'consultation' | 'comments' | 'instructor-profile' | 'email-notifications'>(initialTab || 'dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [quickSearch, setQuickSearch] = useState('');
@@ -150,7 +161,14 @@ export const AdminDashboard: React.FC<{
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [attempts, setAttempts] = useState<QuizAttempt[]>([]);
+  const [attemptRoleFilter, setAttemptRoleFilter] = useState<'student' | 'admin'>('student');
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
+  const [libraryBooks, setLibraryBooks] = useState<LibraryBook[]>([]);
+  const [libraryVisitStats, setLibraryVisitStats] = useState<LibraryVisitStats>({
+    id: 'overview',
+    totalVisits: 0,
+    updatedAt: ''
+  });
   const [loading, setLoading] = useState(true);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -301,6 +319,18 @@ export const AdminDashboard: React.FC<{
       } catch (err) {
         // Non-blocking for offline or restricted mode
       }
+
+      // Load Library Digital collection & admin-only visit statistics (non-blocking)
+      try {
+        const [books, stats] = await Promise.all([
+          getLibraryBooks(true, forceRefresh),
+          getLibraryVisitStats()
+        ]);
+        setLibraryBooks(books);
+        setLibraryVisitStats(stats);
+      } catch (err) {
+        console.warn('Non-blocking library admin data load notice:', err);
+      }
     } catch (err: any) {
       console.error('Failed to load admin data:', err);
     } finally {
@@ -372,12 +402,17 @@ export const AdminDashboard: React.FC<{
   // Total sessions across all courses
   const totalSessionsCount = Object.values(allSessionsMap).reduce((acc, list) => acc + list.length, 0);
 
-  // Compute quiz stats
-  const averageQuizScore = attempts.length > 0
-    ? Math.round(attempts.reduce((sum, a) => sum + (a.score || 0), 0) / attempts.length)
-    : 0;
-  const passCount = attempts.filter(a => a.passed).length;
-  const passRate = attempts.length > 0 ? Math.round((passCount / attempts.length) * 100) : 0;
+  // Student vs Admin user breakdown
+  const adminUsersCount = users.filter(u => u.role === 'admin' || isPlatformAdminEmail(u.email)).length;
+  const studentUsersCount = Math.max(0, users.length - adminUsersCount);
+
+  // Compute quiz stats exclusively from student attempts (exclude admin quiz attempts)
+  const {
+    studentAttempts,
+    adminAttempts,
+    averageScore: averageQuizScore,
+    passRate
+  } = computeStudentQuizStatistics(attempts, users, INITIAL_ADMIN_EMAILS);
 
   // Quick Search Filtered Data
   const searchLower = quickSearch.trim().toLowerCase();
@@ -401,9 +436,10 @@ export const AdminDashboard: React.FC<{
     ? users.filter(u => (u.displayName && u.displayName.toLowerCase().includes(searchLower)) || (u.email && u.email.toLowerCase().includes(searchLower)))
     : users;
 
+  const activeAttemptsSource = attemptRoleFilter === 'admin' ? adminAttempts : studentAttempts;
   const displayedAttempts = searchLower
-    ? attempts.filter(a => (a.userName && a.userName.toLowerCase().includes(searchLower)) || (a.userEmail && a.userEmail.toLowerCase().includes(searchLower)))
-    : attempts;
+    ? activeAttemptsSource.filter(a => (a.userName && a.userName.toLowerCase().includes(searchLower)) || (a.userEmail && a.userEmail.toLowerCase().includes(searchLower)))
+    : activeAttemptsSource;
 
   // ==========================================
   // OPEN MULTI-STEP SESSION MODAL
@@ -1080,6 +1116,30 @@ export const AdminDashboard: React.FC<{
               </button>
 
               <button
+                onClick={() => { setActiveTab('library'); setSidebarOpen(false); }}
+                title={`Library Digital (${libraryBooks.length})`}
+                className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3.5 py-2.5'} rounded-md text-xs font-extrabold transition cursor-pointer ${
+                  activeTab === 'library'
+                    ? 'bg-[#123D32] dark:bg-[#1F5F63] text-[#FAF7F0] dark:text-[#CEFEF1] border-2 border-[#171717] dark:border-[#4CA7A1] border-l-4 dark:border-l-[#4CA7A1] shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#001722]'
+                    : 'bg-[#F5EFE2]/60 dark:bg-[#0D2B36] text-[#171717] dark:text-[#A6D6C9] hover:bg-[#F5EFE2] dark:hover:bg-[#1F5F63] dark:hover:text-[#CEFEF1] border-2 border-[#171717]/40 dark:border-[#4CA7A1]'
+                }`}
+              >
+                <div className="flex items-center gap-3 truncate">
+                  <Library className={`w-4 h-4 shrink-0 ${activeTab === 'library' ? 'text-[#FAF7F0] dark:text-[#CEFEF1]' : 'text-[#0B6B50] dark:text-[#4CA7A1]'}`} />
+                  {!sidebarCollapsed && <span className="truncate">Library Digital</span>}
+                </div>
+                {!sidebarCollapsed && (
+                  <span className={`text-[10px] px-2 py-0.5 rounded-sm font-extrabold shrink-0 border ${
+                    activeTab === 'library'
+                      ? 'bg-[#4CA7A1] text-[#001722] border-[#171717] dark:border-[#001722]'
+                      : 'bg-[#F5EFE2] dark:bg-[#001722] text-[#171717] dark:text-[#CEFEF1] border-[#171717]/30 dark:border-[#4CA7A1]'
+                  }`}>
+                    {libraryBooks.length}
+                  </span>
+                )}
+              </button>
+
+              <button
                 onClick={() => { setActiveTab('comments'); setSidebarOpen(false); }}
                 title={`Komentar Pembaca Artikel (${commentsCount})`}
                 className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3.5 py-2.5'} rounded-md text-xs font-extrabold transition cursor-pointer ${
@@ -1199,7 +1259,7 @@ export const AdminDashboard: React.FC<{
 
               <button
                 onClick={() => { setActiveTab('attempts'); setSidebarOpen(false); }}
-                title={`Hasil Kuis & Nilai (${attempts.length})`}
+                title={`Hasil Kuis & Nilai Santri (${studentAttempts.length})`}
                 className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'justify-between px-3.5 py-2.5'} rounded-md text-xs font-extrabold transition cursor-pointer ${
                   activeTab === 'attempts'
                     ? 'bg-[#123D32] dark:bg-[#1F5F63] text-[#FAF7F0] dark:text-[#CEFEF1] border-2 border-[#171717] dark:border-[#4CA7A1] border-l-4 dark:border-l-[#4CA7A1] shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#001722]'
@@ -1216,7 +1276,7 @@ export const AdminDashboard: React.FC<{
                       ? 'bg-[#4CA7A1] text-[#001722] border-[#171717] dark:border-[#001722]'
                       : 'bg-[#F5EFE2] dark:bg-[#001722] text-[#171717] dark:text-[#CEFEF1] border-[#171717]/30 dark:border-[#4CA7A1]'
                   }`}>
-                    {attempts.length}
+                    {studentAttempts.length}
                   </span>
                 )}
               </button>
@@ -1394,7 +1454,11 @@ export const AdminDashboard: React.FC<{
                 <span>Admin</span>
                 <ChevronRight className="w-3.5 h-3.5 text-[#FFF3D5]" />
                 <span className="text-[#FFF3D5] font-extrabold capitalize">
-                  {activeTab === 'dashboard' ? 'Dashboard Overview' : activeTab}
+                  {activeTab === 'dashboard'
+                    ? 'Dashboard Overview'
+                    : activeTab === 'library'
+                    ? 'Library Digital'
+                    : activeTab}
                 </span>
               </div>
               <h1 className="text-xl sm:text-2xl font-bold text-[#FFF3D5] font-serif-brand tracking-tight">
@@ -1478,10 +1542,10 @@ export const AdminDashboard: React.FC<{
                     </div>
                   </div>
                   <p className="text-2xl font-extrabold text-[#171717] dark:text-[#CEFEF1] mt-2 font-serif-brand">
-                    {users.length}
+                    {studentUsersCount}
                   </p>
                   <p className="text-[10px] text-stone-600 dark:text-[#A6D6C9] mt-0.5 font-bold">
-                    Santri terdaftar
+                    Santri terdaftar ({adminUsersCount} Admin)
                   </p>
                 </div>
 
@@ -1531,8 +1595,8 @@ export const AdminDashboard: React.FC<{
                     <GraduationCap className="w-6 h-6" />
                   </div>
                   <div>
-                    <p className="text-xs text-stone-600 dark:text-[#A6D6C9] font-bold uppercase">Percobaan Kuis</p>
-                    <p className="text-xl font-extrabold text-[#171717] dark:text-[#CEFEF1] mt-0.5">{attempts.length}</p>
+                    <p className="text-xs text-stone-600 dark:text-[#A6D6C9] font-bold uppercase">Percobaan Kuis Santri</p>
+                    <p className="text-xl font-extrabold text-[#171717] dark:text-[#CEFEF1] mt-0.5">{studentAttempts.length}</p>
                   </div>
                 </div>
 
@@ -1546,6 +1610,37 @@ export const AdminDashboard: React.FC<{
                       {courses.filter(c => c.isPublished).length} / {courses.length} Pub
                     </p>
                   </div>
+                </div>
+              </div>
+
+              {/* RINGKASAN LIBRARY DIGITAL & STATISTIK KUNJUNGAN (KHUSUS ADMIN) */}
+              <div
+                onClick={() => setActiveTab('library')}
+                className="nb-card p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:-translate-y-0.5 hover:shadow-[6px_6px_0px_#171717] dark:hover:shadow-[6px_6px_0px_#001722] transition-all cursor-pointer"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-[#123D32] text-[#D6AD52] border-2 border-[#171717] dark:border-[#4CA7A1] rounded-md shrink-0 shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#001722]">
+                    <Library className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-extrabold uppercase tracking-wider text-stone-600 dark:text-[#A6D6C9]">
+                      Library Digital — Statistik Khusus Admin
+                    </p>
+                    <p className="text-sm sm:text-base font-extrabold text-[#171717] dark:text-[#CEFEF1] mt-0.5">
+                      {libraryBooks.length} Koleksi Buku ({libraryBooks.filter(b => b.status === 'published').length} Terbit)
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="text-left sm:text-right">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-stone-600 dark:text-[#A6D6C9]">
+                      Total Kunjungan Library
+                    </p>
+                    <p className="text-2xl font-extrabold font-serif-brand text-[#123D32] dark:text-[#CEFEF1]">
+                      {libraryVisitStats.totalVisits.toLocaleString('id-ID')}
+                    </p>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-[#171717] dark:text-[#4CA7A1] shrink-0" />
                 </div>
               </div>
 
@@ -2063,9 +2158,20 @@ export const AdminDashboard: React.FC<{
                         </p>
                       </div>
 
-                      <div className="pt-3 border-t-2 border-[#171717]/20 dark:border-[#4CA7A1]/50 flex items-center justify-between">
-                        <span className="text-[11px] font-mono text-stone-500 dark:text-[#A6D6C9]">ID: {q.id}</span>
-                        <div className="flex items-center gap-2">
+                      <div className="pt-3 border-t-2 border-[#171717]/20 dark:border-[#4CA7A1]/50 flex items-center justify-between gap-2">
+                        <span className="text-[11px] font-mono text-stone-500 dark:text-[#A6D6C9] truncate">ID: {q.id}</span>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {onPreviewQuiz && (
+                            <button
+                              type="button"
+                              onClick={() => onPreviewQuiz(q, courses, allSessionsMap)}
+                              className="px-2.5 py-1 nb-btn nb-btn-primary text-[11px] flex items-center gap-1 cursor-pointer"
+                              title="Buka & kerjakan kuis ini sebagai Admin (bebas urutan)"
+                            >
+                              <Play className="w-3 h-3" />
+                              <span>Buka Kuis</span>
+                            </button>
+                          )}
                           <button
                             onClick={() => setEditingQuiz(q)}
                             className="p-1.5 text-stone-700 dark:text-[#CEFEF1] hover:text-[#4CA7A1] transition cursor-pointer"
@@ -2106,6 +2212,30 @@ export const AdminDashboard: React.FC<{
               onNavigateToComments={(articleId) => {
                 if (articleId) setSelectedArticleIdForComments(articleId);
                 setActiveTab('comments');
+              }}
+            />
+          )}
+
+          {/* ========================================================= */}
+          {/* VIEW: LIBRARY DIGITAL */}
+          {/* ========================================================= */}
+          {activeTab === 'library' && (
+            <AdminLibraryManager
+              books={libraryBooks}
+              visitStats={libraryVisitStats}
+              onRefreshBooks={async () => {
+                const updated = await getLibraryBooks(true, true);
+                setLibraryBooks(updated);
+                if (onRefreshData) onRefreshData();
+              }}
+              onRefreshStats={async () => {
+                const latestStats = await getLibraryVisitStats();
+                setLibraryVisitStats(latestStats);
+              }}
+              onPreviewBook={(book) => {
+                if (onPreviewLibraryBook) {
+                  onPreviewLibraryBook(book);
+                }
               }}
             />
           )}
@@ -2186,26 +2316,54 @@ export const AdminDashboard: React.FC<{
           {/* ========================================================= */}
           {activeTab === 'attempts' && (
             <div className="space-y-6 animate-fade-in">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h2 className="text-xl font-black text-stone-900 dark:text-[#FFFFFF] tracking-tight">
-                    Hasil & Rekapitulasi Nilai Kuis Santri ({attempts.length})
+                    Hasil & Rekapitulasi Nilai Kuis Santri ({studentAttempts.length})
                   </h2>
                   <p className="text-xs text-stone-600 dark:text-[#A6D6C9] mt-1">
-                    Riwayat pengerjaan evaluasi dan evaluasi kelulusan santri secara real-time.
+                    Statistik nilai & kelulusan dihitung eksklusif dari akun santri. Aktivitas kuis admin dipisahkan dan tidak masuk ke statistik siswa.
                   </p>
                 </div>
-                <span className="nb-badge bg-white dark:bg-[#1F5F63] text-stone-800 dark:text-[#CEFEF1] border-[#171717] dark:border-[#4CA7A1]">
-                  {attempts.length} Pengerjaan
-                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAttemptRoleFilter('student')}
+                    className={`px-3 py-1.5 rounded-md text-xs font-extrabold border-2 transition cursor-pointer ${
+                      attemptRoleFilter === 'student'
+                        ? 'bg-[#123D32] text-[#FAF7F0] border-[#171717] shadow-[2px_2px_0px_#171717]'
+                        : 'bg-white dark:bg-[#0D2B36] text-stone-700 dark:text-[#A6D6C9] border-[#171717]/40 dark:border-[#4CA7A1]'
+                    }`}
+                  >
+                    Nilai Santri ({studentAttempts.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAttemptRoleFilter('admin')}
+                    className={`px-3 py-1.5 rounded-md text-xs font-extrabold border-2 transition cursor-pointer ${
+                      attemptRoleFilter === 'admin'
+                        ? 'bg-[#4CA7A1] text-[#001722] border-[#171717] shadow-[2px_2px_0px_#171717]'
+                        : 'bg-white dark:bg-[#0D2B36] text-stone-700 dark:text-[#A6D6C9] border-[#171717]/40 dark:border-[#4CA7A1]'
+                    }`}
+                  >
+                    Uji Coba Admin ({adminAttempts.length})
+                  </button>
+                </div>
               </div>
+
+              {attemptRoleFilter === 'admin' && (
+                <div className="p-3.5 rounded-md bg-[#FAF7F0] dark:bg-[#1F5F63] border-2 border-[#171717] dark:border-[#4CA7A1] text-xs font-bold text-[#171717] dark:text-[#CEFEF1]">
+                  Riwayat Uji Coba Admin: Pengerjaan kuis di bawah ini dilakukan oleh akun Admin dan dikecualikan sepenuhnya dari rata-rata nilai, tingkat kelulusan, maupun progres santri.
+                </div>
+              )}
 
               <div className="nb-card overflow-hidden p-0">
                 <div className="overflow-x-auto w-full">
                   <table className="w-full min-w-[550px] text-left border-collapse text-xs">
                     <thead>
                       <tr className="bg-[#06251D] dark:bg-[#001722] border-b-2 border-[#171717] dark:border-[#4CA7A1] text-[#FAF7F0] dark:text-[#CEFEF1] font-black uppercase tracking-wider">
-                        <th className="p-3.5 whitespace-nowrap">Nama Santri</th>
+                        <th className="p-3.5 whitespace-nowrap">Nama Peserta</th>
+                        <th className="p-3.5 whitespace-nowrap">Peran</th>
                         <th className="p-3.5 whitespace-nowrap">Email</th>
                         <th className="p-3.5 whitespace-nowrap">Skor</th>
                         <th className="p-3.5 whitespace-nowrap">Status</th>
@@ -2213,23 +2371,42 @@ export const AdminDashboard: React.FC<{
                       </tr>
                     </thead>
                     <tbody className="divide-y-2 divide-stone-200 dark:divide-[#4CA7A1]/50">
-                      {displayedAttempts.map(att => (
-                        <tr key={att.id} className="bg-white dark:bg-[#0D2B36] even:dark:bg-[#1F5F63]/70 hover:bg-[#FAF7F0] dark:hover:bg-[#1F5F63] transition">
-                          <td className="p-3.5 font-bold text-stone-900 dark:text-[#CEFEF1] whitespace-nowrap">{att.userName || 'Santri'}</td>
-                          <td className="p-3.5 font-mono text-stone-600 dark:text-[#A6D6C9] break-all">{att.userEmail}</td>
-                          <td className="p-3.5 font-black text-stone-900 dark:text-[#CEFEF1] text-sm">{att.score}%</td>
-                          <td className="p-3.5 whitespace-nowrap">
-                            <span className={`inline-flex px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wide border-2 ${
-                              att.passed 
-                                ? 'bg-[#4CA7A1] text-[#001722] border-[#171717] dark:border-[#001722]' 
-                                : 'bg-[#C94A4A] text-white border-[#171717]'
-                            }`}>
-                              {att.passed ? 'Lulus' : 'Belum Lulus'}
-                            </span>
+                      {displayedAttempts.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="p-6 text-center text-stone-500 dark:text-[#A6D6C9] font-semibold">
+                            {attemptRoleFilter === 'admin'
+                              ? 'Belum ada riwayat pengerjaan uji coba kuis oleh admin.'
+                              : 'Belum ada riwayat pengerjaan kuis oleh santri.'}
                           </td>
-                          <td className="p-3.5 text-stone-500 dark:text-[#A6D6C9] whitespace-nowrap">{new Date(att.submittedAt).toLocaleString('id-ID')}</td>
                         </tr>
-                      ))}
+                      ) : (
+                        displayedAttempts.map(att => (
+                          <tr key={att.id} className="bg-white dark:bg-[#0D2B36] even:dark:bg-[#1F5F63]/70 hover:bg-[#FAF7F0] dark:hover:bg-[#1F5F63] transition">
+                            <td className="p-3.5 font-bold text-stone-900 dark:text-[#CEFEF1] whitespace-nowrap">{att.userName || (attemptRoleFilter === 'admin' ? 'Admin' : 'Santri')}</td>
+                            <td className="p-3.5 whitespace-nowrap">
+                              <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-black uppercase border ${
+                                attemptRoleFilter === 'admin'
+                                  ? 'bg-[#D6AD52] text-[#171717] border-[#171717]'
+                                  : 'bg-[#FAF7F0] text-[#06251D] border-[#171717]/40 dark:bg-[#001722] dark:text-[#A6D6C9] dark:border-[#4CA7A1]'
+                              }`}>
+                                {attemptRoleFilter === 'admin' ? 'Admin (Non-Statistik)' : 'Santri'}
+                              </span>
+                            </td>
+                            <td className="p-3.5 font-mono text-stone-600 dark:text-[#A6D6C9] break-all">{att.userEmail}</td>
+                            <td className="p-3.5 font-black text-stone-900 dark:text-[#CEFEF1] text-sm">{att.score}%</td>
+                            <td className="p-3.5 whitespace-nowrap">
+                              <span className={`inline-flex px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wide border-2 ${
+                                att.passed 
+                                  ? 'bg-[#4CA7A1] text-[#001722] border-[#171717] dark:border-[#001722]' 
+                                  : 'bg-[#C94A4A] text-white border-[#171717]'
+                              }`}>
+                                {att.passed ? 'Lulus' : 'Belum Lulus'}
+                              </span>
+                            </td>
+                            <td className="p-3.5 text-stone-500 dark:text-[#A6D6C9] whitespace-nowrap">{new Date(att.submittedAt).toLocaleString('id-ID')}</td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>

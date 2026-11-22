@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-11-14T11:40:25.421Z",
+  "updatedAt": "2026-11-22T12:40:45.636Z",
   "entries": [
     {
       "course": {
@@ -651,6 +651,60 @@
     },
     {
       "course": {
+        "id": "course-1792197763057",
+        "title": "mutammimah al-ajurumiyah",
+        "titleAr": "",
+        "instructor": "osama nur samsil",
+        "categoryId": "cat-1792197742358",
+        "level": "beginner",
+        "description": "Kitab yang kita gunakan adalah kitab Mutammimah Al-Ajurrumiyyah (مُتَمِّمَةُ الْآجُرُّومِيَّةِ) merupakan kitab ilmu nahwu yang disusun untuk melengkapi dan memperluas pembahasan yang terdapat dalam kitab Al-Ajurrumiyyah. Kitab ini membahas berbagai kaidah tata bahasa Arab, mulai dari pengertian kalam, i‘rab dan bina’, hingga kedudukan kata dalam kalimat, seperti fa‘il, na’ib al-fa‘il, mubtada’, dan khabar. Melalui kitab ini, para penuntut ilmu diharapkan dapat memperdalam pemahaman terhadap kaidah nahwu sebagai bekal untuk membaca dan memahami kitab-kitab berbahasa Arab, khususnya kitab-kitab keislaman karya para ulama.",
+        "coverImageUrl": "https://darswithosama.com/covers/course-1792197763057.jpg",
+        "isPublished": true,
+        "hasCertificate": true,
+        "passingGrade": 75,
+        "order": 1
+      },
+      "session": {
+        "id": "session-1794912743528",
+        "courseId": "course-1792197763057",
+        "title": "لَا النَّافِيَةُ لِلْجِنْسِ (La Nafi Lil Jinsi)",
+        "titleAr": "",
+        "description": "",
+        "order": 25,
+        "youtubeUrl": "https://youtu.be/H2a6rfA1cPI",
+        "durationMinutes": 45,
+        "isPublished": true
+      }
+    },
+    {
+      "course": {
+        "id": "course-1792197763057",
+        "title": "mutammimah al-ajurumiyah",
+        "titleAr": "",
+        "instructor": "osama nur samsil",
+        "categoryId": "cat-1792197742358",
+        "level": "beginner",
+        "description": "Kitab yang kita gunakan adalah kitab Mutammimah Al-Ajurrumiyyah (مُتَمِّمَةُ الْآجُرُّومِيَّةِ) merupakan kitab ilmu nahwu yang disusun untuk melengkapi dan memperluas pembahasan yang terdapat dalam kitab Al-Ajurrumiyyah. Kitab ini membahas berbagai kaidah tata bahasa Arab, mulai dari pengertian kalam, i‘rab dan bina’, hingga kedudukan kata dalam kalimat, seperti fa‘il, na’ib al-fa‘il, mubtada’, dan khabar. Melalui kitab ini, para penuntut ilmu diharapkan dapat memperdalam pemahaman terhadap kaidah nahwu sebagai bekal untuk membaca dan memahami kitab-kitab berbahasa Arab, khususnya kitab-kitab keislaman karya para ulama.",
+        "coverImageUrl": "https://darswithosama.com/covers/course-1792197763057.jpg",
+        "isPublished": true,
+        "hasCertificate": true,
+        "passingGrade": 75,
+        "order": 1
+      },
+      "session": {
+        "id": "session-1794913305360",
+        "courseId": "course-1792197763057",
+        "title": "MAF'UL BIH (المَفْعُولُ بِهِ) – BAGIAN 1",
+        "titleAr": "",
+        "description": "",
+        "order": 26,
+        "youtubeUrl": "https://youtu.be/iMRdExY2Wx4",
+        "durationMinutes": 45,
+        "isPublished": true
+      }
+    },
+    {
+      "course": {
         "id": "course-1792229735274",
         "title": "Fiqih taharah",
         "titleAr": "",
@@ -942,6 +996,60 @@
         "description": "",
         "order": 11,
         "youtubeUrl": "https://youtu.be/iHwo8B18_Ms",
+        "durationMinutes": 45,
+        "isPublished": true
+      }
+    },
+    {
+      "course": {
+        "id": "course-1792229735274",
+        "title": "Fiqih taharah",
+        "titleAr": "",
+        "instructor": "Osama Nur Samsil",
+        "categoryId": "cat-1792229522700",
+        "level": "beginner",
+        "description": "Thaharah atau bersuci merupakan bagian penting dalam kehidupan seorang muslim, sebab kesucian menjadi syarat sah bagi sejumlah ibadah, terutama salat. Dengan memahami tata cara bersuci yang benar, kita dapat menjalankan ibadah dengan lebih yakin, tertib, dan sesuai tuntunan syariat. Melalui pembelajaran yang sistematis dan bertahap, mari kita dalami hukum-hukum thaharah, mulai dari jenis-jenis air, najis, wudu, mandi wajib, hingga tayamum, agar setiap ibadah yang kita lakukan berlandaskan ilmu dan tuntunan yang benar.",
+        "coverImageUrl": "https://darswithosama.com/covers/course-1792229735274.jpg",
+        "isPublished": true,
+        "hasCertificate": true,
+        "passingGrade": 75,
+        "order": 2
+      },
+      "session": {
+        "id": "session-1794915036939",
+        "courseId": "course-1792229735274",
+        "title": "PEMBAHASAN HAID DAN NIFAS",
+        "titleAr": "",
+        "description": "",
+        "order": 12,
+        "youtubeUrl": "https://youtu.be/qfer7BssHw4",
+        "durationMinutes": 45,
+        "isPublished": true
+      }
+    },
+    {
+      "course": {
+        "id": "course-1792229735274",
+        "title": "Fiqih taharah",
+        "titleAr": "",
+        "instructor": "Osama Nur Samsil",
+        "categoryId": "cat-1792229522700",
+        "level": "beginner",
+        "description": "Thaharah atau bersuci merupakan bagian penting dalam kehidupan seorang muslim, sebab kesucian menjadi syarat sah bagi sejumlah ibadah, terutama salat. Dengan memahami tata cara bersuci yang benar, kita dapat menjalankan ibadah dengan lebih yakin, tertib, dan sesuai tuntunan syariat. Melalui pembelajaran yang sistematis dan bertahap, mari kita dalami hukum-hukum thaharah, mulai dari jenis-jenis air, najis, wudu, mandi wajib, hingga tayamum, agar setiap ibadah yang kita lakukan berlandaskan ilmu dan tuntunan yang benar.",
+        "coverImageUrl": "https://darswithosama.com/covers/course-1792229735274.jpg",
+        "isPublished": true,
+        "hasCertificate": true,
+        "passingGrade": 75,
+        "order": 2
+      },
+      "session": {
+        "id": "session-1794916116570",
+        "courseId": "course-1792229735274",
+        "title": "NIFAS DAN ISTIHADAH",
+        "titleAr": "",
+        "description": "",
+        "order": 13,
+        "youtubeUrl": "https://youtu.be/THjCrZpdAZk",
         "durationMinutes": 45,
         "isPublished": true
       }

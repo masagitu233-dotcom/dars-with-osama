@@ -13,7 +13,8 @@ import {
   where,
   orderBy,
   writeBatch,
-  onSnapshot
+  onSnapshot,
+  increment
 } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import {
@@ -48,13 +49,20 @@ import {
   NotificationDispatchPayload,
   StudentNotificationPreferences,
   SaveResult,
-  DataSyncStatus
+  DataSyncStatus,
+  LibraryBook,
+  LibraryVisitStats
 } from '../types';
 import { SEED_CATEGORIES, SEED_COURSES, SEED_SESSIONS, SEED_QUIZZES } from '../data/seedData';
 import { matchesSessionIdentifier, canAccessSessionPublicly } from '../utils/sessionShareHelper';
 import { sanitizeRichTextHtml } from '../utils/richTextHelper';
 import { normalizeArticleHtmlImages } from '../utils/googleDriveHelper';
 import { computeConsultationCounts, ConsultationCounts, sanitizeConsultationForPublic } from '../utils/qaHelper';
+import {
+  generateLibraryBookSlug,
+  normalizeCoverAspectRatio,
+  estimateBookReadingMinutes
+} from '../utils/libraryHelper';
 import {
   DEFAULT_INSTRUCTOR_PROFILE_ID,
   getDefaultInstructorProfile,
@@ -195,8 +203,10 @@ const sessionCountsCache = new Map<boolean, CacheEntry<Record<string, number>>>(
 const sessionsByCourseCache = new Map<string, CacheEntry<Session[]>>();
 let blogPostsCache: CacheEntry<BlogPost[]> | null = null;
 let publicQACache: CacheEntry<Consultation[]> | null = null;
+let libraryBooksPublicCache: CacheEntry<LibraryBook[]> | null = null;
+let libraryBooksAdminCache: CacheEntry<LibraryBook[]> | null = null;
 
-export function invalidateServicesCache(target?: 'categories' | 'courses' | 'sessions' | 'blog' | 'qa' | 'all') {
+export function invalidateServicesCache(target?: 'categories' | 'courses' | 'sessions' | 'blog' | 'qa' | 'library' | 'all') {
   if (!target || target === 'all') {
     categoriesCache = null;
     coursesCache = null;
@@ -204,6 +214,8 @@ export function invalidateServicesCache(target?: 'categories' | 'courses' | 'ses
     sessionsByCourseCache.clear();
     blogPostsCache = null;
     publicQACache = null;
+    libraryBooksPublicCache = null;
+    libraryBooksAdminCache = null;
   } else if (target === 'categories') {
     categoriesCache = null;
   } else if (target === 'courses') {
@@ -217,6 +229,9 @@ export function invalidateServicesCache(target?: 'categories' | 'courses' | 'ses
     blogPostsCache = null;
   } else if (target === 'qa') {
     publicQACache = null;
+  } else if (target === 'library') {
+    libraryBooksPublicCache = null;
+    libraryBooksAdminCache = null;
   }
 }
 
@@ -2087,7 +2102,7 @@ function readAsDataURLFallback(file: File, onProgress?: (percent: number) => voi
 
 export async function uploadFileToStorage(
   file: File,
-  folder: 'covers' | 'pdfs' | 'documents' | 'avatars' | 'blog_covers' | 'blog_images' | 'article_audio' | 'instructor_profile',
+  folder: 'covers' | 'pdfs' | 'documents' | 'avatars' | 'blog_covers' | 'blog_images' | 'article_audio' | 'instructor_profile' | 'library_covers',
   onProgress?: (percent: number) => void
 ): Promise<string> {
   const targetFile = file.type.startsWith('image/')
@@ -3727,6 +3742,318 @@ export async function updateStudentNotificationPreferences(
     logFirestoreDiagnostic({ operation: 'updateStudentNotificationPreferences', path }, error);
   }
 }
+
+// ==========================================
+// LIBRARY DIGITAL (KOLEKSI BUKU & STATISTIK KUNJUNGAN)
+// ==========================================
+const LIBRARY_BOOKS_COLLECTION = 'libraryBooks';
+const LIBRARY_STATS_COLLECTION = 'libraryStats';
+const LIBRARY_STATS_OVERVIEW_ID = 'overview';
+
+function sortLibraryBooks(list: LibraryBook[]): LibraryBook[] {
+  return [...list].sort((a, b) => {
+    const timeA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+    const timeB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+    return timeB - timeA;
+  });
+}
+
+function normalizeLibraryBookDoc(id: string, raw: Record<string, any>): LibraryBook {
+  return {
+    id,
+    title: typeof raw.title === 'string' ? raw.title : '',
+    titleAr: typeof raw.titleAr === 'string' ? raw.titleAr : '',
+    slug: typeof raw.slug === 'string' && raw.slug ? raw.slug : id,
+    author: typeof raw.author === 'string' ? raw.author : '',
+    description: typeof raw.description === 'string' ? raw.description : '',
+    coverImageUrl: typeof raw.coverImageUrl === 'string' ? raw.coverImageUrl : '',
+    coverAspectRatio: normalizeCoverAspectRatio(raw.coverAspectRatio),
+    sourceType: raw.sourceType === 'google_drive' ? 'google_drive' : 'internal',
+    googleDriveUrl: typeof raw.googleDriveUrl === 'string' ? raw.googleDriveUrl : '',
+    content: typeof raw.content === 'string' ? raw.content : '',
+    status: raw.status === 'draft' ? 'draft' : 'published',
+    readingTimeMinutes: Number(raw.readingTimeMinutes) || 1,
+    publishedAt: typeof raw.publishedAt === 'string' ? raw.publishedAt : '',
+    createdAt: typeof raw.createdAt === 'string' ? raw.createdAt : new Date().toISOString(),
+    updatedAt: typeof raw.updatedAt === 'string' ? raw.updatedAt : new Date().toISOString()
+  };
+}
+
+/**
+ * Fetches Library Digital books from dedicated Firestore collection `libraryBooks`.
+ * - Public (`includeDrafts = false`): queries ONLY `status == 'published'` so Firestore Security Rules
+ *   allow anonymous & non-admin list queries without ever leaking drafts.
+ * - Admin (`includeDrafts = true`): fetches all documents including drafts.
+ */
+export async function getLibraryBooks(includeDrafts = false, forceRefresh = false): Promise<LibraryBook[]> {
+  const now = Date.now();
+
+  if (includeDrafts) {
+    if (!forceRefresh && libraryBooksAdminCache && now - libraryBooksAdminCache.timestamp < CACHE_TTL_MS) {
+      return libraryBooksAdminCache.data;
+    }
+    try {
+      const snapshot = await executeWithFreshAuthRetry(() =>
+        getDocs(collection(db, LIBRARY_BOOKS_COLLECTION))
+      );
+      const list = sortLibraryBooks(
+        snapshot.docs.map(d => normalizeLibraryBookDoc(d.id, d.data() as Record<string, any>))
+      );
+      libraryBooksAdminCache = { data: list, timestamp: now };
+      libraryBooksPublicCache = {
+        data: list.filter(b => b.status === 'published'),
+        timestamp: now
+      };
+      return list;
+    } catch (err) {
+      logFirestoreDiagnostic({ operation: 'getLibraryBooks(admin)', collection: LIBRARY_BOOKS_COLLECTION }, err);
+      if (libraryBooksAdminCache) return libraryBooksAdminCache.data;
+      throw err;
+    }
+  }
+
+  // Public query (published only)
+  if (!forceRefresh && libraryBooksPublicCache && now - libraryBooksPublicCache.timestamp < CACHE_TTL_MS) {
+    return libraryBooksPublicCache.data;
+  }
+
+  try {
+    const q = query(
+      collection(db, LIBRARY_BOOKS_COLLECTION),
+      where('status', '==', 'published')
+    );
+    const snapshot = await getDocs(q);
+    const list = sortLibraryBooks(
+      snapshot.docs.map(d => normalizeLibraryBookDoc(d.id, d.data() as Record<string, any>))
+    );
+    libraryBooksPublicCache = { data: list, timestamp: now };
+    return list;
+  } catch (err) {
+    logFirestoreDiagnostic({ operation: 'getLibraryBooks(public)', collection: LIBRARY_BOOKS_COLLECTION }, err);
+    if (libraryBooksPublicCache) return libraryBooksPublicCache.data;
+    return [];
+  }
+}
+
+export async function getLibraryBookBySlugOrId(
+  identifier: string,
+  includeDrafts = false
+): Promise<LibraryBook | null> {
+  const cleanId = (identifier || '').trim();
+  if (!cleanId) return null;
+  const cleanSlug = cleanId.toLowerCase();
+
+  // Check in-memory cache first
+  const cachedList = includeDrafts ? libraryBooksAdminCache?.data : libraryBooksPublicCache?.data;
+  if (cachedList) {
+    const found = cachedList.find(
+      b => b.id === cleanId || (b.slug || '').toLowerCase() === cleanSlug
+    );
+    if (found && (found.status === 'published' || includeDrafts)) {
+      return found;
+    }
+  }
+
+  try {
+    // 1. Lookup by slug (must include status == 'published' for public rules compliance)
+    const slugQuery = includeDrafts
+      ? query(collection(db, LIBRARY_BOOKS_COLLECTION), where('slug', '==', cleanSlug))
+      : query(
+          collection(db, LIBRARY_BOOKS_COLLECTION),
+          where('slug', '==', cleanSlug),
+          where('status', '==', 'published')
+        );
+    const slugSnap = await getDocs(slugQuery);
+    if (!slugSnap.empty) {
+      const docSnap = slugSnap.docs[0];
+      const book = normalizeLibraryBookDoc(docSnap.id, docSnap.data() as Record<string, any>);
+      if (book.status === 'published' || includeDrafts) {
+        return book;
+      }
+    }
+
+    // 2. Direct document ID lookup
+    const directSnap = await getDoc(doc(db, LIBRARY_BOOKS_COLLECTION, cleanId));
+    if (directSnap.exists()) {
+      const book = normalizeLibraryBookDoc(directSnap.id, directSnap.data() as Record<string, any>);
+      if (book.status === 'published' || includeDrafts) {
+        return book;
+      }
+    }
+    return null;
+  } catch (err) {
+    logFirestoreDiagnostic({ operation: 'getLibraryBookBySlugOrId', collection: LIBRARY_BOOKS_COLLECTION }, err);
+    return null;
+  }
+}
+
+export async function saveLibraryBook(
+  book: Partial<LibraryBook> & { title: string }
+): Promise<string> {
+  const id = book.id || `book-${Date.now()}`;
+  const path = `${LIBRARY_BOOKS_COLLECTION}/${id}`;
+  logCrudDiagnostic('saveLibraryBook', path, 'start');
+
+  const baseSlug = generateLibraryBookSlug(book.title, book.slug);
+  let finalSlug = baseSlug;
+  try {
+    const existing = await getLibraryBookBySlugOrId(finalSlug, true);
+    if (existing && existing.id !== id) {
+      finalSlug = `${baseSlug}-${Date.now().toString().slice(-4)}`;
+    }
+  } catch {
+    // non-fatal slug collision check
+  }
+
+  const sourceType = book.sourceType === 'google_drive' ? 'google_drive' : 'internal';
+  const coverAspectRatio = normalizeCoverAspectRatio(book.coverAspectRatio);
+  const status: 'published' | 'draft' = book.status === 'draft' ? 'draft' : 'published';
+  const now = new Date().toISOString();
+
+  let sanitizedContent = '';
+  let readingTimeMinutes = 1;
+  if (sourceType === 'internal') {
+    const sanitized = sanitizeRichTextHtml(book.content || '');
+    sanitizedContent = normalizeArticleHtmlImages(sanitized);
+    readingTimeMinutes = estimateBookReadingMinutes(sanitizedContent);
+  }
+
+  const data: Record<string, any> = {
+    id,
+    title: book.title.trim(),
+    titleAr: (book.titleAr || '').trim(),
+    slug: finalSlug,
+    author: (book.author || '').trim(),
+    description: (book.description || '').trim(),
+    coverImageUrl: (book.coverImageUrl || '').trim(),
+    coverAspectRatio,
+    sourceType,
+    googleDriveUrl: sourceType === 'google_drive' ? (book.googleDriveUrl || '').trim() : '',
+    content: sourceType === 'internal' ? sanitizedContent : '',
+    status,
+    readingTimeMinutes,
+    publishedAt: status === 'published' ? (book.publishedAt || now) : (book.publishedAt || ''),
+    createdAt: book.createdAt || now,
+    updatedAt: now
+  };
+
+  const serializedSize = JSON.stringify(data).length;
+  if (serializedSize > 950000) {
+    throw new Error(
+      `Ukuran dokumen buku (${Math.round(serializedSize / 1024)} KB) melebihi batas aman 1 MB Cloud Firestore. Gunakan tautan gambar yang terkompresi atau tautan eksternal.`
+    );
+  }
+
+  try {
+    await executeWithFreshAuthRetry(() =>
+      setDoc(doc(db, LIBRARY_BOOKS_COLLECTION, id), data, { merge: true })
+    );
+
+    // Authoritative server verification read-back
+    try {
+      const verifySnap = await getDocFromServer(doc(db, LIBRARY_BOOKS_COLLECTION, id));
+      if (verifySnap.exists()) {
+        logCrudDiagnostic(
+          `saveLibraryBook Server Verification [ID: ${id}, Status: ${status}, Type: ${sourceType}]`,
+          path,
+          'success'
+        );
+      }
+    } catch (vErr) {
+      console.warn('[saveLibraryBook] Server verification read-back notice:', vErr);
+    }
+
+    invalidateServicesCache('library');
+    logCrudDiagnostic('saveLibraryBook', path, 'success');
+    return id;
+  } catch (error) {
+    logCrudDiagnostic('saveLibraryBook', path, 'failed', error);
+    handleFirestoreError(error, OperationType.WRITE, path);
+    throw error;
+  }
+}
+
+export async function deleteLibraryBook(id: string): Promise<void> {
+  const path = `${LIBRARY_BOOKS_COLLECTION}/${id}`;
+  logCrudDiagnostic('deleteLibraryBook', path, 'start');
+
+  try {
+    await executeWithFreshAuthRetry(() => deleteDoc(doc(db, LIBRARY_BOOKS_COLLECTION, id)));
+    invalidateServicesCache('library');
+    logCrudDiagnostic('deleteLibraryBook', path, 'success');
+  } catch (error) {
+    logCrudDiagnostic('deleteLibraryBook', path, 'failed', error);
+    handleFirestoreError(error, OperationType.DELETE, path);
+    throw error;
+  }
+}
+
+/**
+ * Records a public visit to the main Library Digital page in Firestore (`libraryStats/overview`).
+ * Uses atomic `updateDoc(increment(1))` first so public visitors NEVER need read access to stats,
+ * falling back to `setDoc({ totalVisits: 1 })` only if the overview document does not exist yet.
+ * Non-blocking: silently catches errors so visitors are never delayed or disrupted.
+ */
+export async function recordLibraryVisit(): Promise<boolean> {
+  const statsRef = doc(db, LIBRARY_STATS_COLLECTION, LIBRARY_STATS_OVERVIEW_ID);
+  const now = new Date().toISOString();
+
+  try {
+    await updateDoc(statsRef, {
+      totalVisits: increment(1),
+      updatedAt: now
+    });
+    return true;
+  } catch (err: any) {
+    const code = String(err?.code || '').toLowerCase();
+    const msg = String(err?.message || '').toLowerCase();
+    if (code.includes('not-found') || msg.includes('no document to update')) {
+      try {
+        await setDoc(statsRef, {
+          totalVisits: 1,
+          updatedAt: now
+        });
+        return true;
+      } catch (createErr) {
+        console.warn('[recordLibraryVisit] Create overview doc notice:', createErr);
+        return false;
+      }
+    }
+    console.warn('[recordLibraryVisit] Non-blocking visit stat notice:', err);
+    return false;
+  }
+}
+
+/**
+ * Admin-only read of Library Digital visit statistics from `libraryStats/overview`.
+ */
+export async function getLibraryVisitStats(): Promise<LibraryVisitStats> {
+  const statsRef = doc(db, LIBRARY_STATS_COLLECTION, LIBRARY_STATS_OVERVIEW_ID);
+  try {
+    const snap = await executeWithFreshAuthRetry(() => getDoc(statsRef));
+    if (snap.exists()) {
+      const data = snap.data() as Record<string, any>;
+      return {
+        id: snap.id,
+        totalVisits: typeof data.totalVisits === 'number' ? data.totalVisits : 0,
+        updatedAt: typeof data.updatedAt === 'string' ? data.updatedAt : ''
+      };
+    }
+    return {
+      id: LIBRARY_STATS_OVERVIEW_ID,
+      totalVisits: 0,
+      updatedAt: ''
+    };
+  } catch (err) {
+    logFirestoreDiagnostic({ operation: 'getLibraryVisitStats', collection: LIBRARY_STATS_COLLECTION }, err);
+    return {
+      id: LIBRARY_STATS_OVERVIEW_ID,
+      totalVisits: 0,
+      updatedAt: ''
+    };
+  }
+}
+
 
 
 

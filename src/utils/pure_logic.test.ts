@@ -5045,6 +5045,488 @@ test('Case 105: Verifikasi pemulihan regresi pemuatan daftar Tanya Jawab dan iso
   assert.strictEqual(result18Okt?.isPublished, true);
 });
 
+test('Case 106: Pembukaan akses seluruh kuis khusus admin tanpa mengorbankan kunci siswa & pemisahan statistik nilai santri', async () => {
+  const {
+    findFirstUncompletedPrecedingQuizSession,
+    canCompleteSession,
+    canAdvanceToNextSession,
+    isAdminQuizAttempt,
+    separateQuizAttemptsByRole,
+    computeStudentQuizStatistics
+  } = await import('./quizFlowHelper.js');
+  const { INITIAL_ADMIN_EMAILS } = await import('../firebase/services.js');
+
+  const s1: import('../types/index.js').Session = {
+    id: 's1',
+    courseId: 'c1',
+    title: 'Sesi 1',
+    titleAr: '',
+    description: '',
+    order: 1,
+    isPublished: true,
+    quizId: 'q1'
+  };
+  const s2: import('../types/index.js').Session = {
+    id: 's2',
+    courseId: 'c1',
+    title: 'Sesi 2',
+    titleAr: '',
+    description: '',
+    order: 2,
+    isPublished: true,
+    quizId: 'q2'
+  };
+  const s3: import('../types/index.js').Session = {
+    id: 's3',
+    courseId: 'c1',
+    title: 'Sesi 3 (Draft)',
+    titleAr: '',
+    description: '',
+    order: 3,
+    isPublished: false,
+    quizId: 'q3'
+  };
+
+  const q1: import('../types/index.js').Quiz = {
+    id: 'q1',
+    sessionId: 's1',
+    courseId: 'c1',
+    title: 'Kuis 1',
+    passingScore: 80,
+    timeLimitMinutes: 10,
+    maxAttempts: 3,
+    showAnswersAfterSubmit: true,
+    isPublished: true,
+    questions: []
+  };
+  const q2: import('../types/index.js').Quiz = {
+    id: 'q2',
+    sessionId: 's2',
+    courseId: 'c1',
+    title: 'Kuis 2',
+    passingScore: 75,
+    timeLimitMinutes: 10,
+    maxAttempts: 3,
+    showAnswersAfterSubmit: true,
+    isPublished: true,
+    questions: []
+  };
+
+  const quizzesMap = { q1, q2 };
+
+  // 1. Siswa tanpa riwayat pengerjaan kuis 1 tetap TERKUNCI untuk kuis 2 dan sesi 3
+  const studentBlockedS2 = findFirstUncompletedPrecedingQuizSession([s1, s2, s3], s2, [], quizzesMap, { isAdmin: false });
+  assert.strictEqual(studentBlockedS2.hasBlockingQuiz, true);
+  assert.strictEqual(studentBlockedS2.blockingSession?.id, 's1');
+
+  const studentBlockedCompleteS1 = canCompleteSession(s1, q1, [], { isAdmin: false });
+  assert.strictEqual(studentBlockedCompleteS1.allowed, false);
+
+  const studentBlockedAdvanceS1 = canAdvanceToNextSession(s1, q1, [], { isAdmin: false });
+  assert.strictEqual(studentBlockedAdvanceS1.allowed, false);
+
+  // 2. Siswa yang gagal di kuis 1 (skor 50 < passingScore 80) juga tetap TERKUNCI untuk sesi 2
+  const studentFailedAttempts: import('../types/index.js').QuizAttempt[] = [
+    {
+      id: 'att-student-fail',
+      userId: 'student-1',
+      userName: 'Zaid',
+      userEmail: 'zaid@example.com',
+      quizId: 'q1',
+      sessionId: 's1',
+      courseId: 'c1',
+      score: 50,
+      passed: false,
+      totalPoints: 10,
+      maxPoints: 20,
+      answers: {},
+      submittedAt: '2026-11-10T08:00:00Z',
+      attemptNumber: 1,
+      isAdminAttempt: false,
+      submitterRole: 'student'
+    }
+  ];
+  const studentStillBlocked = findFirstUncompletedPrecedingQuizSession([s1, s2, s3], s2, studentFailedAttempts, quizzesMap, { isAdmin: false });
+  assert.strictEqual(studentStillBlocked.hasBlockingQuiz, true);
+
+  // 3. Admin TERVERIFIKASI bebas membuka & mengerjakan semua kuis sesi 1, 2, dan 3 tanpa terkunci urutan
+  const adminCheckS2 = findFirstUncompletedPrecedingQuizSession([s1, s2, s3], s2, [], quizzesMap, { isAdmin: true });
+  assert.strictEqual(adminCheckS2.hasBlockingQuiz, false);
+
+  const adminCheckS3 = findFirstUncompletedPrecedingQuizSession([s1, s2, s3], s3, studentFailedAttempts, quizzesMap, { isAdmin: true });
+  assert.strictEqual(adminCheckS3.hasBlockingQuiz, false);
+
+  const adminCompleteCheck = canCompleteSession(s1, q1, [], { isAdmin: true });
+  assert.strictEqual(adminCompleteCheck.allowed, true);
+
+  const adminAdvanceCheck = canAdvanceToNextSession(s1, q1, [], { isAdmin: true });
+  assert.strictEqual(adminAdvanceCheck.allowed, true);
+
+  // 4. Pemisahan riwayat & statistik nilai santri dari aktivitas admin (baik bertanda maupun historis)
+  const users: import('../types/index.js').UserProfile[] = [
+    { id: 'student-1', email: 'zaid@example.com', displayName: 'Zaid', role: 'student' },
+    { id: 'student-2', email: 'umar@example.com', displayName: 'Umar', role: 'student' },
+    { id: 'admin-firestore-1', email: 'ustadz@dars.id', displayName: 'Ustadz Pengajar', role: 'admin' }
+  ];
+
+  const mixedAttempts: import('../types/index.js').QuizAttempt[] = [
+    {
+      id: 'att-s1',
+      userId: 'student-1',
+      userName: 'Zaid',
+      userEmail: 'zaid@example.com',
+      quizId: 'q1',
+      courseId: 'c1',
+      score: 90,
+      passed: true,
+      totalPoints: 90,
+      maxPoints: 100,
+      answers: {},
+      submittedAt: '2026-11-11T08:00:00Z',
+      attemptNumber: 1
+    },
+    {
+      id: 'att-s2',
+      userId: 'student-2',
+      userName: 'Umar',
+      userEmail: 'umar@example.com',
+      quizId: 'q1',
+      courseId: 'c1',
+      score: 50,
+      passed: false,
+      totalPoints: 50,
+      maxPoints: 100,
+      answers: {},
+      submittedAt: '2026-11-11T09:00:00Z',
+      attemptNumber: 1,
+      submitterRole: 'student',
+      isAdminAttempt: false
+    },
+    // Admin attempt with explicit flag
+    {
+      id: 'att-admin-tagged',
+      userId: 'admin-uid-xyz',
+      userName: 'Admin Uji',
+      userEmail: 'admin.uji@example.com',
+      quizId: 'q2',
+      courseId: 'c1',
+      score: 100,
+      passed: true,
+      totalPoints: 100,
+      maxPoints: 100,
+      answers: {},
+      submittedAt: '2026-11-11T10:00:00Z',
+      attemptNumber: 1,
+      isAdminAttempt: true,
+      submitterRole: 'admin'
+    },
+    // Legacy untagged attempt by Firestore admin UID
+    {
+      id: 'att-admin-legacy-uid',
+      userId: 'admin-firestore-1',
+      userName: 'Ustadz Pengajar',
+      userEmail: 'ustadz@dars.id',
+      quizId: 'q2',
+      courseId: 'c1',
+      score: 0,
+      passed: false,
+      totalPoints: 0,
+      maxPoints: 100,
+      answers: {},
+      submittedAt: '2026-11-11T11:00:00Z',
+      attemptNumber: 1
+    },
+    // Legacy untagged attempt by platform admin email
+    {
+      id: 'att-admin-legacy-email',
+      userId: 'some-old-uid',
+      userName: 'Owner',
+      userEmail: 'OSAMANURSAMSIL@GMAIL.COM',
+      quizId: 'q1',
+      courseId: 'c1',
+      score: 100,
+      passed: true,
+      totalPoints: 100,
+      maxPoints: 100,
+      answers: {},
+      submittedAt: '2026-11-11T12:00:00Z',
+      attemptNumber: 1
+    }
+  ];
+
+  const separated = separateQuizAttemptsByRole(mixedAttempts, users, INITIAL_ADMIN_EMAILS);
+  assert.strictEqual(separated.studentAttempts.length, 2);
+  assert.strictEqual(separated.adminAttempts.length, 3);
+  assert.strictEqual(isAdminQuizAttempt(mixedAttempts[0], separated.adminUserIds, separated.adminEmails), false);
+  assert.strictEqual(isAdminQuizAttempt(mixedAttempts[2], separated.adminUserIds, separated.adminEmails), true);
+  assert.strictEqual(isAdminQuizAttempt(mixedAttempts[3], separated.adminUserIds, separated.adminEmails), true);
+  assert.strictEqual(isAdminQuizAttempt(mixedAttempts[4], separated.adminUserIds, separated.adminEmails), true);
+
+  // Statistik nilai santri hanya menghitung Zaid (90%, Lulus) & Umar (50%, Belum Lulus) -> rata-rata 70%, kelulusan 50%
+  const stats = computeStudentQuizStatistics(mixedAttempts, users, INITIAL_ADMIN_EMAILS);
+  assert.strictEqual(stats.totalStudentAttempts, 2);
+  assert.strictEqual(stats.averageScore, 70);
+  assert.strictEqual(stats.passCount, 1);
+  assert.strictEqual(stats.passRate, 50);
+  assert.strictEqual(stats.adminAttempts.length, 3);
+});
+
+// =========================================================================
+// LIBRARY DIGITAL — UNIT & INTEGRATION LOGIC TESTS
+// =========================================================================
+
+test('Library Digital Case 1: parseLibraryBookContent membentuk daftar isi otomatis (H1 dapat diklik, H2 sub-bab menjorok tidak dapat diklik) & menangani duplikat judul H1 dengan ID unik', async () => {
+  const { parseLibraryBookContent } = await import('./libraryHelper.js');
+
+  const rawHtml = `
+    <p>Muqaddimah kitab sebelum bab pertama.</p>
+    <h1>Muqaddimah</h1>
+    <p>Isi bab pertama dengan teks Arab <span dir="rtl">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</span>.</p>
+    <h2>Keutamaan Niat</h2>
+    <p>Penjelasan sub-bab niat.</p>
+    <h2>Adab Penuntut Ilmu</h2>
+    <p>Penjelasan sub-bab adab.</p>
+    <h1>Pembahasan Pokok</h1>
+    <p>Uraian inti kitab.</p>
+    <h2>Dalil Al-Qur'an</h2>
+    <p>Uraian dalil.</p>
+    <h1>Muqaddimah</h1>
+    <p>Judul H1 duplikat harus tetap mendapat anchor ID yang unik dan stabil.</p>
+  `;
+
+  const parsed = parseLibraryBookContent(rawHtml);
+
+  assert.strictEqual(parsed.hasChapters, true);
+  assert.strictEqual(parsed.hasTocEntries, true);
+  assert.strictEqual(parsed.chapters.length, 3);
+
+  // H1 clickable chapters with unique stable anchor IDs
+  const [ch1, ch2, ch3] = parsed.chapters;
+  assert.strictEqual(ch1.isClickable, true);
+  assert.strictEqual(ch2.isClickable, true);
+  assert.strictEqual(ch3.isClickable, true);
+  assert.ok(ch1.id.startsWith('bab-1-'));
+  assert.ok(ch2.id.startsWith('bab-2-'));
+  assert.ok(ch3.id.startsWith('bab-3-'));
+  assert.notStrictEqual(ch1.id, ch3.id, 'Judul H1 duplikat wajib memiliki anchor ID berbeda');
+
+  // H2 nested subchapters MUST NOT be clickable and stay grouped under their parent H1
+  assert.strictEqual(ch1.subchapters.length, 2);
+  assert.strictEqual(ch1.subchapters[0].title, 'Keutamaan Niat');
+  assert.strictEqual(ch1.subchapters[0].isClickable, false);
+  assert.strictEqual(ch1.subchapters[1].title, 'Adab Penuntut Ilmu');
+  assert.strictEqual(ch1.subchapters[1].isClickable, false);
+
+  assert.strictEqual(ch2.subchapters.length, 1);
+  assert.strictEqual(ch2.subchapters[0].title, "Dalil Al-Qur'an");
+  assert.strictEqual(ch2.subchapters[0].isClickable, false);
+
+  assert.strictEqual(ch3.subchapters.length, 0);
+
+  // H2 tags in fullHtml MUST NOT receive anchor id attributes
+  assert.ok(!/<h2\b[^>]*\bid=/i.test(parsed.fullHtml), 'Heading 2 tidak boleh memiliki atribut anchor id');
+
+  // Mode "Baca Semua" mempertahankan seluruh isi berurutan termasuk preamble, H1 anchors, H2, dan harakat Arab
+  assert.ok(parsed.preambleHtml.includes('Muqaddimah kitab sebelum bab pertama.'));
+  assert.ok(parsed.fullHtml.includes('Muqaddimah kitab sebelum bab pertama.'));
+  assert.ok(parsed.fullHtml.includes(`id="${ch1.id}"`));
+  assert.ok(parsed.fullHtml.includes(`id="${ch2.id}"`));
+  assert.ok(parsed.fullHtml.includes(`id="${ch3.id}"`));
+  assert.ok(parsed.fullHtml.includes('بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ'));
+
+  // Dynamic TOC update when editor edits headings
+  const edited = parseLibraryBookContent('<h1>Bab Baru</h1><h2>Sub Baru</h2><p>Konten diperbarui.</p>');
+  assert.strictEqual(edited.chapters.length, 1);
+  assert.strictEqual(edited.chapters[0].title, 'Bab Baru');
+  assert.strictEqual(edited.chapters[0].subchapters.length, 1);
+  assert.strictEqual(edited.chapters[0].subchapters[0].title, 'Sub Baru');
+  assert.strictEqual(edited.chapters[0].subchapters[0].isClickable, false);
+});
+
+test('Library Digital Case 2: Validasi rasio cover (3:4 & 9:16), tautan cover Google Drive, upload file cover, dan tautan buku Google Drive', async () => {
+  const {
+    normalizeCoverAspectRatio,
+    getLibraryCoverAspectClass,
+    validateLibraryCoverUrl,
+    validateLibraryCoverFile,
+    validateLibraryExternalDriveUrl,
+    generateLibraryBookSlug
+  } = await import('./libraryHelper.js');
+
+  // Rasio cover 3:4 dan 9:16
+  assert.strictEqual(normalizeCoverAspectRatio('3:4'), '3:4');
+  assert.strictEqual(normalizeCoverAspectRatio('9:16'), '9:16');
+  assert.strictEqual(normalizeCoverAspectRatio('invalid'), '3:4');
+  assert.strictEqual(getLibraryCoverAspectClass('3:4'), 'aspect-[3/4]');
+  assert.strictEqual(getLibraryCoverAspectClass('9:16'), 'aspect-[9/16]');
+
+  // Validasi Metode A: Tautan gambar cover Google Drive
+  const validCoverDrive = validateLibraryCoverUrl('https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrStUvWxYz12345/view?usp=sharing');
+  assert.strictEqual(validCoverDrive.isValid, true);
+  assert.ok(validCoverDrive.directUrl.includes('1AbCdEfGhIjKlMnOpQrStUvWxYz12345'));
+
+  const invalidCoverDrive = validateLibraryCoverUrl('https://drive.google.com/drive/my-drive');
+  assert.strictEqual(invalidCoverDrive.isValid, false);
+  assert.ok(invalidCoverDrive.error);
+
+  // Validasi Metode B: Upload file gambar cover (JPG/PNG/WebP, maks 5MB)
+  assert.strictEqual(validateLibraryCoverFile({ type: 'image/jpeg', size: 1024 * 500, name: 'cover.jpg' }).isValid, true);
+  assert.strictEqual(validateLibraryCoverFile({ type: 'image/png', size: 1024 * 1024, name: 'cover.png' }).isValid, true);
+  assert.strictEqual(validateLibraryCoverFile({ type: 'image/webp', size: 1024 * 800, name: 'cover.webp' }).isValid, true);
+  assert.strictEqual(validateLibraryCoverFile({ type: 'application/pdf', size: 1024 * 200, name: 'kitab.pdf' }).isValid, false);
+  assert.strictEqual(validateLibraryCoverFile({ type: 'image/jpeg', size: 6 * 1024 * 1024, name: 'huge.jpg' }).isValid, false);
+
+  // Validasi tautan buku Google Drive (eksternal)
+  assert.strictEqual(
+    validateLibraryExternalDriveUrl('https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrStUvWxYz12345/view').isValid,
+    true
+  );
+  assert.strictEqual(
+    validateLibraryExternalDriveUrl('https://drive.google.com/drive/folders/1AbCdEfGhIjKlMnOpQrStUvWxYz12345').isValid,
+    true
+  );
+  assert.strictEqual(validateLibraryExternalDriveUrl('https://example.com/book.pdf').isValid, false);
+  assert.strictEqual(validateLibraryExternalDriveUrl('').isValid, false);
+
+  // Pembuatan slug URL aman
+  assert.strictEqual(generateLibraryBookSlug("Kitab Al-Adab Al-Mufrad (Jilid 1)"), 'kitab-al-adab-al-mufrad-jilid-1');
+});
+
+test('Library Digital Case 3: Statistik kunjungan Library mengecualikan admin, menunggu auth siap, dan mencegah penghitungan ganda dalam sesi', async () => {
+  const { shouldRecordLibraryVisit } = await import('./libraryHelper.js');
+
+  // Pengunjung publik pertama kali -> HARUS dihitung
+  assert.strictEqual(
+    shouldRecordLibraryVisit({
+      isAdmin: false,
+      authLoading: false,
+      alreadyRecordedInSession: false,
+      alreadyRecordedInMemory: false
+    }),
+    true
+  );
+
+  // Admin yang login -> TIDAK boleh dihitung
+  assert.strictEqual(
+    shouldRecordLibraryVisit({
+      isAdmin: true,
+      authLoading: false,
+      alreadyRecordedInSession: false,
+      alreadyRecordedInMemory: false
+    }),
+    false
+  );
+
+  // Auth masih loading -> tunggu dulu, jangan hitung
+  assert.strictEqual(
+    shouldRecordLibraryVisit({
+      isAdmin: false,
+      authLoading: true,
+      alreadyRecordedInSession: false,
+      alreadyRecordedInMemory: false
+    }),
+    false
+  );
+
+  // Re-render React atau reload dalam sesi browser yang sama -> TIDAK dihitung ganda
+  assert.strictEqual(
+    shouldRecordLibraryVisit({
+      isAdmin: false,
+      authLoading: false,
+      alreadyRecordedInSession: true,
+      alreadyRecordedInMemory: false
+    }),
+    false
+  );
+  assert.strictEqual(
+    shouldRecordLibraryVisit({
+      isAdmin: false,
+      authLoading: false,
+      alreadyRecordedInSession: false,
+      alreadyRecordedInMemory: true
+    }),
+    false
+  );
+});
+
+test('Library Digital Case 4: Routing URL & riwayat navigasi untuk halaman Library Digital (/library, /library/:slug, dan /library/:slug/baca)', async () => {
+  const {
+    parseUrlToRouteState,
+    buildUrlFromRouteState,
+    isSameRouteState
+  } = await import('./navigationHistory.js');
+
+  const listRoute = parseUrlToRouteState('/library', '');
+  assert.strictEqual(listRoute.view, 'library');
+  assert.strictEqual(buildUrlFromRouteState(listRoute), '/library');
+
+  const altRoute = parseUrlToRouteState('/perpustakaan', '');
+  assert.strictEqual(altRoute.view, 'library');
+
+  // Halaman Detail Kitab (/library/:slug)
+  const detailRoute = parseUrlToRouteState('/library/kitab-adab-penuntut-ilmu', '');
+  assert.strictEqual(detailRoute.view, 'library-detail');
+  assert.strictEqual(detailRoute.libraryBookSlug, 'kitab-adab-penuntut-ilmu');
+  assert.strictEqual(buildUrlFromRouteState(detailRoute), '/library/kitab-adab-penuntut-ilmu');
+
+  const queryDetail = parseUrlToRouteState('/', '?library=kitab-nahwu');
+  assert.strictEqual(queryDetail.view, 'library-detail');
+  assert.strictEqual(queryDetail.libraryBookSlug, 'kitab-nahwu');
+
+  // Halaman Baca Kitab Internal (/library/:slug/baca dan alias /read)
+  const readerRoute = parseUrlToRouteState('/library/kitab-adab-penuntut-ilmu/baca', '');
+  assert.strictEqual(readerRoute.view, 'library-read');
+  assert.strictEqual(readerRoute.libraryBookSlug, 'kitab-adab-penuntut-ilmu');
+  assert.strictEqual(buildUrlFromRouteState(readerRoute), '/library/kitab-adab-penuntut-ilmu/baca');
+
+  const readerAliasRoute = parseUrlToRouteState('/library/kitab-adab-penuntut-ilmu/read/', '');
+  assert.strictEqual(readerAliasRoute.view, 'library-read');
+  assert.strictEqual(readerAliasRoute.libraryBookSlug, 'kitab-adab-penuntut-ilmu');
+
+  const queryReaderRoute = parseUrlToRouteState('/', '?view=library-read&library=kitab-nahwu');
+  assert.strictEqual(queryReaderRoute.view, 'library-read');
+  assert.strictEqual(queryReaderRoute.libraryBookSlug, 'kitab-nahwu');
+
+  // Deteksi perbedaan route detail vs baca
+  assert.strictEqual(
+    isSameRouteState(
+      { view: 'library-detail', libraryBookSlug: 'kitab-a' },
+      { view: 'library-detail', libraryBookSlug: 'kitab-a' }
+    ),
+    true
+  );
+  assert.strictEqual(
+    isSameRouteState(
+      { view: 'library-detail', libraryBookSlug: 'kitab-a' },
+      { view: 'library-detail', libraryBookSlug: 'kitab-b' }
+    ),
+    false
+  );
+  assert.strictEqual(
+    isSameRouteState(
+      { view: 'library-detail', libraryBookSlug: 'kitab-a' },
+      { view: 'library-read', libraryBookSlug: 'kitab-a' }
+    ),
+    false
+  );
+  assert.strictEqual(
+    isSameRouteState(
+      { view: 'library-read', libraryBookSlug: 'kitab-a' },
+      { view: 'library-read', libraryBookSlug: 'kitab-a' }
+    ),
+    true
+  );
+  assert.strictEqual(
+    isSameRouteState(
+      { view: 'library-read', libraryBookSlug: 'kitab-a' },
+      { view: 'library-read', libraryBookSlug: 'kitab-b' }
+    ),
+    false
+  );
+});
+
+
+
 
 
 

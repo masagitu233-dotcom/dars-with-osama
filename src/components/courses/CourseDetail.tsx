@@ -52,7 +52,7 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
   onRefreshEnrollment,
   onStartQuiz
 }) => {
-  const { user, loading: authLoading, openGuestModal } = useAuth();
+  const { user, isAdmin, loading: authLoading, openGuestModal } = useAuth();
   useLanguage();
   const [enrolling, setEnrolling] = useState(false);
   const [copiedSessionId, setCopiedSessionId] = useState<string | null>(null);
@@ -117,12 +117,13 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
       return;
     }
 
-    // Verify preceding sessions in this course do not have uncompleted quizzes
+    // Verify preceding sessions in this course do not have uncompleted quizzes (bypassed for verified admins)
     const blockCheck = findFirstUncompletedPrecedingQuizSession(
       sessions,
       targetSession,
       userAttempts,
-      quizzesMap
+      quizzesMap,
+      { isAdmin }
     );
     if (blockCheck.hasBlockingQuiz && blockCheck.blockingSession) {
       setBlockingSessionForModal(blockCheck.blockingSession);
@@ -439,7 +440,7 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
 
       {/* Syllabus / Sessions List */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="space-y-1">
             <h2 className="text-xl sm:text-2xl font-extrabold text-[#F5DABF] font-serif-brand">
               Daftar Sesi Pembelajaran ({sessions.length})
@@ -448,6 +449,11 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
               Klik pada sesi untuk mulai menyimak materi video, naskah PDF, catatan kajian, dan evaluasi kuis.
             </p>
           </div>
+          {isAdmin && (
+            <span className="nb-badge bg-[#4CA7A1] text-[#001722] border-[#171717] text-[11px] font-extrabold">
+              Mode Admin: Bebas Akses Semua Kuis
+            </span>
+          )}
         </div>
 
         {sessions.length > 0 ? (

@@ -12,7 +12,8 @@ import {
   UserCheck,
   Info,
   PanelLeftClose,
-  PanelLeftOpen
+  PanelLeftOpen,
+  Library
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
@@ -49,6 +50,10 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
     currentView === 'quiz-view';
 
   const isBlogActive = currentView === 'blog' || currentView === 'blog-detail';
+  const isLibraryActive =
+    currentView === 'library' ||
+    currentView === 'library-detail' ||
+    currentView === 'library-read';
   const isStudentDashboardActive = currentView === 'student-dashboard';
   const isAdminDashboardActive = currentView === 'admin-dashboard';
 
@@ -66,6 +71,13 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
       sublabel: 'Kajian & Faedah Ilmiah',
       icon: FileText,
       active: isBlogActive
+    },
+    {
+      id: 'library',
+      label: 'Library Digital',
+      sublabel: 'Koleksi Buku & Kitab',
+      icon: Library,
+      active: isLibraryActive
     },
     {
       id: 'public-qa',

@@ -9,7 +9,8 @@ import {
   ChevronRight,
   ChevronLeft,
   HelpCircle,
-  Lock
+  Lock,
+  ShieldCheck
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { Quiz, Course, Session, QuizAttempt } from '../../types';
@@ -33,7 +34,7 @@ export const QuizView: React.FC<QuizViewProps> = ({
   onBackToSession,
   onRefreshEnrollment
 }) => {
-  const { user, userProfile, loading: authLoading, openGuestModal } = useAuth();
+  const { user, userProfile, isAdmin, loading: authLoading, openGuestModal } = useAuth();
   const [checkingLock, setCheckingLock] = useState<boolean>(true);
   const [blockingInfo, setBlockingInfo] = useState<{
     hasBlockingQuiz: boolean;
@@ -66,7 +67,7 @@ export const QuizView: React.FC<QuizViewProps> = ({
   const currentQuestion = questions[currentQuestionIndex];
 
   useEffect(() => {
-    if (!user || !course) {
+    if (!user || !course || isAdmin) {
       setCheckingLock(false);
       setBlockingInfo(null);
       return;
@@ -94,7 +95,13 @@ export const QuizView: React.FC<QuizViewProps> = ({
           })
         );
 
-        const check = findFirstUncompletedPrecedingQuizSession(sessions, targetS, attempts, qMap);
+        const check = findFirstUncompletedPrecedingQuizSession(
+          sessions,
+          targetS,
+          attempts,
+          qMap,
+          { isAdmin: false }
+        );
         if (check.hasBlockingQuiz) {
           setBlockingInfo(check);
         } else {
@@ -110,7 +117,7 @@ export const QuizView: React.FC<QuizViewProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [user?.uid, course?.id, quiz.id, session?.id]);
+  }, [user?.uid, isAdmin, course?.id, quiz.id, session?.id]);
 
   useEffect(() => {
     if (!user) return;
@@ -125,7 +132,7 @@ export const QuizView: React.FC<QuizViewProps> = ({
     authLoading ||
     checkingLock ||
     !user ||
-    Boolean(blockingInfo?.hasBlockingQuiz && blockingInfo.blockingSession);
+    (!isAdmin && Boolean(blockingInfo?.hasBlockingQuiz && blockingInfo.blockingSession));
 
   useEffect(() => {
     if (isQuizBlocked || submitted || quiz.timeLimitMinutes <= 0) return;
@@ -183,7 +190,7 @@ export const QuizView: React.FC<QuizViewProps> = ({
     );
   }
 
-  if (blockingInfo?.hasBlockingQuiz && blockingInfo.blockingSession) {
+  if (!isAdmin && blockingInfo?.hasBlockingQuiz && blockingInfo.blockingSession) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-16 text-center space-y-6 animate-fade-in-up">
         <div className="w-16 h-16 mx-auto rounded-lg bg-[#FAF7F0] dark:bg-[#001722] border-2 border-[#171717] dark:border-[#4CA7A1] shadow-[4px_4px_0px_#171717] dark:shadow-[4px_4px_0px_#001722] flex items-center justify-center text-[#123D32] dark:text-[#CEFEF1]">
@@ -270,12 +277,12 @@ export const QuizView: React.FC<QuizViewProps> = ({
 
     try {
       const attemptNumber = pastAttempts.length + 1;
-      await saveQuizAttempt({
+      const attemptPayload: Omit<QuizAttempt, 'id'> = {
         userId: user.uid,
-        userName: userProfile?.displayName || user.displayName || user.email?.split('@')[0] || 'Peserta',
+        userName: userProfile?.displayName || user.displayName || user.email?.split('@')[0] || (isAdmin ? 'Admin' : 'Peserta'),
         userEmail: user.email || '',
         quizId: quiz.id,
-        sessionId: session?.id,
+        ...(session?.id ? { sessionId: session.id } : {}),
         courseId: course.id,
         score,
         passed,
@@ -283,9 +290,19 @@ export const QuizView: React.FC<QuizViewProps> = ({
         maxPoints,
         answers,
         submittedAt: new Date().toISOString(),
-        attemptNumber
-      });
-      onRefreshEnrollment();
+        attemptNumber,
+        ...(isAdmin
+          ? { isAdminAttempt: true, submitterRole: 'admin' as const }
+          : { isAdminAttempt: false, submitterRole: 'student' as const })
+      };
+
+      const savedId = await saveQuizAttempt(attemptPayload);
+      setPastAttempts(prev => [{ id: savedId, ...attemptPayload }, ...prev]);
+
+      // Admin quiz activity must NEVER update or pollute student enrollment progress
+      if (!isAdmin) {
+        onRefreshEnrollment();
+      }
     } catch (err) {
       console.error('Error saving quiz attempt:', err);
     } finally {
@@ -336,6 +353,19 @@ export const QuizView: React.FC<QuizViewProps> = ({
         )}
       </div>
 
+      {/* Admin Unrestricted Access Notice */}
+      {isAdmin && (
+        <div className="p-3.5 rounded-lg bg-[#4CA7A1] text-[#001722] border-2 border-[#171717] shadow-[4px_4px_0px_#171717] flex items-start gap-2.5 text-xs font-bold">
+          <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5 text-[#001722]" />
+          <div>
+            <span className="font-extrabold uppercase tracking-wide">Mode Akses Admin Aktif:</span>{' '}
+            <span>
+              Anda dapat membuka, mengerjakan, dan mengulang kuis dari sesi mana pun tanpa terkunci progres urutan. Hasil pengerjaan admin ditandai terpisah dan tidak memengaruhi progres maupun statistik nilai santri.
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Result Screen upon submission */}
       {submitted && scoreResult ? (
         <div className="nb-card p-6 sm:p-10 space-y-8 bg-[#FFF5E9] text-[#0F3D3A] border-2 border-[#171717] shadow-[6px_6px_0px_#171717]">
@@ -371,13 +401,15 @@ export const QuizView: React.FC<QuizViewProps> = ({
 
           {/* Action Buttons */}
           <div className="flex flex-wrap items-center justify-center gap-3 pt-4 border-t-2 border-[#292D2B]/20 dark:border-[#34465D]">
-            {(!scoreResult.passed || quiz.maxAttempts === 0 || remainingAttempts > 0) && (
+            {(isAdmin || !scoreResult.passed || quiz.maxAttempts === 0 || remainingAttempts > 0) && (
               <button
                 onClick={handleRetake}
                 className="nb-btn nb-btn-secondary px-5 py-3 text-sm"
               >
                 <RotateCcw className="w-4 h-4 text-[#123D32] dark:text-[#D6AD52]" />
-                <span>Ulangi Kuis {quiz.maxAttempts > 0 ? `(Sisa ${remainingAttempts}x)` : ''}</span>
+                <span>
+                  Ulangi Kuis {isAdmin ? '(Mode Admin)' : quiz.maxAttempts > 0 ? `(Sisa ${remainingAttempts}x)` : ''}
+                </span>
               </button>
             )}
 
@@ -479,7 +511,11 @@ export const QuizView: React.FC<QuizViewProps> = ({
 
             <div className="nb-badge bg-[#FAF7F0] dark:bg-[#243A56] text-[#292D2B] dark:text-[#F1F4F8]">
               <HelpCircle className="w-4 h-4 text-[#123D32] dark:text-[#D6AD52]" />
-              <span>Pertanyaan {currentQuestionIndex + 1} dari {questions.length}</span>
+              <span>
+                {questions.length > 0
+                  ? `Pertanyaan ${currentQuestionIndex + 1} dari ${questions.length}`
+                  : 'Belum Ada Soal'}
+              </span>
             </div>
           </div>
 
@@ -487,9 +523,15 @@ export const QuizView: React.FC<QuizViewProps> = ({
           <div className="w-full bg-[#FAF7F0] dark:bg-[#243A56] h-3 rounded-sm border-2 border-[#292D2B] dark:border-[#34465D] overflow-hidden">
             <div
               className="bg-[#D6AD52] h-full transition-all duration-300 ease-out"
-              style={{ width: `${((currentQuestionIndex + 1) / questions.length) * 100}%` }}
+              style={{ width: `${questions.length > 0 ? ((currentQuestionIndex + 1) / questions.length) * 100 : 0}%` }}
             />
           </div>
+
+          {questions.length === 0 && (
+            <div className="p-6 text-center rounded-md border-2 border-[#292D2B] bg-[#FAF7F0] text-sm font-bold text-[#292D2B]">
+              Kuis ini belum memiliki daftar pertanyaan. Silakan tambahkan soal melalui Dashboard Admin.
+            </div>
+          )}
 
           {/* Active Question Box */}
           {currentQuestion && (

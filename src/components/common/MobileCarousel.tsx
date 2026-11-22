@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 interface MobileCarouselProps {
   children: React.ReactNode[];
   desktopGridClass?: string;
+  mobileItemClassName?: string;
   className?: string;
   ariaLabel?: string;
   showSwipeHint?: boolean;
@@ -12,6 +13,7 @@ interface MobileCarouselProps {
 export const MobileCarousel: React.FC<MobileCarouselProps> = ({
   children,
   desktopGridClass = 'sm:grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 sm:gap-6',
+  mobileItemClassName = 'w-[84vw] max-w-[340px]',
   className = '',
   ariaLabel = 'Daftar Konten',
   showSwipeHint = true
@@ -300,7 +302,7 @@ export const MobileCarousel: React.FC<MobileCarouselProps> = ({
         {React.Children.map(children, (child, idx) => (
           <div
             key={idx}
-            className={`w-[84vw] max-w-[340px] shrink-0 snap-start sm:w-auto sm:max-w-none sm:shrink sm:snap-none h-auto sm:h-full flex flex-col transition-transform sm:!transform-none ${
+            className={`${mobileItemClassName} shrink-0 snap-start sm:w-auto sm:max-w-none sm:shrink sm:snap-none h-auto sm:h-full flex flex-col transition-transform sm:!transform-none ${
               isMouseDown ? 'transition-none' : 'duration-700 ease-in-out'
             }`}
             style={{
