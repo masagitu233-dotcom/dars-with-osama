@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Plus,
   Edit,
@@ -20,10 +20,18 @@ import {
   Square,
   MessageSquare,
   Info,
-  Loader2
+  Loader2,
+  PenLine,
+  SlidersHorizontal
 } from 'lucide-react';
 import { BlogPost } from '../../types';
 import { RichTextEditor } from './RichTextEditor';
+import { AdminEditorModalShell, AdminEditorTab } from './AdminEditorModalShell';
+import {
+  countDocumentWords,
+  buildArticleDirtySnapshot,
+  hasEditorUnsavedChanges
+} from '../../utils/editorWorkspaceHelper';
 import { saveBlogPost, deleteBlogPost, uploadFileToStorage, deleteDummyBlogPostsFromFirestore, dispatchNotificationEmail } from '../../firebase/services';
 import { ConfirmModal } from '../common/ConfirmModal';
 import {
@@ -68,7 +76,8 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isInModalPreview, setIsInModalPreview] = useState(false);
+  const [activeEditorTab, setActiveEditorTab] = useState<'naskah' | 'metadata' | 'audio' | 'pratinjau'>('naskah');
+  const [initialFormSnapshot, setInitialFormSnapshot] = useState('');
   const [saving, setSaving] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
   const [coverProgress, setCoverProgress] = useState(0);
@@ -153,10 +162,25 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
     }
   };
 
+  const currentFormSnapshot = useMemo(
+    () => buildArticleDirtySnapshot(formData, tagInput),
+    [formData, tagInput]
+  );
+
+  const hasUnsavedChanges = useMemo(
+    () => isModalOpen && hasEditorUnsavedChanges(currentFormSnapshot, initialFormSnapshot),
+    [isModalOpen, currentFormSnapshot, initialFormSnapshot]
+  );
+
+  const articleWordCount = useMemo(
+    () => countDocumentWords(formData.content),
+    [formData.content]
+  );
+
   const handleOpenAddModal = () => {
     setFeedback(null);
     setAudioCheckResult(null);
-    setFormData({
+    const nextFormData: Partial<BlogPost> = {
       id: undefined,
       title: '',
       titleAr: '',
@@ -179,15 +203,19 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
         speechVoiceName: '',
         customAudioUrl: ''
       }
-    });
-    setTagInput('Kajian, Ilmu Syar\'i');
+    };
+    const nextTags = 'Kajian, Ilmu Syar\'i';
+    setFormData(nextFormData);
+    setTagInput(nextTags);
+    setInitialFormSnapshot(buildArticleDirtySnapshot(nextFormData, nextTags));
+    setActiveEditorTab('naskah');
     setIsModalOpen(true);
   };
 
   const handleOpenEditModal = (post: BlogPost) => {
     setFeedback(null);
     setAudioCheckResult(null);
-    setFormData({
+    const nextFormData: Partial<BlogPost> = {
       ...post,
       audioConfig: post.audioConfig
         ? {
@@ -204,8 +232,12 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
             speechVoiceName: '',
             customAudioUrl: ''
           }
-    });
-    setTagInput(post.tags ? post.tags.join(', ') : '');
+    };
+    const nextTags = post.tags ? post.tags.join(', ') : '';
+    setFormData(nextFormData);
+    setTagInput(nextTags);
+    setInitialFormSnapshot(buildArticleDirtySnapshot(nextFormData, nextTags));
+    setActiveEditorTab('naskah');
     setIsModalOpen(true);
   };
 
@@ -315,6 +347,7 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
 
     const titleText = formData.title?.trim() || '';
     if (!titleText) {
+      setActiveEditorTab('naskah');
       setFeedback({ type: 'error', text: 'Judul artikel wajib diisi terlebih dahulu.' });
       if (modalBodyRef.current) modalBodyRef.current.scrollTo({ top: 0, behavior: 'smooth' });
       return;
@@ -323,6 +356,7 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
     const rawContent = formData.content || '';
     const cleanContentText = rawContent.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
     if (!cleanContentText && !rawContent.includes('<img')) {
+      setActiveEditorTab('naskah');
       setFeedback({ type: 'error', text: 'Isi naskah artikel wajib diisi terlebih dahulu.' });
       if (modalBodyRef.current) modalBodyRef.current.scrollTo({ top: 0, behavior: 'smooth' });
       return;
@@ -332,6 +366,7 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
     if (coverUrl) {
       const coverValidation = validateArticleImageSource(coverUrl);
       if (!coverValidation.isValid) {
+        setActiveEditorTab('metadata');
         setFeedback({
           type: 'error',
           text: `Gambar sampul tidak valid: ${coverValidation.error || 'Periksa kembali URL gambar.'}`
@@ -709,571 +744,489 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
         </div>
       </div>
 
-      {/* ARTICLE EDITOR MODAL / DRAWER */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
-          <div className="nb-card bg-white dark:bg-[#0B3026] w-full max-w-4xl overflow-hidden my-8 flex flex-col max-h-[90vh]">
-            {/* Modal Header */}
-            <div className="p-6 border-b-2 border-[#171717] dark:border-[#D9AC45]/50 flex items-center justify-between bg-[#06251D] text-[#F8F3E8] shrink-0">
-              <div>
-                <h3 className="text-lg font-extrabold text-[#F8F3E8] font-serif-brand flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-[#D9AC45]" />
-                  <span>{formData.id ? 'Edit Artikel Blog' : 'Buat Artikel Blog Baru'}</span>
-                </h3>
-                <p className="text-xs text-[#F8F3E8]/80 mt-0.5">
-                  Tulis isi naskah, sampul, kategori, dan kelola publikasi artikel.
-                </p>
-              </div>
-
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="nb-btn nb-btn-secondary p-2"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Modal Form Body */}
-            <div ref={modalBodyRef} className="p-6 overflow-y-auto space-y-6 flex-1 text-xs sm:text-sm">
-              {/* MODAL INLINE FEEDBACK BANNER */}
-              {feedback && (
-                <div className={`p-4 rounded-md border-2 border-[#171717] text-xs sm:text-sm font-bold flex items-center justify-between gap-3 animate-fade-in ${
-                  feedback.type === 'success'
-                    ? 'bg-[#D9AC45] text-[#171717]'
-                    : 'bg-[#F04438] text-white'
-                }`}>
-                  <div className="flex items-center gap-2">
-                    {feedback.type === 'success' ? (
-                      <CheckCircle className="w-4 h-4 shrink-0" />
-                    ) : (
-                      <AlertCircle className="w-4 h-4 shrink-0" />
-                    )}
-                    <span>{feedback.text}</span>
+      {/* ARTICLE EDITOR MULTI-PAGE DOCUMENT STUDIO MODAL */}
+      <AdminEditorModalShell
+        isOpen={isModalOpen}
+        onClose={() => {
+          setActiveEditorTab('naskah');
+          setIsModalOpen(false);
+        }}
+        title={formData.id ? 'Edit Artikel' : 'Artikel Baru'}
+        subtitle={formData.title?.trim() || 'Dokumen tanpa judul'}
+        icon={<FileText className="w-4 h-4 sm:w-5 sm:h-5 text-[#D9AC45]" />}
+        hasUnsavedChanges={hasUnsavedChanges}
+        wordCount={articleWordCount}
+        feedback={feedback}
+        onDismissFeedback={() => setFeedback(null)}
+        activeTabId={activeEditorTab}
+        onTabChange={(id) => setActiveEditorTab(id as 'naskah' | 'metadata' | 'audio' | 'pratinjau')}
+        testId="admin-blog-editor-modal"
+        tabs={([
+          {
+            id: 'naskah',
+            label: 'Naskah',
+            icon: <PenLine className="w-3.5 h-3.5" />,
+            content: (
+              <RichTextEditor
+                value={formData.content || ''}
+                onChange={(html) => setFormData(prev => ({ ...prev, content: html }))}
+                placeholder="Mulai menulis naskah artikel di sini... Gunakan toolbar di atas atau sorot teks untuk memformat paragraf, heading, kutipan, tabel, maupun teks Arab."
+                minHeight="52vh"
+                workspaceMode={true}
+                documentHeader={
+                  <div className="mb-6 pb-5 border-b border-[#171717]/12 dark:border-white/12 space-y-2.5">
+                    <input
+                      type="text"
+                      aria-label="Judul Artikel (Indonesia)"
+                      value={formData.title || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                      placeholder="Judul Artikel..."
+                      className="w-full bg-transparent border-0 p-0 text-2xl sm:text-3xl lg:text-[2.1rem] font-extrabold font-serif-brand leading-tight tracking-tight text-[#171717] dark:text-[#F8F3E8] placeholder:text-[#171717]/25 dark:placeholder:text-[#F8F3E8]/25 focus:outline-hidden"
+                    />
+                    <input
+                      type="text"
+                      aria-label="Judul Bahasa Arab (Opsional)"
+                      value={formData.titleAr || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, titleAr: e.target.value }))}
+                      placeholder="Judul Bahasa Arab (opsional) — طَلَبُ العِلْمِ الشَّرْعِيِّ..."
+                      dir="rtl"
+                      className="w-full bg-transparent border-0 p-0 text-lg sm:text-xl font-amiri font-bold text-[#06251D]/85 dark:text-[#D9AC45]/90 placeholder:text-[#171717]/25 dark:placeholder:text-[#D9AC45]/30 focus:outline-hidden"
+                    />
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setFeedback(null)}
-                    className="p-1 rounded hover:bg-black/10 cursor-pointer"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              )}
+                }
+              />
+            )
+          },
+          {
+            id: 'metadata',
+            label: 'Info & Sampul',
+            shortLabel: 'Info',
+            icon: <SlidersHorizontal className="w-3.5 h-3.5" />,
+            content: (
+              <div ref={modalBodyRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain bg-[#FAF7F0]/55 dark:bg-[#0A1F1B]">
+                <div className="max-w-4xl mx-auto px-4 sm:px-8 py-6 sm:py-8 space-y-6">
+                  {/* Klasifikasi & Ringkasan */}
+                  <div className="p-5 sm:p-6 bg-white dark:bg-[#0E2B24] rounded-lg border-2 border-[#171717] dark:border-[#D9AC45]/45 space-y-4">
+                    <div className="pb-2.5 border-b border-[#171717]/15 dark:border-[#D9AC45]/25">
+                      <h4 className="text-sm font-extrabold text-[#171717] dark:text-[#F8F3E8]">
+                        Identitas &amp; Klasifikasi Artikel
+                      </h4>
+                      <p className="text-xs text-[#525855] dark:text-[#A6D6C9] mt-0.5">
+                        Atur kategori, tag, ringkasan kartu, serta status unggulan artikel.
+                      </p>
+                    </div>
 
-              {/* Judul & Judul Arab */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-extrabold text-[#171717] dark:text-[#F8F3E8] block mb-1">
-                    Judul Artikel (Indonesia) *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.title || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                    placeholder="Contoh: Menuntut Ilmu Syar'i: Keutamaan & Adab"
-                    className="nb-input w-full px-3.5 py-2.5 text-xs font-semibold"
-                  />
-                </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-xs font-extrabold text-[#171717] dark:text-[#F8F3E8] block mb-1">
+                          Kategori Artikel *
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.category || ''}
+                          onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+                          placeholder="misal: Kajian Fiqih, Adab & Akhlak, Tafsir"
+                          className="nb-input w-full px-3.5 py-2.5 text-xs"
+                        />
+                      </div>
 
-                <div>
-                  <label className="text-xs font-extrabold text-[#171717] dark:text-[#F8F3E8] block mb-1">
-                    Judul Bahasa Arab (Opsional)
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.titleAr || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, titleAr: e.target.value }))}
-                    placeholder="طَلَبُ العِلْمِ الشَّرْعِيِّ..."
-                    dir="rtl"
-                    className="nb-input w-full px-3.5 py-2.5 text-xs font-amiri font-bold text-[#06251D] dark:text-[#D9AC45]"
-                  />
-                </div>
-              </div>
+                      <div>
+                        <label className="text-xs font-extrabold text-[#171717] dark:text-[#F8F3E8] block mb-1">
+                          Tag Artikel (Pisahkan dengan Koma)
+                        </label>
+                        <input
+                          type="text"
+                          value={tagInput}
+                          onChange={(e) => setTagInput(e.target.value)}
+                          placeholder="ilmu, tazkiyah, adab"
+                          className="nb-input w-full px-3.5 py-2.5 text-xs"
+                        />
+                      </div>
+                    </div>
 
-              {/* Kategori, Tag & Unggulan */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="text-xs font-extrabold text-[#171717] dark:text-[#F8F3E8] block mb-1">
-                    Kategori Artikel *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.category || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                    placeholder="misal: Kajian Fiqih, Adab & Akhlak, Tafsir"
-                    className="nb-input w-full px-3.5 py-2.5 text-xs"
-                  />
-                </div>
+                    <div>
+                      <label className="text-xs font-extrabold text-[#171717] dark:text-[#F8F3E8] block mb-1">
+                        Ringkasan / Teaser Singkat (Excerpt) *
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={formData.excerpt || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, excerpt: e.target.value }))}
+                        placeholder="Ringkasan 1-2 kalimat untuk ditampilkan di kartu daftar artikel..."
+                        className="nb-input w-full p-3 text-xs leading-relaxed resize-y"
+                      />
+                    </div>
 
-                <div>
-                  <label className="text-xs font-extrabold text-[#171717] dark:text-[#F8F3E8] block mb-1">
-                    Tag Artikel (Pisahkan dengan Koma)
-                  </label>
-                  <input
-                    type="text"
-                    value={tagInput}
-                    onChange={(e) => setTagInput(e.target.value)}
-                    placeholder="ilmu, tazkiyah, adab"
-                    className="nb-input w-full px-3.5 py-2.5 text-xs"
-                  />
-                </div>
-
-                <div className="flex items-center gap-2 pt-6">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.isFeatured || false}
-                      onChange={(e) => setFormData(prev => ({ ...prev, isFeatured: e.target.checked }))}
-                      className="w-4 h-4 accent-[#06251D] rounded"
-                    />
-                    <span className="text-xs font-extrabold text-[#171717] dark:text-[#F8F3E8] flex items-center gap-1">
-                      <Sparkles className="w-3.5 h-3.5 text-[#D9AC45]" /> Jadikan Artikel Unggulan
-                    </span>
-                  </label>
-                </div>
-              </div>
-
-              {/* Ringkasan / Excerpt */}
-              <div>
-                <label className="text-xs font-extrabold text-[#171717] dark:text-[#F8F3E8] block mb-1">
-                  Ringkasan / Teaser Singkat (Excerpt) *
-                </label>
-                <textarea
-                  rows={2}
-                  value={formData.excerpt || ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, excerpt: e.target.value }))}
-                  placeholder="Ringkasan 1-2 kalimat untuk ditampilkan di kartu daftar artikel..."
-                  className="nb-input w-full p-3 text-xs"
-                />
-              </div>
-
-              {/* Gambar Sampul */}
-              <div className="p-4 bg-[#F8F3E8] dark:bg-[#06251D] rounded-lg border-2 border-[#171717] dark:border-[#D9AC45]/50 space-y-3">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-extrabold text-[#171717] dark:text-[#F8F3E8] block">
-                    Gambar Sampul Artikel (Cover Image)
-                  </label>
-                  <span className="text-[10px] text-[#525855] dark:text-[#A6D6C9] font-bold">
-                    Rasio 16:9 disarankan
-                  </span>
-                </div>
-
-                <div className="p-2.5 rounded bg-white dark:bg-[#102C2B] border border-[#171717]/20 text-[11px] text-[#525855] dark:text-[#A6D6C9] leading-relaxed">
-                  💡 <strong>Metode sumber gambar yang didukung:</strong>
-                  <ul className="list-disc list-inside mt-1 space-y-0.5 text-[10.5px]">
-                    <li><strong>Unggah Berkas Langsung (Firebase Storage)</strong>: Paling stabil dan direkomendasikan untuk situs publik.</li>
-                    <li><strong>Tautan Google Drive</strong>: Pastikan akses file di Google Drive telah disetel ke <em>&quot;Siapa saja yang memiliki link&quot;</em>. Sistem otomatis mengonversi ke tautan gambar langsung.</li>
-                    <li><strong>URL Gambar Publik</strong>: Tautan gambar langsung (.jpg, .png, .webp).</li>
-                  </ul>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
-                  <div className="space-y-2">
-                    <label className="text-[11px] font-bold text-[#171717]/80 dark:text-[#F8F3E8]/80 block">
-                      1. Unggah Berkas Gambar Sampul (Direkomendasikan):
+                    <label className="inline-flex items-center gap-2.5 pt-1 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.isFeatured || false}
+                        onChange={(e) => setFormData(prev => ({ ...prev, isFeatured: e.target.checked }))}
+                        className="w-4 h-4 accent-[#06251D] rounded shrink-0"
+                      />
+                      <span className="text-xs font-extrabold text-[#171717] dark:text-[#F8F3E8] flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-[#D9AC45]" /> Jadikan Artikel Unggulan
+                      </span>
                     </label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleCoverFileUpload}
-                      className="w-full text-xs text-[#171717] dark:text-[#F8F3E8] file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-2 file:border-[#171717] file:text-xs file:font-extrabold file:bg-[#D9AC45] file:text-[#171717] cursor-pointer"
-                    />
-                    {uploadingCover && (
-                      <p className="text-[10px] font-bold text-[#06251D] dark:text-[#D9AC45]">Mengunggah sampul... {coverProgress}%</p>
-                    )}
+                  </div>
 
-                    <label className="text-[11px] font-bold text-[#171717]/80 dark:text-[#F8F3E8]/80 block pt-2">
-                      2. Atau Masukkan Tautan / URL Sampul:
-                    </label>
-                    <input
-                      type="url"
-                      value={formData.coverImageUrl || ''}
-                      onChange={(e) => setFormData(prev => ({ ...prev, coverImageUrl: e.target.value }))}
-                      placeholder="https://drive.google.com/file/d/... atau https://images.unsplash.com/..."
-                      className="nb-input w-full px-3 py-2 text-xs font-medium"
-                    />
+                  {/* Gambar Sampul */}
+                  <div className="p-5 sm:p-6 bg-white dark:bg-[#0E2B24] rounded-lg border-2 border-[#171717] dark:border-[#D9AC45]/45 space-y-4">
+                    <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-[#171717]/15 dark:border-[#D9AC45]/25">
+                      <div>
+                        <h4 className="text-sm font-extrabold text-[#171717] dark:text-[#F8F3E8]">
+                          Gambar Sampul Artikel (Cover Image)
+                        </h4>
+                        <p className="text-xs text-[#525855] dark:text-[#A6D6C9] mt-0.5">
+                          Mendukung unggah langsung (Firebase Storage), Google Drive publik, atau URL gambar langsung.
+                        </p>
+                      </div>
+                      <span className="text-[11px] text-[#525855] dark:text-[#A6D6C9] font-bold shrink-0">
+                        Rasio 16:9
+                      </span>
+                    </div>
 
-                    {formData.coverImageUrl && isGoogleDriveUrl(formData.coverImageUrl) && (
-                      <div className="p-2 rounded bg-amber-50 dark:bg-[#16263D] border border-[#D6AD52] text-[11px] space-y-1 animate-fade-in">
-                        <div className="flex items-center gap-1.5 font-bold text-[#123D32] dark:text-[#D6AD52]">
-                          <span>✓ Tautan Google Drive Terdeteksi</span>
-                          {extractGoogleDriveFileId(formData.coverImageUrl) && (
-                            <span className="font-mono text-[9px] px-1 py-0.2 rounded bg-white dark:bg-[#102C2B] border border-[#171717]">
-                              ID: {extractGoogleDriveFileId(formData.coverImageUrl)}
-                            </span>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
+                      <div className="space-y-3">
+                        <div className="space-y-1.5">
+                          <label className="text-[11px] font-bold text-[#171717]/80 dark:text-[#F8F3E8]/80 block">
+                            1. Unggah Berkas Gambar Sampul (Direkomendasikan):
+                          </label>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleCoverFileUpload}
+                            className="w-full text-xs text-[#171717] dark:text-[#F8F3E8] file:mr-3 file:py-2 file:px-3.5 file:rounded-md file:border-2 file:border-[#171717] file:text-xs file:font-extrabold file:bg-[#D9AC45] file:text-[#171717] cursor-pointer"
+                          />
+                          {uploadingCover && (
+                            <p className="text-[11px] font-bold text-[#06251D] dark:text-[#D9AC45]">
+                              Mengunggah sampul... {coverProgress}%
+                            </p>
                           )}
                         </div>
-                        <p className="text-[10px] text-[#525855] dark:text-[#A6D6C9]">
-                          Sistem akan memuat gambar resolusi tinggi langsung. Pastikan izin file disetel ke <strong>&quot;Siapa saja yang memiliki link&quot;</strong>.
-                        </p>
-                        {extractGoogleDriveFileId(formData.coverImageUrl) && (
-                          <a
-                            href={getGoogleDriveViewerUrl(formData.coverImageUrl)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-[10px] font-bold text-[#123D32] dark:text-[#D6AD52] underline hover:opacity-80 pt-0.5"
-                          >
-                            Buka di Google Drive ↗
-                          </a>
+
+                        <div className="space-y-1.5">
+                          <label className="text-[11px] font-bold text-[#171717]/80 dark:text-[#F8F3E8]/80 block">
+                            2. Atau Masukkan Tautan / URL Sampul:
+                          </label>
+                          <input
+                            type="url"
+                            value={formData.coverImageUrl || ''}
+                            onChange={(e) => setFormData(prev => ({ ...prev, coverImageUrl: e.target.value }))}
+                            placeholder="https://drive.google.com/file/d/... atau URL .jpg/.webp"
+                            className="nb-input w-full px-3 py-2 text-xs font-medium"
+                          />
+                        </div>
+
+                        {formData.coverImageUrl && isGoogleDriveUrl(formData.coverImageUrl) && (
+                          <div className="p-2.5 rounded bg-amber-50 dark:bg-[#16263D] border border-[#D6AD52] text-[11px] space-y-1 animate-fade-in">
+                            <div className="flex items-center flex-wrap gap-1.5 font-bold text-[#123D32] dark:text-[#D6AD52]">
+                              <span>✓ Tautan Google Drive Terdeteksi</span>
+                              {extractGoogleDriveFileId(formData.coverImageUrl) && (
+                                <span className="font-mono text-[9.5px] px-1.5 py-0.5 rounded bg-white dark:bg-[#102C2B] border border-[#171717]">
+                                  ID: {extractGoogleDriveFileId(formData.coverImageUrl)}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[10.5px] text-[#525855] dark:text-[#A6D6C9]">
+                              Pastikan izin file disetel ke <strong>&quot;Siapa saja yang memiliki link&quot;</strong>.
+                            </p>
+                            {extractGoogleDriveFileId(formData.coverImageUrl) && (
+                              <a
+                                href={getGoogleDriveViewerUrl(formData.coverImageUrl)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-[10.5px] font-bold text-[#123D32] dark:text-[#D6AD52] underline hover:opacity-80 pt-0.5"
+                              >
+                                Buka di Google Drive ↗
+                              </a>
+                            )}
+                          </div>
                         )}
                       </div>
-                    )}
-                  </div>
 
-                  <div className="space-y-1">
-                    <span className="text-[11px] font-bold text-[#171717]/80 dark:text-[#F8F3E8]/80 block">
-                      Pratinjau Sampul:
-                    </span>
-                    <div className="aspect-video w-full rounded-md bg-white dark:bg-[#214743] overflow-hidden relative border-2 border-[#171717] dark:border-[#B8E8D8]">
-                      {formData.coverImageUrl ? (
-                        <ResilientGoogleDriveImage
-                          src={formData.coverImageUrl}
-                          alt="Sampul"
-                          aspectRatioClass="aspect-video"
-                          imageClassName="w-full h-full object-cover"
-                          isAdmin={true}
-                          showAdminDiagnostic={true}
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-[#525855] dark:text-[#B9C9C5] text-xs font-bold">
-                          Belum ada sampul
+                      <div className="space-y-1.5">
+                        <span className="text-[11px] font-bold text-[#171717]/80 dark:text-[#F8F3E8]/80 block">
+                          Pratinjau Sampul:
+                        </span>
+                        <div className="aspect-video w-full rounded-md bg-[#FAF7F0] dark:bg-[#214743] overflow-hidden relative border-2 border-[#171717] dark:border-[#B8E8D8]">
+                          {formData.coverImageUrl ? (
+                            <ResilientGoogleDriveImage
+                              src={formData.coverImageUrl}
+                              alt="Sampul"
+                              aspectRatioClass="aspect-video"
+                              imageClassName="w-full h-full object-cover"
+                              isAdmin={true}
+                              showAdminDiagnostic={true}
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-[#525855] dark:text-[#B9C9C5] text-xs font-bold">
+                              Belum ada sampul
+                            </div>
+                          )}
                         </div>
-                      )}
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-
-              {/* PENGATURAN AUDIO READING */}
-              <div className="p-5 bg-[#FAF7F0] dark:bg-[#143331] rounded-lg border-2 border-[#171717] dark:border-[#B8E8D8] space-y-4">
-                <div className="flex items-center justify-between p-4 bg-white dark:bg-[#193A37] rounded-md border-2 border-[#171717] dark:border-[#B8E8D8]">
-                  <div className="flex items-start sm:items-center gap-3">
-                    <input
-                      type="checkbox"
-                      id="checkbox-audio-enabled"
-                      checked={formData.audioConfig?.enabled ?? false}
-                      onChange={(e) =>
-                        setFormData(prev => ({
-                          ...prev,
-                          audioConfig: {
-                            mode: 'speech',
-                            speechRate: 1.0,
-                            speechVoiceName: '',
-                            customAudioUrl: '',
-                            ...prev.audioConfig,
-                            enabled: e.target.checked
-                          }
-                        }))
-                      }
-                      className="w-5 h-5 mt-0.5 sm:mt-0 accent-[#123D32] rounded cursor-pointer shrink-0"
-                    />
-                    <label htmlFor="checkbox-audio-enabled" className="cursor-pointer">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs sm:text-sm font-extrabold text-[#171717] dark:text-[#F0F7F5] flex items-center gap-1.5">
-                          <Headphones className="w-4 h-4 text-[#123D32] dark:text-[#F2D98A]" />
-                          <span>Aktifkan Audio Reading pada Artikel Ini</span>
-                        </span>
-                        {formData.audioConfig?.enabled ? (
-                          <span className="nb-badge bg-[#123D32] text-[#F2D98A]">
-                            Aktif (Tampil di Publik)
-                          </span>
-                        ) : (
-                          <span className="nb-badge bg-[#FAF7F0] dark:bg-[#214743] text-[#525856] dark:text-[#B9C9C5]">
-                            Nonaktif (Tidak Ditampilkan)
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[11px] text-[#525856] dark:text-[#B9C9C5] mt-0.5">
-                        {formData.audioConfig?.enabled
-                          ? 'Tombol Audio Reading akan ditampilkan di halaman publik artikel ini sehingga pembaca dapat menyimak audio.'
-                          : 'Tombol Audio Reading tidak akan ditampilkan pada artikel publik ini (fitur audio dinonaktifkan).'}
-                      </p>
-                    </label>
-                  </div>
-                </div>
-
-                {formData.audioConfig?.enabled ? (
-                  <div className="space-y-4 pt-1 animate-fade-in">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 border-[#171717]/20 dark:border-[#D9AC45]/30 pb-3">
-                      <div>
-                        <h4 className="text-xs font-extrabold text-[#171717] dark:text-[#F8F3E8]">
-                          Pilih Sumber & Suara Audio Reading
-                        </h4>
-                        <p className="text-[11px] text-[#171717]/75 dark:text-[#F8F3E8]/75 mt-0.5">
-                          Gunakan suara otomatis peramban (Web Speech) atau berkas audio rekaman asli.
-                        </p>
-                      </div>
-
-                      <div className="inline-flex p-1 bg-white dark:bg-[#0B3026] border-2 border-[#171717] rounded-md shrink-0 gap-1">
-                        <button
-                          type="button"
-                          onClick={() =>
+            )
+          },
+          {
+            id: 'audio',
+            label: 'Audio Reading',
+            shortLabel: 'Audio',
+            icon: <Headphones className="w-3.5 h-3.5" />,
+            badge: formData.audioConfig?.enabled ? 'Aktif' : null,
+            content: (
+              <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain bg-[#FAF7F0]/55 dark:bg-[#0A1F1B]">
+                <div className="max-w-3xl mx-auto px-4 sm:px-8 py-6 sm:py-8 space-y-5">
+                  <div className="p-5 sm:p-6 bg-white dark:bg-[#0E2B24] rounded-lg border-2 border-[#171717] dark:border-[#B8E8D8] space-y-5">
+                    <div className="p-4 bg-[#FAF7F0] dark:bg-[#193A37] rounded-md border-2 border-[#171717] dark:border-[#B8E8D8]">
+                      <div className="flex items-start gap-3">
+                        <input
+                          type="checkbox"
+                          id="checkbox-audio-enabled"
+                          checked={formData.audioConfig?.enabled ?? false}
+                          onChange={(e) =>
                             setFormData(prev => ({
                               ...prev,
                               audioConfig: {
-                                enabled: true,
                                 mode: 'speech',
-                                speechRate: prev.audioConfig?.speechRate || 1.0,
-                                speechVoiceName: prev.audioConfig?.speechVoiceName || '',
-                                customAudioUrl: prev.audioConfig?.customAudioUrl || ''
+                                speechRate: 1.0,
+                                speechVoiceName: '',
+                                customAudioUrl: '',
+                                ...prev.audioConfig,
+                                enabled: e.target.checked
                               }
                             }))
                           }
-                          className={`px-3 py-1.5 rounded-sm text-xs font-extrabold transition cursor-pointer flex items-center gap-1.5 ${
-                            formData.audioConfig?.mode !== 'custom'
-                              ? 'bg-[#06251D] text-[#D9AC45]'
-                              : 'text-[#171717] dark:text-[#F8F3E8]'
-                          }`}
-                        >
-                          <Volume2 className="w-3.5 h-3.5" />
-                          <span>Suara Otomatis (Web Speech API)</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setFormData(prev => ({
-                              ...prev,
-                              audioConfig: {
-                                enabled: true,
-                                mode: 'custom',
-                                speechRate: prev.audioConfig?.speechRate || 1.0,
-                                speechVoiceName: prev.audioConfig?.speechVoiceName || '',
-                                customAudioUrl: prev.audioConfig?.customAudioUrl || ''
-                              }
-                            }))
-                          }
-                          className={`px-3 py-1.5 rounded-sm text-xs font-extrabold transition cursor-pointer flex items-center gap-1.5 ${
-                            formData.audioConfig?.mode === 'custom'
-                              ? 'bg-[#06251D] text-[#D9AC45]'
-                              : 'text-[#171717] dark:text-[#F8F3E8]'
-                          }`}
-                        >
-                          <Mic className="w-3.5 h-3.5" />
-                          <span>File Audio Rekaman (MP3 / WAV)</span>
-                        </button>
+                          className="w-5 h-5 mt-0.5 accent-[#123D32] rounded cursor-pointer shrink-0"
+                        />
+                        <label htmlFor="checkbox-audio-enabled" className="cursor-pointer min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs sm:text-sm font-extrabold text-[#171717] dark:text-[#F0F7F5] flex items-center gap-1.5">
+                              <Headphones className="w-4 h-4 text-[#123D32] dark:text-[#F2D98A]" />
+                              <span>Aktifkan Audio Reading pada Artikel Ini</span>
+                            </span>
+                            {formData.audioConfig?.enabled ? (
+                              <span className="nb-badge bg-[#123D32] text-[#F2D98A]">
+                                Aktif (Tampil di Publik)
+                              </span>
+                            ) : (
+                              <span className="nb-badge bg-white dark:bg-[#214743] text-[#525856] dark:text-[#B9C9C5]">
+                                Nonaktif
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-[#525856] dark:text-[#B9C9C5] mt-1 leading-relaxed">
+                            {formData.audioConfig?.enabled
+                              ? 'Tombol Audio Reading akan ditampilkan di halaman publik artikel ini sehingga pembaca dapat menyimak audio.'
+                              : 'Tombol Audio Reading tidak ditampilkan pada artikel publik ini.'}
+                          </p>
+                        </label>
                       </div>
                     </div>
 
-                    {formData.audioConfig?.mode !== 'custom' && (
-                      <div className="space-y-4 animate-fade-in text-xs">
-                        <div className="p-3 bg-white dark:bg-[#0B3026] border-2 border-[#171717] rounded-md flex items-start gap-2.5 text-[#171717] dark:text-[#F8F3E8]">
-                          <Info className="w-4 h-4 text-[#06251D] dark:text-[#D9AC45] shrink-0 mt-0.5" />
-                          <div className="text-[11px] leading-relaxed">
-                            <strong className="text-[#06251D] dark:text-[#D9AC45]">Pilihan Tanpa Biaya Penyimpanan:</strong> Artikel akan dibacakan langsung oleh teknologi sintesis suara peramban pengunjung.
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <label className="text-[11px] font-extrabold text-[#171717] dark:text-[#F8F3E8] block mb-1">
-                              Pilihan Suara Pembaca (Browser Voice):
-                            </label>
-                            <select
-                              value={formData.audioConfig?.speechVoiceName || ''}
-                              onChange={(e) =>
-                                setFormData(prev => ({
-                                  ...prev,
-                                  audioConfig: {
-                                    ...(prev.audioConfig || { mode: 'speech', enabled: true }),
-                                    enabled: true,
-                                    mode: 'speech',
-                                    speechVoiceName: e.target.value
-                                  }
-                                }))
-                              }
-                              className="nb-input w-full px-3 py-2 text-xs font-bold"
-                            >
-                              <option value="">Otomatis Deteksi Bahasa Indonesia (Rekomendasi)</option>
-                              {availableVoices.length > 0 ? (
-                                availableVoices.map((v, idx) => {
-                                  const isId = v.lang.startsWith('id') || v.lang.startsWith('in');
-                                  return (
-                                    <option key={`${v.name}_${idx}`} value={v.name}>
-                                      {isId ? `🇮🇩 [Bahasa Indonesia] ${v.name}` : `${v.name} (${v.lang})`}
-                                    </option>
-                                  );
-                                })
-                              ) : (
-                                <option disabled value="__none">
-                                  Daftar suara akan dimuat oleh peramban pengguna
-                                </option>
-                              )}
-                            </select>
-                          </div>
-
-                          <div>
-                            <label className="text-[11px] font-extrabold text-[#171717] dark:text-[#F8F3E8] block mb-1">
-                              Kecepatan Bicara Awal (Speech Rate):
-                            </label>
-                            <div className="flex items-center gap-2">
-                              <select
-                                value={formData.audioConfig?.speechRate ?? 1.0}
-                                onChange={(e) =>
-                                  setFormData(prev => ({
-                                    ...prev,
-                                    audioConfig: {
-                                      ...(prev.audioConfig || { mode: 'speech', enabled: true }),
-                                      enabled: true,
-                                      mode: 'speech',
-                                      speechRate: parseFloat(e.target.value) || 1.0
-                                    }
-                                  }))
+                    {formData.audioConfig?.enabled ? (
+                      <div className="space-y-5 animate-fade-in">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 p-1 bg-[#FAF7F0] dark:bg-[#0B3026] border-2 border-[#171717] rounded-md gap-1">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setFormData(prev => ({
+                                ...prev,
+                                audioConfig: {
+                                  enabled: true,
+                                  mode: 'speech',
+                                  speechRate: prev.audioConfig?.speechRate || 1.0,
+                                  speechVoiceName: prev.audioConfig?.speechVoiceName || '',
+                                  customAudioUrl: prev.audioConfig?.customAudioUrl || ''
                                 }
-                                className="nb-input w-full px-3 py-2 text-xs font-bold"
-                              >
-                                <option value="0.75">0,75× (Lambat / Tartil)</option>
-                                <option value="0.85">0,85× (Santai & Khusyuk)</option>
-                                <option value="1.0">1,00× (Normal / Standar - Rekomendasi)</option>
-                                <option value="1.1">1,10× (Sedikit Cepat)</option>
-                                <option value="1.25">1,25× (Cepat)</option>
-                                <option value="1.5">1,50× (Sangat Cepat)</option>
-                              </select>
+                              }))
+                            }
+                            className={`px-3 py-2 rounded-sm text-xs font-extrabold transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                              formData.audioConfig?.mode !== 'custom'
+                                ? 'bg-[#06251D] text-[#D9AC45]'
+                                : 'text-[#171717] dark:text-[#F8F3E8]'
+                            }`}
+                          >
+                            <Volume2 className="w-4 h-4 shrink-0" />
+                            <span>Suara Otomatis (Web Speech API)</span>
+                          </button>
 
-                              <button
-                                type="button"
-                                onClick={handlePreviewVoice}
-                                className={`nb-btn px-3 py-2 text-xs shrink-0 ${
-                                  isPreviewSpeaking
-                                    ? 'nb-btn-gold'
-                                    : 'nb-btn-primary'
-                                }`}
-                                title="Uji coba pelafalan suara peramban ini"
-                              >
-                                {isPreviewSpeaking ? (
-                                  <>
-                                    <Square className="w-3.5 h-3.5 fill-current" />
-                                    <span>Hentikan</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <Play className="w-3.5 h-3.5 fill-current" />
-                                    <span>Uji Suara</span>
-                                  </>
-                                )}
-                              </button>
-                            </div>
-                          </div>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setFormData(prev => ({
+                                ...prev,
+                                audioConfig: {
+                                  enabled: true,
+                                  mode: 'custom',
+                                  speechRate: prev.audioConfig?.speechRate || 1.0,
+                                  speechVoiceName: prev.audioConfig?.speechVoiceName || '',
+                                  customAudioUrl: prev.audioConfig?.customAudioUrl || ''
+                                }
+                              }))
+                            }
+                            className={`px-3 py-2 rounded-sm text-xs font-extrabold transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                              formData.audioConfig?.mode === 'custom'
+                                ? 'bg-[#06251D] text-[#D9AC45]'
+                                : 'text-[#171717] dark:text-[#F8F3E8]'
+                            }`}
+                          >
+                            <Mic className="w-4 h-4 shrink-0" />
+                            <span>File Audio Rekaman (MP3 / WAV)</span>
+                          </button>
                         </div>
-                      </div>
-                    )}
 
-                    {formData.audioConfig?.mode === 'custom' && (() => {
-                      const resolvedAdminAudio = resolveAudioSourceCandidates(formData.audioConfig?.customAudioUrl);
-                      return (
-                        <div className="space-y-4 animate-fade-in text-xs">
-                          <div className="p-3 bg-white dark:bg-[#0B3026] border-2 border-[#171717] rounded-md flex items-start gap-2.5 text-[#171717] dark:text-[#F8F3E8]">
-                            <Music className="w-4 h-4 text-[#D9AC45] shrink-0 mt-0.5" />
-                            <div className="text-[11px] leading-relaxed">
-                              <strong className="text-[#06251D] dark:text-[#D9AC45]">Mode Rekaman Suara Asli (Google Drive / MP3 / WAV):</strong> Masukkan tautan berbagi berkas audio dari Google Drive atau unggah berkas rekaman (.mp3, .wav, .m4a). Sistem mendukung audio MP3 serta WAV (Linear PCM).
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
-                            <div className="space-y-2">
-                              <label className="text-[11px] font-extrabold text-[#171717] dark:text-[#F8F3E8] block">
-                                Unggah Berkas Audio Rekaman (.mp3, .wav, .m4a):
-                              </label>
-                              <input
-                                type="file"
-                                accept="audio/*,.mp3,.wav,.m4a,.ogg,.aac"
-                                onChange={handleAudioFileUpload}
-                                disabled={uploadingAudio}
-                                className="w-full text-xs text-[#171717] dark:text-[#F8F3E8] file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-2 file:border-[#171717] file:text-xs file:font-extrabold file:bg-[#D9AC45] file:text-[#171717] cursor-pointer disabled:opacity-50"
-                              />
-                              {uploadingAudio && (
-                                <div className="space-y-1">
-                                  <p className="text-[10px] text-[#06251D] dark:text-[#D9AC45] font-extrabold">
-                                    Mengunggah berkas audio rekaman... {audioProgress}%
-                                  </p>
-                                  <div className="w-full bg-white h-2 rounded-sm border border-[#171717] overflow-hidden">
-                                    <div
-                                      className="bg-[#D9AC45] h-full transition-all duration-300"
-                                      style={{ width: `${audioProgress}%` }}
-                                    />
-                                  </div>
-                                </div>
-                              )}
+                        {formData.audioConfig?.mode !== 'custom' && (
+                          <div className="space-y-4 animate-fade-in text-xs">
+                            <div className="p-3 bg-[#FAF7F0] dark:bg-[#0B3026] border border-[#171717]/30 rounded-md flex items-start gap-2.5 text-[#171717] dark:text-[#F8F3E8]">
+                              <Info className="w-4 h-4 text-[#06251D] dark:text-[#D9AC45] shrink-0 mt-0.5" />
+                              <div className="text-[11px] leading-relaxed">
+                                <strong className="text-[#06251D] dark:text-[#D9AC45]">Pilihan Tanpa Biaya Penyimpanan:</strong> Artikel dibacakan langsung oleh sintesis suara peramban pengunjung.
+                              </div>
                             </div>
 
-                            <div className="space-y-2">
-                              <label className="text-[11px] font-extrabold text-[#171717] dark:text-[#F8F3E8] block">
-                                Tautan Google Drive Audio atau URL MP3/WAV Langsung:
-                              </label>
-                              <input
-                                type="url"
-                                value={formData.audioConfig?.customAudioUrl || ''}
-                                onChange={(e) => {
-                                  setAudioCheckResult(null);
-                                  setFormData(prev => ({
-                                    ...prev,
-                                    audioConfig: {
-                                      ...(prev.audioConfig || { mode: 'custom', enabled: true }),
-                                      enabled: true,
-                                      mode: 'custom',
-                                      customAudioUrl: e.target.value
-                                    }
-                                  }));
-                                }}
-                                placeholder="https://drive.google.com/file/d/.../view?usp=drive_link atau https://.../audio.wav"
-                                className="nb-input w-full px-3 py-2 text-xs"
-                              />
-                            </div>
-                          </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <label className="text-[11px] font-extrabold text-[#171717] dark:text-[#F8F3E8] block mb-1">
+                                  Pilihan Suara Pembaca (Browser Voice):
+                                </label>
+                                <select
+                                  value={formData.audioConfig?.speechVoiceName || ''}
+                                  onChange={(e) =>
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      audioConfig: {
+                                        ...(prev.audioConfig || { mode: 'speech', enabled: true }),
+                                        enabled: true,
+                                        mode: 'speech',
+                                        speechVoiceName: e.target.value
+                                      }
+                                    }))
+                                  }
+                                  className="nb-input w-full px-3 py-2 text-xs font-bold"
+                                >
+                                  <option value="">Otomatis Deteksi Bahasa Indonesia (Rekomendasi)</option>
+                                  {availableVoices.length > 0 ? (
+                                    availableVoices.map((v, idx) => {
+                                      const isId = v.lang.startsWith('id') || v.lang.startsWith('in');
+                                      return (
+                                        <option key={`${v.name}_${idx}`} value={v.name}>
+                                          {isId ? `🇮🇩 [Bahasa Indonesia] ${v.name}` : `${v.name} (${v.lang})`}
+                                        </option>
+                                      );
+                                    })
+                                  ) : (
+                                    <option disabled value="__none">
+                                      Daftar suara akan dimuat oleh peramban pengguna
+                                    </option>
+                                  )}
+                                </select>
+                              </div>
 
-                          {formData.audioConfig?.customAudioUrl && (
-                            <div className="p-3 bg-white dark:bg-[#0B3026] rounded-md border-2 border-[#171717] space-y-2.5">
-                              <div className="flex flex-wrap items-center justify-between gap-2">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="text-[11px] font-extrabold text-[#171717] dark:text-[#F8F3E8] flex items-center gap-1.5">
-                                    {resolvedAdminAudio.isGoogleDrive && !resolvedAdminAudio.fileId ? (
-                                      <>
-                                        <AlertCircle className="w-3.5 h-3.5 text-[#F04438]" />
-                                        <span className="text-[#F04438]">Tautan Google Drive Tidak Valid</span>
-                                      </>
-                                    ) : (
-                                      <>
-                                        <CheckCircle className="w-3.5 h-3.5 text-[#06251D] dark:text-[#D9AC45]" />
-                                        <span>
-                                          {resolvedAdminAudio.isGoogleDrive
-                                            ? `Google Drive Audio (ID: ${resolvedAdminAudio.fileId})`
-                                            : 'Berkas Audio Rekaman Terpasang'}
-                                        </span>
-                                      </>
-                                    )}
-                                  </span>
-
-                                  {/* Format Badge */}
-                                  <span className="px-2 py-0.5 rounded text-[10px] font-extrabold uppercase bg-[#D9AC45] text-[#06251D] border border-[#171717]">
-                                    Format: {resolvedAdminAudio.detectedFormat.toUpperCase()}
-                                  </span>
-                                </div>
-
+                              <div>
+                                <label className="text-[11px] font-extrabold text-[#171717] dark:text-[#F8F3E8] block mb-1">
+                                  Kecepatan Bicara Awal (Speech Rate):
+                                </label>
                                 <div className="flex items-center gap-2">
-                                  {/* Verification Button */}
+                                  <select
+                                    value={formData.audioConfig?.speechRate ?? 1.0}
+                                    onChange={(e) =>
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        audioConfig: {
+                                          ...(prev.audioConfig || { mode: 'speech', enabled: true }),
+                                          enabled: true,
+                                          mode: 'speech',
+                                          speechRate: parseFloat(e.target.value) || 1.0
+                                        }
+                                      }))
+                                    }
+                                    className="nb-input w-full px-3 py-2 text-xs font-bold"
+                                  >
+                                    <option value="0.75">0,75× (Lambat / Tartil)</option>
+                                    <option value="0.85">0,85× (Santai &amp; Khusyuk)</option>
+                                    <option value="1.0">1,00× (Normal - Rekomendasi)</option>
+                                    <option value="1.1">1,10× (Sedikit Cepat)</option>
+                                    <option value="1.25">1,25× (Cepat)</option>
+                                    <option value="1.5">1,50× (Sangat Cepat)</option>
+                                  </select>
+
                                   <button
                                     type="button"
-                                    onClick={() => handleVerifyAdminAudio(formData.audioConfig?.customAudioUrl || '')}
-                                    disabled={isCheckingAudio || (resolvedAdminAudio.isGoogleDrive && !resolvedAdminAudio.fileId)}
-                                    className="px-2.5 py-1 rounded text-[11px] font-extrabold bg-[#FAF7F0] dark:bg-[#102C2B] text-[#171717] dark:text-[#F8F3E8] border-2 border-[#171717] hover:bg-[#D9AC45] hover:text-[#06251D] transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                                    title="Uji kelayakan akses Google Drive dan kompatibilitas format audio"
+                                    onClick={handlePreviewVoice}
+                                    className={`nb-btn px-3 py-2 text-xs shrink-0 ${
+                                      isPreviewSpeaking ? 'nb-btn-gold' : 'nb-btn-primary'
+                                    }`}
+                                    title="Uji coba pelafalan suara peramban ini"
                                   >
-                                    {isCheckingAudio ? (
+                                    {isPreviewSpeaking ? (
                                       <>
-                                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                        <span>Memeriksa Akses...</span>
+                                        <Square className="w-3.5 h-3.5 fill-current" />
+                                        <span>Hentikan</span>
                                       </>
                                     ) : (
                                       <>
-                                        <RefreshCw className="w-3.5 h-3.5" />
-                                        <span>Periksa & Uji Akses Audio</span>
+                                        <Play className="w-3.5 h-3.5 fill-current" />
+                                        <span>Uji Suara</span>
                                       </>
                                     )}
                                   </button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
 
-                                  <button
-                                    type="button"
-                                    onClick={() => {
+                        {formData.audioConfig?.mode === 'custom' && (() => {
+                          const resolvedAdminAudio = resolveAudioSourceCandidates(formData.audioConfig?.customAudioUrl);
+                          return (
+                            <div className="space-y-4 animate-fade-in text-xs">
+                              <div className="p-3 bg-[#FAF7F0] dark:bg-[#0B3026] border border-[#171717]/30 rounded-md flex items-start gap-2.5 text-[#171717] dark:text-[#F8F3E8]">
+                                <Music className="w-4 h-4 text-[#D9AC45] shrink-0 mt-0.5" />
+                                <div className="text-[11px] leading-relaxed">
+                                  <strong className="text-[#06251D] dark:text-[#D9AC45]">Mode Rekaman Suara Asli (Google Drive / MP3 / WAV):</strong> Unggah berkas rekaman (.mp3, .wav, .m4a) atau tempel tautan berbagi Google Drive publik.
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                                <div className="space-y-1.5">
+                                  <label className="text-[11px] font-extrabold text-[#171717] dark:text-[#F8F3E8] block">
+                                    Unggah Berkas Audio (.mp3, .wav, .m4a):
+                                  </label>
+                                  <input
+                                    type="file"
+                                    accept="audio/*,.mp3,.wav,.m4a,.ogg,.aac"
+                                    onChange={handleAudioFileUpload}
+                                    disabled={uploadingAudio}
+                                    className="w-full text-xs text-[#171717] dark:text-[#F8F3E8] file:mr-3 file:py-2 file:px-3.5 file:rounded-md file:border-2 file:border-[#171717] file:text-xs file:font-extrabold file:bg-[#D9AC45] file:text-[#171717] cursor-pointer disabled:opacity-50"
+                                  />
+                                  {uploadingAudio && (
+                                    <div className="space-y-1">
+                                      <p className="text-[10px] text-[#06251D] dark:text-[#D9AC45] font-extrabold">
+                                        Mengunggah berkas audio... {audioProgress}%
+                                      </p>
+                                      <div className="w-full bg-white h-2 rounded-sm border border-[#171717] overflow-hidden">
+                                        <div
+                                          className="bg-[#D9AC45] h-full transition-all duration-300"
+                                          style={{ width: `${audioProgress}%` }}
+                                        />
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div className="space-y-1.5">
+                                  <label className="text-[11px] font-extrabold text-[#171717] dark:text-[#F8F3E8] block">
+                                    Tautan Google Drive / URL Audio:
+                                  </label>
+                                  <input
+                                    type="url"
+                                    value={formData.audioConfig?.customAudioUrl || ''}
+                                    onChange={(e) => {
                                       setAudioCheckResult(null);
                                       setFormData(prev => ({
                                         ...prev,
@@ -1281,247 +1234,283 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
                                           ...(prev.audioConfig || { mode: 'custom', enabled: true }),
                                           enabled: true,
                                           mode: 'custom',
-                                          customAudioUrl: ''
+                                          customAudioUrl: e.target.value
                                         }
                                       }));
                                     }}
-                                    className="text-[10px] text-[#F04438] font-bold underline cursor-pointer"
-                                  >
-                                    Hapus Berkas Audio
-                                  </button>
+                                    placeholder="https://drive.google.com/file/d/.../view"
+                                    className="nb-input w-full px-3 py-2 text-xs"
+                                  />
                                 </div>
                               </div>
 
-                              {/* Live Verification Diagnostic Report */}
-                              {audioCheckResult && (
-                                <div
-                                  className={`p-2.5 rounded-md border-2 text-[11px] space-y-1.5 ${
-                                    audioCheckResult.accessible
-                                      ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-600 text-emerald-950 dark:text-emerald-200'
-                                      : 'bg-rose-50 dark:bg-rose-950/40 border-rose-600 text-rose-950 dark:text-rose-200'
-                                  }`}
-                                >
-                                  <div className="flex items-start gap-1.5 font-bold">
-                                    {audioCheckResult.accessible ? (
-                                      <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                                    ) : (
-                                      <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-                                    )}
-                                    <span className="leading-tight">
-                                      {audioCheckResult.accessible
-                                        ? `Berkas audio berhasil diakses dan siap diputar (${audioCheckResult.codecDetail}).`
-                                        : `Akses audio terkendala: ${audioCheckResult.errorMessage || 'Tidak dapat diakses'}`}
-                                    </span>
+                              {formData.audioConfig?.customAudioUrl && (
+                                <div className="p-3.5 bg-[#FAF7F0] dark:bg-[#0B3026] rounded-md border-2 border-[#171717] space-y-3">
+                                  <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <span className="text-[11px] font-extrabold text-[#171717] dark:text-[#F8F3E8] flex items-center gap-1.5">
+                                        {resolvedAdminAudio.isGoogleDrive && !resolvedAdminAudio.fileId ? (
+                                          <>
+                                            <AlertCircle className="w-3.5 h-3.5 text-[#F04438]" />
+                                            <span className="text-[#F04438]">Tautan Google Drive Tidak Valid</span>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <CheckCircle className="w-3.5 h-3.5 text-[#06251D] dark:text-[#D9AC45]" />
+                                            <span>
+                                              {resolvedAdminAudio.isGoogleDrive
+                                                ? `Google Drive Audio (ID: ${resolvedAdminAudio.fileId})`
+                                                : 'Berkas Audio Rekaman Terpasang'}
+                                            </span>
+                                          </>
+                                        )}
+                                      </span>
+                                      <span className="px-2 py-0.5 rounded text-[10px] font-extrabold uppercase bg-[#D9AC45] text-[#06251D] border border-[#171717]">
+                                        Format: {resolvedAdminAudio.detectedFormat.toUpperCase()}
+                                      </span>
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleVerifyAdminAudio(formData.audioConfig?.customAudioUrl || '')}
+                                        disabled={isCheckingAudio || (resolvedAdminAudio.isGoogleDrive && !resolvedAdminAudio.fileId)}
+                                        className="px-2.5 py-1 rounded text-[11px] font-extrabold bg-white dark:bg-[#102C2B] text-[#171717] dark:text-[#F8F3E8] border-2 border-[#171717] hover:bg-[#D9AC45] hover:text-[#06251D] transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                                        title="Uji kelayakan akses Google Drive dan kompatibilitas format audio"
+                                      >
+                                        {isCheckingAudio ? (
+                                          <>
+                                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                            <span>Memeriksa...</span>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <RefreshCw className="w-3.5 h-3.5" />
+                                            <span>Periksa &amp; Uji Akses Audio</span>
+                                          </>
+                                        )}
+                                      </button>
+
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setAudioCheckResult(null);
+                                          setFormData(prev => ({
+                                            ...prev,
+                                            audioConfig: {
+                                              ...(prev.audioConfig || { mode: 'custom', enabled: true }),
+                                              enabled: true,
+                                              mode: 'custom',
+                                              customAudioUrl: ''
+                                            }
+                                          }));
+                                        }}
+                                        className="text-[10.5px] text-[#F04438] font-bold underline cursor-pointer"
+                                      >
+                                        Hapus Audio
+                                      </button>
+                                    </div>
                                   </div>
 
-                                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-[10px] font-mono border-t border-black/10 dark:border-white/10">
-                                    <div>
-                                      <span className="opacity-75 block">Format:</span>
-                                      <strong className="uppercase">{audioCheckResult.detectedFormat}</strong>
-                                    </div>
-                                    <div>
-                                      <span className="opacity-75 block">MIME Type:</span>
-                                      <strong className="truncate block" title={audioCheckResult.mimeType || '-'}>
-                                        {audioCheckResult.mimeType || '-'}
-                                      </strong>
-                                    </div>
-                                    <div>
-                                      <span className="opacity-75 block">Ukuran:</span>
-                                      <strong>
-                                        {audioCheckResult.fileSizeBytes
-                                          ? `${(audioCheckResult.fileSizeBytes / (1024 * 1024)).toFixed(2)} MB`
-                                          : 'Ukuran Terbaca'}
-                                      </strong>
-                                    </div>
-                                    <div>
-                                      <span className="opacity-75 block">Dukungan Codec:</span>
-                                      <strong>
-                                        {audioCheckResult.canBrowserPlay ? 'Didukung Peramban' : audioCheckResult.codecDetail}
-                                      </strong>
-                                    </div>
-                                  </div>
+                                  {audioCheckResult && (
+                                    <div
+                                      className={`p-2.5 rounded-md border-2 text-[11px] space-y-1.5 ${
+                                        audioCheckResult.accessible
+                                          ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-600 text-emerald-950 dark:text-emerald-200'
+                                          : 'bg-rose-50 dark:bg-rose-950/40 border-rose-600 text-rose-950 dark:text-rose-200'
+                                      }`}
+                                    >
+                                      <div className="flex items-start gap-1.5 font-bold">
+                                        {audioCheckResult.accessible ? (
+                                          <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                                        ) : (
+                                          <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                                        )}
+                                        <span className="leading-tight">
+                                          {audioCheckResult.accessible
+                                            ? `Berkas audio berhasil diakses dan siap diputar (${audioCheckResult.codecDetail}).`
+                                            : `Akses audio terkendala: ${audioCheckResult.errorMessage || 'Tidak dapat diakses'}`}
+                                        </span>
+                                      </div>
 
-                                  {audioCheckResult.wavInfo && (
-                                    <div className="mt-1.5 p-2 rounded bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-[9.5px] font-mono space-y-1">
-                                      <div className="font-sans font-bold text-[10px] text-[#06251D] dark:text-[#D9AC45]">
-                                        Audit Header WAV (RIFF):
+                                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-[10px] font-mono border-t border-black/10 dark:border-white/10">
+                                        <div>
+                                          <span className="opacity-75 block">Format:</span>
+                                          <strong className="uppercase">{audioCheckResult.detectedFormat}</strong>
+                                        </div>
+                                        <div>
+                                          <span className="opacity-75 block">MIME Type:</span>
+                                          <strong className="truncate block" title={audioCheckResult.mimeType || '-'}>
+                                            {audioCheckResult.mimeType || '-'}
+                                          </strong>
+                                        </div>
+                                        <div>
+                                          <span className="opacity-75 block">Ukuran:</span>
+                                          <strong>
+                                            {audioCheckResult.fileSizeBytes
+                                              ? `${(audioCheckResult.fileSizeBytes / (1024 * 1024)).toFixed(2)} MB`
+                                              : 'Terbaca'}
+                                          </strong>
+                                        </div>
+                                        <div>
+                                          <span className="opacity-75 block">Codec:</span>
+                                          <strong>
+                                            {audioCheckResult.canBrowserPlay ? 'Didukung' : audioCheckResult.codecDetail}
+                                          </strong>
+                                        </div>
                                       </div>
-                                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-                                        <div>
-                                          <span className="opacity-75">Codec:</span>{' '}
-                                          <strong>{audioCheckResult.wavInfo.formatName}</strong>
+
+                                      {audioCheckResult.wavInfo && (
+                                        <div className="mt-1.5 p-2 rounded bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-[9.5px] font-mono space-y-1">
+                                          <div className="font-sans font-bold text-[10px] text-[#06251D] dark:text-[#D9AC45]">
+                                            Audit Header WAV (RIFF):
+                                          </div>
+                                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                                            <div>
+                                              <span className="opacity-75">Codec:</span>{' '}
+                                              <strong>{audioCheckResult.wavInfo.formatName}</strong>
+                                            </div>
+                                            <div>
+                                              <span className="opacity-75">Sample Rate:</span>{' '}
+                                              <strong>{audioCheckResult.wavInfo.sampleRate.toLocaleString()} Hz</strong>
+                                            </div>
+                                            <div>
+                                              <span className="opacity-75">Bit Depth:</span>{' '}
+                                              <strong>{audioCheckResult.wavInfo.bitsPerSample}-bit</strong>
+                                            </div>
+                                            <div>
+                                              <span className="opacity-75">Saluran:</span>{' '}
+                                              <strong>{audioCheckResult.wavInfo.channelLayout} ({audioCheckResult.wavInfo.numChannels} ch)</strong>
+                                            </div>
+                                          </div>
                                         </div>
-                                        <div>
-                                          <span className="opacity-75">Sample Rate:</span>{' '}
-                                          <strong>{audioCheckResult.wavInfo.sampleRate.toLocaleString()} Hz</strong>
-                                        </div>
-                                        <div>
-                                          <span className="opacity-75">Bit Depth:</span>{' '}
-                                          <strong>{audioCheckResult.wavInfo.bitsPerSample}-bit</strong>
-                                        </div>
-                                        <div>
-                                          <span className="opacity-75">Saluran:</span>{' '}
-                                          <strong>{audioCheckResult.wavInfo.channelLayout} ({audioCheckResult.wavInfo.numChannels} ch)</strong>
-                                        </div>
-                                      </div>
+                                      )}
                                     </div>
+                                  )}
+
+                                  {resolvedAdminAudio.isGoogleDrive && !resolvedAdminAudio.fileId ? (
+                                    <p className="text-[11px] text-[#F04438]">
+                                      {describeAudioPlaybackError({
+                                        isGoogleDrive: true,
+                                        isGoogleDriveFolder: resolvedAdminAudio.isGoogleDriveFolder,
+                                        fileId: null,
+                                        detectedFormat: resolvedAdminAudio.detectedFormat
+                                      })}
+                                    </p>
+                                  ) : (
+                                    <audio
+                                      controls
+                                      preload="metadata"
+                                      src={resolvedAdminAudio.primaryUrl}
+                                      className="w-full h-9 rounded-md"
+                                    />
                                   )}
                                 </div>
                               )}
-
-                              {resolvedAdminAudio.isGoogleDrive && !resolvedAdminAudio.fileId ? (
-                                <p className="text-[11px] text-[#F04438]">
-                                  {describeAudioPlaybackError({
-                                    isGoogleDrive: true,
-                                    isGoogleDriveFolder: resolvedAdminAudio.isGoogleDriveFolder,
-                                    fileId: null,
-                                    detectedFormat: resolvedAdminAudio.detectedFormat
-                                  })}
-                                </p>
-                              ) : (
-                                <audio
-                                  controls
-                                  preload="metadata"
-                                  src={resolvedAdminAudio.primaryUrl}
-                                  className="w-full h-9 rounded-md"
-                                />
-                              )}
                             </div>
-                          )}
-                        </div>
-                      );
-                    })()}
-                  </div>
-                ) : (
-                  <div className="p-3.5 bg-white dark:bg-[#0B3026] rounded-md border-2 border-dashed border-[#171717]/40 text-center">
-                    <p className="text-xs text-[#171717]/75 dark:text-[#F8F3E8]/75">
-                      Audio Reading saat ini <strong>dinonaktifkan</strong> untuk artikel ini.
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Rich Text Editor for Content + Live Preview */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <label className="text-xs font-extrabold text-[#171717] dark:text-[#F8F3E8] block">
-                    Isi Artikel Utama (Bahasa Indonesia) *
-                  </label>
-                  <button
-                    type="button"
-                    data-testid="blog-modal-preview-toggle"
-                    onClick={() => setIsInModalPreview(prev => !prev)}
-                    className={`nb-btn px-3 py-1.5 text-xs ${
-                      isInModalPreview
-                        ? 'nb-btn-gold'
-                        : 'nb-btn-secondary'
-                    }`}
-                  >
-                    <Eye className="w-3.5 h-3.5" />
-                    <span>{isInModalPreview ? 'Kembali ke Editor' : 'Pratinjau Format Konten'}</span>
-                  </button>
-                </div>
-
-                {isInModalPreview ? (
-                  <div
-                    data-testid="blog-modal-preview-content"
-                    className="nb-reading-surface p-6 bg-[#F8F3E8] dark:bg-[#06251D] space-y-4 min-h-[350px]"
-                  >
-                    <div className="pb-3 border-b-2 border-[#171717]/20 dark:border-[#D9AC45]/30 flex items-center justify-between text-[11px] text-[#06251D] dark:text-[#D9AC45] font-extrabold uppercase tracking-wider">
-                      <span>Pratinjau Tampilan Publik</span>
-                      <span>Format tersimpan & tervalidasi</span>
-                    </div>
-                    {formData.title && (
-                      <h2 className="text-xl sm:text-2xl font-extrabold font-serif-brand text-[#171717] dark:text-[#F8F3E8]">
-                        {formData.title}
-                      </h2>
+                          );
+                        })()}
+                      </div>
+                    ) : (
+                      <div className="p-4 bg-[#FAF7F0] dark:bg-[#0B3026] rounded-md border border-dashed border-[#171717]/30 text-center">
+                        <p className="text-xs text-[#525855] dark:text-[#A6D6C9]">
+                          Centang kotak di atas untuk mengaktifkan Audio Reading pada artikel ini.
+                        </p>
+                      </div>
                     )}
-                    <div
-                      className="prose dark:prose-invert max-w-none text-[#171717] dark:text-[#F8F3E8] text-sm sm:text-base leading-relaxed space-y-4 font-sans blog-content"
-                      dangerouslySetInnerHTML={{
-                        __html: autoWrapArabicText(sanitizeRichTextHtml(formData.content || '<p class="text-stone-400 italic">Belum ada isi konten...</p>'))
-                      }}
-                    />
                   </div>
-                ) : (
-                  <RichTextEditor
-                    value={formData.content || ''}
-                    onChange={(html) => setFormData(prev => ({ ...prev, content: html }))}
-                    placeholder="Tuliskan naskah ilmu, paragraf, poin-poin, dan sisipkan gambar di sini..."
-                    minHeight="350px"
-                  />
-                )}
+                </div>
               </div>
+            )
+          },
+          {
+            id: 'pratinjau',
+            label: 'Pratinjau',
+            icon: <Eye className="w-3.5 h-3.5" />,
+            testId: 'blog-modal-preview-toggle',
+            content: (
+              <div
+                data-testid="blog-modal-preview-content"
+                className="flex-1 min-h-0 overflow-y-auto overscroll-contain bg-white dark:bg-[#0D2520]"
+              >
+                <div className="max-w-[74ch] mx-auto px-5 sm:px-10 lg:px-12 py-8 sm:py-10 space-y-5">
+                  <div className="pb-3 border-b border-[#171717]/15 dark:border-[#D9AC45]/25 flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#06251D] dark:text-[#D9AC45] font-extrabold uppercase tracking-wider">
+                    <span>Pratinjau Tampilan Publik</span>
+                    <span>{formData.category || 'Tanpa Kategori'} • {articleWordCount.toLocaleString('id-ID')} kata</span>
+                  </div>
+
+                  {formData.title && (
+                    <h2 className="text-2xl sm:text-3xl font-extrabold font-serif-brand text-[#171717] dark:text-[#F8F3E8] leading-tight">
+                      {formData.title}
+                    </h2>
+                  )}
+
+                  {formData.titleAr && (
+                    <p dir="rtl" className="text-xl font-amiri font-bold text-[#06251D] dark:text-[#D9AC45]">
+                      {formData.titleAr}
+                    </p>
+                  )}
+
+                  <div
+                    className="prose dark:prose-invert max-w-none text-[#1C1E1D] dark:text-[#EDF4F1] text-[15.5px] sm:text-[17px] leading-[1.82] space-y-4 font-sans blog-content"
+                    dangerouslySetInnerHTML={{
+                      __html: autoWrapArabicText(sanitizeRichTextHtml(formData.content || '<p class="text-stone-400 italic">Belum ada isi konten...</p>'))
+                    }}
+                  />
+                </div>
+              </div>
+            )
+          }
+        ] as AdminEditorTab[])}
+        footer={
+          <div className="flex flex-wrap items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2 min-w-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveEditorTab('naskah');
+                  setIsModalOpen(false);
+                }}
+                className="nb-btn nb-btn-secondary px-3 sm:px-4 py-1.5 sm:py-2 text-xs cursor-pointer"
+              >
+                Batal
+              </button>
+
+              <span className="md:hidden text-[11px] font-bold text-[#525855] dark:text-[#A6D6C9]">
+                {articleWordCount.toLocaleString('id-ID')} kata
+              </span>
             </div>
 
-            {/* Modal Footer */}
-            <div className="p-4 border-t-2 border-[#171717] dark:border-[#D9AC45]/50 bg-[#F8F3E8] dark:bg-[#06251D] flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
-              {feedback && (
-                <div className={`w-full sm:w-auto px-3 py-1.5 rounded-md border-2 border-[#171717] text-xs font-bold flex items-center gap-2 ${
-                  feedback.type === 'success'
-                    ? 'bg-[#D9AC45] text-[#171717]'
-                    : 'bg-[#F04438] text-white'
-                }`}>
-                  {feedback.type === 'success' ? (
-                    <CheckCircle className="w-3.5 h-3.5 shrink-0" />
-                  ) : (
-                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                  )}
-                  <span className="truncate max-w-xs">{feedback.text}</span>
-                </div>
-              )}
+            <div className="flex flex-wrap items-center gap-2 ml-auto">
+              <button
+                type="button"
+                data-testid="btn-save-draft"
+                onClick={() => handleSave('draft')}
+                disabled={saving || uploadingCover || uploadingAudio}
+                className="nb-btn nb-btn-gold px-3 sm:px-4 py-1.5 sm:py-2 text-xs disabled:opacity-50 cursor-pointer"
+              >
+                {saving && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
+                <span>{saving ? 'Menyimpan...' : 'Simpan Draf'}</span>
+              </button>
 
-              <div className="flex items-center gap-2 ml-auto">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsInModalPreview(false);
-                    setIsModalOpen(false);
-                  }}
-                  className="nb-btn nb-btn-secondary px-4 py-2 text-xs"
-                >
-                  Batal
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setIsInModalPreview(prev => !prev)}
-                  className="nb-btn nb-btn-secondary px-3.5 py-2 text-xs"
-                >
-                  <Eye className="w-3.5 h-3.5 text-[#06251D] dark:text-[#D9AC45]" />
-                  <span>{isInModalPreview ? 'Edit' : 'Pratinjau'}</span>
-                </button>
-
-                <button
-                  type="button"
-                  data-testid="btn-save-draft"
-                  onClick={() => handleSave('draft')}
-                  disabled={saving || uploadingCover || uploadingAudio}
-                  className="nb-btn nb-btn-gold px-4 py-2 text-xs disabled:opacity-50"
-                >
-                  {saving && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
-                  <span>{saving ? 'Menyimpan Draf...' : 'Simpan Draf'}</span>
-                </button>
-
-                <button
-                  type="button"
-                  data-testid="btn-save-publish"
-                  onClick={() => handleSave('published')}
-                  disabled={saving || uploadingCover || uploadingAudio}
-                  className="nb-btn nb-btn-primary px-5 py-2 text-xs disabled:opacity-50"
-                >
-                  {saving ? (
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Globe className="w-4 h-4 text-[#D9AC45]" />
-                  )}
-                  <span>{saving ? 'Menyimpan...' : (formData.id ? 'Perbarui & Terbitkan' : 'Terbitkan Sekarang')}</span>
-                </button>
-              </div>
+              <button
+                type="button"
+                data-testid="btn-save-publish"
+                onClick={() => handleSave('published')}
+                disabled={saving || uploadingCover || uploadingAudio}
+                className="nb-btn nb-btn-primary px-3.5 sm:px-5 py-1.5 sm:py-2 text-xs disabled:opacity-50 cursor-pointer"
+              >
+                {saving ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Globe className="w-3.5 h-3.5 text-[#D9AC45]" />
+                )}
+                <span>{saving ? 'Menyimpan...' : (formData.id ? 'Perbarui & Terbitkan' : 'Terbitkan Sekarang')}</span>
+              </button>
             </div>
           </div>
-        </div>
-      )}
+        }
+      />
 
       {/* CONFIRM DELETE MODAL (SINGLE ARTICLE) */}
       <ConfirmModal

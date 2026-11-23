@@ -1543,5 +1543,39 @@ table td {
   transition: all 0.2s ease-in-out;
 }
 
+/* ==========================================================================
+   DOCUMENT PROCESSOR EDITOR TRANSITIONS & CLEAN FRAMELESS CANVAS
+   ========================================================================== */
+
+@keyframes editorPageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-editor-page {
+  animation: editorPageEnter 180ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-editor-page {
+    animation: none;
+  }
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 
 

@@ -62,6 +62,8 @@ export interface RichTextEditorProps {
   placeholder?: string;
   minHeight?: string;
   qaSectionMode?: boolean;
+  workspaceMode?: boolean;
+  documentHeader?: React.ReactNode;
 }
 
 const FONT_OPTIONS = [
@@ -142,7 +144,9 @@ export const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditor
       onChange,
       placeholder = 'Tuliskan artikel atau materi pembelajaran di sini...',
       minHeight = '320px',
-      qaSectionMode = false
+      qaSectionMode = false,
+      workspaceMode = false,
+      documentHeader
     },
     ref
   ) => {
@@ -354,7 +358,17 @@ export const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditor
 
     // Determine if editor is inside modal dialog or popup
     const modalAncestor = editorRef.current.closest('.fixed, [role="dialog"], .modal') as HTMLElement | null;
-    const scrollContainer = editorRef.current.closest('.overflow-y-auto, .overflow-auto') as HTMLElement | null;
+    const candidateScrollContainer = editorRef.current.closest(
+      '[data-editor-scroll-container="true"], .overflow-y-auto, .overflow-auto'
+    ) as HTMLElement | null;
+
+    let scrollContainer: HTMLElement | null = candidateScrollContainer;
+    if (scrollContainer && typeof window !== 'undefined') {
+      const overflowY = window.getComputedStyle(scrollContainer).overflowY;
+      if (overflowY !== 'auto' && overflowY !== 'scroll') {
+        scrollContainer = scrollContainer.parentElement?.closest('.overflow-y-auto, .overflow-auto') as HTMLElement | null;
+      }
+    }
 
     let containerRect: { top: number; bottom: number; left?: number; right?: number } | undefined = undefined;
     if (scrollContainer && scrollContainer !== document.documentElement && scrollContainer !== document.body) {
@@ -970,10 +984,16 @@ export const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditor
   const inactiveBtnClass = 'bg-white dark:bg-[#193A37] text-[#171717] dark:text-[#F0F7F5] border-transparent hover:border-[#171717] dark:hover:border-[#B8E8D8]';
 
   return (
-    <div className="border-2 border-[#171717] dark:border-[#B8E8D8] rounded-md overflow-hidden bg-white dark:bg-[#193A37] transition-colors shadow-[4px_4px_0px_#171717] dark:shadow-[4px_4px_0px_#071918]">
+    <div
+      className={
+        workspaceMode
+          ? 'flex flex-col flex-1 min-h-0 bg-white dark:bg-[#0D2520] transition-colors'
+          : 'border-2 border-[#171717] dark:border-[#B8E8D8] rounded-md overflow-hidden bg-white dark:bg-[#193A37] transition-colors shadow-[4px_4px_0px_#171717] dark:shadow-[4px_4px_0px_#071918]'
+      }
+    >
       {/* Inline Editor Error Banner */}
       {editorError && (
-        <div className="px-3 py-2 bg-[#F04438] border-b-2 border-[#171717] text-white text-xs font-bold flex items-center justify-between gap-2">
+        <div className="px-3 py-2 bg-[#F04438] border-b-2 border-[#171717] text-white text-xs font-bold flex items-center justify-between gap-2 shrink-0">
           <div className="flex items-center gap-1.5">
             <AlertCircle className="w-3.5 h-3.5 shrink-0" />
             <span>{editorError}</span>
@@ -989,7 +1009,14 @@ export const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditor
       )}
 
       {/* Editor Main Toolbar */}
-      <div className="p-2 bg-[#F8F3E8] dark:bg-[#06251D] border-b-2 border-[#171717] dark:border-[#D9AC45]/60 flex flex-wrap items-center gap-1.5 text-[#171717] dark:text-[#F8F3E8]">
+      <div
+        data-testid="rich-text-editor-toolbar"
+        className={
+          workspaceMode
+            ? 'px-3 sm:px-5 lg:px-6 py-1.5 bg-[#FAF7F0] dark:bg-[#09211B] border-b border-[#171717]/15 dark:border-[#D9AC45]/20 flex flex-wrap items-center justify-start lg:justify-center gap-1 text-[#171717] dark:text-[#F8F3E8] shrink-0'
+            : 'p-2 bg-[#F8F3E8] dark:bg-[#06251D] border-b-2 border-[#171717] dark:border-[#D9AC45]/60 flex flex-wrap items-center gap-1.5 text-[#171717] dark:text-[#F8F3E8] shrink-0'
+        }
+      >
         {/* Font Selection Dropdown */}
         <div className="flex items-center gap-1 pr-1.5 border-r-2 border-[#171717]/25 dark:border-[#D9AC45]/30">
           <Type className="w-3.5 h-3.5 text-[#06251D] dark:text-[#D9AC45] shrink-0 ml-1" />
@@ -1242,7 +1269,7 @@ export const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditor
 
       {/* Contextual Active Hyperlink Action Bar */}
       {activeLinkElement && (
-        <div className="px-3 py-1.5 bg-[#F8F3E8] dark:bg-[#06251D] border-b-2 border-[#171717] flex flex-wrap items-center justify-between gap-2 text-xs text-[#171717] dark:text-[#F8F3E8]">
+        <div className="px-3 py-1.5 bg-[#F8F3E8] dark:bg-[#06251D] border-b-2 border-[#171717] flex flex-wrap items-center justify-between gap-2 text-xs text-[#171717] dark:text-[#F8F3E8] shrink-0">
           <div className="flex items-center gap-2 min-w-0">
             <LinkIcon className="w-3.5 h-3.5 text-[#06251D] dark:text-[#D9AC45] shrink-0" />
             <span className="font-extrabold shrink-0">Tautan Aktif:</span>
@@ -1277,7 +1304,7 @@ export const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditor
 
       {/* Contextual Table Controls Action Bar */}
       {activeTableInfo && (
-        <div className="px-3 py-2 bg-[#F8F3E8] dark:bg-[#06251D] border-b-2 border-[#171717] flex flex-wrap items-center gap-2 text-xs text-[#171717] dark:text-[#F8F3E8]">
+        <div className="px-3 py-2 bg-[#F8F3E8] dark:bg-[#06251D] border-b-2 border-[#171717] flex flex-wrap items-center gap-2 text-xs text-[#171717] dark:text-[#F8F3E8] shrink-0">
           <span className="font-extrabold flex items-center gap-1 mr-1">
             <TableIcon className="w-3.5 h-3.5 text-[#06251D] dark:text-[#D9AC45]" /> Pengeditan Tabel:
           </span>
@@ -1341,31 +1368,81 @@ export const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditor
       )}
 
       {/* Content Editable Body */}
-      <div
-        ref={editorRef}
-        contentEditable
-        data-testid="rich-text-editor-body"
-        onInput={handleInput}
-        onBlur={handleInput}
-        onKeyDown={handleKeyDown}
-        onKeyUp={handleKeyUp}
-        onMouseDown={() => {
-          isMouseDownInsideEditorRef.current = true;
-        }}
-        onMouseUp={() => {
-          isMouseDownInsideEditorRef.current = false;
-          updateFloatingToolbar();
-        }}
-        onDoubleClick={() => {
-          isMouseDownInsideEditorRef.current = false;
-          setTimeout(updateFloatingToolbar, 10);
-        }}
-        onCopy={handleCopy}
-        onPaste={handlePaste}
-        style={{ minHeight }}
-        className="p-4 focus:outline-hidden text-sm sm:text-base text-[#171717] dark:text-[#F8F3E8] leading-relaxed max-w-none prose dark:prose-invert rich-editor-content"
-        data-placeholder={placeholder}
-      />
+      {workspaceMode ? (
+        <div
+          data-editor-scroll-container="true"
+          data-testid="frameless-document-canvas"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && editorRef.current) {
+              editorRef.current.focus();
+            }
+          }}
+          className="flex-1 min-h-0 overflow-y-auto overscroll-contain bg-white dark:bg-[#0D2520] cursor-text"
+        >
+          <div className="max-w-[74ch] mx-auto w-full px-5 sm:px-10 lg:px-12 pt-6 sm:pt-9 lg:pt-11 pb-24">
+            {documentHeader && (
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="cursor-auto"
+              >
+                {documentHeader}
+              </div>
+            )}
+
+            <div
+              ref={editorRef}
+              contentEditable
+              data-testid="rich-text-editor-body"
+              onInput={handleInput}
+              onBlur={handleInput}
+              onKeyDown={handleKeyDown}
+              onKeyUp={handleKeyUp}
+              onMouseDown={() => {
+                isMouseDownInsideEditorRef.current = true;
+              }}
+              onMouseUp={() => {
+                isMouseDownInsideEditorRef.current = false;
+                updateFloatingToolbar();
+              }}
+              onDoubleClick={() => {
+                isMouseDownInsideEditorRef.current = false;
+                setTimeout(updateFloatingToolbar, 10);
+              }}
+              onCopy={handleCopy}
+              onPaste={handlePaste}
+              style={{ minHeight }}
+              className="w-full bg-transparent border-0 shadow-none focus:outline-hidden text-[15.5px] sm:text-[17px] text-[#1C1E1D] dark:text-[#EDF4F1] leading-[1.82] prose dark:prose-invert max-w-none rich-editor-content"
+              data-placeholder={placeholder}
+            />
+          </div>
+        </div>
+      ) : (
+        <div
+          ref={editorRef}
+          contentEditable
+          data-testid="rich-text-editor-body"
+          onInput={handleInput}
+          onBlur={handleInput}
+          onKeyDown={handleKeyDown}
+          onKeyUp={handleKeyUp}
+          onMouseDown={() => {
+            isMouseDownInsideEditorRef.current = true;
+          }}
+          onMouseUp={() => {
+            isMouseDownInsideEditorRef.current = false;
+            updateFloatingToolbar();
+          }}
+          onDoubleClick={() => {
+            isMouseDownInsideEditorRef.current = false;
+            setTimeout(updateFloatingToolbar, 10);
+          }}
+          onCopy={handleCopy}
+          onPaste={handlePaste}
+          style={{ minHeight }}
+          className="p-4 focus:outline-hidden text-sm sm:text-base text-[#171717] dark:text-[#F8F3E8] leading-relaxed max-w-none prose dark:prose-invert rich-editor-content"
+          data-placeholder={placeholder}
+        />
+      )}
 
       {/* Floating Contextual Toolbar */}
       <FloatingContextualToolbar

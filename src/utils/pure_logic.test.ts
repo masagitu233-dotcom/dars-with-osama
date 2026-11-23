@@ -5634,10 +5634,134 @@ test('Library Digital Case 7: Klasifikasi error Firestore publik (tidak menyamar
   assert.ok(statsMatch[0].includes('allow read: if isAdmin();'), 'Statistik kunjungan Library wajib tetap khusus admin');
 });
 
+test('Editor Workspace Case 1: Editor Artikel & Library memakai studio dokumen multi-halaman tanpa frame kaku, tab dinamis, indikator perubahan, dan menjaga state saat pindah halaman', async () => {
+  const fs = await import('fs');
 
+  const shellSrc = fs.readFileSync(new URL('../components/admin/AdminEditorModalShell.tsx', import.meta.url), 'utf8');
+  const rteSrc = fs.readFileSync(new URL('../components/admin/RichTextEditor.tsx', import.meta.url), 'utf8');
+  const blogSrc = fs.readFileSync(new URL('../components/admin/AdminBlogManager.tsx', import.meta.url), 'utf8');
+  const librarySrc = fs.readFileSync(new URL('../components/admin/AdminLibraryManager.tsx', import.meta.url), 'utf8');
+  const cssSrc = fs.readFileSync(new URL('../index.css', import.meta.url), 'utf8');
 
+  // 1. Shared multi-page document modal shell enforces ~96vw x 94vh desktop & 100dvh mobile, dynamic tabs, subtle page transition, unsaved indicator, and zero-loss mounted panels
+  assert.ok(shellSrc.includes('lg:w-[96vw]'), 'Shell desktop harus menggunakan lebar 96vw');
+  assert.ok(shellSrc.includes('lg:h-[94vh]'), 'Shell desktop harus menggunakan tinggi 94vh');
+  assert.ok(shellSrc.includes('h-[100dvh]'), 'Shell mobile harus menggunakan 100dvh agar aman terhadap virtual keyboard');
+  assert.ok(shellSrc.includes('role="tablist"'), 'Shell harus menyediakan navigasi tab dinamis dengan role="tablist"');
+  assert.ok(shellSrc.includes('role="tab"'), 'Setiap halaman editor harus memiliki tombol tab ber-role="tab"');
+  assert.ok(shellSrc.includes('data-testid="editor-unsaved-indicator"'), 'Indikator perubahan yang belum disimpan harus tersedia');
+  assert.ok(shellSrc.includes('data-testid="editor-word-count"'), 'Indikator jumlah kata harus tersedia');
+  assert.ok(shellSrc.includes('animate-editor-page'), 'Perpindahan halaman harus memakai transisi halus animate-editor-page');
+  assert.ok(
+    shellSrc.includes("? 'flex-1 min-h-0 flex flex-col overflow-hidden animate-editor-page'") && shellSrc.includes(": 'hidden'"),
+    'Seluruh panel tab harus tetap ter-mount (hidden saat tidak aktif) agar naskah tidak pernah terhapus/ter-reset saat pindah halaman'
+  );
+  assert.ok(cssSrc.includes('@keyframes editorPageEnter') && cssSrc.includes('.animate-editor-page'), 'Animasi transisi halaman editor harus terdefinisi di index.css');
 
+  // 2. RichTextEditor supports opt-in frameless workspaceMode + documentHeader without altering default mode
+  assert.ok(rteSrc.includes('workspaceMode = false'), 'workspaceMode default harus false agar pemanggil lain tidak berubah');
+  assert.ok(rteSrc.includes('documentHeader?: React.ReactNode'), 'RichTextEditor harus mendukung documentHeader menyatu dengan kanvas');
+  assert.ok(rteSrc.includes('data-testid="frameless-document-canvas"'), 'Kanvas penulisan tanpa frame kaku harus memiliki testid frameless-document-canvas');
+  assert.ok(rteSrc.includes('data-editor-scroll-container="true"'), 'Area tulis harus memiliki scroll container independen');
+  assert.ok(rteSrc.includes('max-w-[74ch] mx-auto'), 'Lebar baris naskah harus terjaga nyaman dibaca (max-w-[74ch])');
+  assert.ok(rteSrc.includes('border-0 shadow-none') && rteSrc.includes('leading-[1.82]'), 'Area ketik harus bebas border/shadow kaku dengan spasi baris lega');
 
+  // 3. AdminBlogManager reuses AdminEditorModalShell + frameless workspaceMode & preserves critical test IDs and features
+  assert.ok(blogSrc.includes('<AdminEditorModalShell'), 'AdminBlogManager harus menggunakan AdminEditorModalShell');
+  assert.ok(blogSrc.includes('workspaceMode={true}'), 'Editor Artikel harus mengaktifkan workspaceMode');
+  assert.ok(blogSrc.includes('documentHeader={'), 'Editor Artikel harus menyatukan judul ke kanvas dokumen via documentHeader');
+  assert.ok(blogSrc.includes('hasUnsavedChanges={hasUnsavedChanges}'), 'Editor Artikel harus menyambungkan indikator perubahan belum disimpan');
+  assert.ok(blogSrc.includes('data-testid="btn-save-draft"'), 'Tombol Simpan Draf artikel tetap terjaga');
+  assert.ok(blogSrc.includes('data-testid="btn-save-publish"'), 'Tombol Terbitkan artikel tetap terjaga');
+  assert.ok(blogSrc.includes("testId: 'blog-modal-preview-toggle'"), 'Tab Pratinjau artikel tetap terjaga');
+  assert.ok(blogSrc.includes('data-testid="blog-modal-preview-content"'), 'Konten Pratinjau artikel tetap terjaga');
 
+  // 4. AdminLibraryManager reuses AdminEditorModalShell + frameless workspaceMode & preserves critical test IDs and features
+  assert.ok(librarySrc.includes('<AdminEditorModalShell'), 'AdminLibraryManager harus menggunakan AdminEditorModalShell');
+  assert.ok(librarySrc.includes('workspaceMode={true}'), 'Editor Library Digital harus mengaktifkan workspaceMode');
+  assert.ok(librarySrc.includes('documentHeader={'), 'Editor Library Digital harus menyatukan judul kitab ke kanvas dokumen via documentHeader');
+  assert.ok(librarySrc.includes('hasUnsavedChanges={hasUnsavedChanges}'), 'Editor Library Digital harus menyambungkan indikator perubahan belum disimpan');
+  assert.ok(librarySrc.includes('data-testid="admin-library-category-input"'), 'Input Kategori Kitab tetap terjaga');
+  assert.ok(librarySrc.includes('liveTocPreview'), 'Pratinjau Daftar Isi otomatis tetap terjaga');
+  assert.ok(librarySrc.includes("handleSave('draft')"), 'Aksi Simpan sebagai Draf tetap terjaga');
+  assert.ok(librarySrc.includes("handleSave('published')"), 'Aksi Simpan & Terbitkan tetap terjaga');
+});
 
+test('Editor Workspace Case 2: editorWorkspaceHelper menghitung kata naskah Arab/Latin dan mendeteksi perubahan belum disimpan secara deterministik', async () => {
+  const {
+    countDocumentWords,
+    buildArticleDirtySnapshot,
+    buildLibraryBookDirtySnapshot,
+    hasEditorUnsavedChanges
+  } = await import('./editorWorkspaceHelper.js');
+
+  // Word counting on HTML with Latin + Arabic + entities + script/style stripping
+  assert.strictEqual(countDocumentWords(''), 0);
+  assert.strictEqual(countDocumentWords('<p>&nbsp;   </p>'), 0);
+  assert.strictEqual(
+    countDocumentWords('<h1>Muqaddimah Kitab</h1><p>بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</p><p>Pembahasan&nbsp;Nahwu dasar.</p>'),
+    9
+  );
+
+  // Article unsaved change detection
+  const initialArticle = buildArticleDirtySnapshot(
+    {
+      title: 'Kaidah Irob Dasar',
+      titleAr: 'قواعد الإعراب',
+      category: 'Nahwu',
+      excerpt: 'Ringkasan kaidah irob',
+      content: '<p>Paragraf awal.</p>',
+      coverImageUrl: '',
+      isFeatured: false,
+      audioConfig: { enabled: false, mode: 'speech', speechRate: 1.0, speechVoiceName: '', customAudioUrl: '' }
+    },
+    'nahwu, dasar'
+  );
+  assert.strictEqual(hasEditorUnsavedChanges(initialArticle, initialArticle), false);
+  assert.strictEqual(hasEditorUnsavedChanges(initialArticle, ''), false);
+
+  const editedArticle = buildArticleDirtySnapshot(
+    {
+      title: 'Kaidah Irob Dasar',
+      titleAr: 'قواعد الإعراب',
+      category: 'Nahwu',
+      excerpt: 'Ringkasan kaidah irob',
+      content: '<p>Paragraf awal yang telah disunting.</p>',
+      coverImageUrl: '',
+      isFeatured: false,
+      audioConfig: { enabled: false, mode: 'speech', speechRate: 1.0, speechVoiceName: '', customAudioUrl: '' }
+    },
+    'nahwu, dasar'
+  );
+  assert.strictEqual(hasEditorUnsavedChanges(editedArticle, initialArticle), true);
+
+  // Library book unsaved change detection
+  const initialBook = buildLibraryBookDirtySnapshot({
+    title: 'Matan Al-Ajurrumiyyah',
+    titleAr: 'متن الآجرومية',
+    category: 'Nahwu',
+    author: 'Imam Ash-Shanhaji',
+    description: 'Kitab dasar nahwu',
+    coverImageUrl: '',
+    coverAspectRatio: '3:4',
+    sourceType: 'internal',
+    googleDriveUrl: '',
+    content: '<h1>Bab Kalam</h1><p>Kalam adalah lafazh tersusun.</p>'
+  });
+  assert.strictEqual(hasEditorUnsavedChanges(initialBook, initialBook), false);
+
+  const editedBook = buildLibraryBookDirtySnapshot({
+    title: 'Matan Al-Ajurrumiyyah',
+    titleAr: 'متن الآجرومية',
+    category: 'Ilmu Nahwu',
+    author: 'Imam Ash-Shanhaji',
+    description: 'Kitab dasar nahwu',
+    coverImageUrl: '',
+    coverAspectRatio: '3:4',
+    sourceType: 'internal',
+    googleDriveUrl: '',
+    content: '<h1>Bab Kalam</h1><p>Kalam adalah lafazh tersusun.</p>'
+  });
+  assert.strictEqual(hasEditorUnsavedChanges(editedBook, initialBook), true);
+});
 
