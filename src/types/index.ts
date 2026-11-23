@@ -327,6 +327,8 @@ export interface NotificationDispatchPayload {
 
 export type LibraryBookSourceType = 'google_drive' | 'internal';
 
+export type LibraryBookCollectionType = 'single' | 'multi_volume';
+
 export type LibraryCoverAspectRatio = '3:4' | '9:16';
 
 export interface LibraryBook {
@@ -339,6 +341,27 @@ export interface LibraryBook {
   description?: string;
   coverImageUrl: string;
   coverAspectRatio: LibraryCoverAspectRatio;
+  collectionType?: LibraryBookCollectionType;
+  sourceType: LibraryBookSourceType;
+  googleDriveUrl?: string;
+  content?: string;
+  status: 'published' | 'draft';
+  readingTimeMinutes?: number;
+  volumesCount?: number;
+  publishedVolumesCount?: number;
+  publishedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  _pendingSync?: boolean;
+}
+
+export interface LibraryBookVolume {
+  id: string;
+  bookId: string;
+  volumeNumber: number;
+  order: number;
+  title: string;
+  titleAr?: string;
   sourceType: LibraryBookSourceType;
   googleDriveUrl?: string;
   content?: string;
@@ -347,7 +370,6 @@ export interface LibraryBook {
   publishedAt?: string;
   createdAt: string;
   updatedAt: string;
-  _pendingSync?: boolean;
 }
 
 export interface LibraryVisitStats {
@@ -355,4 +377,5 @@ export interface LibraryVisitStats {
   totalVisits: number;
   updatedAt: string;
 }
+
 

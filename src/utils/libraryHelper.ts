@@ -591,4 +591,88 @@ export function matchLibraryBookByIdentifier<T extends { id: string; slug?: stri
   );
 }
 
+/**
+ * Normalizes collectionType with full backward compatibility for existing books without this field.
+ */
+export function normalizeLibraryCollectionType(value?: string | null): 'single' | 'multi_volume' {
+  return value === 'multi_volume' ? 'multi_volume' : 'single';
+}
+
+export function isMultiVolumeLibraryBook(book?: { collectionType?: string | null } | null): boolean {
+  return normalizeLibraryCollectionType(book?.collectionType) === 'multi_volume';
+}
+
+/**
+ * Sorts volumes deterministically ascending by `order`, then `volumeNumber`, then `createdAt`.
+ */
+export function sortLibraryBookVolumes<
+  T extends { order?: number; volumeNumber?: number; createdAt?: string }
+>(volumes: T[]): T[] {
+  return [...volumes].sort((a, b) => {
+    const orderA = typeof a.order === 'number' && Number.isFinite(a.order) ? a.order : (a.volumeNumber || 0);
+    const orderB = typeof b.order === 'number' && Number.isFinite(b.order) ? b.order : (b.volumeNumber || 0);
+    if (orderA !== orderB) return orderA - orderB;
+
+    const numA = typeof a.volumeNumber === 'number' && Number.isFinite(a.volumeNumber) ? a.volumeNumber : 0;
+    const numB = typeof b.volumeNumber === 'number' && Number.isFinite(b.volumeNumber) ? b.volumeNumber : 0;
+    if (numA !== numB) return numA - numB;
+
+    const timeA = new Date(a.createdAt || 0).getTime();
+    const timeB = new Date(b.createdAt || 0).getTime();
+    return timeA - timeB;
+  });
+}
+
+/**
+ * Returns a new reordered volume list with sequential 1-based `order` and `volumeNumber`.
+ * Pure & immutable — never mutates individual volume content or links.
+ */
+export function reorderLibraryBookVolumesList<
+  T extends { id: string; order: number; volumeNumber: number }
+>(volumes: T[], fromIndex: number, toIndex: number): T[] {
+  if (
+    fromIndex < 0 ||
+    toIndex < 0 ||
+    fromIndex >= volumes.length ||
+    toIndex >= volumes.length ||
+    fromIndex === toIndex
+  ) {
+    return volumes.map((v, idx) => ({ ...v, order: idx + 1, volumeNumber: idx + 1 }));
+  }
+
+  const next = [...volumes];
+  const [moved] = next.splice(fromIndex, 1);
+  next.splice(toIndex, 0, moved);
+
+  return next.map((vol, idx) => ({
+    ...vol,
+    order: idx + 1,
+    volumeNumber: idx + 1
+  }));
+}
+
+/**
+ * Strictly filters volumes visible to unauthenticated/public visitors (published only).
+ */
+export function filterPublicLibraryVolumes<T extends { status?: string }>(volumes: T[]): T[] {
+  return volumes.filter(v => v.status === 'published');
+}
+
+/**
+ * Builds the canonical URL for reading a specific internal volume of a multi-volume book.
+ */
+export function buildLibraryVolumeReadUrl(
+  book: { id: string; slug?: string },
+  volumeId: string,
+  origin = 'https://darswithosama.com'
+): string {
+  const cleanOrigin = (origin || 'https://darswithosama.com').replace(/\/+$/, '');
+  const bookKey = (book.slug || book.id || '').trim();
+  const cleanVolId = (volumeId || '').trim();
+  if (!bookKey) return `${cleanOrigin}/library`;
+  if (!cleanVolId) return `${cleanOrigin}/library/${encodeURIComponent(bookKey)}`;
+  return `${cleanOrigin}/library/${encodeURIComponent(bookKey)}/jilid/${encodeURIComponent(cleanVolId)}`;
+}
+
+
 

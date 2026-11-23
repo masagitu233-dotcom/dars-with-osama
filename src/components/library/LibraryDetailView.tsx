@@ -10,13 +10,18 @@ import {
   ChevronUp,
   ChevronLeft,
   ChevronRight,
-  ExternalLink
+  ExternalLink,
+  Layers
 } from 'lucide-react';
-import { LibraryBook } from '../../types';
+import { LibraryBook, LibraryBookVolume } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { ReadingFontControls, useReadingFontSize } from '../common/ReadingFontControls';
 import { ResilientGoogleDriveImage } from '../common/ResilientGoogleDriveImage';
-import { parseLibraryBookContent } from '../../utils/libraryHelper';
+import {
+  parseLibraryBookContent,
+  isMultiVolumeLibraryBook,
+  buildLibraryVolumeReadUrl
+} from '../../utils/libraryHelper';
 import { autoWrapArabicText, renderFormattedContentHtml } from '../../utils/arabicFontHelper';
 import { sanitizeRichTextHtml } from '../../utils/richTextHelper';
 import {
@@ -29,6 +34,9 @@ import {
 
 interface LibraryDetailViewProps {
   book: LibraryBook;
+  volume?: LibraryBookVolume | null;
+  siblingVolumes?: LibraryBookVolume[];
+  onSelectVolume?: (volume: LibraryBookVolume) => void;
   onBack: () => void;
   onBackToDetail?: () => void;
 }
@@ -37,6 +45,9 @@ type BookReadingMode = 'all' | 'chapter';
 
 export const LibraryDetailView: React.FC<LibraryDetailViewProps> = ({
   book,
+  volume = null,
+  siblingVolumes = [],
+  onSelectVolume,
   onBack,
   onBackToDetail
 }) => {
@@ -49,20 +60,27 @@ export const LibraryDetailView: React.FC<LibraryDetailViewProps> = ({
   const contentBodyRef = useRef<HTMLDivElement | null>(null);
   const readingAnchorRef = useRef<HTMLDivElement | null>(null);
 
-  // Parse internal book HTML into structured TOC (H1 clickable + H2 non-clickable) and full HTML
+  const isMultiVolume = isMultiVolumeLibraryBook(book);
+  const activeContentHtml = volume ? (volume.content || '') : (book.content || '');
+  const activeSourceType = volume ? volume.sourceType : book.sourceType;
+  const activeDriveUrl = volume ? volume.googleDriveUrl : book.googleDriveUrl;
+  const activeReadingMinutes = volume ? volume.readingTimeMinutes : book.readingTimeMinutes;
+  const activeStatus = volume ? volume.status : book.status;
+
+  // Parse internal book or volume HTML into structured TOC (H1 clickable + H2 non-clickable) and full HTML
   const parsed = useMemo(() => {
-    const raw = book.content || '';
+    const raw = activeContentHtml;
     const sanitized = sanitizeRichTextHtml(raw);
     const normalized = normalizeArticleHtmlImages(sanitized);
     return parseLibraryBookContent(normalized);
-  }, [book.content]);
+  }, [activeContentHtml]);
 
-  // Reset reading state whenever book changes
+  // Reset reading state whenever book or volume changes
   useEffect(() => {
     setReadingMode('all');
     setActiveChapterId(parsed.chapters[0]?.id || null);
     setTocOpen(true);
-  }, [book.id]);
+  }, [book.id, volume?.id]);
 
   // Keep activeChapterId valid if admin edits headings
   useEffect(() => {
@@ -121,10 +139,12 @@ export const LibraryDetailView: React.FC<LibraryDetailViewProps> = ({
     return () => {
       cleanups.forEach(fn => fn());
     };
-  }, [book.content, readingMode, activeChapterId]);
+  }, [activeContentHtml, readingMode, activeChapterId]);
 
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://darswithosama.com';
-  const readerUrl = `${origin}/library/${encodeURIComponent(book.slug || book.id)}/baca`;
+  const readerUrl = volume
+    ? buildLibraryVolumeReadUrl(book, volume.id, origin)
+    : `${origin}/library/${encodeURIComponent(book.slug || book.id)}/baca`;
 
   const handleCopyLink = () => {
     try {
@@ -200,8 +220,42 @@ export const LibraryDetailView: React.FC<LibraryDetailViewProps> = ({
   const trimmedDescription = (book.description || '').trim();
   const handleBackAction = onBackToDetail || onBack;
 
-  // Guard: If someone opens /library/:slug/baca directly for an external Google Drive book
-  if (book.sourceType === 'google_drive' && book.googleDriveUrl) {
+  const currentVolumeIndex = volume ? siblingVolumes.findIndex(v => v.id === volume.id) : -1;
+  const prevVolume = currentVolumeIndex > 0 ? siblingVolumes[currentVolumeIndex - 1] : null;
+  const nextVolume =
+    currentVolumeIndex >= 0 && currentVolumeIndex < siblingVolumes.length - 1
+      ? siblingVolumes[currentVolumeIndex + 1]
+      : null;
+
+  // Guard: Multi-volume collection opened on /baca without selecting a specific volume
+  if (isMultiVolume && !volume) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-6 animate-fade-in font-sans">
+        <div className="nb-card bg-white dark:bg-[#0D2B36] p-6 sm:p-8 text-center space-y-4">
+          <Layers className="w-10 h-10 mx-auto text-[#123D32] dark:text-[#D6AD52]" />
+          <h1 className="text-xl sm:text-2xl font-bold font-serif text-[#171717] dark:text-[#CEFEF1]">
+            Pilih Jilid Terlebih Dahulu
+          </h1>
+          <p className="text-xs sm:text-sm text-[#525855] dark:text-[#A6D6C9] max-w-md mx-auto leading-relaxed">
+            Kitab &ldquo;{book.title}&rdquo; merupakan koleksi berjilid. Silakan pilih jilid yang ingin Anda baca melalui halaman detail kitab.
+          </p>
+          <div className="pt-2">
+            <button
+              type="button"
+              onClick={handleBackAction}
+              className="nb-btn nb-btn-gold px-5 py-2.5 text-xs sm:text-sm inline-flex items-center gap-2 cursor-pointer"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Buka Daftar Jilid</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Guard: Direct reader URL opened for an external Google Drive book or external volume
+  if (activeSourceType === 'google_drive' && activeDriveUrl) {
     return (
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-6 animate-fade-in font-sans">
         <button
@@ -227,23 +281,28 @@ export const LibraryDetailView: React.FC<LibraryDetailViewProps> = ({
             </div>
           )}
           <div className="space-y-3 max-w-xl">
+            {volume && (
+              <p className="text-xs font-extrabold uppercase tracking-wider text-[#123D32] dark:text-[#D6AD52]">
+                {book.title} · Jilid {volume.volumeNumber}
+              </p>
+            )}
             <h1 className="text-2xl font-bold font-serif text-[#171717] dark:text-[#CEFEF1]">
-              {book.title}
+              {volume ? volume.title : book.title}
             </h1>
-            {trimmedDescription && (
+            {!volume && trimmedDescription && (
               <p className="text-sm text-[#525855] dark:text-[#A6D6C9] leading-relaxed whitespace-pre-line">
                 {trimmedDescription}
               </p>
             )}
             <div className="pt-2">
               <a
-                href={book.googleDriveUrl}
+                href={activeDriveUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="nb-btn nb-btn-gold px-6 py-3 text-xs sm:text-sm inline-flex items-center gap-2 no-underline"
               >
                 <ExternalLink className="w-4 h-4" />
-                <span>Buka Kitab di Google Drive</span>
+                <span>{volume ? `Buka Jilid ${volume.volumeNumber} di Google Drive` : 'Buka Kitab di Google Drive'}</span>
               </a>
             </div>
           </div>
@@ -327,38 +386,61 @@ export const LibraryDetailView: React.FC<LibraryDetailViewProps> = ({
 
           {/* SELURUH INFORMASI KITAB DI BAWAH COVER (BERURUTAN VERTIKAL) */}
           <div className="max-w-[68ch] mx-auto w-full space-y-4 text-left">
-            {/* 3. LABEL LIBRARY DIGITAL DAN ESTIMASI WAKTU BACA */}
+            {/* 3. LABEL LIBRARY DIGITAL, NOMOR JILID & ESTIMASI WAKTU BACA */}
             <div className="flex flex-wrap items-center gap-2.5 text-xs font-extrabold text-[#123D32] dark:text-[#A6D6C9]">
               <span className="px-2.5 py-0.5 bg-[#123D32] dark:bg-[#4CA7A1] text-[#FAF7F0] dark:text-[#001722] rounded border border-[#171717] text-[10px] uppercase tracking-wider">
                 Library Digital
               </span>
-              {book.status === 'draft' && isAdmin && (
+              {volume && (
+                <span
+                  data-testid="library-reader-volume-badge"
+                  className="px-2.5 py-0.5 bg-[#F0BE49] text-[#0F3D3A] rounded border border-[#171717] text-[10px] uppercase tracking-wider tabular-nums"
+                >
+                  Jilid {volume.volumeNumber}
+                </span>
+              )}
+              {activeStatus === 'draft' && isAdmin && (
                 <span className="px-2.5 py-0.5 bg-[#D6AD52] text-[#171717] rounded border border-[#171717] text-[10px] uppercase tracking-wider">
                   Pratinjau Draf
                 </span>
               )}
-              {(book.readingTimeMinutes || 0) > 0 && (
+              {(activeReadingMinutes || 0) > 0 && (
                 <span className="inline-flex items-center gap-1">
                   <Clock className="w-3.5 h-3.5" />
-                  <span>{book.readingTimeMinutes} Menit Baca</span>
+                  <span>{activeReadingMinutes} Menit Baca</span>
                 </span>
               )}
             </div>
 
-            {/* 4. JUDUL LENGKAP KITAB (+ JUDUL ARAB JIKA ADA) */}
+            {/* 4. JUDUL LENGKAP KITAB / JILID (+ JUDUL ARAB JIKA ADA) */}
             <div className="space-y-2">
+              {volume && (
+                <p className="text-xs sm:text-sm font-bold text-[#525855] dark:text-[#A6D6C9]">
+                  Koleksi Kitab:{' '}
+                  <button
+                    type="button"
+                    onClick={handleBackAction}
+                    className="text-[#123D32] dark:text-[#D6AD52] hover:underline cursor-pointer font-extrabold"
+                  >
+                    {book.title}
+                  </button>
+                </p>
+              )}
+
               <h1
                 data-testid="library-reader-title"
                 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-[#123D32] dark:text-[#CEFEF1] leading-tight font-serif tracking-tight"
-                dangerouslySetInnerHTML={{ __html: autoWrapArabicText(book.title) }}
+                dangerouslySetInnerHTML={{
+                  __html: autoWrapArabicText(volume ? volume.title : book.title)
+                }}
               />
 
-              {book.titleAr && (
+              {(volume ? volume.titleAr : book.titleAr) && (
                 <p
                   dir="rtl"
                   className="font-amiri text-xl sm:text-2xl text-[#0F3D3A] dark:text-[#D6AD52] font-bold leading-[2.0]"
                 >
-                  {book.titleAr}
+                  {volume ? volume.titleAr : book.titleAr}
                 </p>
               )}
             </div>
@@ -371,8 +453,8 @@ export const LibraryDetailView: React.FC<LibraryDetailViewProps> = ({
               </p>
             )}
 
-            {/* 6. DESKRIPSI KITAB (JIKA TERSEDIA — DIHILANGKAN JIKA KOSONG) */}
-            {trimmedDescription && (
+            {/* 6. DESKRIPSI KITAB (JIKA TERSEDIA & BUKU TUNGGAL — DIHILANGKAN JIKA KOSONG) */}
+            {!volume && trimmedDescription && (
               <p
                 data-testid="library-reader-description"
                 className="text-sm sm:text-[15px] text-[#525855] dark:text-[#A6D6C9] leading-relaxed whitespace-pre-line"
@@ -642,6 +724,64 @@ export const LibraryDetailView: React.FC<LibraryDetailViewProps> = ({
             </div>
           )}
         </div>
+        {/* NAVIGASI ANTAR-JILID (KHUSUS BUKU BERJILID) */}
+        {volume && (prevVolume || nextVolume) && (
+          <div
+            data-testid="library-volume-footer-nav"
+            className="max-w-[68ch] mx-auto pt-6 border-t-2 border-[#171717]/15 dark:border-[#4CA7A1]/30 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3"
+          >
+            <div className="flex-1 min-w-0">
+              {prevVolume && (
+                prevVolume.sourceType === 'google_drive' && prevVolume.googleDriveUrl ? (
+                  <a
+                    href={prevVolume.googleDriveUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="nb-btn nb-btn-secondary px-4 py-2.5 text-xs font-bold inline-flex items-center gap-2 max-w-full w-full sm:w-auto no-underline"
+                  >
+                    <ChevronLeft className="w-4 h-4 shrink-0" />
+                    <span className="truncate">Jilid {prevVolume.volumeNumber}: {prevVolume.title}</span>
+                    <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                  </a>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => onSelectVolume?.(prevVolume)}
+                    className="nb-btn nb-btn-secondary px-4 py-2.5 text-xs font-bold flex items-center gap-2 max-w-full w-full sm:w-auto cursor-pointer"
+                  >
+                    <ChevronLeft className="w-4 h-4 shrink-0" />
+                    <span className="truncate">Jilid {prevVolume.volumeNumber}: {prevVolume.title}</span>
+                  </button>
+                )
+              )}
+            </div>
+
+            <div className="flex-1 min-w-0 flex justify-end">
+              {nextVolume && (
+                nextVolume.sourceType === 'google_drive' && nextVolume.googleDriveUrl ? (
+                  <a
+                    href={nextVolume.googleDriveUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="nb-btn nb-btn-gold px-4 py-2.5 text-xs font-bold inline-flex items-center justify-end gap-2 max-w-full w-full sm:w-auto no-underline"
+                  >
+                    <span className="truncate">Jilid {nextVolume.volumeNumber}: {nextVolume.title}</span>
+                    <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                  </a>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => onSelectVolume?.(nextVolume)}
+                    className="nb-btn nb-btn-gold px-4 py-2.5 text-xs font-bold flex items-center justify-end gap-2 max-w-full w-full sm:w-auto cursor-pointer"
+                  >
+                    <span className="truncate">Jilid {nextVolume.volumeNumber}: {nextVolume.title}</span>
+                    <ChevronRight className="w-4 h-4 shrink-0" />
+                  </button>
+                )
+              )}
+            </div>
+          </div>
+        )}
       </article>
     </div>
   );

@@ -5765,3 +5765,184 @@ test('Editor Workspace Case 2: editorWorkspaceHelper menghitung kata naskah Arab
   assert.strictEqual(hasEditorUnsavedChanges(editedBook, initialBook), true);
 });
 
+test('Library Digital Case 8: Buku berjilid kompatibel mundur, pengurutan & isolasi jilid, filter draf publik, dan routing /library/:slug/jilid/:volumeId', async () => {
+  const {
+    normalizeLibraryCollectionType,
+    isMultiVolumeLibraryBook,
+    sortLibraryBookVolumes,
+    reorderLibraryBookVolumesList,
+    filterPublicLibraryVolumes,
+    buildLibraryVolumeReadUrl
+  } = await import('./libraryHelper.js');
+  const {
+    parseUrlToRouteState,
+    buildUrlFromRouteState,
+    isSameRouteState
+  } = await import('./navigationHistory.js');
+  const {
+    buildLibraryBookDirtySnapshot,
+    buildLibraryVolumeDirtySnapshot,
+    hasEditorUnsavedChanges
+  } = await import('./editorWorkspaceHelper.js');
+
+  // 1. Kompatibilitas mundur buku lama (tanpa collectionType -> 'single')
+  assert.strictEqual(normalizeLibraryCollectionType(undefined), 'single');
+  assert.strictEqual(normalizeLibraryCollectionType(null), 'single');
+  assert.strictEqual(normalizeLibraryCollectionType('single'), 'single');
+  assert.strictEqual(normalizeLibraryCollectionType('multi_volume'), 'multi_volume');
+  assert.strictEqual(isMultiVolumeLibraryBook({}), false);
+  assert.strictEqual(isMultiVolumeLibraryBook(undefined), false);
+  assert.strictEqual(isMultiVolumeLibraryBook({ collectionType: 'multi_volume' }), true);
+
+  // 2. Pengurutan jilid & pemindahan urutan secara imutabel tanpa menimpa isi/tautan jilid lain
+  const volumes: import('../types/index.js').LibraryBookVolume[] = [
+    {
+      id: 'vol-3',
+      bookId: 'book-majmu',
+      volumeNumber: 3,
+      order: 3,
+      title: 'Jilid 3 — Kitab Zakat (Draf)',
+      sourceType: 'internal',
+      content: '<h1>Bab Zakat</h1><p>Naskah jilid 3.</p>',
+      status: 'draft',
+      createdAt: '2026-11-01T10:00:00.000Z',
+      updatedAt: '2026-11-01T10:00:00.000Z'
+    },
+    {
+      id: 'vol-1',
+      bookId: 'book-majmu',
+      volumeNumber: 1,
+      order: 1,
+      title: 'Jilid 1 — Kitab Thaharah',
+      sourceType: 'internal',
+      content: '<h1>Bab Air</h1><p>Naskah jilid 1.</p>',
+      status: 'published',
+      createdAt: '2026-11-01T08:00:00.000Z',
+      updatedAt: '2026-11-01T08:00:00.000Z'
+    },
+    {
+      id: 'vol-2',
+      bookId: 'book-majmu',
+      volumeNumber: 2,
+      order: 2,
+      title: 'Jilid 2 — Kitab Shalat',
+      sourceType: 'google_drive',
+      googleDriveUrl: 'https://drive.google.com/file/d/VOL2FILEID12345/view?usp=sharing',
+      status: 'published',
+      createdAt: '2026-11-01T09:00:00.000Z',
+      updatedAt: '2026-11-01T09:00:00.000Z'
+    }
+  ];
+
+  const sorted = sortLibraryBookVolumes(volumes);
+  assert.deepStrictEqual(sorted.map(v => v.id), ['vol-1', 'vol-2', 'vol-3']);
+
+  // Tukar posisi Jilid 1 turun ke posisi 2 -> isi & tautan masing-masing jilid tetap utuh
+  const reordered = reorderLibraryBookVolumesList(sorted, 0, 1);
+  assert.deepStrictEqual(reordered.map(v => v.id), ['vol-2', 'vol-1', 'vol-3']);
+  assert.deepStrictEqual(reordered.map(v => v.order), [1, 2, 3]);
+  assert.deepStrictEqual(reordered.map(v => v.volumeNumber), [1, 2, 3]);
+  assert.strictEqual(reordered[0].googleDriveUrl, 'https://drive.google.com/file/d/VOL2FILEID12345/view?usp=sharing');
+  assert.strictEqual(reordered[1].content, '<h1>Bab Air</h1><p>Naskah jilid 1.</p>');
+  assert.strictEqual(reordered[2].status, 'draft');
+
+  // 3. Penyaringan publik hanya menampilkan jilid berstatus published (draf tersembunyi)
+  const publicOnly = filterPublicLibraryVolumes(sorted);
+  assert.strictEqual(publicOnly.length, 2);
+  assert.deepStrictEqual(publicOnly.map(v => v.id), ['vol-1', 'vol-2']);
+  assert.strictEqual(publicOnly.some(v => v.status === 'draft'), false);
+
+  // 4. Routing /library/:slug/jilid/:volumeId menjaga rute lama /library/:slug & /library/:slug/baca
+  const volumeUrl = buildLibraryVolumeReadUrl(
+    { id: 'book-majmu', slug: 'al-majmu-syarh' },
+    'vol-1',
+    'https://darswithosama.com/'
+  );
+  assert.strictEqual(volumeUrl, 'https://darswithosama.com/library/al-majmu-syarh/jilid/vol-1');
+
+  const parsedVolRoute = parseUrlToRouteState('/library/al-majmu-syarh/jilid/vol-1', '');
+  assert.strictEqual(parsedVolRoute.view, 'library-read');
+  assert.strictEqual(parsedVolRoute.libraryBookSlug, 'al-majmu-syarh');
+  assert.strictEqual(parsedVolRoute.libraryVolumeId, 'vol-1');
+  assert.strictEqual(buildUrlFromRouteState(parsedVolRoute), '/library/al-majmu-syarh/jilid/vol-1');
+
+  // Rute buku tunggal lama tetap tidak berubah
+  const parsedSingleRead = parseUrlToRouteState('/library/matan-ajurrumiyyah/baca', '');
+  assert.strictEqual(parsedSingleRead.view, 'library-read');
+  assert.strictEqual(parsedSingleRead.libraryBookSlug, 'matan-ajurrumiyyah');
+  assert.strictEqual(parsedSingleRead.libraryVolumeId, null);
+  assert.strictEqual(buildUrlFromRouteState(parsedSingleRead), '/library/matan-ajurrumiyyah/baca');
+
+  // Perbedaan jilid pada buku yang sama harus dikenali sebagai rute berbeda oleh isSameRouteState
+  const parsedVol2Route = parseUrlToRouteState('/library/al-majmu-syarh/jilid/vol-2', '');
+  assert.strictEqual(isSameRouteState(parsedVolRoute, parsedVolRoute), true);
+  assert.strictEqual(isSameRouteState(parsedVolRoute, parsedVol2Route), false);
+
+  // 5. Deteksi perubahan belum disimpan pada editor jilid & jenis koleksi buku
+  const snapMulti = buildLibraryBookDirtySnapshot({ title: 'Al-Majmu', collectionType: 'multi_volume' });
+  const snapSingle = buildLibraryBookDirtySnapshot({ title: 'Al-Majmu', collectionType: 'single' });
+  assert.strictEqual(hasEditorUnsavedChanges(snapMulti, snapSingle), true);
+
+  const volSnap1 = buildLibraryVolumeDirtySnapshot({
+    volumeNumber: 1,
+    title: 'Jilid 1',
+    sourceType: 'internal',
+    content: '<p>Isi awal</p>',
+    status: 'published'
+  });
+  const volSnap2 = buildLibraryVolumeDirtySnapshot({
+    volumeNumber: 1,
+    title: 'Jilid 1 Revisi',
+    sourceType: 'internal',
+    content: '<p>Isi awal</p>',
+    status: 'published'
+  });
+  assert.strictEqual(hasEditorUnsavedChanges(volSnap1, volSnap1), false);
+  assert.strictEqual(hasEditorUnsavedChanges(volSnap2, volSnap1), true);
+});
+
+test('Library Digital Case 9: Audit keamanan subkoleksi volumes di firestore.rules serta kelengkapan arsitektur UI buku berjilid', async () => {
+  const fs = await import('fs');
+
+  const rulesText = fs.readFileSync(new URL('../../firestore.rules', import.meta.url), 'utf8');
+  const adminMgrSrc = fs.readFileSync(new URL('../components/admin/AdminLibraryManager.tsx', import.meta.url), 'utf8');
+  const volMgrSrc = fs.readFileSync(new URL('../components/admin/AdminLibraryVolumesManager.tsx', import.meta.url), 'utf8');
+  const detailSrc = fs.readFileSync(new URL('../components/library/LibraryBookDetailView.tsx', import.meta.url), 'utf8');
+  const readerSrc = fs.readFileSync(new URL('../components/library/LibraryDetailView.tsx', import.meta.url), 'utf8');
+  const cardSrc = fs.readFileSync(new URL('../components/library/LibraryCard.tsx', import.meta.url), 'utf8');
+  const appSrc = fs.readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
+
+  // 1. firestore.rules: subkoleksi volumes berada di dalam libraryBooks dan menerapkan Master Gate
+  assert.ok(rulesText.includes('match /volumes/{volumeId}'), 'firestore.rules harus memiliki aturan subkoleksi /volumes/{volumeId}');
+  const volumesMatch = rulesText.match(/match \/volumes\/\{volumeId\}\s*\{[\s\S]*?\}/);
+  assert.ok(volumesMatch, 'Blok match /volumes/{volumeId} harus lengkap');
+  const volumesBlock = volumesMatch[0];
+  assert.ok(volumesBlock.includes("resource.data.status == 'published'"), 'Jilid publik hanya boleh yang berstatus published');
+  assert.ok(
+    volumesBlock.includes("get(/databases/$(database)/documents/libraryBooks/$(bookId)).data.status == 'published'"),
+    'Master Gate wajib memeriksa status kitab induk juga published'
+  );
+  assert.ok(volumesBlock.includes('allow create, update, delete: if isAdmin();'), 'Hanya admin yang boleh menulis/menghapus jilid');
+
+  // 2. AdminLibraryManager: pilihan Buku Biasa vs Buku Berjilid & tombol Kelola Jilid (bukan editor naskah penuh)
+  assert.ok(adminMgrSrc.includes('data-testid="admin-library-type-single"'), 'Pilihan Buku Biasa harus tersedia');
+  assert.ok(adminMgrSrc.includes('data-testid="admin-library-type-multivolume"'), 'Pilihan Buku Berjilid harus tersedia');
+  assert.ok(adminMgrSrc.includes('<AdminLibraryVolumesManager'), 'AdminLibraryManager harus merender halaman pengelolaan jilid khusus');
+  assert.ok(adminMgrSrc.includes('admin-manage-volumes-'), 'Baris buku berjilid harus memiliki tombol Kelola Jilid');
+
+  // 3. AdminLibraryVolumesManager: tambah/edit/urutkan/hapus jilid, pembeda draf vs terbit, editor workspaceMode
+  assert.ok(volMgrSrc.includes('data-testid="admin-library-volumes-manager"'), 'Halaman pengelolaan jilid harus teridentifikasi');
+  assert.ok(volMgrSrc.includes('data-testid="admin-add-volume-btn"'), 'Tombol Tambah Jilid harus tersedia');
+  assert.ok(volMgrSrc.includes('reorderLibraryBookVolumes'), 'Fitur ubah urutan jilid harus terhubung ke service');
+  assert.ok(volMgrSrc.includes('workspaceMode={true}'), 'Editor jilid harus memakai RichTextEditor workspaceMode tanpa frame kaku');
+  assert.ok(volMgrSrc.includes('<ConfirmModal'), 'Penghapusan jilid harus meminta konfirmasi terlebih dahulu');
+
+  // 4. Tampilan pengunjung: satu kartu di katalog, Daftar Jilid di halaman detail, pembaca per jilid di reader & App.tsx
+  assert.ok(cardSrc.includes('data-book-collection='), 'LibraryCard harus menampilkan 1 kartu per koleksi termasuk buku berjilid');
+  assert.ok(detailSrc.includes('data-testid="library-volumes-section"'), 'Halaman detail kitab berjilid harus menampilkan Daftar Jilid');
+  assert.ok(detailSrc.includes('filterPublicLibraryVolumes'), 'Halaman detail harus menyaring jilid draf dari pengunjung publik');
+  assert.ok(readerSrc.includes('volume?: LibraryBookVolume | null'), 'LibraryDetailView harus mendukung pembacaan satu jilid spesifik');
+  assert.ok(appSrc.includes('handleOpenLibraryVolumeReader'), 'App.tsx harus menghubungkan rute baca jilid spesifik');
+});
+
+

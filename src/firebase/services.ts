@@ -51,6 +51,7 @@ import {
   SaveResult,
   DataSyncStatus,
   LibraryBook,
+  LibraryBookVolume,
   LibraryVisitStats
 } from '../types';
 import { SEED_CATEGORIES, SEED_COURSES, SEED_SESSIONS, SEED_QUIZZES } from '../data/seedData';
@@ -61,6 +62,8 @@ import { computeConsultationCounts, ConsultationCounts, sanitizeConsultationForP
 import {
   generateLibraryBookSlug,
   normalizeCoverAspectRatio,
+  normalizeLibraryCollectionType,
+  sortLibraryBookVolumes,
   estimateBookReadingMinutes
 } from '../utils/libraryHelper';
 import {
@@ -205,6 +208,7 @@ let blogPostsCache: CacheEntry<BlogPost[]> | null = null;
 let publicQACache: CacheEntry<Consultation[]> | null = null;
 let libraryBooksPublicCache: CacheEntry<LibraryBook[]> | null = null;
 let libraryBooksAdminCache: CacheEntry<LibraryBook[]> | null = null;
+const libraryBookVolumesCache = new Map<string, CacheEntry<LibraryBookVolume[]>>();
 
 export function invalidateServicesCache(target?: 'categories' | 'courses' | 'sessions' | 'blog' | 'qa' | 'library' | 'all') {
   if (!target || target === 'all') {
@@ -216,6 +220,7 @@ export function invalidateServicesCache(target?: 'categories' | 'courses' | 'ses
     publicQACache = null;
     libraryBooksPublicCache = null;
     libraryBooksAdminCache = null;
+    libraryBookVolumesCache.clear();
   } else if (target === 'categories') {
     categoriesCache = null;
   } else if (target === 'courses') {
@@ -232,6 +237,7 @@ export function invalidateServicesCache(target?: 'categories' | 'courses' | 'ses
   } else if (target === 'library') {
     libraryBooksPublicCache = null;
     libraryBooksAdminCache = null;
+    libraryBookVolumesCache.clear();
   }
 }
 
@@ -3747,6 +3753,7 @@ export async function updateStudentNotificationPreferences(
 // LIBRARY DIGITAL (KOLEKSI BUKU & STATISTIK KUNJUNGAN)
 // ==========================================
 const LIBRARY_BOOKS_COLLECTION = 'libraryBooks';
+const LIBRARY_VOLUMES_SUBCOLLECTION = 'volumes';
 const LIBRARY_STATS_COLLECTION = 'libraryStats';
 const LIBRARY_STATS_OVERVIEW_ID = 'overview';
 
@@ -3759,6 +3766,7 @@ function sortLibraryBooks(list: LibraryBook[]): LibraryBook[] {
 }
 
 function normalizeLibraryBookDoc(id: string, raw: Record<string, any>): LibraryBook {
+  const collectionType = normalizeLibraryCollectionType(raw.collectionType);
   return {
     id,
     title: typeof raw.title === 'string' ? raw.title : '',
@@ -3769,6 +3777,34 @@ function normalizeLibraryBookDoc(id: string, raw: Record<string, any>): LibraryB
     description: typeof raw.description === 'string' ? raw.description : '',
     coverImageUrl: typeof raw.coverImageUrl === 'string' ? raw.coverImageUrl : '',
     coverAspectRatio: normalizeCoverAspectRatio(raw.coverAspectRatio),
+    collectionType,
+    sourceType: raw.sourceType === 'google_drive' ? 'google_drive' : 'internal',
+    googleDriveUrl: typeof raw.googleDriveUrl === 'string' ? raw.googleDriveUrl : '',
+    content: typeof raw.content === 'string' ? raw.content : '',
+    status: raw.status === 'draft' ? 'draft' : 'published',
+    readingTimeMinutes: Number(raw.readingTimeMinutes) || 1,
+    volumesCount: typeof raw.volumesCount === 'number' ? raw.volumesCount : undefined,
+    publishedVolumesCount: typeof raw.publishedVolumesCount === 'number' ? raw.publishedVolumesCount : undefined,
+    publishedAt: typeof raw.publishedAt === 'string' ? raw.publishedAt : '',
+    createdAt: typeof raw.createdAt === 'string' ? raw.createdAt : new Date().toISOString(),
+    updatedAt: typeof raw.updatedAt === 'string' ? raw.updatedAt : new Date().toISOString()
+  };
+}
+
+function normalizeLibraryBookVolumeDoc(
+  bookId: string,
+  id: string,
+  raw: Record<string, any>
+): LibraryBookVolume {
+  const orderVal = typeof raw.order === 'number' && Number.isFinite(raw.order) ? raw.order : Number(raw.volumeNumber) || 1;
+  const volNum = typeof raw.volumeNumber === 'number' && Number.isFinite(raw.volumeNumber) ? raw.volumeNumber : orderVal;
+  return {
+    id,
+    bookId: typeof raw.bookId === 'string' && raw.bookId ? raw.bookId : bookId,
+    volumeNumber: volNum,
+    order: orderVal,
+    title: typeof raw.title === 'string' ? raw.title : '',
+    titleAr: typeof raw.titleAr === 'string' ? raw.titleAr : '',
     sourceType: raw.sourceType === 'google_drive' ? 'google_drive' : 'internal',
     googleDriveUrl: typeof raw.googleDriveUrl === 'string' ? raw.googleDriveUrl : '',
     content: typeof raw.content === 'string' ? raw.content : '',
@@ -3974,17 +4010,25 @@ export async function saveLibraryBook(
     // non-fatal slug collision check
   }
 
-  const sourceType = book.sourceType === 'google_drive' ? 'google_drive' : 'internal';
+  const collectionType = normalizeLibraryCollectionType(book.collectionType);
+  const sourceType =
+    collectionType === 'multi_volume'
+      ? 'internal'
+      : book.sourceType === 'google_drive'
+      ? 'google_drive'
+      : 'internal';
   const coverAspectRatio = normalizeCoverAspectRatio(book.coverAspectRatio);
   const status: 'published' | 'draft' = book.status === 'draft' ? 'draft' : 'published';
   const now = new Date().toISOString();
 
   let sanitizedContent = '';
   let readingTimeMinutes = 1;
-  if (sourceType === 'internal') {
+  if (collectionType === 'single' && sourceType === 'internal') {
     const sanitized = sanitizeRichTextHtml(book.content || '');
     sanitizedContent = normalizeArticleHtmlImages(sanitized);
     readingTimeMinutes = estimateBookReadingMinutes(sanitizedContent);
+  } else if (collectionType === 'multi_volume') {
+    readingTimeMinutes = 0;
   }
 
   const data: Record<string, any> = {
@@ -3997,15 +4041,32 @@ export async function saveLibraryBook(
     description: (book.description || '').trim(),
     coverImageUrl: (book.coverImageUrl || '').trim(),
     coverAspectRatio,
+    collectionType,
     sourceType,
-    googleDriveUrl: sourceType === 'google_drive' ? (book.googleDriveUrl || '').trim() : '',
-    content: sourceType === 'internal' ? sanitizedContent : '',
+    googleDriveUrl:
+      collectionType === 'single' && sourceType === 'google_drive'
+        ? (book.googleDriveUrl || '').trim()
+        : '',
+    content: collectionType === 'single' && sourceType === 'internal' ? sanitizedContent : '',
     status,
     readingTimeMinutes,
     publishedAt: status === 'published' ? (book.publishedAt || now) : (book.publishedAt || ''),
     createdAt: book.createdAt || now,
     updatedAt: now
   };
+
+  if (collectionType === 'multi_volume') {
+    if (typeof book.volumesCount === 'number') {
+      data.volumesCount = book.volumesCount;
+    } else if (!book.id) {
+      data.volumesCount = 0;
+    }
+    if (typeof book.publishedVolumesCount === 'number') {
+      data.publishedVolumesCount = book.publishedVolumesCount;
+    } else if (!book.id) {
+      data.publishedVolumesCount = 0;
+    }
+  }
 
   const serializedSize = JSON.stringify(data).length;
   if (serializedSize > 950000) {
@@ -4024,7 +4085,7 @@ export async function saveLibraryBook(
       const verifySnap = await getDocFromServer(doc(db, LIBRARY_BOOKS_COLLECTION, id));
       if (verifySnap.exists()) {
         logCrudDiagnostic(
-          `saveLibraryBook Server Verification [ID: ${id}, Status: ${status}, Type: ${sourceType}]`,
+          `saveLibraryBook Server Verification [ID: ${id}, Status: ${status}, Collection: ${collectionType}, Type: ${sourceType}]`,
           path,
           'success'
         );
@@ -4048,12 +4109,327 @@ export async function deleteLibraryBook(id: string): Promise<void> {
   logCrudDiagnostic('deleteLibraryBook', path, 'start');
 
   try {
+    // Clean up any child volume documents so no orphaned volumes remain
+    try {
+      const volumesSnap = await executeWithFreshAuthRetry(() =>
+        getDocs(collection(db, LIBRARY_BOOKS_COLLECTION, id, LIBRARY_VOLUMES_SUBCOLLECTION))
+      );
+      if (!volumesSnap.empty) {
+        const batch = writeBatch(db);
+        volumesSnap.docs.forEach((volDoc) => {
+          batch.delete(volDoc.ref);
+        });
+        await executeWithFreshAuthRetry(() => batch.commit());
+      }
+    } catch (volCleanupErr) {
+      console.warn('[deleteLibraryBook] Volume subcollection cleanup notice:', volCleanupErr);
+    }
+
     await executeWithFreshAuthRetry(() => deleteDoc(doc(db, LIBRARY_BOOKS_COLLECTION, id)));
     invalidateServicesCache('library');
     logCrudDiagnostic('deleteLibraryBook', path, 'success');
   } catch (error) {
     logCrudDiagnostic('deleteLibraryBook', path, 'failed', error);
     handleFirestoreError(error, OperationType.DELETE, path);
+    throw error;
+  }
+}
+
+// ==========================================
+// LIBRARY DIGITAL — MULTI-VOLUME (JILID) SERVICES
+// Subcollection: /libraryBooks/{bookId}/volumes/{volumeId}
+// ==========================================
+
+async function syncParentBookVolumeCounts(bookId: string): Promise<{ total: number; published: number }> {
+  const volumesCol = collection(db, LIBRARY_BOOKS_COLLECTION, bookId, LIBRARY_VOLUMES_SUBCOLLECTION);
+  const snap = await executeWithFreshAuthRetry(() => getDocs(volumesCol));
+  const total = snap.docs.length;
+  const published = snap.docs.filter(d => (d.data() as Record<string, any>)?.status === 'published').length;
+  const now = new Date().toISOString();
+
+  await executeWithFreshAuthRetry(() =>
+    updateDoc(doc(db, LIBRARY_BOOKS_COLLECTION, bookId), {
+      volumesCount: total,
+      publishedVolumesCount: published,
+      updatedAt: now
+    })
+  );
+
+  return { total, published };
+}
+
+/**
+ * Fetches volumes for a specific multi-volume Library book from `/libraryBooks/{bookId}/volumes`.
+ * - Public (`includeDrafts = false`): queries ONLY `status == 'published'` to comply with Firestore Security Rules.
+ * - Admin (`includeDrafts = true`): fetches all volumes including drafts.
+ */
+export async function getLibraryBookVolumes(
+  bookId: string,
+  includeDrafts = false,
+  forceRefresh = false
+): Promise<LibraryBookVolume[]> {
+  const cleanBookId = (bookId || '').trim();
+  if (!cleanBookId) return [];
+
+  const cacheKey = `${cleanBookId}:${includeDrafts ? 'admin' : 'public'}`;
+  const now = Date.now();
+  const cached = libraryBookVolumesCache.get(cacheKey);
+  if (!forceRefresh && cached && now - cached.timestamp < CACHE_TTL_MS) {
+    return cached.data;
+  }
+
+  const volumesCol = collection(db, LIBRARY_BOOKS_COLLECTION, cleanBookId, LIBRARY_VOLUMES_SUBCOLLECTION);
+
+  if (includeDrafts) {
+    try {
+      const snap = await executeWithFreshAuthRetry(() => getDocs(volumesCol));
+      const list = sortLibraryBookVolumes(
+        snap.docs.map(d => normalizeLibraryBookVolumeDoc(cleanBookId, d.id, d.data() as Record<string, any>))
+      );
+      libraryBookVolumesCache.set(cacheKey, { data: list, timestamp: now });
+      libraryBookVolumesCache.set(`${cleanBookId}:public`, {
+        data: list.filter(v => v.status === 'published'),
+        timestamp: now
+      });
+      return list;
+    } catch (err) {
+      logFirestoreDiagnostic(
+        { operation: 'getLibraryBookVolumes(admin)', path: `${LIBRARY_BOOKS_COLLECTION}/${cleanBookId}/${LIBRARY_VOLUMES_SUBCOLLECTION}` },
+        err
+      );
+      if (!forceRefresh && cached && cached.data.length > 0) {
+        return cached.data;
+      }
+      throw err;
+    }
+  }
+
+  try {
+    const q = query(volumesCol, where('status', '==', 'published'));
+    const snap = await getDocs(q);
+    const list = sortLibraryBookVolumes(
+      snap.docs.map(d => normalizeLibraryBookVolumeDoc(cleanBookId, d.id, d.data() as Record<string, any>))
+    );
+    libraryBookVolumesCache.set(cacheKey, { data: list, timestamp: now });
+    return list;
+  } catch (err) {
+    logFirestoreDiagnostic(
+      { operation: 'getLibraryBookVolumes(public)', path: `${LIBRARY_BOOKS_COLLECTION}/${cleanBookId}/${LIBRARY_VOLUMES_SUBCOLLECTION}` },
+      err
+    );
+    if (!forceRefresh && cached && cached.data.length > 0) {
+      return cached.data;
+    }
+    throw err;
+  }
+}
+
+/**
+ * Fetches a single volume document by ID from `/libraryBooks/{bookId}/volumes/{volumeId}`.
+ * Returns `null` when volume does not exist or is an unpublished draft for a public visitor.
+ */
+export async function getLibraryBookVolumeById(
+  bookId: string,
+  volumeId: string,
+  includeDrafts = false
+): Promise<LibraryBookVolume | null> {
+  const cleanBookId = (bookId || '').trim();
+  const cleanVolId = (volumeId || '').trim();
+  if (!cleanBookId || !cleanVolId) return null;
+
+  const cacheKey = `${cleanBookId}:${includeDrafts ? 'admin' : 'public'}`;
+  const cached = libraryBookVolumesCache.get(cacheKey);
+  if (cached && cached.data.length > 0) {
+    const match = cached.data.find(v => v.id === cleanVolId);
+    if (match && (match.status === 'published' || includeDrafts)) {
+      return match;
+    }
+  }
+
+  const volPath = `${LIBRARY_BOOKS_COLLECTION}/${cleanBookId}/${LIBRARY_VOLUMES_SUBCOLLECTION}/${cleanVolId}`;
+  try {
+    const snap = includeDrafts
+      ? await executeWithFreshAuthRetry(() =>
+          getDoc(doc(db, LIBRARY_BOOKS_COLLECTION, cleanBookId, LIBRARY_VOLUMES_SUBCOLLECTION, cleanVolId))
+        )
+      : await getDoc(doc(db, LIBRARY_BOOKS_COLLECTION, cleanBookId, LIBRARY_VOLUMES_SUBCOLLECTION, cleanVolId));
+
+    if (!snap.exists()) return null;
+    const volume = normalizeLibraryBookVolumeDoc(cleanBookId, snap.id, snap.data() as Record<string, any>);
+    if (volume.status === 'published' || includeDrafts) {
+      return volume;
+    }
+    return null;
+  } catch (err) {
+    const errCode = String((err as any)?.code || '').toLowerCase();
+    // Under Master Gate rules, reading a draft/non-existent volume as a public user throws permission-denied.
+    // Verify via published list query whether public read works: if yes, treat this volume as draft/not-found (null).
+    if (!includeDrafts && errCode.includes('permission-denied')) {
+      try {
+        const pubVolumes = await getLibraryBookVolumes(cleanBookId, false, false);
+        const found = pubVolumes.find(v => v.id === cleanVolId);
+        return found || null;
+      } catch {
+        // Real permission issue on collection -> surface original error
+      }
+    }
+    logFirestoreDiagnostic({ operation: 'getLibraryBookVolumeById', path: volPath }, err);
+    throw err;
+  }
+}
+
+/**
+ * Creates or updates a single volume independently under `/libraryBooks/{bookId}/volumes/{volumeId}`.
+ * Never overwrites sibling volumes.
+ */
+export async function saveLibraryBookVolume(
+  bookId: string,
+  volume: Partial<LibraryBookVolume> & { title: string }
+): Promise<string> {
+  const cleanBookId = (bookId || '').trim();
+  if (!cleanBookId) {
+    throw new Error('ID kitab induk wajib tersedia saat menyimpan jilid.');
+  }
+
+  const id = volume.id || `vol-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  const path = `${LIBRARY_BOOKS_COLLECTION}/${cleanBookId}/${LIBRARY_VOLUMES_SUBCOLLECTION}/${id}`;
+  logCrudDiagnostic('saveLibraryBookVolume', path, 'start');
+
+  const sourceType = volume.sourceType === 'google_drive' ? 'google_drive' : 'internal';
+  const status: 'published' | 'draft' = volume.status === 'draft' ? 'draft' : 'published';
+  const volumeNumber = Math.max(1, Math.floor(Number(volume.volumeNumber) || 1));
+  const order = Math.max(1, Math.floor(Number(volume.order) || volumeNumber));
+  const now = new Date().toISOString();
+
+  let sanitizedContent = '';
+  let readingTimeMinutes = 1;
+  if (sourceType === 'internal') {
+    const sanitized = sanitizeRichTextHtml(volume.content || '');
+    sanitizedContent = normalizeArticleHtmlImages(sanitized);
+    readingTimeMinutes = estimateBookReadingMinutes(sanitizedContent);
+  }
+
+  const data: Record<string, any> = {
+    id,
+    bookId: cleanBookId,
+    volumeNumber,
+    order,
+    title: volume.title.trim(),
+    titleAr: (volume.titleAr || '').trim(),
+    sourceType,
+    googleDriveUrl: sourceType === 'google_drive' ? (volume.googleDriveUrl || '').trim() : '',
+    content: sourceType === 'internal' ? sanitizedContent : '',
+    status,
+    readingTimeMinutes,
+    publishedAt: status === 'published' ? (volume.publishedAt || now) : (volume.publishedAt || ''),
+    createdAt: volume.createdAt || now,
+    updatedAt: now
+  };
+
+  const serializedSize = JSON.stringify(data).length;
+  if (serializedSize > 950000) {
+    throw new Error(
+      `Ukuran dokumen jilid (${Math.round(serializedSize / 1024)} KB) melebihi batas aman 1 MB Cloud Firestore. Gunakan tautan gambar yang terkompresi atau tautan eksternal.`
+    );
+  }
+
+  try {
+    const volRef = doc(db, LIBRARY_BOOKS_COLLECTION, cleanBookId, LIBRARY_VOLUMES_SUBCOLLECTION, id);
+    await executeWithFreshAuthRetry(() => setDoc(volRef, data, { merge: true }));
+
+    try {
+      const verifySnap = await getDocFromServer(volRef);
+      if (verifySnap.exists()) {
+        logCrudDiagnostic(
+          `saveLibraryBookVolume Server Verification [Book: ${cleanBookId}, Vol: ${id}, Status: ${status}, Type: ${sourceType}]`,
+          path,
+          'success'
+        );
+      }
+    } catch (vErr) {
+      console.warn('[saveLibraryBookVolume] Server verification read-back notice:', vErr);
+    }
+
+    try {
+      await syncParentBookVolumeCounts(cleanBookId);
+    } catch (syncErr) {
+      console.warn('[saveLibraryBookVolume] Parent count sync notice:', syncErr);
+    }
+
+    invalidateServicesCache('library');
+    logCrudDiagnostic('saveLibraryBookVolume', path, 'success');
+    return id;
+  } catch (error) {
+    logCrudDiagnostic('saveLibraryBookVolume', path, 'failed', error);
+    handleFirestoreError(error, OperationType.WRITE, path);
+    throw error;
+  }
+}
+
+/**
+ * Deletes a single volume independently without modifying any other volume's content.
+ */
+export async function deleteLibraryBookVolume(bookId: string, volumeId: string): Promise<void> {
+  const cleanBookId = (bookId || '').trim();
+  const cleanVolId = (volumeId || '').trim();
+  const path = `${LIBRARY_BOOKS_COLLECTION}/${cleanBookId}/${LIBRARY_VOLUMES_SUBCOLLECTION}/${cleanVolId}`;
+  logCrudDiagnostic('deleteLibraryBookVolume', path, 'start');
+
+  try {
+    await executeWithFreshAuthRetry(() =>
+      deleteDoc(doc(db, LIBRARY_BOOKS_COLLECTION, cleanBookId, LIBRARY_VOLUMES_SUBCOLLECTION, cleanVolId))
+    );
+
+    try {
+      await syncParentBookVolumeCounts(cleanBookId);
+    } catch (syncErr) {
+      console.warn('[deleteLibraryBookVolume] Parent count sync notice:', syncErr);
+    }
+
+    invalidateServicesCache('library');
+    logCrudDiagnostic('deleteLibraryBookVolume', path, 'success');
+  } catch (error) {
+    logCrudDiagnostic('deleteLibraryBookVolume', path, 'failed', error);
+    handleFirestoreError(error, OperationType.DELETE, path);
+    throw error;
+  }
+}
+
+/**
+ * Atomically persists a reordered list of volumes for a multi-volume book via writeBatch.
+ * Updates only `order`, `volumeNumber`, and `updatedAt` so no volume's content/URL is ever overwritten.
+ */
+export async function reorderLibraryBookVolumes(
+  bookId: string,
+  orderedVolumes: Array<Pick<LibraryBookVolume, 'id' | 'order' | 'volumeNumber'>>
+): Promise<void> {
+  const cleanBookId = (bookId || '').trim();
+  const path = `${LIBRARY_BOOKS_COLLECTION}/${cleanBookId}/${LIBRARY_VOLUMES_SUBCOLLECTION}`;
+  logCrudDiagnostic('reorderLibraryBookVolumes', path, 'start');
+
+  try {
+    const batch = writeBatch(db);
+    const now = new Date().toISOString();
+
+    orderedVolumes.forEach((vol, idx) => {
+      const volRef = doc(db, LIBRARY_BOOKS_COLLECTION, cleanBookId, LIBRARY_VOLUMES_SUBCOLLECTION, vol.id);
+      batch.update(volRef, {
+        order: idx + 1,
+        volumeNumber: idx + 1,
+        updatedAt: now
+      });
+    });
+
+    batch.update(doc(db, LIBRARY_BOOKS_COLLECTION, cleanBookId), {
+      updatedAt: now
+    });
+
+    await executeWithFreshAuthRetry(() => batch.commit());
+    invalidateServicesCache('library');
+    logCrudDiagnostic('reorderLibraryBookVolumes', path, 'success');
+  } catch (error) {
+    logCrudDiagnostic('reorderLibraryBookVolumes', path, 'failed', error);
+    handleFirestoreError(error, OperationType.WRITE, path);
     throw error;
   }
 }

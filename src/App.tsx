@@ -45,7 +45,7 @@ import { PublicQAView } from './components/consultation/PublicQAView';
 import { InstructorProfileView } from './components/profile/InstructorProfileView';
 import { SearchResultsView } from './components/search/SearchResultsView';
 import { UnsubscribePreferencesView } from './components/student/UnsubscribePreferencesView';
-import { Course, Category, Session, Quiz, Enrollment, BlogPost, LibraryBook } from './types';
+import { Course, Category, Session, Quiz, Enrollment, BlogPost, LibraryBook, LibraryBookVolume } from './types';
 import AOS from 'aos';
 import 'aos/dist/aos.css';
 import {
@@ -60,6 +60,8 @@ import {
   getBlogPostBySlug,
   getLibraryBooks,
   getLibraryBookBySlugOrId,
+  getLibraryBookVolumes,
+  getLibraryBookVolumeById,
   invalidateServicesCache
 } from './firebase/services';
 import {
@@ -82,7 +84,8 @@ import { recordLastReadArticle } from './utils/articleHistoryHelper';
 import {
   classifyLibraryLoadError,
   LibraryLoadErrorInfo,
-  matchLibraryBookByIdentifier
+  matchLibraryBookByIdentifier,
+  filterPublicLibraryVolumes
 } from './utils/libraryHelper';
 
 function MainApp() {
@@ -126,6 +129,10 @@ function MainApp() {
   const [selectedQuiz, setSelectedQuiz] = useState<Quiz | null>(null);
   const [selectedBlogPost, setSelectedBlogPost] = useState<BlogPost | null>(null);
   const [selectedLibraryBook, setSelectedLibraryBook] = useState<LibraryBook | null>(null);
+  const [selectedLibraryVolume, setSelectedLibraryVolume] = useState<LibraryBookVolume | null>(null);
+  const [selectedLibrarySiblingVolumes, setSelectedLibrarySiblingVolumes] = useState<LibraryBookVolume[]>([]);
+  const [libraryVolumeResolving, setLibraryVolumeResolving] = useState<boolean>(false);
+  const [libraryVolumeNotFound, setLibraryVolumeNotFound] = useState<boolean>(false);
   const [libraryBookResolving, setLibraryBookResolving] = useState<boolean>(false);
   const [libraryBookNotFound, setLibraryBookNotFound] = useState<boolean>(false);
   const [libraryBookError, setLibraryBookError] = useState<LibraryLoadErrorInfo | null>(null);
@@ -246,6 +253,8 @@ function MainApp() {
   selectedBlogPostRef.current = selectedBlogPost;
   const selectedLibraryBookRef = useRef<LibraryBook | null>(selectedLibraryBook);
   selectedLibraryBookRef.current = selectedLibraryBook;
+  const selectedLibraryVolumeRef = useRef<LibraryBookVolume | null>(selectedLibraryVolume);
+  selectedLibraryVolumeRef.current = selectedLibraryVolume;
   const selectedQuizRef = useRef<Quiz | null>(selectedQuiz);
   selectedQuizRef.current = selectedQuiz;
   const targetQaIdRef = useRef<string | null>(targetQaId);
@@ -283,8 +292,63 @@ function MainApp() {
       if (route.view === 'library-detail' || route.view === 'library-read') {
         const targetView = route.view;
         const slugOrId = route.libraryBookSlug || route.libraryBookId;
+        const targetVolumeId = targetView === 'library-read' ? route.libraryVolumeId || null : null;
         setLibraryBookNotFound(false);
         setLibraryBookError(null);
+        setLibraryVolumeNotFound(false);
+
+        const resolveTargetVolume = (book: LibraryBook) => {
+          if (!targetVolumeId) {
+            setSelectedLibraryVolume(null);
+            setLibraryVolumeResolving(false);
+            setLibraryVolumeNotFound(false);
+            return;
+          }
+
+          const currentVol = selectedLibraryVolumeRef.current;
+          if (
+            currentVol &&
+            currentVol.id === targetVolumeId &&
+            currentVol.bookId === book.id &&
+            (currentVol.status === 'published' || adminFlag)
+          ) {
+            setLibraryVolumeResolving(false);
+            setLibraryVolumeNotFound(false);
+            getLibraryBookVolumes(book.id, adminFlag, false)
+              .then(vols => {
+                setSelectedLibrarySiblingVolumes(adminFlag ? vols : filterPublicLibraryVolumes(vols));
+              })
+              .catch(() => {});
+            return;
+          }
+
+          setSelectedLibraryVolume(null);
+          setLibraryVolumeResolving(true);
+          setLibraryVolumeNotFound(false);
+
+          Promise.all([
+            getLibraryBookVolumeById(book.id, targetVolumeId, adminFlag),
+            getLibraryBookVolumes(book.id, adminFlag, false).catch(() => [] as LibraryBookVolume[])
+          ])
+            .then(([vol, allVols]) => {
+              if (vol && (vol.status === 'published' || adminFlag)) {
+                setSelectedLibraryVolume(vol);
+                setSelectedLibrarySiblingVolumes(adminFlag ? allVols : filterPublicLibraryVolumes(allVols));
+                setLibraryVolumeNotFound(false);
+              } else {
+                setSelectedLibraryVolume(null);
+                setLibraryVolumeNotFound(true);
+              }
+            })
+            .catch(err => {
+              setSelectedLibraryVolume(null);
+              setLibraryVolumeNotFound(false);
+              setLibraryBookError(classifyLibraryLoadError(err));
+            })
+            .finally(() => {
+              setLibraryVolumeResolving(false);
+            });
+        };
 
         if (booksList.length > 0 && slugOrId) {
           const targetBook = matchLibraryBookByIdentifier(booksList, slugOrId);
@@ -292,6 +356,7 @@ function MainApp() {
             setSelectedLibraryBook(targetBook);
             setLibraryBookResolving(false);
             setLibraryBookError(null);
+            resolveTargetVolume(targetBook);
             setCurrentView(targetView);
             return;
           }
@@ -305,12 +370,14 @@ function MainApp() {
         ) {
           setLibraryBookResolving(false);
           setLibraryBookError(null);
+          resolveTargetVolume(selectedLibraryBookRef.current);
           setCurrentView(targetView);
           return;
         }
 
         if (slugOrId) {
           setSelectedLibraryBook(null);
+          setSelectedLibraryVolume(null);
           setLibraryBookResolving(true);
           getLibraryBookBySlugOrId(slugOrId, adminFlag)
             .then(book => {
@@ -318,14 +385,17 @@ function MainApp() {
                 setSelectedLibraryBook(book);
                 setLibraryBookNotFound(false);
                 setLibraryBookError(null);
+                resolveTargetVolume(book);
               } else {
                 setSelectedLibraryBook(null);
+                setSelectedLibraryVolume(null);
                 setLibraryBookError(null);
                 setLibraryBookNotFound(true);
               }
             })
             .catch(err => {
               setSelectedLibraryBook(null);
+              setSelectedLibraryVolume(null);
               setLibraryBookNotFound(false);
               setLibraryBookError(classifyLibraryLoadError(err));
             })
@@ -334,6 +404,7 @@ function MainApp() {
             });
         } else {
           setLibraryBookResolving(false);
+          setSelectedLibraryVolume(null);
           setLibraryBookError(null);
           setLibraryBookNotFound(true);
         }
@@ -469,6 +540,7 @@ function MainApp() {
             blogPostSlug: selectedBlogPostRef.current?.slug || null,
             libraryBookId: selectedLibraryBookRef.current?.id || null,
             libraryBookSlug: selectedLibraryBookRef.current?.slug || null,
+            libraryVolumeId: selectedLibraryVolumeRef.current?.id || null,
             genre: selectedGenreRef.current || null,
             qaId: targetQaIdRef.current || null,
             consultationId: targetConsultationIdRef.current || null,
@@ -507,6 +579,7 @@ function MainApp() {
         blogPostSlug: nextRoute.blogPostSlug ?? null,
         libraryBookId: nextRoute.libraryBookId ?? null,
         libraryBookSlug: nextRoute.libraryBookSlug ?? null,
+        libraryVolumeId: nextRoute.libraryVolumeId ?? null,
         genre: nextRoute.genre ?? null,
         qaId: nextRoute.qaId ?? null,
         consultationId: nextRoute.consultationId ?? null,
@@ -666,7 +739,7 @@ function MainApp() {
       AOS.refreshHard();
     }, 150);
     return () => clearTimeout(timer);
-  }, [currentView, selectedCourse, selectedSession, selectedBlogPost, selectedLibraryBook, courses.length, blogPosts.length, libraryBooks.length, loading]);
+  }, [currentView, selectedCourse, selectedSession, selectedBlogPost, selectedLibraryBook, selectedLibraryVolume, courses.length, blogPosts.length, libraryBooks.length, loading]);
 
   // Fetch initial categories, published courses, and blog posts from Cloud Firestore
   const loadData = async (isManualRetry = false, forceRefresh = false) => {
@@ -935,25 +1008,56 @@ function MainApp() {
 
   const handleSelectLibraryBook = (book: LibraryBook) => {
     setSelectedLibraryBook(book);
+    setSelectedLibraryVolume(null);
+    setLibraryVolumeNotFound(false);
+    setLibraryVolumeResolving(false);
     setLibraryBookNotFound(false);
     setLibraryBookError(null);
     setLibraryBookResolving(false);
     navigateTo({
       view: 'library-detail',
       libraryBookId: book.id,
-      libraryBookSlug: book.slug
+      libraryBookSlug: book.slug,
+      libraryVolumeId: null
     });
   };
 
   const handleOpenLibraryReader = (book: LibraryBook) => {
     setSelectedLibraryBook(book);
+    setSelectedLibraryVolume(null);
+    setLibraryVolumeNotFound(false);
+    setLibraryVolumeResolving(false);
     setLibraryBookNotFound(false);
     setLibraryBookError(null);
     setLibraryBookResolving(false);
     navigateTo({
       view: 'library-read',
       libraryBookId: book.id,
-      libraryBookSlug: book.slug
+      libraryBookSlug: book.slug,
+      libraryVolumeId: null
+    });
+  };
+
+  const handleOpenLibraryVolumeReader = (
+    book: LibraryBook,
+    volume: LibraryBookVolume,
+    siblingVolumes?: LibraryBookVolume[]
+  ) => {
+    setSelectedLibraryBook(book);
+    setSelectedLibraryVolume(volume);
+    if (Array.isArray(siblingVolumes)) {
+      setSelectedLibrarySiblingVolumes(siblingVolumes);
+    }
+    setLibraryBookNotFound(false);
+    setLibraryBookError(null);
+    setLibraryBookResolving(false);
+    setLibraryVolumeNotFound(false);
+    setLibraryVolumeResolving(false);
+    navigateTo({
+      view: 'library-read',
+      libraryBookId: book.id,
+      libraryBookSlug: book.slug,
+      libraryVolumeId: volume.id
     });
   };
 
@@ -991,7 +1095,7 @@ function MainApp() {
       : currentView === 'library-detail'
       ? `library-detail:${selectedLibraryBook?.id || ''}`
       : currentView === 'library-read'
-      ? `library-read:${selectedLibraryBook?.id || ''}`
+      ? `library-read:${selectedLibraryBook?.id || ''}:${selectedLibraryVolume?.id || ''}`
       : currentView === 'blog'
       ? `blog:${selectedGenre || 'catalog'}`
       : currentView === 'course-detail'
@@ -1424,6 +1528,9 @@ function MainApp() {
                         onOpenReader={(book) => {
                           handleOpenLibraryReader(book);
                         }}
+                        onOpenVolumeReader={(book, volume, visibleVolumes) => {
+                          handleOpenLibraryVolumeReader(book, volume, visibleVolumes);
+                        }}
                       />
                     ) : libraryBookError && !libraryBookResolving ? (
                       <div
@@ -1487,24 +1594,65 @@ function MainApp() {
                     )
                   )}
 
-                  {/* VIEW 8D: LIBRARY DIGITAL INTERNAL BOOK READER (/library/:slug/baca) */}
+                  {/* VIEW 8D: LIBRARY DIGITAL INTERNAL BOOK / VOLUME READER (/library/:slug/baca or /library/:slug/jilid/:volumeId) */}
                   {currentView === 'library-read' && (
                     selectedLibraryBook ? (
-                      <LibraryDetailView
-                        book={selectedLibraryBook}
-                        onBackToDetail={() =>
-                          handleBackOrNavigate(['library-detail'], {
-                            view: 'library-detail',
-                            libraryBookId: selectedLibraryBook.id,
-                            libraryBookSlug: selectedLibraryBook.slug
-                          })
-                        }
-                        onBack={() =>
-                          handleBackOrNavigate(['library', 'home'], {
-                            view: 'library'
-                          })
-                        }
-                      />
+                      libraryVolumeResolving ? (
+                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center space-y-4">
+                          <div className="w-10 h-10 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto" />
+                          <p className="text-sm text-stone-600 dark:text-stone-400 font-medium">
+                            Memuat naskah jilid kitab...
+                          </p>
+                        </div>
+                      ) : libraryVolumeNotFound ? (
+                        <div className="max-w-xl mx-auto px-4 py-14 text-center">
+                          <div className="nb-card bg-white dark:bg-[#0D2B36] p-8 space-y-4">
+                            <h2 className="text-lg font-bold font-serif text-[#171717] dark:text-[#CEFEF1]">
+                              Jilid Kitab Tidak Ditemukan
+                            </h2>
+                            <p className="text-xs sm:text-sm text-[#525855] dark:text-[#A6D6C9] leading-relaxed">
+                              Jilid yang Anda cari tidak tersedia atau belum dipublikasikan untuk umum.
+                            </p>
+                            <div className="flex flex-wrap items-center justify-center gap-2.5 pt-1">
+                              <button
+                                type="button"
+                                onClick={() => handleSelectLibraryBook(selectedLibraryBook)}
+                                className="nb-btn nb-btn-primary px-5 py-2.5 text-xs cursor-pointer"
+                              >
+                                Lihat Daftar Jilid
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => navigateTo({ view: 'library' })}
+                                className="nb-btn nb-btn-secondary px-5 py-2.5 text-xs cursor-pointer"
+                              >
+                                Kembali ke Library Digital
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <LibraryDetailView
+                          book={selectedLibraryBook}
+                          volume={selectedLibraryVolume}
+                          siblingVolumes={selectedLibrarySiblingVolumes}
+                          onSelectVolume={(vol) => {
+                            handleOpenLibraryVolumeReader(selectedLibraryBook, vol, selectedLibrarySiblingVolumes);
+                          }}
+                          onBackToDetail={() =>
+                            handleBackOrNavigate(['library-detail'], {
+                              view: 'library-detail',
+                              libraryBookId: selectedLibraryBook.id,
+                              libraryBookSlug: selectedLibraryBook.slug
+                            })
+                          }
+                          onBack={() =>
+                            handleBackOrNavigate(['library', 'home'], {
+                              view: 'library'
+                            })
+                          }
+                        />
+                      )
                     ) : libraryBookError && !libraryBookResolving ? (
                       <div
                         data-testid="library-book-reader-error"

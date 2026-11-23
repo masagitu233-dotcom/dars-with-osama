@@ -18,11 +18,20 @@ import {
   ListOrdered,
   Image as ImageIcon,
   PenLine,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Layers,
+  ArrowRight
 } from 'lucide-react';
-import { LibraryBook, LibraryCoverAspectRatio, LibraryBookSourceType, LibraryVisitStats } from '../../types';
+import {
+  LibraryBook,
+  LibraryBookCollectionType,
+  LibraryCoverAspectRatio,
+  LibraryBookSourceType,
+  LibraryVisitStats
+} from '../../types';
 import { RichTextEditor } from './RichTextEditor';
 import { AdminEditorModalShell, AdminEditorTab } from './AdminEditorModalShell';
+import { AdminLibraryVolumesManager } from './AdminLibraryVolumesManager';
 import {
   countDocumentWords,
   buildLibraryBookDirtySnapshot,
@@ -40,7 +49,9 @@ import {
   validateLibraryCoverFile,
   validateLibraryCoverUrl,
   validateLibraryExternalDriveUrl,
-  parseLibraryBookContent
+  parseLibraryBookContent,
+  isMultiVolumeLibraryBook,
+  normalizeLibraryCollectionType
 } from '../../utils/libraryHelper';
 import { extractGoogleDriveFileId, getGoogleDriveViewerUrl, isGoogleDriveUrl } from '../../utils/googleDriveHelper';
 
@@ -63,9 +74,16 @@ export const AdminLibraryManager: React.FC<AdminLibraryManagerProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'published' | 'draft'>('all');
-  const [sourceFilter, setSourceFilter] = useState<'all' | LibraryBookSourceType>('all');
+  const [sourceFilter, setSourceFilter] = useState<'all' | LibraryBookSourceType | 'multi_volume'>('all');
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [refreshingStats, setRefreshingStats] = useState(false);
+
+  // Dedicated volume manager view for multi-volume books
+  const [managedMultiVolumeBookId, setManagedMultiVolumeBookId] = useState<string | null>(null);
+  const managedMultiVolumeBook = useMemo(
+    () => (managedMultiVolumeBookId ? books.find(b => b.id === managedMultiVolumeBookId) || null : null),
+    [books, managedMultiVolumeBookId]
+  );
 
   // Delete modal
   const [bookToDelete, setBookToDelete] = useState<LibraryBook | null>(null);
@@ -94,11 +112,14 @@ export const AdminLibraryManager: React.FC<AdminLibraryManagerProps> = ({
     description: '',
     coverImageUrl: '',
     coverAspectRatio: '3:4',
+    collectionType: 'single',
     sourceType: 'internal',
     googleDriveUrl: '',
     content: '',
     status: 'published'
   });
+
+  const isFormMultiVolume = formData.collectionType === 'multi_volume';
 
   const publishedCount = useMemo(() => books.filter(b => b.status === 'published').length, [books]);
   const draftCount = useMemo(() => books.filter(b => b.status === 'draft').length, [books]);
@@ -113,16 +134,19 @@ export const AdminLibraryManager: React.FC<AdminLibraryManagerProps> = ({
         (book.author && book.author.toLowerCase().includes(q)) ||
         (book.slug && book.slug.toLowerCase().includes(q));
       const matchesStatus = statusFilter === 'all' || book.status === statusFilter;
-      const matchesSource = sourceFilter === 'all' || book.sourceType === sourceFilter;
+      const isMulti = isMultiVolumeLibraryBook(book);
+      const matchesSource =
+        sourceFilter === 'all' ||
+        (sourceFilter === 'multi_volume' ? isMulti : !isMulti && book.sourceType === sourceFilter);
       return matchesSearch && matchesStatus && matchesSource;
     });
   }, [books, searchQuery, statusFilter, sourceFilter]);
 
-  // Live TOC preview for internal books inside editor modal
+  // Live TOC preview for single internal books inside editor modal
   const liveTocPreview = useMemo(() => {
-    if (formData.sourceType !== 'internal') return null;
+    if (isFormMultiVolume || formData.sourceType !== 'internal') return null;
     return parseLibraryBookContent(formData.content || '');
-  }, [formData.sourceType, formData.content]);
+  }, [isFormMultiVolume, formData.sourceType, formData.content]);
 
   const currentFormSnapshot = useMemo(
     () => buildLibraryBookDirtySnapshot(formData),
@@ -135,9 +159,18 @@ export const AdminLibraryManager: React.FC<AdminLibraryManagerProps> = ({
   );
 
   const bookWordCount = useMemo(
-    () => (formData.sourceType === 'internal' ? countDocumentWords(formData.content) : null),
-    [formData.sourceType, formData.content]
+    () => (!isFormMultiVolume && formData.sourceType === 'internal' ? countDocumentWords(formData.content) : null),
+    [isFormMultiVolume, formData.sourceType, formData.content]
   );
+
+  const handleSwitchCollectionType = (nextType: LibraryBookCollectionType) => {
+    setFormData(prev => ({ ...prev, collectionType: nextType }));
+    if (nextType === 'multi_volume') {
+      setActiveEditorTab('metadata');
+    } else if (activeEditorTab === 'daftar_isi' && formData.sourceType === 'google_drive') {
+      setActiveEditorTab('naskah');
+    }
+  };
 
   const handleOpenAddModal = () => {
     setFeedback(null);
@@ -153,6 +186,7 @@ export const AdminLibraryManager: React.FC<AdminLibraryManagerProps> = ({
       description: '',
       coverImageUrl: '',
       coverAspectRatio: '3:4',
+      collectionType: 'single',
       sourceType: 'internal',
       googleDriveUrl: '',
       content: '',
@@ -169,10 +203,11 @@ export const AdminLibraryManager: React.FC<AdminLibraryManagerProps> = ({
     setCoverError(null);
     setCoverLoadFailed(false);
     setCoverMethod(isGoogleDriveUrl(book.coverImageUrl) ? 'google_drive' : 'upload');
-    const nextFormData: Partial<LibraryBook> = { ...book };
+    const collectionType = normalizeLibraryCollectionType(book.collectionType);
+    const nextFormData: Partial<LibraryBook> = { ...book, collectionType };
     setFormData(nextFormData);
     setInitialFormSnapshot(buildLibraryBookDirtySnapshot(nextFormData));
-    setActiveEditorTab('naskah');
+    setActiveEditorTab(collectionType === 'multi_volume' ? 'metadata' : 'naskah');
     setIsModalOpen(true);
   };
 
@@ -244,9 +279,10 @@ export const AdminLibraryManager: React.FC<AdminLibraryManagerProps> = ({
     if (saving) return;
     setFeedback(null);
 
+    const collectionType: LibraryBookCollectionType = normalizeLibraryCollectionType(formData.collectionType);
     const titleText = (formData.title || '').trim();
     if (!titleText) {
-      setActiveEditorTab('naskah');
+      setActiveEditorTab(collectionType === 'multi_volume' ? 'metadata' : 'naskah');
       setFeedback({ type: 'error', text: 'Judul buku wajib diisi terlebih dahulu.' });
       modalBodyRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
       return;
@@ -278,50 +314,65 @@ export const AdminLibraryManager: React.FC<AdminLibraryManagerProps> = ({
     const sourceType: LibraryBookSourceType =
       formData.sourceType === 'google_drive' ? 'google_drive' : 'internal';
 
-    if (sourceType === 'google_drive') {
-      const driveValidation = validateLibraryExternalDriveUrl(formData.googleDriveUrl);
-      if (!driveValidation.isValid) {
-        setActiveEditorTab('naskah');
-        setFeedback({
-          type: 'error',
-          text: driveValidation.error || 'Tautan Google Drive tidak valid.'
-        });
-        modalBodyRef.current?.scrollTo({ top: 300, behavior: 'smooth' });
-        return;
-      }
-    } else {
-      const rawContent = formData.content || '';
-      const plainText = rawContent.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
-      if (!plainText && !rawContent.includes('<img')) {
-        setActiveEditorTab('naskah');
-        setFeedback({
-          type: 'error',
-          text: 'Isi naskah buku internal wajib diisi terlebih dahulu.'
-        });
-        return;
+    if (collectionType === 'single') {
+      if (sourceType === 'google_drive') {
+        const driveValidation = validateLibraryExternalDriveUrl(formData.googleDriveUrl);
+        if (!driveValidation.isValid) {
+          setActiveEditorTab('naskah');
+          setFeedback({
+            type: 'error',
+            text: driveValidation.error || 'Tautan Google Drive tidak valid.'
+          });
+          modalBodyRef.current?.scrollTo({ top: 300, behavior: 'smooth' });
+          return;
+        }
+      } else {
+        const rawContent = formData.content || '';
+        const plainText = rawContent.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+        if (!plainText && !rawContent.includes('<img')) {
+          setActiveEditorTab('naskah');
+          setFeedback({
+            type: 'error',
+            text: 'Isi naskah buku internal wajib diisi terlebih dahulu.'
+          });
+          return;
+        }
       }
     }
 
     setSaving(true);
     try {
-      await saveLibraryBook({
+      const isNewBook = !formData.id;
+      const savedId = await saveLibraryBook({
         ...formData,
         title: titleText,
         category: (formData.category || '').trim(),
         coverImageUrl: coverUrl,
         coverAspectRatio: (formData.coverAspectRatio === '9:16' ? '9:16' : '3:4') as LibraryCoverAspectRatio,
-        sourceType,
-        googleDriveUrl: sourceType === 'google_drive' ? (formData.googleDriveUrl || '').trim() : '',
-        content: sourceType === 'internal' ? (formData.content || '') : '',
+        collectionType,
+        sourceType: collectionType === 'multi_volume' ? 'internal' : sourceType,
+        googleDriveUrl: collectionType === 'single' && sourceType === 'google_drive' ? (formData.googleDriveUrl || '').trim() : '',
+        content: collectionType === 'single' && sourceType === 'internal' ? (formData.content || '') : '',
         status: targetStatus
       });
 
       setIsModalOpen(false);
       await onRefreshBooks();
-      setFeedback({
-        type: 'success',
-        text: `Buku "${titleText}" berhasil disimpan sebagai ${targetStatus === 'published' ? 'Terbit (Published)' : 'Draf (Draft)'}.`
-      });
+
+      if (collectionType === 'multi_volume') {
+        setManagedMultiVolumeBookId(savedId);
+        setFeedback({
+          type: 'success',
+          text: isNewBook
+            ? `Buku berjilid "${titleText}" berhasil dibuat. Silakan tambahkan jilid pada halaman pengelolaan jilid.`
+            : `Informasi utama buku berjilid "${titleText}" berhasil diperbarui.`
+        });
+      } else {
+        setFeedback({
+          type: 'success',
+          text: `Buku "${titleText}" berhasil disimpan sebagai ${targetStatus === 'published' ? 'Terbit (Published)' : 'Draf (Draft)'}.`
+        });
+      }
     } catch (err: any) {
       let msg = err?.message || String(err);
       try {
@@ -358,8 +409,12 @@ export const AdminLibraryManager: React.FC<AdminLibraryManagerProps> = ({
     setIsDeleting(true);
     setFeedback(null);
     const title = bookToDelete.title;
+    const deletedId = bookToDelete.id;
     try {
-      await deleteLibraryBook(bookToDelete.id);
+      await deleteLibraryBook(deletedId);
+      if (managedMultiVolumeBookId === deletedId) {
+        setManagedMultiVolumeBookId(null);
+      }
       await onRefreshBooks();
       setBookToDelete(null);
       setFeedback({
@@ -386,8 +441,135 @@ export const AdminLibraryManager: React.FC<AdminLibraryManagerProps> = ({
     formData.coverAspectRatio === '9:16' ? '9:16' : '3:4'
   );
 
+  const isCollectionTypeLocked = Boolean(
+    formData.id &&
+      normalizeLibraryCollectionType(formData.collectionType) === 'multi_volume' &&
+      (formData.volumesCount || 0) > 0
+  );
+
+  const renderCollectionTypeSelector = (compact = false) => (
+    <div
+      data-testid="admin-library-collection-type-selector"
+      className={
+        compact
+          ? 'flex flex-wrap items-center justify-between gap-2 pb-3 mb-2 border-b border-[#171717]/10 dark:border-white/10'
+          : 'p-5 sm:p-6 bg-white dark:bg-[#0E2B24] rounded-lg border-2 border-[#171717] dark:border-[#D9AC45]/45 space-y-3'
+      }
+    >
+      {compact ? (
+        <>
+          <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#525855] dark:text-[#A6D6C9]">
+            Jenis Koleksi:
+          </span>
+          <div className="inline-flex p-0.5 bg-[#FAF7F0] dark:bg-[#09211B] border-2 border-[#171717] dark:border-[#D9AC45]/50 rounded-md gap-1">
+            <button
+              type="button"
+              data-testid="admin-library-type-single-quick"
+              disabled={isCollectionTypeLocked}
+              onClick={() => handleSwitchCollectionType('single')}
+              className={`px-2.5 py-1 rounded text-[11px] font-extrabold inline-flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50 ${
+                !isFormMultiVolume
+                  ? 'bg-[#123D32] text-[#FAF7F0] dark:bg-[#D9AC45] dark:text-[#171717]'
+                  : 'text-[#525855] dark:text-[#A6D6C9] hover:text-[#171717]'
+              }`}
+            >
+              <BookOpen className="w-3 h-3" />
+              <span>Buku Biasa</span>
+            </button>
+            <button
+              type="button"
+              data-testid="admin-library-type-multivolume-quick"
+              disabled={isCollectionTypeLocked}
+              onClick={() => handleSwitchCollectionType('multi_volume')}
+              className={`px-2.5 py-1 rounded text-[11px] font-extrabold inline-flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50 ${
+                isFormMultiVolume
+                  ? 'bg-[#123D32] text-[#FAF7F0] dark:bg-[#D9AC45] dark:text-[#171717]'
+                  : 'text-[#525855] dark:text-[#A6D6C9] hover:text-[#171717]'
+              }`}
+            >
+              <Layers className="w-3 h-3" />
+              <span>Buku Berjilid</span>
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <label className="text-sm font-extrabold text-[#171717] dark:text-[#F8F3E8] block">
+              Jenis Koleksi Buku *
+            </label>
+            {isCollectionTypeLocked && (
+              <span className="text-[11px] font-bold text-[#9A3412] dark:text-[#FCD34D]">
+                Terkunci karena buku ini sudah memiliki jilid.
+              </span>
+            )}
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <button
+              type="button"
+              data-testid="admin-library-type-single"
+              disabled={isCollectionTypeLocked}
+              onClick={() => handleSwitchCollectionType('single')}
+              className={`p-3.5 rounded-lg border-2 text-left transition cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
+                !isFormMultiVolume
+                  ? 'bg-[#123D32] text-[#FAF7F0] border-[#171717] shadow-[3px_3px_0px_#171717]'
+                  : 'bg-[#FAF7F0] dark:bg-[#0D2B36] text-[#171717] dark:text-[#CEFEF1] border-[#171717]/40 dark:border-[#4CA7A1]/50'
+              }`}
+            >
+              <div className="flex items-center gap-2 font-extrabold text-xs">
+                <BookOpen className="w-4 h-4 shrink-0" />
+                <span>Buku Biasa (Tunggal / Tidak Berjilid)</span>
+              </div>
+              <p
+                className={`text-[11px] mt-1 leading-snug ${
+                  !isFormMultiVolume ? 'text-[#FAF7F0]/85' : 'text-[#525855] dark:text-[#A6D6C9]'
+                }`}
+              >
+                Satu kitab utuh dengan naskah editor internal atau satu tautan Google Drive.
+              </p>
+            </button>
+
+            <button
+              type="button"
+              data-testid="admin-library-type-multivolume"
+              disabled={isCollectionTypeLocked}
+              onClick={() => handleSwitchCollectionType('multi_volume')}
+              className={`p-3.5 rounded-lg border-2 text-left transition cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
+                isFormMultiVolume
+                  ? 'bg-[#123D32] text-[#FAF7F0] border-[#171717] shadow-[3px_3px_0px_#171717]'
+                  : 'bg-[#FAF7F0] dark:bg-[#0D2B36] text-[#171717] dark:text-[#CEFEF1] border-[#171717]/40 dark:border-[#4CA7A1]/50'
+              }`}
+            >
+              <div className="flex items-center gap-2 font-extrabold text-xs">
+                <Layers className="w-4 h-4 shrink-0" />
+                <span>Buku Berjilid (Multi-Jilid)</span>
+              </div>
+              <p
+                className={`text-[11px] mt-1 leading-snug ${
+                  isFormMultiVolume ? 'text-[#FAF7F0]/85' : 'text-[#525855] dark:text-[#A6D6C9]'
+                }`}
+              >
+                Satu sampul utama bersama untuk banyak jilid. Tiap jilid punya judul &amp; sumber sendiri (Internal atau Google Drive).
+              </p>
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+
   return (
     <div className="space-y-6 animate-fade-in font-sans">
+      {managedMultiVolumeBook ? (
+        <AdminLibraryVolumesManager
+          book={managedMultiVolumeBook}
+          onBack={() => setManagedMultiVolumeBookId(null)}
+          onEditMainBook={(b) => handleOpenEditModal(b)}
+          onPreviewBook={onPreviewBook}
+          onVolumesChanged={onRefreshBooks}
+        />
+      ) : (
+        <>
       {/* FEEDBACK BANNER */}
       {feedback && (
         <div
@@ -524,9 +706,10 @@ export const AdminLibraryManager: React.FC<AdminLibraryManagerProps> = ({
             onChange={(e) => setSourceFilter(e.target.value as any)}
             className="nb-input px-3 py-2 text-xs font-bold"
           >
-            <option value="all">Semua Sumber</option>
-            <option value="internal">Buku Internal (Editor)</option>
-            <option value="google_drive">Eksternal (Google Drive)</option>
+            <option value="all">Semua Sumber / Jenis</option>
+            <option value="internal">Buku Biasa — Internal</option>
+            <option value="google_drive">Buku Biasa — Google Drive</option>
+            <option value="multi_volume">Buku Berjilid (Multi-Jilid)</option>
           </select>
         </div>
       </div>
@@ -555,6 +738,9 @@ export const AdminLibraryManager: React.FC<AdminLibraryManagerProps> = ({
               ) : (
                 filteredBooks.map(book => {
                   const thumbAspect = getLibraryCoverAspectClass(book.coverAspectRatio);
+                  const isMultiVolume = isMultiVolumeLibraryBook(book);
+                  const totalVols = typeof book.volumesCount === 'number' ? book.volumesCount : 0;
+                  const publishedVols = typeof book.publishedVolumesCount === 'number' ? book.publishedVolumesCount : 0;
                   return (
                     <tr
                       key={book.id}
@@ -598,7 +784,17 @@ export const AdminLibraryManager: React.FC<AdminLibraryManagerProps> = ({
                       </td>
 
                       <td className="p-4">
-                        {book.sourceType === 'google_drive' ? (
+                        {isMultiVolume ? (
+                          <div className="flex flex-col items-start gap-1">
+                            <span className="nb-badge bg-[#123D32] dark:bg-[#D9AC45] text-[#FAF7F0] dark:text-[#171717] border-[#171717] inline-flex items-center gap-1">
+                              <Layers className="w-3 h-3" />
+                              <span>Berjilid ({totalVols} Jilid)</span>
+                            </span>
+                            <span className="text-[10px] font-semibold text-slate-gray dark:text-[#A6D6C9]">
+                              {publishedVols} terbit • {Math.max(0, totalVols - publishedVols)} draf
+                            </span>
+                          </div>
+                        ) : book.sourceType === 'google_drive' ? (
                           <span className="nb-badge bg-[#EFE5D2] dark:bg-[#001722] text-[#171717] dark:text-[#CEFEF1] border-[#171717] dark:border-[#4CA7A1] inline-flex items-center gap-1">
                             <ExternalLink className="w-3 h-3" />
                             <span>Google Drive</span>
@@ -644,7 +840,7 @@ export const AdminLibraryManager: React.FC<AdminLibraryManagerProps> = ({
                             <Eye className="w-4 h-4" />
                           </button>
 
-                          {book.sourceType === 'google_drive' && book.googleDriveUrl && (
+                          {!isMultiVolume && book.sourceType === 'google_drive' && book.googleDriveUrl && (
                             <a
                               href={book.googleDriveUrl}
                               target="_blank"
@@ -656,14 +852,30 @@ export const AdminLibraryManager: React.FC<AdminLibraryManagerProps> = ({
                             </a>
                           )}
 
-                          <button
-                            type="button"
-                            onClick={() => handleOpenEditModal(book)}
-                            className="nb-btn nb-btn-gold p-1.5 cursor-pointer"
-                            title="Edit Buku"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
+                          {isMultiVolume ? (
+                            <button
+                              type="button"
+                              data-testid={`admin-manage-volumes-${book.id}`}
+                              onClick={() => {
+                                setFeedback(null);
+                                setManagedMultiVolumeBookId(book.id);
+                              }}
+                              className="nb-btn nb-btn-gold px-2.5 py-1.5 text-[11px] cursor-pointer"
+                              title="Buka Halaman Pengelolaan Jilid"
+                            >
+                              <Layers className="w-3.5 h-3.5" />
+                              <span>Kelola Jilid</span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditModal(book)}
+                              className="nb-btn nb-btn-gold p-1.5 cursor-pointer"
+                              title="Edit Buku"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                          )}
 
                           <button
                             type="button"
@@ -684,6 +896,8 @@ export const AdminLibraryManager: React.FC<AdminLibraryManagerProps> = ({
           </table>
         </div>
       </div>
+        </>
+      )}
 
       {/* ADD / EDIT BOOK MULTI-PAGE DOCUMENT STUDIO MODAL */}
       <AdminEditorModalShell
@@ -692,187 +906,256 @@ export const AdminLibraryManager: React.FC<AdminLibraryManagerProps> = ({
           setActiveEditorTab('naskah');
           setIsModalOpen(false);
         }}
-        title={formData.id ? 'Edit Kitab Library' : 'Kitab Library Baru'}
+        title={
+          isFormMultiVolume
+            ? formData.id
+              ? 'Edit Info Utama Kitab Berjilid'
+              : 'Kitab Berjilid Baru'
+            : formData.id
+            ? 'Edit Kitab Library'
+            : 'Kitab Library Baru'
+        }
         subtitle={formData.title?.trim() || 'Dokumen kitab tanpa judul'}
-        icon={<Library className="w-4 h-4 sm:w-5 sm:h-5 text-[#D9AC45]" />}
+        icon={
+          isFormMultiVolume ? (
+            <Layers className="w-4 h-4 sm:w-5 sm:h-5 text-[#D9AC45]" />
+          ) : (
+            <Library className="w-4 h-4 sm:w-5 sm:h-5 text-[#D9AC45]" />
+          )
+        }
         hasUnsavedChanges={hasUnsavedChanges}
         wordCount={bookWordCount}
         feedback={feedback}
         onDismissFeedback={() => setFeedback(null)}
         activeTabId={
-          formData.sourceType === 'google_drive' && activeEditorTab === 'daftar_isi'
+          isFormMultiVolume
+            ? 'metadata'
+            : formData.sourceType === 'google_drive' && activeEditorTab === 'daftar_isi'
             ? 'naskah'
             : activeEditorTab
         }
         onTabChange={(id) => setActiveEditorTab(id as 'naskah' | 'metadata' | 'daftar_isi')}
         testId="admin-library-editor-modal"
         tabs={([
-          {
-            id: 'naskah',
-            label: formData.sourceType === 'google_drive' ? 'Sumber Google Drive' : 'Naskah Kitab',
-            shortLabel: formData.sourceType === 'google_drive' ? 'Sumber' : 'Naskah',
-            icon: formData.sourceType === 'google_drive' ? <ExternalLink className="w-3.5 h-3.5" /> : <PenLine className="w-3.5 h-3.5" />,
-            content:
-              formData.sourceType === 'google_drive' ? (
-                <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain bg-white dark:bg-[#0D2520]">
-                  <div className="max-w-[74ch] mx-auto px-5 sm:px-10 lg:px-12 py-8 sm:py-12 space-y-6">
-                    {/* Frameless Title & Arabic Title */}
-                    <div className="pb-5 border-b border-[#171717]/12 dark:border-white/12 space-y-2.5">
-                      <input
-                        type="text"
-                        aria-label="Judul Buku"
-                        value={formData.title || ''}
-                        onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                        placeholder="Judul Kitab / Buku..."
-                        className="w-full bg-transparent border-0 p-0 text-2xl sm:text-3xl lg:text-[2.1rem] font-extrabold font-serif-brand leading-tight tracking-tight text-[#171717] dark:text-[#F8F3E8] placeholder:text-[#171717]/25 dark:placeholder:text-[#F8F3E8]/25 focus:outline-hidden"
-                      />
-                      <input
-                        type="text"
-                        aria-label="Judul Bahasa Arab (Opsional)"
-                        value={formData.titleAr || ''}
-                        onChange={(e) => setFormData(prev => ({ ...prev, titleAr: e.target.value }))}
-                        placeholder="Judul Bahasa Arab (opsional) — آدَابُ طَالِبِ العِلْمِ..."
-                        dir="rtl"
-                        className="w-full bg-transparent border-0 p-0 text-lg sm:text-xl font-amiri font-bold text-[#06251D]/85 dark:text-[#D9AC45]/90 placeholder:text-[#171717]/25 dark:placeholder:text-[#D9AC45]/30 focus:outline-hidden"
-                      />
-                    </div>
+          ...(!isFormMultiVolume
+            ? [
+                {
+                  id: 'naskah',
+                  label: formData.sourceType === 'google_drive' ? 'Sumber Google Drive' : 'Naskah Kitab',
+                  shortLabel: formData.sourceType === 'google_drive' ? 'Sumber' : 'Naskah',
+                  icon:
+                    formData.sourceType === 'google_drive' ? (
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    ) : (
+                      <PenLine className="w-3.5 h-3.5" />
+                    ),
+                  content:
+                    formData.sourceType === 'google_drive' ? (
+                      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain bg-white dark:bg-[#0D2520]">
+                        <div className="max-w-[74ch] mx-auto px-5 sm:px-10 lg:px-12 py-8 sm:py-12 space-y-6">
+                          {!formData.id && renderCollectionTypeSelector(true)}
 
-                    {/* Google Drive Source Box */}
-                    <div className="p-5 sm:p-6 bg-[#FAF7F0] dark:bg-[#0B2D26] rounded-lg border-2 border-[#171717] dark:border-[#D9AC45]/50 space-y-3.5">
-                      <div className="flex items-center justify-between gap-2 flex-wrap">
-                        <div className="flex items-center gap-2 text-sm font-extrabold text-[#171717] dark:text-[#F8F3E8]">
-                          <ExternalLink className="w-4 h-4 text-[#123D32] dark:text-[#D9AC45]" />
-                          <span>Tautan Google Drive Buku *</span>
+                          {/* Frameless Title & Arabic Title */}
+                          <div className="pb-5 border-b border-[#171717]/12 dark:border-white/12 space-y-2.5">
+                            <input
+                              type="text"
+                              aria-label="Judul Buku"
+                              value={formData.title || ''}
+                              onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                              placeholder="Judul Kitab / Buku..."
+                              className="w-full bg-transparent border-0 p-0 text-2xl sm:text-3xl lg:text-[2.1rem] font-extrabold font-serif-brand leading-tight tracking-tight text-[#171717] dark:text-[#F8F3E8] placeholder:text-[#171717]/25 dark:placeholder:text-[#F8F3E8]/25 focus:outline-hidden"
+                            />
+                            <input
+                              type="text"
+                              aria-label="Judul Bahasa Arab (Opsional)"
+                              value={formData.titleAr || ''}
+                              onChange={(e) => setFormData(prev => ({ ...prev, titleAr: e.target.value }))}
+                              placeholder="Judul Bahasa Arab (opsional) — آدَابُ طَالِبِ العِلْمِ..."
+                              dir="rtl"
+                              className="w-full bg-transparent border-0 p-0 text-lg sm:text-xl font-amiri font-bold text-[#06251D]/85 dark:text-[#D9AC45]/90 placeholder:text-[#171717]/25 dark:placeholder:text-[#D9AC45]/30 focus:outline-hidden"
+                            />
+                          </div>
+
+                          {/* Google Drive Source Box */}
+                          <div className="p-5 sm:p-6 bg-[#FAF7F0] dark:bg-[#0B2D26] rounded-lg border-2 border-[#171717] dark:border-[#D9AC45]/50 space-y-3.5">
+                            <div className="flex items-center justify-between gap-2 flex-wrap">
+                              <div className="flex items-center gap-2 text-sm font-extrabold text-[#171717] dark:text-[#F8F3E8]">
+                                <ExternalLink className="w-4 h-4 text-[#123D32] dark:text-[#D9AC45]" />
+                                <span>Tautan Google Drive Buku *</span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setFormData(prev => ({ ...prev, sourceType: 'internal' }))}
+                                className="text-[11px] font-extrabold text-[#123D32] dark:text-[#D9AC45] underline cursor-pointer"
+                              >
+                                Beralih ke Editor Internal
+                              </button>
+                            </div>
+                            <p className="text-xs text-[#525855] dark:text-[#A6D6C9] leading-relaxed">
+                              Saat pengunjung membuka kitab ini di Library Digital, mereka dapat mengakses berkas PDF atau dokumen di Google Drive.
+                            </p>
+                            <input
+                              type="url"
+                              value={formData.googleDriveUrl || ''}
+                              onChange={(e) => setFormData(prev => ({ ...prev, googleDriveUrl: e.target.value }))}
+                              placeholder="https://drive.google.com/file/d/FILE_ID/view?usp=sharing"
+                              className="nb-input w-full px-3.5 py-2.5 text-xs sm:text-sm font-medium"
+                            />
+                            <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#525855] dark:text-[#A6D6C9]">
+                              <span>Pastikan akses file disetel ke &ldquo;Siapa saja yang memiliki tautan&rdquo;.</span>
+                              {formData.googleDriveUrl && validateLibraryExternalDriveUrl(formData.googleDriveUrl).isValid && (
+                                <a
+                                  href={formData.googleDriveUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 font-extrabold text-[#123D32] dark:text-[#D9AC45] underline"
+                                >
+                                  <span>Uji Buka Tautan</span>
+                                  <ExternalLink className="w-3 h-3" />
+                                </a>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => setFormData(prev => ({ ...prev, sourceType: 'internal' }))}
-                          className="text-[11px] font-extrabold text-[#123D32] dark:text-[#D9AC45] underline cursor-pointer"
-                        >
-                          Beralih ke Editor Internal
-                        </button>
                       </div>
-                      <p className="text-xs text-[#525855] dark:text-[#A6D6C9] leading-relaxed">
-                        Saat pengunjung membuka kitab ini di Library Digital, mereka dapat mengakses berkas PDF atau dokumen di Google Drive.
-                      </p>
-                      <input
-                        type="url"
-                        value={formData.googleDriveUrl || ''}
-                        onChange={(e) => setFormData(prev => ({ ...prev, googleDriveUrl: e.target.value }))}
-                        placeholder="https://drive.google.com/file/d/FILE_ID/view?usp=sharing"
-                        className="nb-input w-full px-3.5 py-2.5 text-xs sm:text-sm font-medium"
+                    ) : (
+                      <RichTextEditor
+                        value={formData.content || ''}
+                        onChange={(html) => setFormData(prev => ({ ...prev, content: html }))}
+                        placeholder="Mulai menulis naskah kitab di sini... Gunakan Heading 1 (H1) untuk Judul Bab dan Heading 2 (H2) untuk Subbab agar Daftar Isi terbentuk otomatis."
+                        minHeight="52vh"
+                        workspaceMode={true}
+                        documentHeader={
+                          <div className="mb-6 pb-5 border-b border-[#171717]/12 dark:border-white/12 space-y-2.5">
+                            {!formData.id && renderCollectionTypeSelector(true)}
+                            <input
+                              type="text"
+                              aria-label="Judul Buku"
+                              value={formData.title || ''}
+                              onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                              placeholder="Judul Kitab / Buku..."
+                              className="w-full bg-transparent border-0 p-0 text-2xl sm:text-3xl lg:text-[2.1rem] font-extrabold font-serif-brand leading-tight tracking-tight text-[#171717] dark:text-[#F8F3E8] placeholder:text-[#171717]/25 dark:placeholder:text-[#F8F3E8]/25 focus:outline-hidden"
+                            />
+                            <input
+                              type="text"
+                              aria-label="Judul Bahasa Arab (Opsional)"
+                              value={formData.titleAr || ''}
+                              onChange={(e) => setFormData(prev => ({ ...prev, titleAr: e.target.value }))}
+                              placeholder="Judul Bahasa Arab (opsional) — آدَابُ طَالِبِ العِلْمِ..."
+                              dir="rtl"
+                              className="w-full bg-transparent border-0 p-0 text-lg sm:text-xl font-amiri font-bold text-[#06251D]/85 dark:text-[#D9AC45]/90 placeholder:text-[#171717]/25 dark:placeholder:text-[#D9AC45]/30 focus:outline-hidden"
+                            />
+                            <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-[11px] text-[#525855] dark:text-[#A6D6C9]">
+                              <span>Gunakan Heading 1 (H1) untuk Bab &amp; Heading 2 (H2) untuk Subbab</span>
+                              {liveTocPreview && liveTocPreview.chapters.length > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => setActiveEditorTab('daftar_isi')}
+                                  className="font-bold text-[#123D32] dark:text-[#D9AC45] hover:underline cursor-pointer"
+                                >
+                                  Lihat Daftar Isi ({liveTocPreview.chapters.length} Bab) →
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        }
                       />
-                      <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#525855] dark:text-[#A6D6C9]">
-                        <span>Pastikan akses file disetel ke &ldquo;Siapa saja yang memiliki tautan&rdquo;.</span>
-                        {formData.googleDriveUrl && validateLibraryExternalDriveUrl(formData.googleDriveUrl).isValid && (
-                          <a
-                            href={formData.googleDriveUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 font-extrabold text-[#123D32] dark:text-[#D9AC45] underline"
-                          >
-                            <span>Uji Buka Tautan</span>
-                            <ExternalLink className="w-3 h-3" />
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <RichTextEditor
-                  value={formData.content || ''}
-                  onChange={(html) => setFormData(prev => ({ ...prev, content: html }))}
-                  placeholder="Mulai menulis naskah kitab di sini... Gunakan Heading 1 (H1) untuk Judul Bab dan Heading 2 (H2) untuk Subbab agar Daftar Isi terbentuk otomatis."
-                  minHeight="52vh"
-                  workspaceMode={true}
-                  documentHeader={
-                    <div className="mb-6 pb-5 border-b border-[#171717]/12 dark:border-white/12 space-y-2.5">
-                      <input
-                        type="text"
-                        aria-label="Judul Buku"
-                        value={formData.title || ''}
-                        onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                        placeholder="Judul Kitab / Buku..."
-                        className="w-full bg-transparent border-0 p-0 text-2xl sm:text-3xl lg:text-[2.1rem] font-extrabold font-serif-brand leading-tight tracking-tight text-[#171717] dark:text-[#F8F3E8] placeholder:text-[#171717]/25 dark:placeholder:text-[#F8F3E8]/25 focus:outline-hidden"
-                      />
-                      <input
-                        type="text"
-                        aria-label="Judul Bahasa Arab (Opsional)"
-                        value={formData.titleAr || ''}
-                        onChange={(e) => setFormData(prev => ({ ...prev, titleAr: e.target.value }))}
-                        placeholder="Judul Bahasa Arab (opsional) — آدَابُ طَالِبِ العِلْمِ..."
-                        dir="rtl"
-                        className="w-full bg-transparent border-0 p-0 text-lg sm:text-xl font-amiri font-bold text-[#06251D]/85 dark:text-[#D9AC45]/90 placeholder:text-[#171717]/25 dark:placeholder:text-[#D9AC45]/30 focus:outline-hidden"
-                      />
-                      <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-[11px] text-[#525855] dark:text-[#A6D6C9]">
-                        <span>Gunakan Heading 1 (H1) untuk Bab &amp; Heading 2 (H2) untuk Subbab</span>
-                        {liveTocPreview && liveTocPreview.chapters.length > 0 && (
-                          <button
-                            type="button"
-                            onClick={() => setActiveEditorTab('daftar_isi')}
-                            className="font-bold text-[#123D32] dark:text-[#D9AC45] hover:underline cursor-pointer"
-                          >
-                            Lihat Daftar Isi ({liveTocPreview.chapters.length} Bab) →
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  }
-                />
-              )
-          },
+                    )
+                }
+              ]
+            : []),
           {
             id: 'metadata',
-            label: 'Detail & Sampul',
-            shortLabel: 'Detail',
-            icon: <SlidersHorizontal className="w-3.5 h-3.5" />,
+            label: isFormMultiVolume ? 'Info & Sampul Utama Kitab' : 'Detail & Sampul',
+            shortLabel: isFormMultiVolume ? 'Info Utama' : 'Detail',
+            icon: isFormMultiVolume ? <Layers className="w-3.5 h-3.5" /> : <SlidersHorizontal className="w-3.5 h-3.5" />,
             content: (
               <div ref={modalBodyRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain bg-[#FAF7F0]/55 dark:bg-[#0A1F1B]">
                 <div className="max-w-4xl mx-auto px-4 sm:px-8 py-6 sm:py-8 space-y-6">
-                  {/* SOURCE TYPE SELECTOR: INTERNAL vs GOOGLE DRIVE */}
-                  <div className="p-5 sm:p-6 bg-white dark:bg-[#0E2B24] rounded-lg border-2 border-[#171717] dark:border-[#D9AC45]/45 space-y-3">
-                    <label className="text-sm font-extrabold text-[#171717] dark:text-[#F8F3E8] block">
-                      Tipe Sumber Buku *
-                    </label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <button
-                        type="button"
-                        onClick={() => setFormData(prev => ({ ...prev, sourceType: 'internal' }))}
-                        className={`p-3.5 rounded-lg border-2 text-left transition cursor-pointer ${
-                          formData.sourceType === 'internal'
-                            ? 'bg-[#123D32] text-[#FAF7F0] border-[#171717] shadow-[3px_3px_0px_#171717]'
-                            : 'bg-[#FAF7F0] dark:bg-[#0D2B36] text-[#171717] dark:text-[#CEFEF1] border-[#171717]/40 dark:border-[#4CA7A1]/50'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2 font-extrabold text-xs">
-                          <BookOpen className="w-4 h-4 shrink-0" />
-                          <span>Buku Internal (Editor Dars with Osama)</span>
-                        </div>
-                        <p className={`text-[11px] mt-1 leading-snug ${formData.sourceType === 'internal' ? 'text-[#FAF7F0]/85' : 'text-[#525855] dark:text-[#A6D6C9]'}`}>
-                          Tulis naskah kitab lengkap dengan Daftar Isi otomatis dari H1 &amp; H2.
-                        </p>
-                      </button>
+                  {/* COLLECTION TYPE SELECTOR: SINGLE vs MULTI-VOLUME */}
+                  {renderCollectionTypeSelector(false)}
 
-                      <button
-                        type="button"
-                        onClick={() => setFormData(prev => ({ ...prev, sourceType: 'google_drive' }))}
-                        className={`p-3.5 rounded-lg border-2 text-left transition cursor-pointer ${
-                          formData.sourceType === 'google_drive'
-                            ? 'bg-[#123D32] text-[#FAF7F0] border-[#171717] shadow-[3px_3px_0px_#171717]'
-                            : 'bg-[#FAF7F0] dark:bg-[#0D2B36] text-[#171717] dark:text-[#CEFEF1] border-[#171717]/40 dark:border-[#4CA7A1]/50'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2 font-extrabold text-xs">
-                          <ExternalLink className="w-4 h-4 shrink-0" />
-                          <span>Buku Eksternal (Tautan Google Drive)</span>
-                        </div>
-                        <p className={`text-[11px] mt-1 leading-snug ${formData.sourceType === 'google_drive' ? 'text-[#FAF7F0]/85' : 'text-[#525855] dark:text-[#A6D6C9]'}`}>
-                          Pengunjung langsung menuju tautan PDF / dokumen di Google Drive.
+                  {/* MULTI-VOLUME TITLE & GUIDANCE */}
+                  {isFormMultiVolume && (
+                    <div className="p-5 sm:p-6 bg-white dark:bg-[#0E2B24] rounded-lg border-2 border-[#171717] dark:border-[#D9AC45]/45 space-y-4">
+                      <div className="space-y-2.5 pb-4 border-b border-[#171717]/12 dark:border-white/12">
+                        <label className="text-[11px] font-extrabold uppercase tracking-wider text-[#123D32] dark:text-[#D9AC45] block">
+                          Judul Utama Kitab Berjilid *
+                        </label>
+                        <input
+                          type="text"
+                          data-testid="admin-library-multivolume-title-input"
+                          aria-label="Judul Kitab Berjilid"
+                          value={formData.title || ''}
+                          onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                          placeholder="Contoh: Shahih Al-Bukhari / Al-Majmu' Syarh Al-Muhadzdzab..."
+                          className="w-full bg-transparent border-0 p-0 text-xl sm:text-2xl lg:text-3xl font-extrabold font-serif-brand leading-tight tracking-tight text-[#171717] dark:text-[#F8F3E8] placeholder:text-[#171717]/25 dark:placeholder:text-[#F8F3E8]/25 focus:outline-hidden"
+                        />
+                        <input
+                          type="text"
+                          aria-label="Judul Bahasa Arab (Opsional)"
+                          value={formData.titleAr || ''}
+                          onChange={(e) => setFormData(prev => ({ ...prev, titleAr: e.target.value }))}
+                          placeholder="Judul Bahasa Arab (opsional) — المجموع شرح المهذب..."
+                          dir="rtl"
+                          className="w-full bg-transparent border-0 p-0 text-lg sm:text-xl font-amiri font-bold text-[#06251D]/85 dark:text-[#D9AC45]/90 placeholder:text-[#171717]/25 dark:placeholder:text-[#D9AC45]/30 focus:outline-hidden"
+                        />
+                      </div>
+
+                      <div className="p-3.5 rounded-md bg-[#FAF7F0] dark:bg-[#09211B] border border-[#171717]/20 dark:border-[#D9AC45]/30 text-xs text-[#525855] dark:text-[#A6D6C9] flex items-start gap-2.5">
+                        <Layers className="w-4 h-4 shrink-0 text-[#123D32] dark:text-[#D9AC45] mt-0.5" />
+                        <p className="leading-relaxed">
+                          <strong className="text-[#171717] dark:text-[#F8F3E8]">Satu Sampul Bersama:</strong> Sampul utama yang Anda unggah di bawah akan dipakai bersama seluruh jilid. Setelah menyimpan informasi utama ini, Anda akan langsung diarahkan ke <strong>Halaman Pengelolaan Jilid</strong> untuk menambah, menyunting, dan mengurutkan tiap jilid secara terpisah.
                         </p>
-                      </button>
+                      </div>
                     </div>
-                  </div>
+                  )}
+
+                  {/* SOURCE TYPE SELECTOR (SINGLE BOOK ONLY): INTERNAL vs GOOGLE DRIVE */}
+                  {!isFormMultiVolume && (
+                    <div className="p-5 sm:p-6 bg-white dark:bg-[#0E2B24] rounded-lg border-2 border-[#171717] dark:border-[#D9AC45]/45 space-y-3">
+                      <label className="text-sm font-extrabold text-[#171717] dark:text-[#F8F3E8] block">
+                        Tipe Sumber Buku *
+                      </label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setFormData(prev => ({ ...prev, sourceType: 'internal' }))}
+                          className={`p-3.5 rounded-lg border-2 text-left transition cursor-pointer ${
+                            formData.sourceType === 'internal'
+                              ? 'bg-[#123D32] text-[#FAF7F0] border-[#171717] shadow-[3px_3px_0px_#171717]'
+                              : 'bg-[#FAF7F0] dark:bg-[#0D2B36] text-[#171717] dark:text-[#CEFEF1] border-[#171717]/40 dark:border-[#4CA7A1]/50'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 font-extrabold text-xs">
+                            <BookOpen className="w-4 h-4 shrink-0" />
+                            <span>Buku Internal (Editor Dars with Osama)</span>
+                          </div>
+                          <p className={`text-[11px] mt-1 leading-snug ${formData.sourceType === 'internal' ? 'text-[#FAF7F0]/85' : 'text-[#525855] dark:text-[#A6D6C9]'}`}>
+                            Tulis naskah kitab lengkap dengan Daftar Isi otomatis dari H1 &amp; H2.
+                          </p>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setFormData(prev => ({ ...prev, sourceType: 'google_drive' }))}
+                          className={`p-3.5 rounded-lg border-2 text-left transition cursor-pointer ${
+                            formData.sourceType === 'google_drive'
+                              ? 'bg-[#123D32] text-[#FAF7F0] border-[#171717] shadow-[3px_3px_0px_#171717]'
+                              : 'bg-[#FAF7F0] dark:bg-[#0D2B36] text-[#171717] dark:text-[#CEFEF1] border-[#171717]/40 dark:border-[#4CA7A1]/50'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 font-extrabold text-xs">
+                            <ExternalLink className="w-4 h-4 shrink-0" />
+                            <span>Buku Eksternal (Tautan Google Drive)</span>
+                          </div>
+                          <p className={`text-[11px] mt-1 leading-snug ${formData.sourceType === 'google_drive' ? 'text-[#FAF7F0]/85' : 'text-[#525855] dark:text-[#A6D6C9]'}`}>
+                            Pengunjung langsung menuju tautan PDF / dokumen di Google Drive.
+                          </p>
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   {/* METADATA KITAB */}
                   <div className="p-5 sm:p-6 bg-white dark:bg-[#0E2B24] rounded-lg border-2 border-[#171717] dark:border-[#D9AC45]/45 space-y-4">
@@ -1170,7 +1453,7 @@ export const AdminLibraryManager: React.FC<AdminLibraryManagerProps> = ({
               </div>
             )
           },
-          ...(formData.sourceType === 'internal'
+          ...(!isFormMultiVolume && formData.sourceType === 'internal'
             ? [
                 {
                   id: 'daftar_isi',
@@ -1273,15 +1556,28 @@ export const AdminLibraryManager: React.FC<AdminLibraryManagerProps> = ({
                 onClick={() => handleSave('draft')}
                 className="nb-btn nb-btn-secondary px-3.5 sm:px-4 py-1.5 sm:py-2 text-xs cursor-pointer disabled:opacity-50"
               >
-                {saving ? 'Menyimpan...' : 'Simpan sebagai Draf'}
+                {saving
+                  ? 'Menyimpan...'
+                  : isFormMultiVolume
+                  ? 'Simpan sebagai Draf'
+                  : 'Simpan sebagai Draf'}
               </button>
               <button
                 type="button"
                 disabled={saving || uploadingCover}
                 onClick={() => handleSave('published')}
-                className="nb-btn nb-btn-primary px-4 sm:px-5 py-1.5 sm:py-2 text-xs cursor-pointer disabled:opacity-50"
+                className="nb-btn nb-btn-primary px-4 sm:px-5 py-1.5 sm:py-2 text-xs cursor-pointer disabled:opacity-50 inline-flex items-center gap-1.5"
               >
-                {saving ? 'Menyimpan...' : 'Simpan & Terbitkan'}
+                <span>
+                  {saving
+                    ? 'Menyimpan...'
+                    : isFormMultiVolume
+                    ? formData.id
+                      ? 'Simpan Info & Kelola Jilid'
+                      : 'Terbitkan & Kelola Jilid'
+                    : 'Simpan & Terbitkan'}
+                </span>
+                {isFormMultiVolume && !saving && <ArrowRight className="w-3.5 h-3.5" />}
               </button>
             </div>
           </div>
@@ -1295,7 +1591,11 @@ export const AdminLibraryManager: React.FC<AdminLibraryManagerProps> = ({
         onConfirm={handleConfirmDelete}
         title="Hapus Buku Library Digital"
         itemName={bookToDelete?.title || ''}
-        message="Buku ini akan dihapus secara permanen dari koleksi Library Digital dan tidak dapat dikembalikan."
+        message={
+          bookToDelete && isMultiVolumeLibraryBook(bookToDelete)
+            ? 'Buku berjilid ini beserta seluruh daftar jilid di dalamnya akan dihapus secara permanen dari koleksi Library Digital dan tidak dapat dikembalikan.'
+            : 'Buku ini akan dihapus secara permanen dari koleksi Library Digital dan tidak dapat dikembalikan.'
+        }
         loading={isDeleting}
       />
     </div>

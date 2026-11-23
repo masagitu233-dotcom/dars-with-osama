@@ -1,4 +1,4 @@
-import { BlogPost, LibraryBook } from '../types';
+import { BlogPost, LibraryBook, LibraryBookVolume } from '../types';
 
 /**
  * Menghitung jumlah kata bersih dari konten HTML editor (termasuk teks Arab/Latin).
@@ -59,9 +59,28 @@ export function buildLibraryBookDirtySnapshot(
     description: formData.description || '',
     coverImageUrl: formData.coverImageUrl || '',
     coverAspectRatio: formData.coverAspectRatio || '3:4',
+    collectionType: formData.collectionType === 'multi_volume' ? 'multi_volume' : 'single',
     sourceType: formData.sourceType || 'internal',
     googleDriveUrl: formData.googleDriveUrl || '',
     content: formData.content || ''
+  });
+}
+
+/**
+ * Membangun snapshot deterministik state formulir Jilid Buku Berjilid untuk mendeteksi
+ * perubahan yang belum disimpan secara independen per jilid.
+ */
+export function buildLibraryVolumeDirtySnapshot(
+  formData: Partial<LibraryBookVolume>
+): string {
+  return JSON.stringify({
+    volumeNumber: Number(formData.volumeNumber) || 1,
+    title: formData.title || '',
+    titleAr: formData.titleAr || '',
+    sourceType: formData.sourceType || 'internal',
+    googleDriveUrl: formData.googleDriveUrl || '',
+    content: formData.content || '',
+    status: formData.status || 'published'
   });
 }
 
@@ -75,3 +94,4 @@ export function hasEditorUnsavedChanges(
   if (!initialSnapshot) return false;
   return currentSnapshot !== initialSnapshot;
 }
+

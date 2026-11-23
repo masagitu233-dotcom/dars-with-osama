@@ -7,6 +7,7 @@ export interface DarsRouteState {
   blogPostSlug?: string | null;
   libraryBookId?: string | null;
   libraryBookSlug?: string | null;
+  libraryVolumeId?: string | null;
   genre?: string | null;
   qaId?: string | null;
   consultationId?: string | null;
@@ -76,6 +77,7 @@ export function parseUrlToRouteState(pathname: string, search: string): DarsRout
   const urlArticle = params.get('article') || null;
   const urlArticleId = params.get('id') || null;
   const urlLibrary = params.get('library') || params.get('book') || null;
+  const urlLibraryVolume = params.get('volume') || params.get('jilid') || null;
   const urlGenre = params.get('genre') || null;
   const urlQaId = params.get('qaId') || null;
   const urlConsultationId = params.get('consultationId') || null;
@@ -131,12 +133,28 @@ export function parseUrlToRouteState(pathname: string, search: string): DarsRout
   if (cleanPath.startsWith('/library/')) {
     const rawRemainder = cleanPath.slice('/library/'.length).replace(/\/+$/, '');
     const segments = rawRemainder.split('/').filter(Boolean);
+    if (
+      segments.length >= 3 &&
+      (segments[1] === 'jilid' || segments[1] === 'volume' || segments[1] === 'baca' || segments[1] === 'read')
+    ) {
+      const decodedSlug = decodeURIComponent(segments[0]);
+      const decodedVolumeId = decodeURIComponent(segments[2]);
+      return {
+        view: 'library-read',
+        libraryBookSlug: decodedSlug,
+        libraryBookId: urlArticleId || decodedSlug,
+        libraryVolumeId: decodedVolumeId,
+        filterCategoryId,
+        searchQuery
+      };
+    }
     if (segments.length >= 2 && (segments[1] === 'baca' || segments[1] === 'read')) {
       const decodedSlug = decodeURIComponent(segments[0]);
       return {
         view: 'library-read',
         libraryBookSlug: decodedSlug,
         libraryBookId: urlArticleId || decodedSlug,
+        libraryVolumeId: urlLibraryVolume,
         filterCategoryId,
         searchQuery
       };
@@ -159,6 +177,7 @@ export function parseUrlToRouteState(pathname: string, search: string): DarsRout
       view: 'library-read',
       libraryBookSlug: identifier,
       libraryBookId: identifier,
+      libraryVolumeId: urlLibraryVolume,
       filterCategoryId,
       searchQuery
     };
@@ -399,6 +418,9 @@ export function buildUrlFromRouteState(route: DarsRouteState): string {
     case 'library-read': {
       const key = route.libraryBookSlug || route.libraryBookId;
       if (key) {
+        if (route.libraryVolumeId) {
+          return `/library/${encodeURIComponent(key)}/jilid/${encodeURIComponent(route.libraryVolumeId)}`;
+        }
         return `/library/${encodeURIComponent(key)}/baca`;
       }
       return '/library';
@@ -492,11 +514,15 @@ export function isSameRouteState(a: DarsRouteState, b: DarsRouteState): boolean 
       const bKey = b.blogPostSlug || b.blogPostId || '';
       return aKey === bKey;
     }
-    case 'library-detail':
-    case 'library-read': {
+    case 'library-detail': {
       const aKey = a.libraryBookSlug || a.libraryBookId || '';
       const bKey = b.libraryBookSlug || b.libraryBookId || '';
       return aKey === bKey;
+    }
+    case 'library-read': {
+      const aKey = a.libraryBookSlug || a.libraryBookId || '';
+      const bKey = b.libraryBookSlug || b.libraryBookId || '';
+      return aKey === bKey && (a.libraryVolumeId || '') === (b.libraryVolumeId || '');
     }
     case 'course-detail':
       return (a.courseId || '') === (b.courseId || '');

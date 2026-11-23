@@ -304,7 +304,7 @@
     },
     "LibraryBook": {
       "title": "LibraryBook",
-      "description": "Digital library book or kitab managed by admin (external Google Drive link or internal rich-text book)",
+      "description": "Digital library book or kitab managed by admin (single external/internal book or multi-volume collection)",
       "type": "object",
       "properties": {
         "id": { "type": "string", "maxLength": 128 },
@@ -316,6 +316,31 @@
         "description": { "type": "string", "maxLength": 2000 },
         "coverImageUrl": { "type": "string", "maxLength": 300000 },
         "coverAspectRatio": { "type": "string", "enum": ["3:4", "9:16"] },
+        "collectionType": { "type": "string", "enum": ["single", "multi_volume"] },
+        "sourceType": { "type": "string", "enum": ["google_drive", "internal"] },
+        "googleDriveUrl": { "type": "string", "maxLength": 2000 },
+        "content": { "type": "string", "maxLength": 850000 },
+        "status": { "type": "string", "enum": ["published", "draft"] },
+        "readingTimeMinutes": { "type": "number" },
+        "volumesCount": { "type": "number" },
+        "publishedVolumesCount": { "type": "number" },
+        "publishedAt": { "type": "string", "maxLength": 100 },
+        "createdAt": { "type": "string", "maxLength": 100 },
+        "updatedAt": { "type": "string", "maxLength": 100 }
+      },
+      "required": ["id", "title", "slug", "coverAspectRatio", "sourceType", "status", "createdAt", "updatedAt"]
+    },
+    "LibraryBookVolume": {
+      "title": "LibraryBookVolume",
+      "description": "Individual volume (jilid) belonging to a multi-volume LibraryBook, with independent internal content or external Google Drive URL",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "bookId": { "type": "string", "maxLength": 128 },
+        "volumeNumber": { "type": "number" },
+        "order": { "type": "number" },
+        "title": { "type": "string", "maxLength": 300 },
+        "titleAr": { "type": "string", "maxLength": 300 },
         "sourceType": { "type": "string", "enum": ["google_drive", "internal"] },
         "googleDriveUrl": { "type": "string", "maxLength": 2000 },
         "content": { "type": "string", "maxLength": 850000 },
@@ -325,7 +350,7 @@
         "createdAt": { "type": "string", "maxLength": 100 },
         "updatedAt": { "type": "string", "maxLength": 100 }
       },
-      "required": ["id", "title", "slug", "coverAspectRatio", "sourceType", "status", "createdAt", "updatedAt"]
+      "required": ["id", "bookId", "volumeNumber", "order", "title", "sourceType", "status", "createdAt", "updatedAt"]
     },
     "LibraryVisitStats": {
       "title": "LibraryVisitStats",
@@ -410,6 +435,10 @@
     "/libraryBooks/{bookId}": {
       "schema": { "$ref": "#/entities/LibraryBook" },
       "description": "Digital library book collection (published readable publicly, drafts & writes admin-only)"
+    },
+    "/libraryBooks/{bookId}/volumes/{volumeId}": {
+      "schema": { "$ref": "#/entities/LibraryBookVolume" },
+      "description": "Individual volumes (jilid) for multi-volume library books (published volumes of published books readable publicly, drafts & writes admin-only)"
     },
     "/libraryStats/{statId}": {
       "schema": { "$ref": "#/entities/LibraryVisitStats" },

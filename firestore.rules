@@ -207,6 +207,23 @@ service cloud.firestore {
       allow get: if (resource != null && resource.data.status == 'published') || isAdmin();
       allow list: if resource.data.status == 'published' || isAdmin();
       allow create, update, delete: if isAdmin();
+
+      // LIBRARY DIGITAL — SUBKOLEKSI JILID BUKU BERJILID
+      match /volumes/{volumeId} {
+        // Master Gate: Pengunjung publik (tanpa login / non-admin) hanya dapat membaca jilid
+        // berstatus 'published' pada kitab induk yang juga berstatus 'published'.
+        // Jilid draf dan seluruh operasi tulis tetap terlindungi khusus admin.
+        allow get: if isAdmin() || (
+          resource != null &&
+          resource.data.status == 'published' &&
+          get(/databases/$(database)/documents/libraryBooks/$(bookId)).data.status == 'published'
+        );
+        allow list: if isAdmin() || (
+          resource.data.status == 'published' &&
+          get(/databases/$(database)/documents/libraryBooks/$(bookId)).data.status == 'published'
+        );
+        allow create, update, delete: if isAdmin();
+      }
     }
 
     // LIBRARY DIGITAL — STATISTIK KUNJUNGAN (KHUSUS ADMIN)

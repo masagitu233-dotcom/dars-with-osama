@@ -3,6 +3,7 @@ import {
   ArrowRight,
   BookOpen,
   Clock,
+  Layers,
   Share2,
   Check
 } from 'lucide-react';
@@ -10,7 +11,8 @@ import { LibraryBook } from '../../types';
 import {
   getLibraryCoverAspectClass,
   buildLibraryBookShareData,
-  parseLibraryBookCategories
+  parseLibraryBookCategories,
+  isMultiVolumeLibraryBook
 } from '../../utils/libraryHelper';
 import { copyCourseUrlToClipboard } from '../../utils/courseShareHelper';
 import { autoWrapArabicText } from '../../utils/arabicFontHelper';
@@ -32,11 +34,15 @@ export const LibraryCard: React.FC<LibraryCardProps> = ({
   const [copied, setCopied] = useState(false);
 
   const aspectClass = getLibraryCoverAspectClass(book.coverAspectRatio);
-  const isExternalDrive = book.sourceType === 'google_drive' && Boolean(book.googleDriveUrl);
+  const isMultiVolume = isMultiVolumeLibraryBook(book);
+  const isExternalDrive = !isMultiVolume && book.sourceType === 'google_drive' && Boolean(book.googleDriveUrl);
   const categories = parseLibraryBookCategories(book.category);
   const trimmedAuthor = (book.author || '').trim();
   const trimmedDescription = (book.description || '').trim();
-  const hasReadingTime = !isExternalDrive && typeof book.readingTimeMinutes === 'number' && book.readingTimeMinutes > 0;
+  const hasReadingTime = !isMultiVolume && !isExternalDrive && typeof book.readingTimeMinutes === 'number' && book.readingTimeMinutes > 0;
+  const publishedVolumesCount = isMultiVolume && typeof book.publishedVolumesCount === 'number' && book.publishedVolumesCount > 0
+    ? book.publishedVolumesCount
+    : 0;
 
   // Reuse the same share flow as CourseCard (Web Share API -> Clipboard fallback)
   // Always shares the public Book Detail Page URL (/library/:slug)
@@ -83,7 +89,8 @@ export const LibraryCard: React.FC<LibraryCardProps> = ({
       role="button"
       tabIndex={0}
       data-card-type="library"
-      data-book-source={isExternalDrive ? 'google_drive' : 'internal'}
+      data-book-collection={isMultiVolume ? 'multi_volume' : 'single'}
+      data-book-source={isMultiVolume ? 'multi_volume' : isExternalDrive ? 'google_drive' : 'internal'}
       data-testid={`${testIdPrefix}-${book.id}`}
       className={`library-card card-library group nb-card-interactive overflow-hidden flex flex-col cursor-pointer h-full w-full border-2 border-[#171717] shadow-[4px_4px_0px_#171717] ${className}`}
       style={{ backgroundColor: '#F0BE49', color: '#0F3D3A' }}
@@ -154,8 +161,8 @@ export const LibraryCard: React.FC<LibraryCardProps> = ({
             </button>
           </div>
 
-          {/* 5. Kategori Kitab (hanya ditampilkan jika diisi admin; tidak menampilkan label sumber teknis) */}
-          {(categories.length > 0 || hasReadingTime) && (
+          {/* 5. Kategori Kitab & Info Tambahan (jumlah jilid / estimasi baca) */}
+          {(categories.length > 0 || hasReadingTime || publishedVolumesCount > 0) && (
             <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
               {categories.map((catName, idx) => (
                 <span
@@ -166,6 +173,16 @@ export const LibraryCard: React.FC<LibraryCardProps> = ({
                   {catName}
                 </span>
               ))}
+
+              {publishedVolumesCount > 0 && (
+                <span
+                  data-testid={`${testIdPrefix}-volumes-count-${book.id}`}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-extrabold bg-[#FAF7F0] text-[#0F3D3A] border border-[#171717] shadow-[1.5px_1.5px_0px_#171717] tabular-nums"
+                >
+                  <Layers className="w-3 h-3 shrink-0 text-[#0F3D3A]" />
+                  <span>{publishedVolumesCount} Jilid</span>
+                </span>
+              )}
 
               {hasReadingTime && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-extrabold bg-[#FAF7F0] text-[#0F3D3A] border border-[#171717] shadow-[1.5px_1.5px_0px_#171717]">
