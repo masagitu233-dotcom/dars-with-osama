@@ -11,7 +11,8 @@ import {
   ChevronLeft,
   ChevronRight,
   ExternalLink,
-  Layers
+  Layers,
+  FileText
 } from 'lucide-react';
 import { LibraryBook, LibraryBookVolume } from '../../types';
 import { useAuth } from '../../context/AuthContext';
@@ -20,7 +21,8 @@ import { ResilientGoogleDriveImage } from '../common/ResilientGoogleDriveImage';
 import {
   parseLibraryBookContent,
   isMultiVolumeLibraryBook,
-  buildLibraryVolumeReadUrl
+  buildLibraryVolumeReadUrl,
+  resolveLibraryPdfViewerUrl
 } from '../../utils/libraryHelper';
 import { autoWrapArabicText, renderFormattedContentHtml } from '../../utils/arabicFontHelper';
 import { sanitizeRichTextHtml } from '../../utils/richTextHelper';
@@ -64,6 +66,12 @@ export const LibraryDetailView: React.FC<LibraryDetailViewProps> = ({
   const activeContentHtml = volume ? (volume.content || '') : (book.content || '');
   const activeSourceType = volume ? volume.sourceType : book.sourceType;
   const activeDriveUrl = volume ? volume.googleDriveUrl : book.googleDriveUrl;
+  const activePdfUrl =
+    activeSourceType === 'internal'
+      ? resolveLibraryPdfViewerUrl(
+          volume ? volume.pdfDriveUrl : isMultiVolume ? '' : book.pdfDriveUrl
+        )
+      : null;
   const activeReadingMinutes = volume ? volume.readingTimeMinutes : book.readingTimeMinutes;
   const activeStatus = volume ? volume.status : book.status;
 
@@ -340,20 +348,37 @@ export const LibraryDetailView: React.FC<LibraryDetailViewProps> = ({
           )}
         </div>
 
-        <button
-          type="button"
-          data-testid="library-reader-copy-link-btn"
-          onClick={handleCopyLink}
-          className="px-3.5 py-2 text-xs font-extrabold rounded-md border-2 border-[#171717] dark:border-[#4CA7A1] text-[#171717] dark:text-[#CEFEF1] bg-white dark:bg-[#0D2B36] hover:bg-[#EFE5D2] dark:hover:bg-[#1F5F63] transition-all inline-flex items-center gap-2 cursor-pointer shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#001722]"
-          title="Salin tautan permanen halaman baca kitab ini"
-        >
-          {copied ? (
-            <Check className="w-4 h-4 text-[#123D32] dark:text-[#4CA7A1]" />
-          ) : (
-            <Copy className="w-4 h-4" />
+        <div className="flex flex-wrap items-center gap-2">
+          {activePdfUrl && (
+            <a
+              href={activePdfUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              data-testid="library-reader-pdf-btn"
+              className="px-3.5 py-2 text-xs font-extrabold rounded-md border-2 border-[#171717] dark:border-[#D6AD52] text-[#171717] dark:text-[#171717] bg-[#F0BE49] hover:bg-[#D6AD52] transition-all inline-flex items-center gap-1.5 no-underline shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#001722]"
+              title="Buka berkas PDF di Google Drive pada tab baru"
+            >
+              <FileText className="w-4 h-4 shrink-0" />
+              <span>Lihat PDF</span>
+              <ExternalLink className="w-3.5 h-3.5 shrink-0 opacity-80" />
+            </a>
           )}
-          <span>{copied ? 'Link Disalin!' : 'Salin Link'}</span>
-        </button>
+
+          <button
+            type="button"
+            data-testid="library-reader-copy-link-btn"
+            onClick={handleCopyLink}
+            className="px-3.5 py-2 text-xs font-extrabold rounded-md border-2 border-[#171717] dark:border-[#4CA7A1] text-[#171717] dark:text-[#CEFEF1] bg-white dark:bg-[#0D2B36] hover:bg-[#EFE5D2] dark:hover:bg-[#1F5F63] transition-all inline-flex items-center gap-2 cursor-pointer shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#001722]"
+            title="Salin tautan permanen halaman baca kitab ini"
+          >
+            {copied ? (
+              <Check className="w-4 h-4 text-[#123D32] dark:text-[#4CA7A1]" />
+            ) : (
+              <Copy className="w-4 h-4" />
+            )}
+            <span>{copied ? 'Link Disalin!' : 'Salin Link'}</span>
+          </button>
+        </div>
       </div>
 
       {/* EDITORIAL BOOK READING SURFACE — STRICT VERTICAL FLOW ON BOTH MOBILE & DESKTOP */}

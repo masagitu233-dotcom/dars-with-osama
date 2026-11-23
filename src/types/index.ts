@@ -344,6 +344,7 @@ export interface LibraryBook {
   collectionType?: LibraryBookCollectionType;
   sourceType: LibraryBookSourceType;
   googleDriveUrl?: string;
+  pdfDriveUrl?: string;
   content?: string;
   status: 'published' | 'draft';
   readingTimeMinutes?: number;
@@ -364,6 +365,7 @@ export interface LibraryBookVolume {
   titleAr?: string;
   sourceType: LibraryBookSourceType;
   googleDriveUrl?: string;
+  pdfDriveUrl?: string;
   content?: string;
   status: 'published' | 'draft';
   readingTimeMinutes?: number;

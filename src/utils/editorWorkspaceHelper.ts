@@ -62,6 +62,7 @@ export function buildLibraryBookDirtySnapshot(
     collectionType: formData.collectionType === 'multi_volume' ? 'multi_volume' : 'single',
     sourceType: formData.sourceType || 'internal',
     googleDriveUrl: formData.googleDriveUrl || '',
+    pdfDriveUrl: formData.pdfDriveUrl || '',
     content: formData.content || ''
   });
 }
@@ -79,6 +80,7 @@ export function buildLibraryVolumeDirtySnapshot(
     titleAr: formData.titleAr || '',
     sourceType: formData.sourceType || 'internal',
     googleDriveUrl: formData.googleDriveUrl || '',
+    pdfDriveUrl: formData.pdfDriveUrl || '',
     content: formData.content || '',
     status: formData.status || 'published'
   });

@@ -77,7 +77,7 @@ export const LibraryBookDetailView: React.FC<LibraryBookDetailViewProps> = ({
         setVolumes(visible);
       } catch (err) {
         setVolumes([]);
-        setVolumesError(classifyLibraryLoadError(err));
+        setVolumesError(classifyLibraryLoadError(err, 'volumes'));
       } finally {
         setVolumesLoading(false);
       }

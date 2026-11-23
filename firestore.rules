@@ -213,15 +213,17 @@ service cloud.firestore {
         // Master Gate: Pengunjung publik (tanpa login / non-admin) hanya dapat membaca jilid
         // berstatus 'published' pada kitab induk yang juga berstatus 'published'.
         // Jilid draf dan seluruh operasi tulis tetap terlindungi khusus admin.
-        allow get: if isAdmin() || (
+        allow get: if (
           resource != null &&
           resource.data.status == 'published' &&
+          exists(/databases/$(database)/documents/libraryBooks/$(bookId)) &&
           get(/databases/$(database)/documents/libraryBooks/$(bookId)).data.status == 'published'
-        );
-        allow list: if isAdmin() || (
+        ) || isAdmin();
+        allow list: if (
           resource.data.status == 'published' &&
+          exists(/databases/$(database)/documents/libraryBooks/$(bookId)) &&
           get(/databases/$(database)/documents/libraryBooks/$(bookId)).data.status == 'published'
-        );
+        ) || isAdmin();
         allow create, update, delete: if isAdmin();
       }
     }

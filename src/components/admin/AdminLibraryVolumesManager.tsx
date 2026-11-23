@@ -19,7 +19,8 @@ import {
   SlidersHorizontal,
   ListOrdered,
   Clock,
-  EyeOff
+  EyeOff,
+  FileText
 } from 'lucide-react';
 import { LibraryBook, LibraryBookVolume, LibraryBookSourceType } from '../../types';
 import {
@@ -33,6 +34,8 @@ import {
   parseLibraryBookCategories,
   parseLibraryBookContent,
   validateLibraryExternalDriveUrl,
+  validateLibraryPdfDriveUrl,
+  resolveLibraryPdfViewerUrl,
   reorderLibraryBookVolumesList,
   classifyLibraryLoadError,
   LibraryLoadErrorInfo
@@ -84,6 +87,7 @@ export const AdminLibraryVolumesManager: React.FC<AdminLibraryVolumesManagerProp
     titleAr: '',
     sourceType: 'internal',
     googleDriveUrl: '',
+    pdfDriveUrl: '',
     content: '',
     status: 'published'
   });
@@ -151,6 +155,7 @@ export const AdminLibraryVolumesManager: React.FC<AdminLibraryVolumesManagerProp
       titleAr: '',
       sourceType: 'internal',
       googleDriveUrl: '',
+      pdfDriveUrl: '',
       content: '',
       status: 'published'
     };
@@ -183,6 +188,7 @@ export const AdminLibraryVolumesManager: React.FC<AdminLibraryVolumesManagerProp
     const sourceType: LibraryBookSourceType =
       volumeForm.sourceType === 'google_drive' ? 'google_drive' : 'internal';
 
+    let normalizedPdfDriveUrl = '';
     if (sourceType === 'google_drive') {
       const driveCheck = validateLibraryExternalDriveUrl(volumeForm.googleDriveUrl);
       if (!driveCheck.isValid) {
@@ -204,6 +210,17 @@ export const AdminLibraryVolumesManager: React.FC<AdminLibraryVolumesManagerProp
         });
         return;
       }
+
+      const pdfCheck = validateLibraryPdfDriveUrl(volumeForm.pdfDriveUrl);
+      if (!pdfCheck.isValid) {
+        setActiveTab('pengaturan');
+        setFeedback({
+          type: 'error',
+          text: pdfCheck.error || 'Format Link PDF (Google Drive) jilid tidak valid.'
+        });
+        return;
+      }
+      normalizedPdfDriveUrl = pdfCheck.normalizedUrl;
     }
 
     const volumeNumber = Math.max(1, Math.floor(Number(volumeForm.volumeNumber) || volumes.length + 1));
@@ -222,6 +239,7 @@ export const AdminLibraryVolumesManager: React.FC<AdminLibraryVolumesManagerProp
         titleAr: (volumeForm.titleAr || '').trim(),
         sourceType,
         googleDriveUrl: sourceType === 'google_drive' ? (volumeForm.googleDriveUrl || '').trim() : '',
+        pdfDriveUrl: sourceType === 'internal' ? normalizedPdfDriveUrl : '',
         content: sourceType === 'internal' ? (volumeForm.content || '') : '',
         status: targetStatus
       });
@@ -675,6 +693,16 @@ export const AdminLibraryVolumesManager: React.FC<AdminLibraryVolumesManagerProp
                             </>
                           )}
 
+                          {!isExternal && resolveLibraryPdfViewerUrl(vol.pdfDriveUrl) && (
+                            <>
+                              <span aria-hidden="true">·</span>
+                              <span className="inline-flex items-center gap-1 text-[#123D32] dark:text-[#D6AD52] font-bold">
+                                <FileText className="w-3 h-3" />
+                                <span>PDF Tersedia</span>
+                              </span>
+                            </>
+                          )}
+
                           <span aria-hidden="true">·</span>
                           <span>
                             Diperbarui {new Date(vol.updatedAt || vol.createdAt).toLocaleDateString('id-ID')}
@@ -871,15 +899,29 @@ export const AdminLibraryVolumesManager: React.FC<AdminLibraryVolumesManagerProp
                       />
                       <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-[11px] text-[#525855] dark:text-[#A6D6C9]">
                         <span>Gunakan Heading 1 (H1) untuk Bab &amp; Heading 2 (H2) untuk Subbab</span>
-                        {liveTocPreview && liveTocPreview.chapters.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-3">
                           <button
                             type="button"
-                            onClick={() => setActiveTab('daftar_isi')}
-                            className="font-bold text-[#123D32] dark:text-[#D9AC45] hover:underline cursor-pointer"
+                            onClick={() => setActiveTab('pengaturan')}
+                            className="inline-flex items-center gap-1 font-bold text-[#123D32] dark:text-[#D9AC45] hover:underline cursor-pointer"
                           >
-                            Lihat Daftar Isi ({liveTocPreview.chapters.length} Bab) →
+                            <FileText className="w-3 h-3" />
+                            <span>
+                              {resolveLibraryPdfViewerUrl(volumeForm.pdfDriveUrl)
+                                ? 'Link PDF Terpasang'
+                                : 'Atur Link PDF (Opsional)'}
+                            </span>
                           </button>
-                        )}
+                          {liveTocPreview && liveTocPreview.chapters.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => setActiveTab('daftar_isi')}
+                              className="font-bold text-[#123D32] dark:text-[#D9AC45] hover:underline cursor-pointer"
+                            >
+                              Lihat Daftar Isi ({liveTocPreview.chapters.length} Bab) →
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   }
@@ -960,6 +1002,73 @@ export const AdminLibraryVolumesManager: React.FC<AdminLibraryVolumesManagerProp
                         </p>
                       </button>
                     </div>
+
+                    {/* OPTIONAL PER-VOLUME PDF LINK (INTERNAL VOLUMES ONLY) */}
+                    {volumeForm.sourceType === 'internal' && (() => {
+                      const rawPdfUrl = volumeForm.pdfDriveUrl || '';
+                      const pdfCheck = validateLibraryPdfDriveUrl(rawPdfUrl);
+                      const hasInput = Boolean(rawPdfUrl.trim());
+                      const validViewerUrl = resolveLibraryPdfViewerUrl(rawPdfUrl);
+                      return (
+                        <div
+                          data-testid="admin-volume-pdf-drive-section"
+                          className="mt-4 pt-4 border-t border-[#171717]/15 dark:border-[#D9AC45]/25 space-y-2.5"
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <label
+                              htmlFor="admin-volume-pdf-drive-input"
+                              className="text-xs font-extrabold text-[#171717] dark:text-[#F8F3E8] inline-flex items-center gap-1.5"
+                            >
+                              <FileText className="w-3.5 h-3.5 text-[#123D32] dark:text-[#D9AC45]" />
+                              <span>Link PDF (Google Drive)</span>
+                              <span className="font-semibold text-[#525855] dark:text-[#A6D6C9]">(Opsional — Khusus Jilid Ini)</span>
+                            </label>
+                            {hasInput && (
+                              <button
+                                type="button"
+                                data-testid="admin-volume-pdf-clear-btn"
+                                onClick={() => setVolumeForm(prev => ({ ...prev, pdfDriveUrl: '' }))}
+                                className="text-[11px] font-extrabold text-[#C94A4A] hover:underline cursor-pointer"
+                              >
+                                Kosongkan
+                              </button>
+                            )}
+                          </div>
+                          <input
+                            id="admin-volume-pdf-drive-input"
+                            type="url"
+                            maxLength={2000}
+                            data-testid="admin-volume-pdf-drive-input"
+                            value={rawPdfUrl}
+                            onChange={(e) => setVolumeForm(prev => ({ ...prev, pdfDriveUrl: e.target.value }))}
+                            placeholder="https://drive.google.com/file/d/FILE_ID/view?usp=sharing"
+                            className="nb-input w-full px-3.5 py-2.5 text-xs font-medium"
+                          />
+                          <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#525855] dark:text-[#A6D6C9]">
+                            <span>
+                              Tautan PDF khusus untuk jilid ini. Jika diisi dan valid, tombol <strong>Lihat PDF</strong> tampil pada halaman pembaca jilid ini tanpa memengaruhi jilid lain.
+                            </span>
+                            {validViewerUrl && (
+                              <a
+                                href={validViewerUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 font-extrabold text-[#123D32] dark:text-[#D9AC45] underline shrink-0"
+                              >
+                                <span>Uji Buka PDF</span>
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
+                            )}
+                          </div>
+                          {hasInput && !pdfCheck.isValid && (
+                            <p className="text-[11px] font-bold text-[#B42318] dark:text-[#FCA5A5] flex items-start gap-1.5">
+                              <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                              <span>{pdfCheck.error}</span>
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {/* Shared Main Cover Info Notice */}

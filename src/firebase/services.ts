@@ -3780,6 +3780,7 @@ function normalizeLibraryBookDoc(id: string, raw: Record<string, any>): LibraryB
     collectionType,
     sourceType: raw.sourceType === 'google_drive' ? 'google_drive' : 'internal',
     googleDriveUrl: typeof raw.googleDriveUrl === 'string' ? raw.googleDriveUrl : '',
+    pdfDriveUrl: typeof raw.pdfDriveUrl === 'string' ? raw.pdfDriveUrl.trim() : '',
     content: typeof raw.content === 'string' ? raw.content : '',
     status: raw.status === 'draft' ? 'draft' : 'published',
     readingTimeMinutes: Number(raw.readingTimeMinutes) || 1,
@@ -3807,6 +3808,7 @@ function normalizeLibraryBookVolumeDoc(
     titleAr: typeof raw.titleAr === 'string' ? raw.titleAr : '',
     sourceType: raw.sourceType === 'google_drive' ? 'google_drive' : 'internal',
     googleDriveUrl: typeof raw.googleDriveUrl === 'string' ? raw.googleDriveUrl : '',
+    pdfDriveUrl: typeof raw.pdfDriveUrl === 'string' ? raw.pdfDriveUrl.trim() : '',
     content: typeof raw.content === 'string' ? raw.content : '',
     status: raw.status === 'draft' ? 'draft' : 'published',
     readingTimeMinutes: Number(raw.readingTimeMinutes) || 1,
@@ -4047,6 +4049,10 @@ export async function saveLibraryBook(
       collectionType === 'single' && sourceType === 'google_drive'
         ? (book.googleDriveUrl || '').trim()
         : '',
+    pdfDriveUrl:
+      collectionType === 'single' && sourceType === 'internal'
+        ? (book.pdfDriveUrl || '').trim().slice(0, 2000)
+        : '',
     content: collectionType === 'single' && sourceType === 'internal' ? sanitizedContent : '',
     status,
     readingTimeMinutes,
@@ -4187,10 +4193,6 @@ export async function getLibraryBookVolumes(
         snap.docs.map(d => normalizeLibraryBookVolumeDoc(cleanBookId, d.id, d.data() as Record<string, any>))
       );
       libraryBookVolumesCache.set(cacheKey, { data: list, timestamp: now });
-      libraryBookVolumesCache.set(`${cleanBookId}:public`, {
-        data: list.filter(v => v.status === 'published'),
-        timestamp: now
-      });
       return list;
     } catch (err) {
       logFirestoreDiagnostic(
@@ -4238,8 +4240,9 @@ export async function getLibraryBookVolumeById(
   if (!cleanBookId || !cleanVolId) return null;
 
   const cacheKey = `${cleanBookId}:${includeDrafts ? 'admin' : 'public'}`;
+  const now = Date.now();
   const cached = libraryBookVolumesCache.get(cacheKey);
-  if (cached && cached.data.length > 0) {
+  if (cached && now - cached.timestamp < CACHE_TTL_MS && cached.data.length > 0) {
     const match = cached.data.find(v => v.id === cleanVolId);
     if (match && (match.status === 'published' || includeDrafts)) {
       return match;
@@ -4263,14 +4266,16 @@ export async function getLibraryBookVolumeById(
   } catch (err) {
     const errCode = String((err as any)?.code || '').toLowerCase();
     // Under Master Gate rules, reading a draft/non-existent volume as a public user throws permission-denied.
-    // Verify via published list query whether public read works: if yes, treat this volume as draft/not-found (null).
+    // Force a live server check via published list query (bypassing memory cache) to distinguish:
+    // - If public list succeeds -> public rules ARE active, so this volume is either draft or not found (return null) or matched if published.
+    // - If public list also throws permission-denied -> real rules/permission denial on subcollection -> re-throw original error!
     if (!includeDrafts && errCode.includes('permission-denied')) {
       try {
-        const pubVolumes = await getLibraryBookVolumes(cleanBookId, false, false);
+        const pubVolumes = await getLibraryBookVolumes(cleanBookId, false, true);
         const found = pubVolumes.find(v => v.id === cleanVolId);
         return found || null;
       } catch {
-        // Real permission issue on collection -> surface original error
+        // Real permission issue on subcollection -> surface original error
       }
     }
     logFirestoreDiagnostic({ operation: 'getLibraryBookVolumeById', path: volPath }, err);
@@ -4318,6 +4323,7 @@ export async function saveLibraryBookVolume(
     titleAr: (volume.titleAr || '').trim(),
     sourceType,
     googleDriveUrl: sourceType === 'google_drive' ? (volume.googleDriveUrl || '').trim() : '',
+    pdfDriveUrl: sourceType === 'internal' ? (volume.pdfDriveUrl || '').trim().slice(0, 2000) : '',
     content: sourceType === 'internal' ? sanitizedContent : '',
     status,
     readingTimeMinutes,

@@ -20,7 +20,8 @@ import {
   PenLine,
   SlidersHorizontal,
   Layers,
-  ArrowRight
+  ArrowRight,
+  FileText
 } from 'lucide-react';
 import {
   LibraryBook,
@@ -49,6 +50,8 @@ import {
   validateLibraryCoverFile,
   validateLibraryCoverUrl,
   validateLibraryExternalDriveUrl,
+  validateLibraryPdfDriveUrl,
+  resolveLibraryPdfViewerUrl,
   parseLibraryBookContent,
   isMultiVolumeLibraryBook,
   normalizeLibraryCollectionType
@@ -115,6 +118,7 @@ export const AdminLibraryManager: React.FC<AdminLibraryManagerProps> = ({
     collectionType: 'single',
     sourceType: 'internal',
     googleDriveUrl: '',
+    pdfDriveUrl: '',
     content: '',
     status: 'published'
   });
@@ -189,6 +193,7 @@ export const AdminLibraryManager: React.FC<AdminLibraryManagerProps> = ({
       collectionType: 'single',
       sourceType: 'internal',
       googleDriveUrl: '',
+      pdfDriveUrl: '',
       content: '',
       status: 'published'
     };
@@ -314,6 +319,7 @@ export const AdminLibraryManager: React.FC<AdminLibraryManagerProps> = ({
     const sourceType: LibraryBookSourceType =
       formData.sourceType === 'google_drive' ? 'google_drive' : 'internal';
 
+    let normalizedPdfDriveUrl = '';
     if (collectionType === 'single') {
       if (sourceType === 'google_drive') {
         const driveValidation = validateLibraryExternalDriveUrl(formData.googleDriveUrl);
@@ -337,6 +343,18 @@ export const AdminLibraryManager: React.FC<AdminLibraryManagerProps> = ({
           });
           return;
         }
+
+        const pdfValidation = validateLibraryPdfDriveUrl(formData.pdfDriveUrl);
+        if (!pdfValidation.isValid) {
+          setActiveEditorTab('metadata');
+          setFeedback({
+            type: 'error',
+            text: pdfValidation.error || 'Format Link PDF (Google Drive) tidak valid.'
+          });
+          modalBodyRef.current?.scrollTo({ top: 180, behavior: 'smooth' });
+          return;
+        }
+        normalizedPdfDriveUrl = pdfValidation.normalizedUrl;
       }
     }
 
@@ -352,6 +370,7 @@ export const AdminLibraryManager: React.FC<AdminLibraryManagerProps> = ({
         collectionType,
         sourceType: collectionType === 'multi_volume' ? 'internal' : sourceType,
         googleDriveUrl: collectionType === 'single' && sourceType === 'google_drive' ? (formData.googleDriveUrl || '').trim() : '',
+        pdfDriveUrl: collectionType === 'single' && sourceType === 'internal' ? normalizedPdfDriveUrl : '',
         content: collectionType === 'single' && sourceType === 'internal' ? (formData.content || '') : '',
         status: targetStatus
       });
@@ -1047,15 +1066,29 @@ export const AdminLibraryManager: React.FC<AdminLibraryManagerProps> = ({
                             />
                             <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-[11px] text-[#525855] dark:text-[#A6D6C9]">
                               <span>Gunakan Heading 1 (H1) untuk Bab &amp; Heading 2 (H2) untuk Subbab</span>
-                              {liveTocPreview && liveTocPreview.chapters.length > 0 && (
+                              <div className="flex flex-wrap items-center gap-3">
                                 <button
                                   type="button"
-                                  onClick={() => setActiveEditorTab('daftar_isi')}
-                                  className="font-bold text-[#123D32] dark:text-[#D9AC45] hover:underline cursor-pointer"
+                                  onClick={() => setActiveEditorTab('metadata')}
+                                  className="inline-flex items-center gap-1 font-bold text-[#123D32] dark:text-[#D9AC45] hover:underline cursor-pointer"
                                 >
-                                  Lihat Daftar Isi ({liveTocPreview.chapters.length} Bab) →
+                                  <FileText className="w-3 h-3" />
+                                  <span>
+                                    {resolveLibraryPdfViewerUrl(formData.pdfDriveUrl)
+                                      ? 'Link PDF Terpasang'
+                                      : 'Atur Link PDF (Opsional)'}
+                                  </span>
                                 </button>
-                              )}
+                                {liveTocPreview && liveTocPreview.chapters.length > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setActiveEditorTab('daftar_isi')}
+                                    className="font-bold text-[#123D32] dark:text-[#D9AC45] hover:underline cursor-pointer"
+                                  >
+                                    Lihat Daftar Isi ({liveTocPreview.chapters.length} Bab) →
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           </div>
                         }
@@ -1154,6 +1187,73 @@ export const AdminLibraryManager: React.FC<AdminLibraryManagerProps> = ({
                           </p>
                         </button>
                       </div>
+
+                      {/* OPTIONAL PDF LINK FOR SINGLE INTERNAL BOOKS */}
+                      {formData.sourceType === 'internal' && (() => {
+                        const rawPdfUrl = formData.pdfDriveUrl || '';
+                        const pdfCheck = validateLibraryPdfDriveUrl(rawPdfUrl);
+                        const hasInput = Boolean(rawPdfUrl.trim());
+                        const validViewerUrl = resolveLibraryPdfViewerUrl(rawPdfUrl);
+                        return (
+                          <div
+                            data-testid="admin-library-pdf-drive-section"
+                            className="mt-4 pt-4 border-t border-[#171717]/15 dark:border-[#D9AC45]/25 space-y-2.5"
+                          >
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <label
+                                htmlFor="admin-library-pdf-drive-input"
+                                className="text-xs font-extrabold text-[#171717] dark:text-[#F8F3E8] inline-flex items-center gap-1.5"
+                              >
+                                <FileText className="w-3.5 h-3.5 text-[#123D32] dark:text-[#D9AC45]" />
+                                <span>Link PDF (Google Drive)</span>
+                                <span className="font-semibold text-[#525855] dark:text-[#A6D6C9]">(Opsional)</span>
+                              </label>
+                              {hasInput && (
+                                <button
+                                  type="button"
+                                  data-testid="admin-library-pdf-clear-btn"
+                                  onClick={() => setFormData(prev => ({ ...prev, pdfDriveUrl: '' }))}
+                                  className="text-[11px] font-extrabold text-[#C94A4A] hover:underline cursor-pointer"
+                                >
+                                  Kosongkan
+                                </button>
+                              )}
+                            </div>
+                            <input
+                              id="admin-library-pdf-drive-input"
+                              type="url"
+                              maxLength={2000}
+                              data-testid="admin-library-pdf-drive-input"
+                              value={rawPdfUrl}
+                              onChange={(e) => setFormData(prev => ({ ...prev, pdfDriveUrl: e.target.value }))}
+                              placeholder="https://drive.google.com/file/d/FILE_ID/view?usp=sharing"
+                              className="nb-input w-full px-3.5 py-2.5 text-xs font-medium"
+                            />
+                            <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#525855] dark:text-[#A6D6C9]">
+                              <span>
+                                Jika diisi dengan tautan Google Drive yang valid, tombol <strong>Lihat PDF</strong> akan tampil di halaman pembaca internal (membuka di tab baru).
+                              </span>
+                              {validViewerUrl && (
+                                <a
+                                  href={validViewerUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 font-extrabold text-[#123D32] dark:text-[#D9AC45] underline shrink-0"
+                                >
+                                  <span>Uji Buka PDF</span>
+                                  <ExternalLink className="w-3 h-3" />
+                                </a>
+                              )}
+                            </div>
+                            {hasInput && !pdfCheck.isValid && (
+                              <p className="text-[11px] font-bold text-[#B42318] dark:text-[#FCA5A5] flex items-start gap-1.5">
+                                <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                                <span>{pdfCheck.error}</span>
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
                   )}
 

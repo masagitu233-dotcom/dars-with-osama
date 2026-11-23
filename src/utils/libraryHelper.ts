@@ -13,6 +13,7 @@
 import { LibraryCoverAspectRatio } from '../types/index.js';
 import {
   extractGoogleDriveFileId,
+  getGoogleDriveViewerUrl,
   isGoogleDriveUrl,
   resolveDisplayImageUrl,
   validateArticleImageSource
@@ -231,6 +232,69 @@ export function validateLibraryExternalDriveUrl(
     normalizedUrl: trimmed,
     fileId
   };
+}
+
+/**
+ * Validates an OPTIONAL Google Drive PDF link attached to an internal Library book or volume.
+ * - Blank/empty input is valid (`normalizedUrl: ''`) because the PDF link is optional.
+ * - Non-empty input must be a valid Google Drive / Google Docs URL with a detectable file/document/folder ID.
+ * - Converts direct-download Google Drive URLs (e.g. `uc?export=download`) into standard viewer links
+ *   so clicking "Lihat PDF" opens Google Drive's viewer in a new tab instead of forcing an auto-download.
+ */
+export function validateLibraryPdfDriveUrl(
+  rawUrl: string | null | undefined
+): LibraryExternalUrlValidationResult {
+  if (!rawUrl || typeof rawUrl !== 'string' || !rawUrl.trim()) {
+    return {
+      isValid: true,
+      normalizedUrl: '',
+      fileId: null
+    };
+  }
+
+  const trimmed = rawUrl.trim();
+  const baseCheck = validateLibraryExternalDriveUrl(trimmed);
+  if (!baseCheck.isValid) {
+    return {
+      isValid: false,
+      normalizedUrl: '',
+      fileId: null,
+      error:
+        'Format Link PDF (Google Drive) tidak valid. Gunakan tautan berbagi Google Drive seperti https://drive.google.com/file/d/ID_BERKAS/view?usp=sharing.'
+    };
+  }
+
+  const lower = trimmed.toLowerCase();
+  const isDirectDownloadPattern =
+    lower.includes('export=download') ||
+    lower.includes('/uc?') ||
+    lower.includes('/open?');
+
+  const normalizedUrl =
+    baseCheck.fileId && isDirectDownloadPattern
+      ? getGoogleDriveViewerUrl(baseCheck.fileId)
+      : baseCheck.normalizedUrl;
+
+  return {
+    isValid: true,
+    normalizedUrl,
+    fileId: baseCheck.fileId
+  };
+}
+
+/**
+ * Resolves a safe Google Drive viewer URL for the reader's "Lihat PDF" button.
+ * Returns `null` when empty or invalid so the button is strictly hidden unless a valid link is present.
+ */
+export function resolveLibraryPdfViewerUrl(rawUrl: string | null | undefined): string | null {
+  if (!rawUrl || typeof rawUrl !== 'string' || !rawUrl.trim()) {
+    return null;
+  }
+  const result = validateLibraryPdfDriveUrl(rawUrl);
+  if (!result.isValid || !result.normalizedUrl) {
+    return null;
+  }
+  return result.normalizedUrl;
 }
 
 /**
@@ -502,7 +566,10 @@ export interface LibraryLoadErrorInfo {
  * Classifies Firestore errors during public Library Digital reads so failures are NEVER
  * disguised as an empty library collection or "book not found".
  */
-export function classifyLibraryLoadError(error: unknown): LibraryLoadErrorInfo {
+export function classifyLibraryLoadError(
+  error: unknown,
+  scope: 'books' | 'volumes' = 'books'
+): LibraryLoadErrorInfo {
   const rawMsg = error instanceof Error ? error.message : String(error || '');
   const lowerMsg = rawMsg.toLowerCase();
   const code = (error as any)?.code ? String((error as any).code).toLowerCase() : '';
@@ -515,9 +582,14 @@ export function classifyLibraryLoadError(error: unknown): LibraryLoadErrorInfo {
     return {
       category: 'permission-denied',
       code: code || 'permission-denied',
-      title: 'Akses Pembacaan Library Publik Ditolak',
+      title:
+        scope === 'volumes'
+          ? 'Akses Pembacaan Jilid Publik Ditolak'
+          : 'Akses Pembacaan Library Publik Ditolak',
       message:
-        'Permintaan ke database Library ditolak oleh aturan keamanan Firestore (permission-denied). Pastikan aturan keamanan terbaru untuk koleksi libraryBooks sudah dipublikasikan pada database aktif.',
+        scope === 'volumes'
+          ? 'Permintaan ke subkoleksi jilid (libraryBooks/{bookId}/volumes) ditolak oleh aturan keamanan Firestore (permission-denied). Pastikan aturan keamanan terbaru untuk subkoleksi volumes sudah dipublikasikan pada database aktif.'
+          : 'Permintaan ke database Library ditolak oleh aturan keamanan Firestore (permission-denied). Pastikan aturan keamanan terbaru untuk koleksi libraryBooks sudah dipublikasikan pada database aktif.',
       canRetry: true
     };
   }

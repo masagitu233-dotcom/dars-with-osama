@@ -5945,4 +5945,159 @@ test('Library Digital Case 9: Audit keamanan subkoleksi volumes di firestore.rul
   assert.ok(appSrc.includes('handleOpenLibraryVolumeReader'), 'App.tsx harus menghubungkan rute baca jilid spesifik');
 });
 
+test('Library Digital Case 10: Audit perbaikan akses publik halaman baca jilid internal (rules exists guard, error scope, isolasi cache, dan sinkronisasi ref)', async () => {
+  const fs = await import('fs');
+  const { classifyLibraryLoadError } = await import('./libraryHelper.js');
+
+  // 1. Klasifikasi error jilid membedakan permission-denied vs network-error vs quota-exceeded secara tegas
+  const volPermErr = classifyLibraryLoadError(
+    { code: 'permission-denied', message: 'Missing or insufficient permissions.' },
+    'volumes'
+  );
+  assert.strictEqual(volPermErr.category, 'permission-denied');
+  assert.strictEqual(volPermErr.title, 'Akses Pembacaan Jilid Publik Ditolak');
+  assert.ok(volPermErr.message.includes('libraryBooks/{bookId}/volumes'));
+
+  const bookPermErr = classifyLibraryLoadError(
+    { code: 'permission-denied', message: 'Missing or insufficient permissions.' },
+    'books'
+  );
+  assert.strictEqual(bookPermErr.category, 'permission-denied');
+  assert.strictEqual(bookPermErr.title, 'Akses Pembacaan Library Publik Ditolak');
+
+  const volNetworkErr = classifyLibraryLoadError(
+    { code: 'unavailable', message: 'Failed to get document because the client is offline.' },
+    'volumes'
+  );
+  assert.strictEqual(volNetworkErr.category, 'network-error');
+
+  // 2. firestore.rules: guard exists(...) sebelum get(...) pada subkoleksi volumes dan tidak pernah menggunakan allow read: if true
+  const rulesText = fs.readFileSync(new URL('../../firestore.rules', import.meta.url), 'utf8');
+  const volumesMatch = rulesText.match(/match \/volumes\/\{volumeId\}\s*\{[\s\S]*?\}/);
+  assert.ok(volumesMatch, 'Blok match /volumes/{volumeId} harus ditemukan');
+  const volumesBlock = volumesMatch[0];
+  assert.ok(
+    volumesBlock.includes('exists(/databases/$(database)/documents/libraryBooks/$(bookId))'),
+    'Rules subkoleksi volumes wajib memeriksa exists(...) kitab induk sebelum get(...)'
+  );
+  assert.ok(
+    volumesBlock.includes("resource.data.status == 'published'") &&
+    volumesBlock.includes("get(/databases/$(database)/documents/libraryBooks/$(bookId)).data.status == 'published'"),
+    'Rules subkoleksi volumes wajib memastikan jilid dan kitab induk sama-sama published'
+  );
+  assert.strictEqual(
+    /allow\s+(read|get|list)\s*:\s*if\s+true\b/.test(volumesBlock),
+    false,
+    'Rules subkoleksi volumes tidak boleh menggunakan allow read/get/list: if true'
+  );
+
+  // 3. services.ts: getLibraryBookVolumes admin tidak mempopulasi cache :public, dan fallback getLibraryBookVolumeById memakai forceRefresh = true
+  const servicesSrc = fs.readFileSync(new URL('../firebase/services.ts', import.meta.url), 'utf8');
+  const getVolsMatch = servicesSrc.match(/export async function getLibraryBookVolumes[\s\S]*?export async function getLibraryBookVolumeById/);
+  assert.ok(getVolsMatch, 'Fungsi getLibraryBookVolumes harus ditemukan');
+  assert.strictEqual(
+    getVolsMatch[0].includes('`${cleanBookId}:public`'),
+    false,
+    'Fetch admin getLibraryBookVolumes tidak boleh menimpa cache :public'
+  );
+  const getVolByIdMatch = servicesSrc.match(/export async function getLibraryBookVolumeById[\s\S]*?export async function saveLibraryBookVolume/);
+  assert.ok(getVolByIdMatch, 'Fungsi getLibraryBookVolumeById harus ditemukan');
+  assert.ok(
+    getVolByIdMatch[0].includes('getLibraryBookVolumes(cleanBookId, false, true)'),
+    'Fallback verifikasi permission-denied pada getLibraryBookVolumeById wajib memakai forceRefresh = true agar tidak menyamarkan penolakan server dengan cache basi'
+  );
+
+  // 4. App.tsx: state libraryVolumeError terpisah, sinkronisasi ref sebelum navigateTo, pembersihan cache saat logout, dan tampilan error jilid khusus
+  const appSrc = fs.readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
+  assert.ok(appSrc.includes('const [libraryVolumeError, setLibraryVolumeError]'), 'App.tsx harus memiliki state libraryVolumeError terpisah');
+  assert.ok(appSrc.includes("classifyLibraryLoadError(err, 'volumes')"), 'Error pembacaan jilid di App.tsx harus menggunakan scope volumes');
+  assert.ok(appSrc.includes('selectedLibraryVolumeRef.current = volume;'), 'handleOpenLibraryVolumeReader wajib menyinkronkan ref sebelum navigateTo');
+  assert.ok(appSrc.includes("invalidateServicesCache('all');"), 'handleConfirmLogout wajib membersihkan cache memori layanan agar cache admin tidak bocor ke sesi tamu');
+  assert.ok(appSrc.includes('data-testid="library-volume-reader-error"'), 'View library-read wajib merender blok error jilid terpisah saat buku induk sudah termuat');
+});
+
+test('Library Digital Case 11: Fitur opsional Link PDF (Google Drive) untuk buku internal tunggal & per-jilid multi-volume', async () => {
+  const fs = await import('fs');
+  const {
+    validateLibraryPdfDriveUrl,
+    resolveLibraryPdfViewerUrl
+  } = await import('./libraryHelper.js');
+  const {
+    buildLibraryBookDirtySnapshot,
+    buildLibraryVolumeDirtySnapshot,
+    hasEditorUnsavedChanges
+  } = await import('./editorWorkspaceHelper.js');
+
+  // 1. Sifat opsional: kosong / undefined / spasi dianggap valid dengan normalizedUrl kosong & tombol tidak tampil (null)
+  assert.strictEqual(validateLibraryPdfDriveUrl('').isValid, true);
+  assert.strictEqual(validateLibraryPdfDriveUrl('').normalizedUrl, '');
+  assert.strictEqual(validateLibraryPdfDriveUrl(undefined).isValid, true);
+  assert.strictEqual(validateLibraryPdfDriveUrl('   ').isValid, true);
+  assert.strictEqual(resolveLibraryPdfViewerUrl(''), null);
+  assert.strictEqual(resolveLibraryPdfViewerUrl(undefined), null);
+  assert.strictEqual(resolveLibraryPdfViewerUrl('   '), null);
+
+  // 2. Tautan berbagi Google Drive standar valid & tetap membuka tampilan Google Drive (bukan auto-download)
+  const shareUrl = 'https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrStUvWxYz12345/view?usp=sharing';
+  const validShare = validateLibraryPdfDriveUrl(shareUrl);
+  assert.strictEqual(validShare.isValid, true);
+  assert.strictEqual(validShare.fileId, '1AbCdEfGhIjKlMnOpQrStUvWxYz12345');
+  assert.strictEqual(validShare.normalizedUrl, shareUrl);
+  assert.strictEqual(resolveLibraryPdfViewerUrl(shareUrl), shareUrl);
+
+  // 3. Tautan direct-download Google Drive (uc?export=download) dikonversi aman ke tautan viewer Google Drive
+  const downloadUrl = 'https://drive.google.com/uc?id=1AbCdEfGhIjKlMnOpQrStUvWxYz12345&export=download';
+  const normalizedDownload = validateLibraryPdfDriveUrl(downloadUrl);
+  assert.strictEqual(normalizedDownload.isValid, true);
+  assert.strictEqual(
+    normalizedDownload.normalizedUrl,
+    'https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrStUvWxYz12345/view?usp=sharing'
+  );
+  assert.strictEqual(normalizedDownload.normalizedUrl.includes('export=download'), false);
+  assert.strictEqual(
+    resolveLibraryPdfViewerUrl(downloadUrl),
+    'https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrStUvWxYz12345/view?usp=sharing'
+  );
+
+  // 4. Tautan non-Google Drive / tidak valid ditolak dan tidak memunculkan tombol Lihat PDF
+  assert.strictEqual(validateLibraryPdfDriveUrl('https://example.com/file.pdf').isValid, false);
+  assert.strictEqual(validateLibraryPdfDriveUrl('bukan-url').isValid, false);
+  assert.strictEqual(validateLibraryPdfDriveUrl('https://drive.google.com/drive/my-drive').isValid, false);
+  assert.strictEqual(resolveLibraryPdfViewerUrl('https://example.com/file.pdf'), null);
+  assert.strictEqual(resolveLibraryPdfViewerUrl('javascript:alert(1)'), null);
+
+  // 5. Deteksi perubahan belum disimpan pada editor buku & jilid mencakup pdfDriveUrl
+  const bookSnapA = buildLibraryBookDirtySnapshot({ title: 'Matan', sourceType: 'internal', pdfDriveUrl: '' });
+  const bookSnapB = buildLibraryBookDirtySnapshot({ title: 'Matan', sourceType: 'internal', pdfDriveUrl: shareUrl });
+  assert.strictEqual(hasEditorUnsavedChanges(bookSnapB, bookSnapA), true);
+
+  const volSnapA = buildLibraryVolumeDirtySnapshot({ volumeNumber: 1, title: 'Jilid 1', sourceType: 'internal', pdfDriveUrl: '' });
+  const volSnapB = buildLibraryVolumeDirtySnapshot({ volumeNumber: 1, title: 'Jilid 1', sourceType: 'internal', pdfDriveUrl: shareUrl });
+  assert.strictEqual(hasEditorUnsavedChanges(volSnapB, volSnapA), true);
+
+  // 6. Audit implementasi kode sumber: konsistensi field pdfDriveUrl, tombol Lihat PDF (tab baru tanpa download), & isolasi jilid
+  const typesSrc = fs.readFileSync(new URL('../types/index.ts', import.meta.url), 'utf8');
+  const servicesSrc = fs.readFileSync(new URL('../firebase/services.ts', import.meta.url), 'utf8');
+  const adminBookSrc = fs.readFileSync(new URL('../components/admin/AdminLibraryManager.tsx', import.meta.url), 'utf8');
+  const adminVolSrc = fs.readFileSync(new URL('../components/admin/AdminLibraryVolumesManager.tsx', import.meta.url), 'utf8');
+  const readerSrc = fs.readFileSync(new URL('../components/library/LibraryDetailView.tsx', import.meta.url), 'utf8');
+
+  assert.ok(typesSrc.includes('pdfDriveUrl?: string;'), 'LibraryBook & LibraryBookVolume wajib memiliki properti opsional pdfDriveUrl');
+  assert.ok(servicesSrc.includes('pdfDriveUrl:'), 'services.ts wajib menormalisasi dan menyimpan pdfDriveUrl pada buku & jilid');
+  assert.ok(adminBookSrc.includes('data-testid="admin-library-pdf-drive-input"'), 'AdminLibraryManager wajib memiliki kolom Link PDF (Google Drive)');
+  assert.ok(adminBookSrc.includes('Link PDF (Google Drive)'), 'Label kolom buku biasa harus Link PDF (Google Drive)');
+  assert.ok(adminVolSrc.includes('data-testid="admin-volume-pdf-drive-input"'), 'AdminLibraryVolumesManager wajib memiliki kolom Link PDF (Google Drive) per jilid');
+  assert.ok(adminVolSrc.includes('Link PDF (Google Drive)'), 'Label kolom jilid harus Link PDF (Google Drive)');
+  assert.ok(readerSrc.includes('data-testid="library-reader-pdf-btn"'), 'LibraryDetailView wajib merender tombol Lihat PDF saat tautan valid');
+  assert.ok(readerSrc.includes('<span>Lihat PDF</span>'), 'Label tombol pembaca harus Lihat PDF');
+  assert.ok(
+    readerSrc.includes("volume ? volume.pdfDriveUrl : isMultiVolume ? '' : book.pdfDriveUrl"),
+    'Resolusi tautan PDF pembaca wajib mengisolasi jilid dari buku induk maupun jilid lain'
+  );
+  assert.strictEqual(
+    /data-testid="library-reader-pdf-btn"[\s\S]{0,200}\bdownload\b/.test(readerSrc),
+    false,
+    'Tombol Lihat PDF tidak boleh menggunakan atribut download otomatis'
+  );
+});
 

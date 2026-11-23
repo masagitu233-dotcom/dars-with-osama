@@ -133,6 +133,7 @@ function MainApp() {
   const [selectedLibrarySiblingVolumes, setSelectedLibrarySiblingVolumes] = useState<LibraryBookVolume[]>([]);
   const [libraryVolumeResolving, setLibraryVolumeResolving] = useState<boolean>(false);
   const [libraryVolumeNotFound, setLibraryVolumeNotFound] = useState<boolean>(false);
+  const [libraryVolumeError, setLibraryVolumeError] = useState<LibraryLoadErrorInfo | null>(null);
   const [libraryBookResolving, setLibraryBookResolving] = useState<boolean>(false);
   const [libraryBookNotFound, setLibraryBookNotFound] = useState<boolean>(false);
   const [libraryBookError, setLibraryBookError] = useState<LibraryLoadErrorInfo | null>(null);
@@ -296,12 +297,15 @@ function MainApp() {
         setLibraryBookNotFound(false);
         setLibraryBookError(null);
         setLibraryVolumeNotFound(false);
+        setLibraryVolumeError(null);
 
         const resolveTargetVolume = (book: LibraryBook) => {
           if (!targetVolumeId) {
+            selectedLibraryVolumeRef.current = null;
             setSelectedLibraryVolume(null);
             setLibraryVolumeResolving(false);
             setLibraryVolumeNotFound(false);
+            setLibraryVolumeError(null);
             return;
           }
 
@@ -314,6 +318,7 @@ function MainApp() {
           ) {
             setLibraryVolumeResolving(false);
             setLibraryVolumeNotFound(false);
+            setLibraryVolumeError(null);
             getLibraryBookVolumes(book.id, adminFlag, false)
               .then(vols => {
                 setSelectedLibrarySiblingVolumes(adminFlag ? vols : filterPublicLibraryVolumes(vols));
@@ -322,9 +327,11 @@ function MainApp() {
             return;
           }
 
+          selectedLibraryVolumeRef.current = null;
           setSelectedLibraryVolume(null);
           setLibraryVolumeResolving(true);
           setLibraryVolumeNotFound(false);
+          setLibraryVolumeError(null);
 
           Promise.all([
             getLibraryBookVolumeById(book.id, targetVolumeId, adminFlag),
@@ -332,18 +339,23 @@ function MainApp() {
           ])
             .then(([vol, allVols]) => {
               if (vol && (vol.status === 'published' || adminFlag)) {
+                selectedLibraryVolumeRef.current = vol;
                 setSelectedLibraryVolume(vol);
                 setSelectedLibrarySiblingVolumes(adminFlag ? allVols : filterPublicLibraryVolumes(allVols));
                 setLibraryVolumeNotFound(false);
+                setLibraryVolumeError(null);
               } else {
+                selectedLibraryVolumeRef.current = null;
                 setSelectedLibraryVolume(null);
+                setLibraryVolumeError(null);
                 setLibraryVolumeNotFound(true);
               }
             })
             .catch(err => {
+              selectedLibraryVolumeRef.current = null;
               setSelectedLibraryVolume(null);
               setLibraryVolumeNotFound(false);
-              setLibraryBookError(classifyLibraryLoadError(err));
+              setLibraryVolumeError(classifyLibraryLoadError(err, 'volumes'));
             })
             .finally(() => {
               setLibraryVolumeResolving(false);
@@ -862,6 +874,10 @@ function MainApp() {
   const handleRetryResolveLibraryBook = () => {
     if (typeof window === 'undefined') return;
     invalidateServicesCache('library');
+    selectedLibraryVolumeRef.current = null;
+    setSelectedLibraryVolume(null);
+    setLibraryVolumeError(null);
+    setLibraryVolumeNotFound(false);
     const activeRoute: DarsRouteState = isDarsHistoryState(window.history.state)
       ? window.history.state
       : parseUrlToRouteState(window.location.pathname, window.location.search);
@@ -1007,9 +1023,12 @@ function MainApp() {
   };
 
   const handleSelectLibraryBook = (book: LibraryBook) => {
+    selectedLibraryBookRef.current = book;
+    selectedLibraryVolumeRef.current = null;
     setSelectedLibraryBook(book);
     setSelectedLibraryVolume(null);
     setLibraryVolumeNotFound(false);
+    setLibraryVolumeError(null);
     setLibraryVolumeResolving(false);
     setLibraryBookNotFound(false);
     setLibraryBookError(null);
@@ -1023,9 +1042,12 @@ function MainApp() {
   };
 
   const handleOpenLibraryReader = (book: LibraryBook) => {
+    selectedLibraryBookRef.current = book;
+    selectedLibraryVolumeRef.current = null;
     setSelectedLibraryBook(book);
     setSelectedLibraryVolume(null);
     setLibraryVolumeNotFound(false);
+    setLibraryVolumeError(null);
     setLibraryVolumeResolving(false);
     setLibraryBookNotFound(false);
     setLibraryBookError(null);
@@ -1043,6 +1065,8 @@ function MainApp() {
     volume: LibraryBookVolume,
     siblingVolumes?: LibraryBookVolume[]
   ) => {
+    selectedLibraryBookRef.current = book;
+    selectedLibraryVolumeRef.current = volume;
     setSelectedLibraryBook(book);
     setSelectedLibraryVolume(volume);
     if (Array.isArray(siblingVolumes)) {
@@ -1052,6 +1076,7 @@ function MainApp() {
     setLibraryBookError(null);
     setLibraryBookResolving(false);
     setLibraryVolumeNotFound(false);
+    setLibraryVolumeError(null);
     setLibraryVolumeResolving(false);
     navigateTo({
       view: 'library-read',
@@ -1086,6 +1111,13 @@ function MainApp() {
 
   const handleConfirmLogout = async () => {
     await logout();
+    invalidateServicesCache('all');
+    selectedLibraryBookRef.current = null;
+    selectedLibraryVolumeRef.current = null;
+    setSelectedLibraryBook(null);
+    setSelectedLibraryVolume(null);
+    setSelectedLibrarySiblingVolumes([]);
+    setLibraryVolumeError(null);
     navigateTo({ view: 'home' });
   };
 
@@ -1603,6 +1635,47 @@ function MainApp() {
                           <p className="text-sm text-stone-600 dark:text-stone-400 font-medium">
                             Memuat naskah jilid kitab...
                           </p>
+                        </div>
+                      ) : libraryVolumeError ? (
+                        <div
+                          data-testid="library-volume-reader-error"
+                          data-error-category={libraryVolumeError.category}
+                          className="max-w-xl mx-auto px-4 py-14 text-center"
+                        >
+                          <div className="nb-card bg-white dark:bg-[#0D2B36] p-8 space-y-4">
+                            <h2 className="text-lg font-bold font-serif text-[#171717] dark:text-[#CEFEF1]">
+                              {libraryVolumeError.title}
+                            </h2>
+                            <p className="text-xs sm:text-sm text-[#525855] dark:text-[#A6D6C9] leading-relaxed">
+                              {libraryVolumeError.message}
+                            </p>
+                            <p className="text-[11px] font-mono text-[#525855]/80 dark:text-[#A6D6C9]/80">
+                              Kode: {libraryVolumeError.code}
+                            </p>
+                            <div className="flex flex-wrap items-center justify-center gap-2.5 pt-1">
+                              <button
+                                type="button"
+                                onClick={handleRetryResolveLibraryBook}
+                                className="nb-btn nb-btn-primary px-5 py-2.5 text-xs cursor-pointer"
+                              >
+                                Coba Muat Ulang
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleSelectLibraryBook(selectedLibraryBook)}
+                                className="nb-btn nb-btn-secondary px-5 py-2.5 text-xs cursor-pointer"
+                              >
+                                Lihat Daftar Jilid
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => navigateTo({ view: 'library' })}
+                                className="nb-btn nb-btn-secondary px-5 py-2.5 text-xs cursor-pointer"
+                              >
+                                Kembali ke Library Digital
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       ) : libraryVolumeNotFound ? (
                         <div className="max-w-xl mx-auto px-4 py-14 text-center">
