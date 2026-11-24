@@ -6101,3 +6101,123 @@ test('Library Digital Case 11: Fitur opsional Link PDF (Google Drive) untuk buku
   );
 });
 
+test('Case 120: Integrasi Profil Pengajar dengan Portofolio (isolated read-only Firebase, normalisasi publik, foto Google Drive, & graceful fallback)', async () => {
+  const fs = await import('fs');
+  const {
+    PORTFOLIO_WEBSITE_URL,
+    PORTFOLIO_FIREBASE_APP_NAME,
+    PORTFOLIO_FIRESTORE_DATABASE_ID,
+    portfolioFirebaseConfig
+  } = await import('../firebase/portfolioConfig.js');
+  const { REQUIRED_DATABASE_ID } = await import('../firebase/config.js');
+  const {
+    normalizePortfolioInstructorSummary,
+    resolvePortfolioPhotoCandidates,
+    extractConciseText,
+    isPublicPortfolioItem
+  } = await import('./portfolioProfileHelper.js');
+
+  // 1. Isolasi konfigurasi Firebase: app bernama terpisah & database berbeda dari Firebase utama Dars with Osama
+  assert.strictEqual(PORTFOLIO_WEBSITE_URL, 'https://cvosamanursamsil.netlify.app/');
+  assert.strictEqual(PORTFOLIO_FIREBASE_APP_NAME, 'dars-portfolio-readonly');
+  assert.strictEqual(PORTFOLIO_FIRESTORE_DATABASE_ID, 'ai-studio-1309822a-cae0-43ad-a7e6-3d81e39b9eeb');
+  assert.strictEqual(portfolioFirebaseConfig.firestoreDatabaseId, 'ai-studio-1309822a-cae0-43ad-a7e6-3d81e39b9eeb');
+  assert.notStrictEqual(
+    portfolioFirebaseConfig.firestoreDatabaseId,
+    REQUIRED_DATABASE_ID,
+    'Database Firestore portofolio harus terpisah dari database utama Dars with Osama'
+  );
+
+  // 2. Resolusi foto Google Drive publik tanpa login (tautan berbagi maupun file ID mentah)
+  const driveShareUrl = 'https://drive.google.com/file/d/1sI95x9PxvZR3g1sPUwfm7YK0kSB7yb-S/view?usp=drive_link';
+  const photoCandidates = resolvePortfolioPhotoCandidates(driveShareUrl);
+  assert.ok(photoCandidates.length >= 3, 'Harus menghasilkan kandidat URL publik multi-tier');
+  assert.strictEqual(
+    photoCandidates[0],
+    'https://drive.google.com/thumbnail?id=1sI95x9PxvZR3g1sPUwfm7YK0kSB7yb-S&sz=w1600'
+  );
+  assert.strictEqual(
+    photoCandidates[1],
+    'https://lh3.googleusercontent.com/d/1sI95x9PxvZR3g1sPUwfm7YK0kSB7yb-S=w1600'
+  );
+  const bareIdCandidates = resolvePortfolioPhotoCandidates('1sI95x9PxvZR3g1sPUwfm7YK0kSB7yb-S');
+  assert.strictEqual(
+    bareIdCandidates[0],
+    'https://drive.google.com/thumbnail?id=1sI95x9PxvZR3g1sPUwfm7YK0kSB7yb-S&sz=w1600'
+  );
+  assert.deepStrictEqual(resolvePortfolioPhotoCandidates(''), []);
+
+  // 3. Filter visibilitas publik (hanya status=published && isVisible=true)
+  assert.strictEqual(isPublicPortfolioItem({ status: 'published', isVisible: true }), true);
+  assert.strictEqual(isPublicPortfolioItem({ status: 'draft', isVisible: true }), false);
+  assert.strictEqual(isPublicPortfolioItem({ status: 'published', isVisible: false }), false);
+
+  // 4. Normalisasi lengkap + pengurutan displayOrder + penyaringan draf/tersembunyi
+  const normalized = normalizePortfolioInstructorSummary(
+    [
+      { id: 'draft_alt', fullName: 'Draf', status: 'draft', isVisible: true },
+      {
+        id: 'main',
+        fullName: 'Osama Nur Samsil',
+        headline: 'Sarjana Hukum Keluarga, Pembina Akademik & Kreator Pendidikan Digital',
+        shortBio: 'Ringkasan biografi publik dari portofolio.',
+        domicile: 'Bone, Sulawesi Selatan',
+        photoUrl: driveShareUrl,
+        status: 'published',
+        isVisible: true
+      }
+    ],
+    [
+      { id: 'edu-hidden', institution: 'Tersembunyi', status: 'published', isVisible: false, displayOrder: 0 },
+      { id: 'edu-2', institution: 'Institusi Kedua', degree: 'D1', fieldOfStudy: 'Bahasa Arab', period: '2020-2021', status: 'published', isVisible: true, displayOrder: 2 },
+      { id: 'edu-1', institution: 'UNIVERSITAS MUHAMMADIYAH MAKASSAR', degree: 'S1-Sarjana Hukum', fieldOfStudy: 'Hukum Keluarga', period: '2022-2026', status: 'published', isVisible: true, displayOrder: 1 }
+    ],
+    [
+      { id: 'exp-draft', role: 'Draft Role', institution: 'Draft', status: 'draft', isVisible: true, displayOrder: 0 },
+      { id: 'exp-1', role: 'Pembina Mahasiswa', institution: 'Pesmadina Unismuh', category: 'mentoring', period: '2024-2025', duration: '1 tahun', responsibilities: ['Halaqah', 'Kedisiplinan'], status: 'published', isVisible: true, displayOrder: 1 }
+    ],
+    []
+  );
+
+  assert.ok(normalized, 'Profil publik harus berhasil dinormalisasi');
+  assert.strictEqual(normalized.fullName, 'Osama Nur Samsil');
+  assert.strictEqual(normalized.photoCandidates[0], 'https://drive.google.com/thumbnail?id=1sI95x9PxvZR3g1sPUwfm7YK0kSB7yb-S&sz=w1600');
+  assert.strictEqual(normalized.portfolioUrl, 'https://cvosamanursamsil.netlify.app/');
+  assert.strictEqual(normalized.education.length, 2, 'Item pendidikan tersembunyi harus disaring');
+  assert.strictEqual(normalized.education[0].id, 'edu-1', 'Urutan pendidikan harus mengikuti displayOrder');
+  assert.strictEqual(normalized.experiences.length, 1, 'Pengalaman berstatus draft harus disaring');
+  assert.strictEqual(normalized.experiences[0].categoryLabel, 'Pembinaan');
+  assert.strictEqual(normalized.skills.length, 0, 'Bagian keahlian kosong harus berupa array kosong agar tidak dirender');
+
+  // 5. Jika tidak ada profil publik aktif -> null
+  assert.strictEqual(
+    normalizePortfolioInstructorSummary([{ id: 'main', fullName: 'Hidden', status: 'draft', isVisible: false }], [], [], []),
+    null
+  );
+
+  // 6. Pemotongan ringkasan teks panjang secara rapi
+  const longText = 'Paragraf pertama yang cukup panjang untuk menguji pemotongan ringkasan secara bersih tanpa memotong kata di tengah. Kalimat kedua menyusul di belakang.\n\nParagraf kedua tidak diambil.';
+  const concise = extractConciseText(longText, 125);
+  assert.strictEqual(concise.includes('Paragraf kedua'), false);
+  assert.ok(concise.length <= 125);
+
+  // 7. Audit kode sumber: real-time listener publik, tanpa akses koleksi privat, tombol Lihat Portofolio tab baru, & graceful error UI
+  const serviceSrc = fs.readFileSync(new URL('../firebase/portfolioProfileService.ts', import.meta.url), 'utf8');
+  const viewSrc = fs.readFileSync(new URL('../components/profile/InstructorProfileView.tsx', import.meta.url), 'utf8');
+
+  assert.ok(serviceSrc.includes('onSnapshot'), 'portfolioProfileService wajib menggunakan onSnapshot agar perubahan tersinkron otomatis');
+  assert.ok(serviceSrc.includes("where('status', '==', 'published')"), 'Query portofolio wajib memfilter status published');
+  assert.ok(serviceSrc.includes("where('isVisible', '==', true)"), 'Query portofolio wajib memfilter isVisible true');
+  assert.strictEqual(serviceSrc.includes("collection(portfolioDb, 'admins')"), false, 'Tidak boleh mengakses koleksi privat admins');
+  assert.strictEqual(serviceSrc.includes("collection(portfolioDb, 'contactMessages')"), false, 'Tidak boleh mengakses koleksi privat contactMessages');
+
+  assert.ok(viewSrc.includes('subscribePortfolioInstructorProfile'), 'InstructorProfileView wajib berlangganan data portofolio real-time');
+  assert.ok(viewSrc.includes('Lihat Portofolio'), 'Harus tersedia tombol Lihat Portofolio');
+  assert.ok(viewSrc.includes('target="_blank"') && viewSrc.includes('rel="noopener noreferrer"'), 'Tombol Lihat Portofolio harus membuka di tab baru secara aman');
+  assert.ok(viewSrc.includes('data-testid="instructor-profile-error"'), 'Harus menyediakan tampilan fallback jika data portofolio gagal dimuat');
+  assert.ok(viewSrc.includes('portfolio.education.length > 0'), 'Bagian pendidikan hanya ditampilkan jika data tidak kosong');
+  assert.ok(viewSrc.includes('portfolio.experiences.length > 0'), 'Bagian pengalaman hanya ditampilkan jika data tidak kosong');
+  assert.ok(viewSrc.includes('portfolio.skills.length > 0'), 'Bagian keahlian hanya ditampilkan jika data tidak kosong');
+});
+
+
