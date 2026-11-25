@@ -1,29 +1,27 @@
 export const GLOBAL_AOS_CONFIG = {
   animation: 'fade-up' as const,
-  duration: 600,
+  duration: 800,
   easing: 'ease-out-cubic' as const,
-  once: false,
-  mirror: true,
-  offset: 48,
+  once: true,
+  mirror: false,
+  offset: 80,
   /**
-   * Vertical lift distance in px (must stay synced with CSS translate3d(0, 28px, 0)).
-   * Used to enforce mathematically flicker-proof hysteresis when resetting at top/bottom edges.
+   * Vertical lift distance in px (must stay synced with CSS translate3d(0, 30px, 0)).
    */
-  translateY: 28,
+  translateY: 30,
   /**
-   * Top-edge reset buffer (strictly greater than translateY so applying +28px downward shift
-   * when resetting an element above the top edge never pushes it back into the reveal zone).
+   * Top-edge reset buffer (strictly greater than translateY, retained for optional mirror mode).
    */
-  topExitBuffer: 40,
+  topExitBuffer: 44,
   /**
-   * Bottom-edge reset buffer (element must be completely below viewport + 16px).
+   * Bottom-edge reset buffer (element must be completely below viewport + 20px).
    */
-  bottomExitBuffer: 16,
+  bottomExitBuffer: 20,
   /**
-   * Top-edge re-entry threshold when scrolling back up.
+   * Top-edge enter threshold when scrolling back up toward previously un-animated elements.
    */
   topEnterThreshold: 36,
-  rootMargin: '96px 0px 96px 0px',
+  rootMargin: '80px 0px 80px 0px',
   threshold: [0, 0.05, 0.15] as number[],
   staggerStep: 50,
   maxStaggerDelay: 150,
@@ -62,12 +60,14 @@ export function getAosDelay(index: number, columns = 4): number {
 }
 
 /**
- * Pure viewport visibility check used for first-load reveal, Lenis/native scroll sync,
- * and bidirectional repeat (mirror: true, once: false).
+ * Pure viewport visibility check used for first-load reveal and scroll-triggered Fade-Up
+ * across mobile, tablet, and desktop (1366x768, 1920x1080, and larger displays).
  *
- * Designed with clean hysteresis relative to shouldResetElementInViewport():
- * - Normal elements trigger once comfortably inside the viewport (not on the first 1px sliver).
- * - Very tall elements (>85% viewport height) remain visible whenever intersecting the viewport.
+ * Calibrated so:
+ * - Above-the-fold elements comfortably inside the initial viewport animate smoothly on first load.
+ * - Elements sitting near the bottom bezel or below the fold on tall desktop screens (e.g. 1920x1080)
+ *   wait until the visitor scrolls them clearly into view before triggering Fade-Up.
+ * - Very tall elements (>85% viewport height) reveal reliably as soon as they intersect comfortably.
  */
 export function isElementVisibleInViewport(
   rect: { top: number; bottom: number; height: number },
@@ -78,15 +78,21 @@ export function isElementVisibleInViewport(
   if (viewportHeight <= 0) return true;
   if (rect.height <= 0) return false;
 
+  const isTallElement = rect.height > viewportHeight * 0.85;
+
   if (isInitialTopReveal) {
-    return rect.top <= viewportHeight - 16 && rect.bottom >= 16;
+    const initialBottomInset = isTallElement
+      ? 24
+      : Math.min(Math.max(64, Math.round(viewportHeight * 0.08)), 100);
+    return rect.top <= viewportHeight - initialBottomInset && rect.bottom >= 16;
   }
 
-  // Never hide elements taller than ~85% of viewport while intersecting the screen
-  const isTallElement = rect.height > viewportHeight * 0.85;
+  // Proportional bottom offset prevents premature off-bezel triggers on tall desktop viewports (1080p+)
+  // while remaining comfortable on shorter laptop screens (768p) and mobile viewports.
+  const proportionalOffset = Math.min(Math.max(bottomOffsetPx, Math.round(viewportHeight * 0.08)), 108);
   const effectiveBottomOffset = isTallElement
-    ? Math.min(24, bottomOffsetPx)
-    : Math.min(bottomOffsetPx, Math.round(viewportHeight * 0.12));
+    ? Math.min(40, bottomOffsetPx)
+    : Math.min(proportionalOffset, Math.round(viewportHeight * 0.14));
 
   const entersFromBottom = rect.top <= viewportHeight - effectiveBottomOffset;
   const staysBelowTop = rect.bottom >= (isTallElement ? 12 : GLOBAL_AOS_CONFIG.topEnterThreshold);
@@ -95,9 +101,7 @@ export function isElementVisibleInViewport(
 }
 
 /**
- * Pure hysteresis exit check: returns true ONLY when an element has completely left
- * the viewport past the safe buffer (so adding +28px hidden transform never causes
- * boundary oscillation/flicker on either top or bottom edge).
+ * Pure hysteresis exit check (used only if mirror mode is enabled).
  */
 export function shouldResetElementInViewport(
   rect: { top: number; bottom: number; height: number },
@@ -333,6 +337,9 @@ class GlobalAOSController {
     if (el.classList.contains('aos-animate')) return;
     el.classList.remove('aos-settled');
     el.classList.add('aos-animate');
+    if (GLOBAL_AOS_CONFIG.once && this.observer) {
+      this.observer.unobserve(el);
+    }
     this.scheduleSettle(el);
   }
 
@@ -430,7 +437,7 @@ class GlobalAOSController {
     if (viewportHeight <= 0) return;
 
     const scrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
-    const isInitialTopReveal = allowInitialTopReveal && scrollY <= 12;
+    const isInitialTopReveal = (allowInitialTopReveal && scrollY <= 12) || scrollY <= 8;
 
     const nodes = document.querySelectorAll('[data-aos]');
     nodes.forEach((node) => {
@@ -535,18 +542,36 @@ class GlobalAOSController {
   }
 
   /**
-   * Diagnostic / manual helper to replay fade-up on currently visible nodes.
+   * Diagnostic / modal-close helper to replay fade-up cleanly on currently animated/visible
+   * above-the-fold nodes without disturbing below-fold elements waiting for scroll.
    */
   public replayVisible(): void {
     if (typeof document === 'undefined' || this.isReducedMotion) return;
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
     const nodes = document.querySelectorAll('[data-aos]');
+    let replayedCount = 0;
+
     nodes.forEach((node) => {
       const el = node as HTMLElement;
-      this.clearSettle(el);
-      el.classList.remove('aos-animate');
-      this.pendingPaintNodes.add(el);
+      const rect = el.getBoundingClientRect();
+      const inCurrentView = viewportHeight > 0 && rect.height > 0 && rect.top < viewportHeight && rect.bottom > 0;
+
+      if (el.classList.contains('aos-animate') && inCurrentView) {
+        this.clearSettle(el);
+        el.classList.remove('aos-animate');
+        this.pendingPaintNodes.add(el);
+        if (this.observer) {
+          this.observer.observe(el);
+        }
+        replayedCount += 1;
+      }
     });
-    this.schedulePaintBarrierFlush();
+
+    if (replayedCount > 0) {
+      this.schedulePaintBarrierFlush();
+    } else {
+      this.scheduleViewportSync();
+    }
   }
 
   public getStatus(): AosDebugStatus {
@@ -656,6 +681,10 @@ export function isGlobalAOSInitialized(): boolean {
 
 export function getGlobalAOSStatus(): AosDebugStatus {
   return controller.getStatus();
+}
+
+export function replayVisibleGlobalAOS(): void {
+  controller.replayVisible();
 }
 
 export function destroyGlobalAOS(): void {

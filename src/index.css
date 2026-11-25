@@ -1578,11 +1578,11 @@ table td {
 }
 
 /* ==========================================================================
-   GLOBAL AOS FADE-UP SYSTEM (PROGRESSIVE ENHANCEMENT & REPEATABLE MIRROR)
+   GLOBAL AOS FADE-UP SYSTEM (PROGRESSIVE ENHANCEMENT — ONCE: TRUE)
    - Content is ALWAYS visible by default when JS/AOS is unavailable or disabled.
    - Only animates when html.aos-enabled is present and reduced-motion is inactive.
-   - Base hidden state resets instantly (transition: none) ONLY when fully off-screen,
-     so every re-entry (scroll down OR scroll up) plays a full crisp 600ms Fade-Up.
+   - Duration: 800ms | Easing: ease-out-cubic cubic-bezier(0.215, 0.61, 0.355, 1)
+   - Vertical lift: translate3d(0, 30px, 0) -> translate3d(0, 0, 0)
    - Once settled (.aos-settled), will-change is released and hover lift stays 180ms.
    ========================================================================== */
 
@@ -1603,9 +1603,9 @@ html.aos-reduced-motion [data-aos][data-aos] {
   }
 }
 
-html.aos-enabled:not(.aos-reduced-motion) [data-aos="fade-up"][data-aos="fade-up"] {
+html.aos-enabled:not(.aos-reduced-motion) [data-aos="fade-up"][data-aos="fade-up"]:not(.aos-animate) {
   opacity: 0;
-  transform: translate3d(0, 28px, 0);
+  transform: translate3d(0, 30px, 0);
   transition-property: none;
   transition-duration: 0ms;
   transition-delay: 0ms;
@@ -1616,15 +1616,15 @@ html.aos-enabled:not(.aos-reduced-motion) [data-aos="fade-up"][data-aos="fade-up
   opacity: 1;
   transform: translate3d(0, 0, 0);
   transition-property: opacity, transform;
-  transition-duration: 600ms;
-  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  transition-duration: 800ms;
+  transition-timing-function: cubic-bezier(0.215, 0.61, 0.355, 1);
   transition-delay: 0ms;
 }
 
 html.aos-enabled:not(.aos-reduced-motion) .nb-card-interactive[data-aos="fade-up"][data-aos="fade-up"].aos-animate {
   transition-property: opacity, transform, box-shadow, border-color, background-color;
-  transition-duration: 600ms, 600ms, 180ms, 180ms, 180ms;
-  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1), cubic-bezier(0.22, 1, 0.36, 1), ease, ease, ease;
+  transition-duration: 800ms, 800ms, 180ms, 180ms, 180ms;
+  transition-timing-function: cubic-bezier(0.215, 0.61, 0.355, 1), cubic-bezier(0.215, 0.61, 0.355, 1), ease, ease, ease;
 }
 
 html.aos-enabled:not(.aos-reduced-motion) [data-aos="fade-up"][data-aos-delay="50"].aos-animate:not(.aos-settled) {

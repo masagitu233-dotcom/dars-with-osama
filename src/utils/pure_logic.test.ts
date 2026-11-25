@@ -6220,18 +6220,19 @@ test('Case 120: Integrasi Profil Pengajar dengan Portofolio (isolated read-only 
   assert.ok(viewSrc.includes('portfolio.skills.length > 0'), 'Bagian keahlian hanya ditampilkan jika data tidak kosong');
 });
 
-// Case 121: Global AOS Fade-Up Engine, Repeatable Mirror Visibility, Progressive Enhancement & Responsive UI Coverage
-test('Case 121: Global AOS fade-up (once:false, mirror:true), bounded stagger, desktop Lenis sync, progressive fallback, dan cakupan halaman global', async () => {
+// Case 121: Global AOS Fade-Up Engine (once:true, 700-900ms, ease-out-cubic), Desktop/Mobile Parity & Page Coverage
+test('Case 121: Global AOS fade-up (once:true, 800ms, ease-out-cubic), bounded stagger, desktop 1366x768 & 1920x1080 viewport gating, progressive fallback, dan cakupan halaman global', async () => {
   const fs = await import('node:fs');
   const { GLOBAL_AOS_CONFIG, getAosDelay, isElementVisibleInViewport } = await import('./aosManager.js');
 
-  // 1. Konfigurasi Global AOS wajib repeatable (once: false, mirror: true) dan fade-up
-  assert.strictEqual(GLOBAL_AOS_CONFIG.once, false, 'AOS harus berulang (once: false)');
-  assert.strictEqual(GLOBAL_AOS_CONFIG.mirror, true, 'AOS harus mendukung mirror saat elemen keluar & masuk viewport');
+  // 1. Konfigurasi Global AOS wajib fade-up, 700-900ms (800ms), ease-out-cubic, once: true
+  assert.strictEqual(GLOBAL_AOS_CONFIG.once, true, 'AOS harus beranimasi satu kali (once: true) lalu tetap terlihat stabil');
+  assert.strictEqual(GLOBAL_AOS_CONFIG.mirror, false, 'Mirror harus nonaktif saat once: true agar elemen tidak menghilang saat scroll balik');
   assert.strictEqual(GLOBAL_AOS_CONFIG.animation, 'fade-up', 'Animasi global harus fade-up');
+  assert.strictEqual(GLOBAL_AOS_CONFIG.easing, 'ease-out-cubic', 'Easing global harus ease-out-cubic');
   assert.ok(
-    GLOBAL_AOS_CONFIG.duration >= 450 && GLOBAL_AOS_CONFIG.duration <= 700,
-    'Durasi animasi harus halus dan proporsional (450-700ms)'
+    GLOBAL_AOS_CONFIG.duration >= 700 && GLOBAL_AOS_CONFIG.duration <= 900,
+    'Durasi animasi harus berada dalam rentang 700-900ms'
   );
 
   // 2. Bounded stagger delay per baris agar kartu tidak terasa lamban pada daftar panjang
@@ -6242,37 +6243,42 @@ test('Case 121: Global AOS fade-up (once:false, mirror:true), bounded stagger, d
   assert.strictEqual(getAosDelay(4, 4), 0, 'Delay harus reset di baris baru agar tidak menumpuk');
   assert.strictEqual(getAosDelay(11, 4), 150, 'Delay tidak boleh melebihi 150ms');
 
-  // 3. Logika deteksi visibilitas viewport untuk initial load, scroll bawah, scroll atas (mirror), & elemen tinggi
+  // 3. Logika deteksi visibilitas viewport untuk Desktop 1366x768, Desktop 1920x1080, & Mobile
+  // Desktop 1366x768 (vh = 768)
   assert.strictEqual(
-    isElementVisibleInViewport({ top: 100, bottom: 320, height: 220 }, 800, 40),
+    isElementVisibleInViewport({ top: 100, bottom: 320, height: 220 }, 768, GLOBAL_AOS_CONFIG.offset, true),
     true,
-    'Elemen dalam viewport saat initial load harus langsung terlihat'
+    'Elemen above-the-fold di desktop 1366x768 harus langsung fade-up pada initial load'
   );
   assert.strictEqual(
-    isElementVisibleInViewport({ top: 790, bottom: 1000, height: 210 }, 800, 40),
+    isElementVisibleInViewport({ top: 740, bottom: 960, height: 220 }, 768, GLOBAL_AOS_CONFIG.offset, true),
     false,
-    'Elemen di bawah offset masuk tidak boleh memicu terlalu dini'
+    'Elemen yang baru mengintip di tepi bawah desktop 1366x768 harus menunggu scroll'
+  );
+  // Desktop 1920x1080 (vh = 1080)
+  assert.strictEqual(
+    isElementVisibleInViewport({ top: 1020, bottom: 1260, height: 240 }, 1080, GLOBAL_AOS_CONFIG.offset, true),
+    false,
+    'Elemen di bawah/tepi bawah layar besar 1920x1080 tidak boleh memicu sebelum user scroll'
   );
   assert.strictEqual(
-    isElementVisibleInViewport({ top: 740, bottom: 950, height: 210 }, 800, 40),
+    isElementVisibleInViewport({ top: 860, bottom: 1100, height: 240 }, 1080, GLOBAL_AOS_CONFIG.offset, false),
     true,
-    'Elemen yang melewati threshold bawah viewport harus memicu fade-up'
+    'Elemen yang di-scroll masuk ke area pandang nyaman di 1920x1080 wajib memicu fade-up'
   );
   assert.strictEqual(
-    isElementVisibleInViewport({ top: -300, bottom: -20, height: 280 }, 800, 40),
-    false,
-    'Elemen yang keluar penuh ke atas viewport harus reset agar dapat beranimasi ulang saat scroll naik'
-  );
-  assert.strictEqual(
-    isElementVisibleInViewport({ top: -200, bottom: 950, height: 1150 }, 800, 40),
+    isElementVisibleInViewport({ top: -200, bottom: 1150, height: 1350 }, 1080, GLOBAL_AOS_CONFIG.offset, false),
     true,
     'Elemen yang lebih tinggi dari viewport tetap dianggap terlihat selama beririsan dengan viewport'
   );
 
-  // 4. Progressive Enhancement, Reduced Motion, Fluid Typography & Hover Preservation di index.css
+  // 4. Progressive Enhancement, Reduced Motion, ease-out-cubic, 800ms, & Hover Preservation di index.css
   const indexCss = fs.readFileSync(new URL('../index.css', import.meta.url), 'utf8');
   assert.ok(indexCss.includes('overflow-x: clip'), 'body harus menggunakan overflow-x: clip agar sticky & scroll tetap normal');
   assert.ok(indexCss.includes('html.aos-enabled:not(.aos-reduced-motion) [data-aos="fade-up"]'), 'Animasi awal tersembunyi hanya aktif saat html.aos-enabled terpasang dan reduced-motion tidak aktif');
+  assert.ok(indexCss.includes('transition-duration: 800ms;'), 'Durasi CSS AOS fade-up harus 800ms (700-900ms)');
+  assert.ok(indexCss.includes('cubic-bezier(0.215, 0.61, 0.355, 1)'), 'Easing CSS AOS fade-up harus ease-out-cubic');
+  assert.ok(indexCss.includes('translate3d(0, 30px, 0)'), 'Translasi awal fade-up harus 30px agar jelas di desktop');
   assert.ok(indexCss.includes('html:not(.aos-enabled) [data-aos]'), 'Harus ada CSS fallback agar konten tetap terlihat jika JS/AOS tidak aktif');
   assert.ok(indexCss.includes('[data-aos-delay="50"]'), 'Harus mendukung stagger transition-delay secara native di CSS');
   assert.ok(indexCss.includes('prefers-reduced-motion: reduce'), 'Harus menghormati preferensi reduced-motion pengguna');
@@ -6335,59 +6341,19 @@ test('Case 121: Global AOS fade-up (once:false, mirror:true), bounded stagger, d
   }
 });
 
-// Case 122: Runtime Lifecycle Verification — Paint Barrier, Bidirectional Repeat Hysteresis, Capture Scroll, MutationObserver & Reduced Motion
-test('Case 122: Runtime AOS paint-barrier, flicker-proof hysteresis, scroll repeat (turun & naik), capture scroll, dynamic DOM, dan reduced-motion', async () => {
+// Case 122: Runtime Lifecycle Verification — Paint Barrier, Desktop Scroll Reveal, Once Persistence, Capture Scroll, MutationObserver & Reduced Motion
+test('Case 122: Runtime AOS paint-barrier, desktop 1920x1080 below-fold gating, once:true persistence, dynamic DOM (Firestore/SPA), dan reduced-motion', async () => {
   const fs = await import('node:fs');
   const {
     GLOBAL_AOS_CONFIG,
-    isElementVisibleInViewport,
-    shouldResetElementInViewport,
     initGlobalAOS,
     destroyGlobalAOS,
     getGlobalAOSStatus,
   } = await import('./aosManager.js');
 
-  // 1. Verifikasi matematis hysteresis anti-flicker terhadap translasi +28px (batas atas & batas bawah)
-  const vh = 800;
-  const shiftY = GLOBAL_AOS_CONFIG.translateY;
-  assert.ok(shiftY >= 20 && shiftY <= 36, 'Translasi vertikal fade-up harus jelas terlihat (20-36px)');
-  assert.ok(
-    GLOBAL_AOS_CONFIG.topExitBuffer > shiftY,
-    'Buffer reset batas atas harus lebih besar dari translasi Y agar reset tidak mendorong elemen kembali ke area aktif'
-  );
+  assert.ok(GLOBAL_AOS_CONFIG.translateY >= 24 && GLOBAL_AOS_CONFIG.translateY <= 36, 'Translasi vertikal fade-up harus jelas terlihat di desktop (24-36px)');
 
-  // Batas atas: keluar penuh (-45px) -> reset -> setelah bergeser +28px (bottom = -17px) tetap tidak langsung reveal
-  assert.strictEqual(
-    shouldResetElementInViewport({ top: -245, bottom: -45, height: 200 }, vh),
-    true,
-    'Elemen yang sudah melewati -40px di atas viewport harus di-reset'
-  );
-  assert.strictEqual(
-    isElementVisibleInViewport({ top: -245 + shiftY, bottom: -45 + shiftY, height: 200 }, vh),
-    false,
-    'Setelah reset di atas viewport + pergeseran +28px, elemen tidak boleh langsung reveal (anti-flicker)'
-  );
-
-  // Batas bawah: keluar penuh (vh + 20) -> reset -> setelah bergeser +28px tetap tidak langsung reveal
-  assert.strictEqual(
-    shouldResetElementInViewport({ top: vh + 20, bottom: vh + 220, height: 200 }, vh),
-    true,
-    'Elemen yang sudah melewati vh + 16px di bawah viewport harus di-reset'
-  );
-  assert.strictEqual(
-    isElementVisibleInViewport({ top: vh + 20 + shiftY, bottom: vh + 220 + shiftY, height: 200 }, vh),
-    false,
-    'Setelah reset di bawah viewport + pergeseran +28px, elemen tidak boleh langsung reveal (anti-flicker)'
-  );
-
-  // Zona hysteresis tengah (baru sedikit keluar -15px di atas) tidak boleh flicker reset
-  assert.strictEqual(
-    shouldResetElementInViewport({ top: -215, bottom: -15, height: 200 }, vh),
-    false,
-    'Elemen yang baru menyentuh tepi atas (-15px) tidak boleh reset prematur'
-  );
-
-  // 2. Simulasi Runtime DOM Penuh (Paint Barrier -> Initial Load -> Scroll Turun -> Reset -> Scroll Naik Repeat -> Dynamic Node -> Reduced Motion)
+  // Simulasi Runtime DOM Penuh pada viewport Desktop 1920x1080
   const prevWindow = (globalThis as any).window;
   const prevDocument = (globalThis as any).document;
   const prevIO = (globalThis as any).IntersectionObserver;
@@ -6420,7 +6386,7 @@ test('Case 122: Runtime AOS paint-barrier, flicker-proof hysteresis, scroll repe
       nodeType: 1,
       classList: createClassList(),
       attrs: { 'data-aos': 'fade-up', ...(delay ? { 'data-aos-delay': delay } : {}) },
-      rect: { top, bottom: top + height, width: 320, height },
+      rect: { top, bottom: top + height, width: 380, height },
       hasAttribute(k: string) {
         return k in this.attrs;
       },
@@ -6436,9 +6402,10 @@ test('Case 122: Runtime AOS paint-barrier, flicker-proof hysteresis, scroll repe
       querySelector: () => null,
     });
 
-    const heroCard = makeNode(80, 220);
-    const belowFoldCard = makeNode(1100, 220, '50');
-    const domNodes: MockNode[] = [heroCard, belowFoldCard];
+    const heroCard = makeNode(100, 320);
+    const belowFoldCard = makeNode(1180, 260, '50');
+    const farBelowCard = makeNode(1680, 260, '100');
+    const domNodes: MockNode[] = [heroCard, belowFoldCard, farBelowCard];
 
     const rafQueue: Array<() => void> = [];
     const flushNextRaf = () => {
@@ -6448,6 +6415,7 @@ test('Case 122: Runtime AOS paint-barrier, flicker-proof hysteresis, scroll repe
 
     const docListeners: Record<string, Array<() => void>> = {};
     const winListeners: Record<string, Array<() => void>> = {};
+    const unobservedNodes: any[] = [];
     const hooks: {
       mutationCb: ((mutations: any[]) => void) | null;
       reducedMotionHandler: ((e: any) => void) | null;
@@ -6461,10 +6429,10 @@ test('Case 122: Runtime AOS paint-barrier, flicker-proof hysteresis, scroll repe
     const mockDoc = {
       documentElement: {
         classList: htmlClassList,
-        clientHeight: 800,
+        clientHeight: 1080,
         scrollTop: 0,
         get offsetHeight() {
-          return 2400;
+          return 2800;
         },
       },
       body: {
@@ -6484,7 +6452,7 @@ test('Case 122: Runtime AOS paint-barrier, flicker-proof hysteresis, scroll repe
     };
 
     const mockWin: any = {
-      innerHeight: 800,
+      innerHeight: 1080,
       scrollY: 0,
       pageYOffset: 0,
       requestAnimationFrame: (cb: () => void) => {
@@ -6522,6 +6490,9 @@ test('Case 122: Runtime AOS paint-barrier, flicker-proof hysteresis, scroll repe
         // Simulate real browser firing initial IO immediately before paint!
         this.cb([]);
       }
+      unobserve(el: any) {
+        unobservedNodes.push(el);
+      }
       disconnect() {}
     }
 
@@ -6545,7 +6516,7 @@ test('Case 122: Runtime AOS paint-barrier, flicker-proof hysteresis, scroll repe
     initGlobalAOS();
 
     // Paint Barrier Check: tepat setelah init (sebelum 2 frame paint), heroCard BELUM boleh mendapat .aos-animate!
-    assert.strictEqual(htmlClassList.contains('aos-enabled'), true, 'html.aos-enabled harus aktif saat init');
+    assert.strictEqual(htmlClassList.contains('aos-enabled'), true, 'html.aos-enabled harus aktif saat init di desktop');
     assert.strictEqual(
       heroCard.classList.contains('aos-animate'),
       false,
@@ -6556,54 +6527,57 @@ test('Case 122: Runtime AOS paint-barrier, flicker-proof hysteresis, scroll repe
     flushNextRaf();
     assert.strictEqual(heroCard.classList.contains('aos-animate'), false, 'Frame 1 hanya commit style tersembunyi');
 
-    // Frame 2 -> heroCard (di dalam viewport) langsung fade-up; belowFoldCard tetap tersembunyi!
+    // Frame 2 -> heroCard (di dalam viewport 1920x1080) langsung fade-up; kartu di bawah fold tetap tersembunyi!
     flushNextRaf();
-    assert.strictEqual(heroCard.classList.contains('aos-animate'), true, 'Hero di viewport wajib fade-up pada first load tanpa scroll');
-    assert.strictEqual(belowFoldCard.classList.contains('aos-animate'), false, 'Kartu di bawah fold harus tetap menunggu hingga di-scroll');
+    assert.strictEqual(heroCard.classList.contains('aos-animate'), true, 'Hero di viewport desktop wajib fade-up pada first load');
+    assert.strictEqual(belowFoldCard.classList.contains('aos-animate'), false, 'Kartu di bawah fold 1920x1080 wajib menunggu scroll');
+    assert.strictEqual(farBelowCard.classList.contains('aos-animate'), false, 'Kartu jauh di bawah fold wajib menunggu scroll');
+    assert.ok(unobservedNodes.includes(heroCard), 'Dengan once:true, observer berhenti mengamati elemen setelah selesai memicu');
 
-    // Simulasi Scroll Turun: heroCard keluar melewati atas (-80px), belowFoldCard masuk ke tengah viewport (300px)
-    mockWin.scrollY = 900;
-    heroCard.rect = { top: -300, bottom: -80, width: 320, height: 220 };
-    belowFoldCard.rect = { top: 300, bottom: 520, width: 320, height: 220 };
-    // Trigger melalui capture-phase document scroll (menguji container overflow-y:auto juga!)
+    // Simulasi Scroll Turun di desktop 1920x1080: heroCard keluar ke atas (-300px), belowFoldCard masuk ke tengah layar (480px)
+    mockWin.scrollY = 700;
+    heroCard.rect = { top: -600, bottom: -280, width: 380, height: 320 };
+    belowFoldCard.rect = { top: 480, bottom: 740, width: 380, height: 260 };
+    farBelowCard.rect = { top: 1020, bottom: 1280, width: 380, height: 260 };
     (docListeners['scroll'] || []).forEach((fn) => fn());
     flushNextRaf();
 
-    assert.strictEqual(heroCard.classList.contains('aos-animate'), false, 'Hero yang keluar penuh ke atas wajib reset untuk repeat');
-    assert.strictEqual(belowFoldCard.classList.contains('aos-animate'), true, 'Kartu bawah yang masuk viewport wajib fade-up saat scroll turun');
+    assert.strictEqual(heroCard.classList.contains('aos-animate'), true, 'Dengan once:true, elemen yang sudah beranimasi tetap terlihat (tidak reset/menghilang)');
+    assert.strictEqual(belowFoldCard.classList.contains('aos-animate'), true, 'Kartu yang di-scroll masuk viewport desktop wajib memicu fade-up');
+    assert.strictEqual(farBelowCard.classList.contains('aos-animate'), false, 'Kartu di tepi bawah (1020px dari 1080px) tetap menunggu sedikit scroll lagi');
 
-    // Simulasi Scroll Naik kembali ke atas (Mirror Repeat): heroCard masuk kembali, belowFoldCard keluar penuh ke bawah
+    // Simulasi Scroll Naik kembali ke atas: elemen yang sudah beranimasi tetap stabil terlihat (once: true)
     mockWin.scrollY = 0;
-    heroCard.rect = { top: 80, bottom: 300, width: 320, height: 220 };
-    belowFoldCard.rect = { top: 920, bottom: 1140, width: 320, height: 220 };
+    heroCard.rect = { top: 100, bottom: 420, width: 380, height: 320 };
+    belowFoldCard.rect = { top: 1180, bottom: 1440, width: 380, height: 260 };
     (winListeners['scroll'] || []).forEach((fn) => fn());
     flushNextRaf();
 
-    assert.strictEqual(heroCard.classList.contains('aos-animate'), true, 'Hero wajib beranimasi Fade-Up ulang saat scroll naik');
-    assert.strictEqual(belowFoldCard.classList.contains('aos-animate'), false, 'Kartu bawah yang keluar penuh ke bawah wajib reset untuk repeat berikutnya');
+    assert.strictEqual(heroCard.classList.contains('aos-animate'), true, 'Hero tetap terlihat stabil setelah scroll naik');
+    assert.strictEqual(belowFoldCard.classList.contains('aos-animate'), true, 'Kartu bawah yang sudah beranimasi tetap mempertahankan .aos-animate (once:true)');
 
     // Simulasi Firebase Async / SPA Navigation node baru melalui MutationObserver
-    const asyncFirebaseCard = makeNode(240, 200);
+    const asyncFirebaseCard = makeNode(300, 220);
     domNodes.push(asyncFirebaseCard);
     hooks.mutationCb?.([{ addedNodes: [asyncFirebaseCard] }]);
-    assert.strictEqual(asyncFirebaseCard.classList.contains('aos-animate'), false, 'Node dinamis baru wajib melalui paint barrier');
+    assert.strictEqual(asyncFirebaseCard.classList.contains('aos-animate'), false, 'Node Firestore/SPA baru wajib melalui paint barrier');
     flushNextRaf();
     flushNextRaf();
-    assert.strictEqual(asyncFirebaseCard.classList.contains('aos-animate'), true, 'Node dinamis di viewport wajib fade-up setelah paint barrier');
+    assert.strictEqual(asyncFirebaseCard.classList.contains('aos-animate'), true, 'Node Firestore/SPA di viewport wajib fade-up setelah paint barrier');
 
     // Status diagnostik akurat
     const status = getGlobalAOSStatus();
     assert.strictEqual(status.initialized, true);
     assert.strictEqual(status.enabled, true);
-    assert.strictEqual(status.totalNodes, 3);
-    assert.strictEqual(status.animatedNodes, 2);
+    assert.strictEqual(status.totalNodes, 4);
+    assert.strictEqual(status.animatedNodes, 3);
 
     // Simulasi Reduced Motion aktif -> semua konten langsung terlihat tanpa menyembunyikan apa pun
     reducedMotionMatches = true;
     hooks.reducedMotionHandler?.({ matches: true });
     assert.strictEqual(htmlClassList.contains('aos-reduced-motion'), true);
     assert.strictEqual(htmlClassList.contains('aos-enabled'), false);
-    assert.strictEqual(belowFoldCard.classList.contains('aos-animate'), true, 'Saat reduced-motion aktif, semua elemen wajib langsung terlihat');
+    assert.strictEqual(farBelowCard.classList.contains('aos-animate'), true, 'Saat reduced-motion aktif, semua elemen wajib langsung terlihat');
 
     destroyGlobalAOS();
   } finally {
@@ -6613,15 +6587,19 @@ test('Case 122: Runtime AOS paint-barrier, flicker-proof hysteresis, scroll repe
     (globalThis as any).MutationObserver = prevMO;
   }
 
-  // 3. Pastikan CSS memiliki reset off-screen instan & kelas settled, serta cakupan admin/student views
+  // Pastikan CSS memiliki kelas settled, serta cakupan menyeluruh pada seluruh tab AdminDashboard & halaman lain
   const indexCss = fs.readFileSync(new URL('../index.css', import.meta.url), 'utf8');
-  assert.ok(indexCss.includes('transition-property: none;'), 'Base hidden state harus reset instan saat di luar layar');
+  assert.ok(indexCss.includes('transition-property: none;'), 'Base hidden state harus menetapkan kondisi awal secara instan sebelum paint');
   assert.ok(indexCss.includes('.aos-animate.aos-settled'), 'Harus ada kelas .aos-settled untuk mengembalikan transisi hover 180ms dan melepas will-change');
+
+  const adminDashboardSrc = fs.readFileSync(new URL('../components/admin/AdminDashboard.tsx', import.meta.url), 'utf8');
+  assert.ok(adminDashboardSrc.includes('refreshGlobalAOS()'), 'AdminDashboard wajib memanggil refreshGlobalAOS() saat perpindahan tab');
 
   const extraCoveredFiles = [
     '../components/student/UnsubscribePreferencesView.tsx',
     '../components/admin/AdminBlogManager.tsx',
     '../components/admin/AdminLibraryManager.tsx',
+    '../components/admin/AdminLibraryVolumesManager.tsx',
     '../components/admin/AdminConsultationManager.tsx',
     '../components/admin/AdminInstructorProfileManager.tsx',
     '../components/admin/AdminCommentsManager.tsx',

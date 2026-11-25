@@ -90,6 +90,7 @@ import { getAllArticleCommentsForAdmin, subscribeToConsultationsStats } from '..
 import { auditBrowserStorageEntries } from '../../utils/dataAuditHelper';
 import { splitSessionContentIntoSlides } from '../../utils/sessionSlideHelper';
 import { computeStudentQuizStatistics } from '../../utils/quizFlowHelper';
+import { getAosDelay, refreshGlobalAOS } from '../../utils/aosManager';
 
 export const AdminDashboard: React.FC<{
   initialCourseId?: string;
@@ -131,6 +132,11 @@ export const AdminDashboard: React.FC<{
   // Consultation state for indicators (Unanswered / Merah vs Answered / Hijau)
   const [unansweredConsultationsCount, setUnansweredConsultationsCount] = useState<number>(0);
   const [answeredConsultationsCount, setAnsweredConsultationsCount] = useState<number>(0);
+
+  // Sync global AOS animations whenever admin switches tabs
+  useEffect(() => {
+    refreshGlobalAOS();
+  }, [activeTab]);
 
   // Keyboard Escape listener to close drawer on mobile/tablet
   useEffect(() => {
@@ -1833,7 +1839,7 @@ export const AdminDashboard: React.FC<{
           {/* ========================================================= */}
           {activeTab === 'courses' && (
             <div className="space-y-6 animate-fade-in">
-              <div className="flex items-center justify-between">
+              <div data-aos="fade-up" className="flex items-center justify-between">
                 <h2 className="text-lg font-bold text-[#171717] dark:text-[#FFFFFF] font-serif-brand">
                   Daftar Mata Pelajaran ({courses.length})
                 </h2>
@@ -1863,8 +1869,13 @@ export const AdminDashboard: React.FC<{
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {displayedCourses.map(course => (
-                  <div key={course.id} className="nb-card overflow-hidden flex flex-col justify-between">
+                {displayedCourses.map((course, idx) => (
+                  <div
+                    key={course.id}
+                    data-aos="fade-up"
+                    data-aos-delay={getAosDelay(idx, 3)}
+                    className="nb-card overflow-hidden flex flex-col justify-between"
+                  >
                     <div className="p-5 space-y-3">
                       <div className="aspect-video w-full rounded-xs bg-[#001722] overflow-hidden relative border-2 border-[#171717] dark:border-[#4CA7A1]">
                         {course.coverImageUrl ? (
@@ -1932,7 +1943,7 @@ export const AdminDashboard: React.FC<{
           {/* ========================================================= */}
           {activeTab === 'categories' && (
             <div className="space-y-6 animate-fade-in">
-              <div className="flex items-center justify-between">
+              <div data-aos="fade-up" className="flex items-center justify-between">
                 <h2 className="text-lg font-bold text-[#171717] dark:text-[#FFFFFF] font-serif-brand">
                   Daftar Bab / Modul / Kategori ({categories.length})
                 </h2>
@@ -1951,7 +1962,7 @@ export const AdminDashboard: React.FC<{
                 </button>
               </div>
 
-              <div className="nb-card overflow-hidden">
+              <div data-aos="fade-up" data-aos-delay="50" className="nb-card overflow-hidden">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
                     <tr className="bg-[#06251D] dark:bg-[#001722] text-[#FAF7F0] dark:text-[#CEFEF1] border-b-2 border-[#171717] dark:border-[#4CA7A1] font-extrabold uppercase tracking-wider">
@@ -2000,7 +2011,7 @@ export const AdminDashboard: React.FC<{
           {/* ========================================================= */}
           {activeTab === 'sessions' && (
             <div className="space-y-6 animate-fade-in">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 nb-card p-4">
+              <div data-aos="fade-up" className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 nb-card p-4">
                 <div>
                   <label className="text-xs font-bold text-stone-700 dark:text-[#A6D6C9] block mb-1 uppercase tracking-wider">
                     Pilih Mata Pelajaran:
@@ -2026,7 +2037,7 @@ export const AdminDashboard: React.FC<{
               </div>
 
               {/* Sessions Table */}
-              <div className="nb-card overflow-hidden">
+              <div data-aos="fade-up" data-aos-delay="50" className="nb-card overflow-hidden">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
                     <tr className="bg-[#06251D] dark:bg-[#001722] text-[#FAF7F0] dark:text-[#CEFEF1] border-b-2 border-[#171717] dark:border-[#4CA7A1] font-extrabold uppercase tracking-wider">
@@ -2118,7 +2129,7 @@ export const AdminDashboard: React.FC<{
           {/* ========================================================= */}
           {activeTab === 'quizzes' && (
             <div className="space-y-6 animate-fade-in">
-              <div className="flex items-center justify-between">
+              <div data-aos="fade-up" className="flex items-center justify-between">
                 <h2 className="text-lg font-bold text-[#171717] dark:text-[#FFFFFF] font-serif-brand">
                   Bank Kuis Evaluasi ({quizzes.length})
                 </h2>
@@ -2144,11 +2155,16 @@ export const AdminDashboard: React.FC<{
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {displayedQuizzes.map(q => {
+                {displayedQuizzes.map((q, idx) => {
                   const linkedCourse = courses.find(c => c.id === q.courseId);
 
                   return (
-                    <div key={q.id} className="nb-card p-5 space-y-4 flex flex-col justify-between">
+                    <div
+                      key={q.id}
+                      data-aos="fade-up"
+                      data-aos-delay={getAosDelay(idx, 3)}
+                      className="nb-card p-5 space-y-4 flex flex-col justify-between"
+                    >
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
                           <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-sm bg-[#4CA7A1] text-[#001722] border border-[#171717] dark:border-[#001722]">
@@ -2272,7 +2288,7 @@ export const AdminDashboard: React.FC<{
           {/* ========================================================= */}
           {activeTab === 'users' && (
             <div className="space-y-6 animate-fade-in">
-              <div className="flex items-center justify-between">
+              <div data-aos="fade-up" className="flex items-center justify-between">
                 <div>
                   <h2 className="text-xl font-black text-stone-900 dark:text-[#FFFFFF] tracking-tight">
                     Daftar Santri / Pengguna Terdaftar ({users.length})
@@ -2286,7 +2302,7 @@ export const AdminDashboard: React.FC<{
                 </span>
               </div>
 
-              <div className="nb-card overflow-hidden p-0">
+              <div data-aos="fade-up" data-aos-delay="50" className="nb-card overflow-hidden p-0">
                 <div className="overflow-x-auto w-full">
                   <table className="w-full min-w-[550px] text-left border-collapse text-xs">
                     <thead>
@@ -2326,7 +2342,7 @@ export const AdminDashboard: React.FC<{
           {/* ========================================================= */}
           {activeTab === 'attempts' && (
             <div className="space-y-6 animate-fade-in">
-              <div className="flex flex-wrap items-center justify-between gap-3">
+              <div data-aos="fade-up" className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h2 className="text-xl font-black text-stone-900 dark:text-[#FFFFFF] tracking-tight">
                     Hasil & Rekapitulasi Nilai Kuis Santri ({studentAttempts.length})
@@ -2367,7 +2383,7 @@ export const AdminDashboard: React.FC<{
                 </div>
               )}
 
-              <div className="nb-card overflow-hidden p-0">
+              <div data-aos="fade-up" data-aos-delay="50" className="nb-card overflow-hidden p-0">
                 <div className="overflow-x-auto w-full">
                   <table className="w-full min-w-[550px] text-left border-collapse text-xs">
                     <thead>
@@ -2469,7 +2485,7 @@ export const AdminDashboard: React.FC<{
 
             return (
               <div className="space-y-6 animate-fade-in">
-                <div>
+                <div data-aos="fade-up">
                   <h2 className="text-xl font-black text-stone-900 dark:text-white tracking-tight">
                     Status Integrasi Cloud Firestore & Pencadangan Data
                   </h2>
@@ -2478,7 +2494,7 @@ export const AdminDashboard: React.FC<{
                   </p>
                 </div>
 
-                <div className="nb-card p-6 space-y-5">
+                <div data-aos="fade-up" data-aos-delay="50" className="nb-card p-6 space-y-5">
                   <div className="flex items-center justify-between flex-wrap gap-4 pb-4 border-b-2 border-stone-200 dark:border-stone-800">
                     <div className="flex items-center gap-3">
                       <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-[#171717] animate-pulse" />

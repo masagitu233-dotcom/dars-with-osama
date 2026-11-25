@@ -46,7 +46,7 @@ import { InstructorProfileView } from './components/profile/InstructorProfileVie
 import { SearchResultsView } from './components/search/SearchResultsView';
 import { UnsubscribePreferencesView } from './components/student/UnsubscribePreferencesView';
 import { Course, Category, Session, Quiz, Enrollment, BlogPost, LibraryBook, LibraryBookVolume } from './types';
-import { initGlobalAOS, refreshGlobalAOS, refreshHardGlobalAOS } from './utils/aosManager';
+import { initGlobalAOS, refreshGlobalAOS, refreshHardGlobalAOS, replayVisibleGlobalAOS } from './utils/aosManager';
 import {
   getCategories,
   getCourses,
@@ -187,6 +187,9 @@ function MainApp() {
   const handleCloseWelcomeModal = () => {
     sessionStorage.setItem('dars_intro_shown', 'true');
     setWelcomeModalOpen(false);
+    window.setTimeout(() => {
+      replayVisibleGlobalAOS();
+    }, 40);
   };
 
   const handleOpenWelcomeModal = () => {

@@ -345,7 +345,7 @@ export const AdminLibraryVolumesManager: React.FC<AdminLibraryVolumesManagerProp
   return (
     <div data-testid="admin-library-volumes-manager" className="space-y-6 animate-fade-in font-sans">
       {/* TOP BAR NAVIGATION */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div data-aos="fade-up" className="flex flex-wrap items-center justify-between gap-3">
         <button
           type="button"
           data-testid="admin-volumes-back-btn"
@@ -406,7 +406,7 @@ export const AdminLibraryVolumesManager: React.FC<AdminLibraryVolumesManagerProp
       )}
 
       {/* MAIN BOOK OVERVIEW CARD (SINGLE SHARED COVER & CORE METADATA) */}
-      <div className="nb-card bg-white dark:bg-[#0D2B36] p-5 sm:p-7">
+      <div data-aos="fade-up" data-aos-delay="50" className="nb-card bg-white dark:bg-[#0D2B36] p-5 sm:p-7">
         <div className="flex flex-col md:flex-row items-start gap-5 sm:gap-7">
           {/* Shared Main Cover */}
           <div className="w-32 sm:w-36 shrink-0 mx-auto md:mx-0">

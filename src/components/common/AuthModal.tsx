@@ -208,7 +208,7 @@ export const AuthModal: React.FC = () => {
           </button>
         </div>
 
-        <div className="p-4 sm:p-5">
+        <div data-aos="fade-up" className="p-4 sm:p-5">
           {/* Context Notice */}
           <p className="text-xs text-[#292D2B]/80 dark:text-[#F1F4F8]/85 mb-3.5 leading-relaxed">
             {pendingAction ? (
