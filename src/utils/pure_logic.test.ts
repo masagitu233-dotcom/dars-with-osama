@@ -6610,3 +6610,310 @@ test('Case 122: Runtime AOS paint-barrier, desktop 1920x1080 below-fold gating, 
     assert.ok(content.includes('data-aos="fade-up"'), `${relPath} wajib menerapkan data-aos="fade-up"`);
   }
 });
+
+// Case 123: SEO Canonical Domain, Indexable Public Routes vs Noindex Private/Student/Draft Routes
+test('Case 123: SEO canonical domain https://darswithosama.netlify.app serta pemisahan halaman publik indexable vs privat noindex', async () => {
+  const {
+    CANONICAL_SITE_ORIGIN,
+    DEFAULT_HOME_TITLE,
+    PRIVATE_ROBOTS_DIRECTIVE,
+    PUBLIC_ROBOTS_DIRECTIVE,
+    buildCanonicalUrl,
+    buildPageSeoMetadata,
+    normalizeSeoImageUrl
+  } = await import('./seoConfig.js');
+  const { parseUrlToRouteState } = await import('./navigationHistory.js');
+
+  assert.strictEqual(CANONICAL_SITE_ORIGIN, 'https://darswithosama.netlify.app');
+  assert.strictEqual(buildCanonicalUrl('/'), 'https://darswithosama.netlify.app/');
+  assert.strictEqual(buildCanonicalUrl('/courses/?category=fiqih#top'), 'https://darswithosama.netlify.app/courses');
+  assert.strictEqual(buildCanonicalUrl('http://localhost:3000/article/fiqih-thaharah?fbclid=123'), 'https://darswithosama.netlify.app/article/fiqih-thaharah');
+
+  // Clean /courses path parsing
+  const coursesParsed = parseUrlToRouteState('/courses', '');
+  assert.strictEqual(coursesParsed.view, 'courses');
+  assert.strictEqual(parseUrlToRouteState('/katalog/', '').view, 'courses');
+
+  // Public Google Drive image URL normalization for OG/JSON-LD
+  assert.strictEqual(
+    normalizeSeoImageUrl('https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrStUvWxYz/view?usp=sharing'),
+    'https://lh3.googleusercontent.com/d/1AbCdEfGhIjKlMnOpQrStUvWxYz=w1200'
+  );
+
+  // 1. Home page metadata
+  const homeSeo = buildPageSeoMetadata({ view: 'home', pathname: '/' });
+  assert.strictEqual(homeSeo.title, DEFAULT_HOME_TITLE);
+  assert.strictEqual(homeSeo.canonicalUrl, 'https://darswithosama.netlify.app/');
+  assert.strictEqual(homeSeo.robots, PUBLIC_ROBOTS_DIRECTIVE);
+  assert.strictEqual(homeSeo.indexable, true);
+  assert.ok(homeSeo.jsonLd.some((node) => node['@type'] === 'WebSite'));
+
+  // 2. Private, student-only, search, quiz, and session views MUST be noindex, nofollow
+  const privateViews = [
+    'admin-dashboard',
+    'student-dashboard',
+    'quiz-view',
+    'session-view',
+    'consultation',
+    'search',
+    'unsubscribe'
+  ];
+  for (const pv of privateViews) {
+    const seo = buildPageSeoMetadata({ view: pv });
+    assert.strictEqual(seo.indexable, false, `Halaman ${pv} wajib non-indexable`);
+    assert.strictEqual(seo.robots, PRIVATE_ROBOTS_DIRECTIVE, `Halaman ${pv} wajib memakai noindex, nofollow`);
+    assert.strictEqual(seo.jsonLd.length, 0, `Halaman privat ${pv} tidak boleh menyuntikkan JSON-LD publik`);
+  }
+
+  // 3. Draft / unpublished content viewed by admin MUST be noindex, nofollow
+  const draftArticleSeo = buildPageSeoMetadata({
+    view: 'blog-detail',
+    blogPost: {
+      id: 'draft-1',
+      title: 'Draft Artikel Rahasia',
+      slug: 'draft-artikel',
+      excerpt: 'Belum terbit',
+      content: '<p>Isi draft</p>',
+      category: 'Fiqih',
+      tags: [],
+      authorName: 'Ustaz Osama Nur Samsil',
+      status: 'draft',
+      readingTimeMinutes: 3,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    } as any
+  });
+  assert.strictEqual(draftArticleSeo.indexable, false);
+  assert.strictEqual(draftArticleSeo.robots, PRIVATE_ROBOTS_DIRECTIVE);
+
+  const draftBookSeo = buildPageSeoMetadata({
+    view: 'library-detail',
+    libraryBook: {
+      id: 'book-draft',
+      title: 'Kitab Draft',
+      slug: 'kitab-draft',
+      coverImageUrl: '',
+      coverAspectRatio: '3:4',
+      sourceType: 'internal',
+      status: 'draft',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    }
+  });
+  assert.strictEqual(draftBookSeo.indexable, false);
+  assert.strictEqual(draftBookSeo.robots, PRIVATE_ROBOTS_DIRECTIVE);
+
+  // 4. Unknown path soft-404 protection
+  const unknownPathSeo = buildPageSeoMetadata({
+    view: 'home',
+    pathname: '/halaman-tidak-dikenal-404'
+  });
+  assert.strictEqual(unknownPathSeo.indexable, false);
+  assert.strictEqual(unknownPathSeo.robots, PRIVATE_ROBOTS_DIRECTIVE);
+});
+
+// Case 124: Schema.org JSON-LD Structured Data (Article, Course, Book, QAPage, Person, BreadcrumbList) without Fabricated Fields
+test('Case 124: Schema.org JSON-LD valid untuk Article, Course, Book, QAPage, dan Person tanpa data fiktif', async () => {
+  const { buildPageSeoMetadata } = await import('./seoConfig.js');
+
+  const courseSeo = buildPageSeoMetadata({
+    view: 'course-detail',
+    course: {
+      id: 'course-nahwu',
+      title: 'Mutammimah Al-Ajurumiyah',
+      titleAr: 'متممة الآجرومية',
+      instructor: 'Ustaz Osama Nur Samsil',
+      categoryId: 'nahwu',
+      level: 'beginner',
+      description: 'Kajian ilmu nahwu tingkat dasar hingga menengah.',
+      coverImageUrl: '/covers/course-1792229735274.jpg',
+      isPublished: true,
+      hasCertificate: true,
+      passingGrade: 75,
+      order: 1
+    },
+    category: { id: 'nahwu', name: 'Nahwu', slug: 'nahwu', order: 1 } as any
+  });
+  assert.strictEqual(courseSeo.canonicalUrl, 'https://darswithosama.netlify.app/course/course-nahwu');
+  const courseNode = courseSeo.jsonLd.find((n) => n['@type'] === 'Course') as any;
+  assert.ok(courseNode, 'Course JSON-LD wajib ada');
+  assert.strictEqual(courseNode.aggregateRating, undefined, 'Tidak boleh membuat rating fiktif');
+  assert.strictEqual(courseNode.offers, undefined, 'Tidak boleh membuat harga fiktif');
+  assert.ok(courseSeo.jsonLd.some((n) => n['@type'] === 'BreadcrumbList'));
+
+  const articleSeo = buildPageSeoMetadata({
+    view: 'blog-detail',
+    blogPost: {
+      id: 'art-1',
+      title: 'Pengertian Al-Kalam dalam Ilmu Nahwu',
+      slug: 'pengertian-al-kalam',
+      excerpt: 'Pembahasan syarat-syarat kalam menurut ulama nahwu.',
+      content: '<p>Al-Kalam adalah lafazh yang tersusun dan memberi faedah.</p>',
+      category: 'Nahwu',
+      tags: ['Nahwu', 'Al-Kalam'],
+      authorName: 'Ustaz Osama Nur Samsil',
+      status: 'published',
+      readingTimeMinutes: 5,
+      publishedAt: '2026-03-10T08:00:00.000Z',
+      createdAt: '2026-03-10T08:00:00.000Z',
+      updatedAt: '2026-03-12T09:00:00.000Z'
+    } as any
+  });
+  assert.strictEqual(articleSeo.canonicalUrl, 'https://darswithosama.netlify.app/article/pengertian-al-kalam');
+  const articleNode = articleSeo.jsonLd.find((n) => n['@type'] === 'Article') as any;
+  assert.ok(articleNode);
+  assert.strictEqual(articleNode.datePublished, '2026-03-10T08:00:00.000Z');
+  assert.strictEqual(articleNode.dateModified, '2026-03-12T09:00:00.000Z');
+
+  const bookSeo = buildPageSeoMetadata({
+    view: 'library-read',
+    libraryBook: {
+      id: 'book-1',
+      title: 'Al-Majmu Syarh Al-Muhadzdzab',
+      titleAr: 'المجموع شرح المهذب',
+      slug: 'al-majmu',
+      author: 'Imam An-Nawawi',
+      category: 'Fikih',
+      description: 'Kitab fikih Syafi\'i berjilid.',
+      coverImageUrl: '',
+      coverAspectRatio: '3:4',
+      collectionType: 'multi_volume',
+      sourceType: 'internal',
+      status: 'published',
+      createdAt: '2026-04-01T00:00:00.000Z',
+      updatedAt: '2026-04-02T00:00:00.000Z'
+    },
+    libraryVolume: {
+      id: 'vol-1',
+      bookId: 'book-1',
+      volumeNumber: 1,
+      order: 1,
+      title: 'Jilid 1: Kitab Thaharah',
+      sourceType: 'internal',
+      content: '<p>Bab Thaharah dalam Fikih Syafi\'i.</p>',
+      status: 'published',
+      createdAt: '2026-04-01T00:00:00.000Z',
+      updatedAt: '2026-04-02T00:00:00.000Z'
+    }
+  });
+  assert.strictEqual(bookSeo.canonicalUrl, 'https://darswithosama.netlify.app/library/al-majmu/jilid/vol-1');
+  const bookNode = bookSeo.jsonLd.find((n) => n['@type'] === 'Book') as any;
+  assert.ok(bookNode);
+  assert.strictEqual(bookNode.isbn, undefined, 'Tidak boleh mengarang ISBN fiktif');
+
+  const profileSeo = buildPageSeoMetadata({
+    view: 'instructor-profile',
+    instructorProfile: {
+      fullName: 'Osama Nur Samsil',
+      headline: 'Pengajar Fikih & Ilmu Nahwu',
+      shortBio: 'Pengajar di Dars with Osama.',
+      domicile: 'Indonesia',
+      photoUrl: '',
+      photoCandidates: [],
+      education: [{
+        id: 'e1',
+        institution: 'Universitas Al-Azhar',
+        degree: 'S1',
+        fieldOfStudy: 'Syariah',
+        period: '2020-2024',
+        graduationYear: '2024',
+        location: 'Kairo',
+        category: 'formal',
+        description: '',
+        displayOrder: 1
+      }],
+      experiences: [],
+      skills: [{
+        id: 's1',
+        name: 'Ilmu Fikih',
+        category: 'academic',
+        categoryLabel: 'Keilmuan & Akademik',
+        proficiencyLabel: '',
+        description: '',
+        displayOrder: 1
+      }],
+      portfolioUrl: 'https://cvosamanursamsil.netlify.app/',
+      updatedAtMs: null
+    }
+  });
+  assert.strictEqual(profileSeo.canonicalUrl, 'https://darswithosama.netlify.app/profil-pengajar');
+  const personNode = profileSeo.jsonLd.find((n) => n['@type'] === 'Person') as any;
+  assert.ok(personNode);
+  assert.strictEqual(personNode.name, 'Osama Nur Samsil');
+  assert.ok(personNode.sameAs.includes('https://cvosamanursamsil.netlify.app/'));
+});
+
+// Case 125: Sitemap XML & robots.txt Validation (strict filtering of private, session, query, and duplicate URLs)
+test('Case 125: buildSitemapXml dan buildRobotsTxt menghasilkan XML/robots valid tanpa URL privat, sesi siswa, duplikat, atau query string', async () => {
+  const { buildSitemapXml, buildRobotsTxt, isValidPublicSitemapUrl } = await import('./seoConfig.js');
+
+  assert.strictEqual(isValidPublicSitemapUrl('https://darswithosama.netlify.app/'), true);
+  assert.strictEqual(isValidPublicSitemapUrl('https://darswithosama.netlify.app/article/fiqih'), true);
+  assert.strictEqual(isValidPublicSitemapUrl('https://darswithosama.netlify.app/admin'), false);
+  assert.strictEqual(isValidPublicSitemapUrl('https://darswithosama.netlify.app/student'), false);
+  assert.strictEqual(isValidPublicSitemapUrl('https://darswithosama.netlify.app/session/s-1'), false);
+  assert.strictEqual(isValidPublicSitemapUrl('https://darswithosama.netlify.app/consultation'), false);
+  assert.strictEqual(isValidPublicSitemapUrl('https://darswithosama.netlify.app/search'), false);
+  assert.strictEqual(isValidPublicSitemapUrl('https://darswithosama.netlify.app/blog?page=2'), false);
+  assert.strictEqual(isValidPublicSitemapUrl('https://darswithosama.com/article/fiqih'), false);
+
+  const xml = buildSitemapXml([
+    { loc: '/', priority: 1.0 },
+    { loc: '/', priority: 0.5 }, // duplicate
+    { loc: '/courses', priority: 0.9 },
+    { loc: '/article/fiqih-thaharah', lastmod: '2026-04-10T10:00:00.000Z' },
+    { loc: '/library/matan-ajurrumiyyah', lastmod: 'invalid-date' },
+    { loc: '/session/secret-student-video' }, // must be stripped
+    { loc: '/admin' }, // must be stripped
+    { loc: '/student' }, // must be stripped
+    { loc: '/consultation' }, // must be stripped
+    { loc: '/search' } // must be stripped
+  ]);
+
+  assert.ok(xml.startsWith('<?xml version="1.0" encoding="UTF-8"?>'));
+  assert.ok(xml.includes('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'));
+  assert.ok(xml.includes('<loc>https://darswithosama.netlify.app/</loc>'));
+  assert.ok(xml.includes('<loc>https://darswithosama.netlify.app/courses</loc>'));
+  assert.ok(xml.includes('<loc>https://darswithosama.netlify.app/article/fiqih-thaharah</loc>'));
+  assert.ok(xml.includes('<lastmod>2026-04-10T10:00:00.000Z</lastmod>'));
+  assert.strictEqual((xml.match(/<loc>https:\/\/darswithosama\.netlify\.app\/<\/loc>/g) || []).length, 1, 'URL duplikat wajib dibuang');
+  assert.strictEqual(xml.includes('/session/'), false, 'Halaman sesi siswa tidak boleh masuk sitemap');
+  assert.strictEqual(xml.includes('/admin'), false, 'Halaman admin tidak boleh masuk sitemap');
+  assert.strictEqual(xml.includes('/student'), false, 'Halaman siswa tidak boleh masuk sitemap');
+  assert.strictEqual(xml.includes('/consultation'), false, 'Halaman konsultasi privat tidak boleh masuk sitemap');
+  assert.strictEqual(xml.includes('invalid-date'), false, 'lastmod tidak valid wajib diabaikan');
+
+  const robots = buildRobotsTxt();
+  assert.ok(robots.includes('User-agent: *'));
+  assert.ok(robots.includes('Allow: /'));
+  assert.ok(robots.includes('Disallow: /admin'));
+  assert.ok(robots.includes('Sitemap: https://darswithosama.netlify.app/sitemap.xml'));
+  assert.strictEqual(robots.includes('Disallow: /assets'), false, 'Aset CSS/JS/gambar tidak boleh diblokir');
+});
+
+// Case 126: Audit Crawlability — index.html, netlify.toml, robots.txt, dan Navigasi <a href>
+test('Case 126: Audit file produksi SEO (index.html, public/robots.txt, netlify.toml, AppSidebar <a href>)', async () => {
+  const fs = await import('node:fs');
+
+  const indexHtml = fs.readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
+  assert.strictEqual(indexHtml.includes('Remix Dars with Osama'), false, 'Placeholder judul Remix wajib dihapus dari index.html');
+  assert.ok(indexHtml.includes('<html lang="id"'), 'index.html wajib menetapkan lang="id"');
+  assert.ok(indexHtml.includes('<link rel="canonical" href="https://darswithosama.netlify.app/"'), 'index.html wajib memiliki canonical Netlify');
+  assert.ok(indexHtml.includes('application/ld+json'), 'index.html wajib menyertakan WebSite JSON-LD');
+  assert.ok(indexHtml.includes('<noscript>'), 'index.html wajib menyertakan fallback navigasi noscript');
+
+  const robotsTxt = fs.readFileSync(new URL('../../public/robots.txt', import.meta.url), 'utf8');
+  assert.ok(robotsTxt.includes('Sitemap: https://darswithosama.netlify.app/sitemap.xml'));
+
+  const netlifyToml = fs.readFileSync(new URL('../../netlify.toml', import.meta.url), 'utf8');
+  assert.ok(netlifyToml.includes('path = "/sitemap.xml"'));
+  assert.ok(netlifyToml.includes('Content-Type = "application/xml; charset=utf-8"'));
+
+  const sidebarSrc = fs.readFileSync(new URL('../components/common/AppSidebar.tsx', import.meta.url), 'utf8');
+  assert.ok(sidebarSrc.includes("href: '/courses'"), 'Navigasi sidebar wajib memiliki <a href="/courses">');
+  assert.ok(sidebarSrc.includes("href: '/blog'"), 'Navigasi sidebar wajib memiliki <a href="/blog">');
+  assert.ok(sidebarSrc.includes("href: '/library'"), 'Navigasi sidebar wajib memiliki <a href="/library">');
+  assert.ok(sidebarSrc.includes("href: '/tanya-jawab'"), 'Navigasi sidebar wajib memiliki <a href="/tanya-jawab">');
+  assert.ok(sidebarSrc.includes("href: '/profil-pengajar'"), 'Navigasi sidebar wajib memiliki <a href="/profil-pengajar">');
+});
+

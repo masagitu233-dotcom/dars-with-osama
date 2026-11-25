@@ -73,7 +73,7 @@ function sessionSeoServerPlugin(): Plugin {
         const rawUrl = ctx.originalUrl || '';
         if (!rawUrl) return html;
 
-        const parsed = new URL(rawUrl, 'https://darswithosama.com');
+        const parsed = new URL(rawUrl, 'https://darswithosama.netlify.app');
         const pathMatch = parsed.pathname.match(/^\/session\/([^/]+)\/?$/i);
         const identifier = pathMatch
           ? decodeURIComponent(pathMatch[1])
@@ -85,11 +85,15 @@ function sessionSeoServerPlugin(): Plugin {
         const resolved = await getPublishedSessionForSeo(identifier);
         if (!resolved) return html;
 
-        const seoMetaTags = buildSessionMetaTagsHtml(
-          resolved.session,
-          resolved.course,
-          'https://darswithosama.com'
-        );
+        const seoMetaTags = [
+          buildSessionMetaTagsHtml(
+            resolved.session,
+            resolved.course,
+            'https://darswithosama.netlify.app'
+          ),
+          '<meta name="robots" content="noindex, nofollow" />',
+          '<meta name="googlebot" content="noindex, nofollow" />'
+        ].join('\n');
         return injectSeoMetaIntoHtml(html, seoMetaTags);
       },
     },
@@ -103,7 +107,7 @@ function sessionSeoServerPlugin(): Plugin {
           execFileSync('npx', ['tsx', seoScript], {
             cwd: __dirname,
             stdio: 'inherit',
-            timeout: 15000,
+            timeout: 30000,
           });
         } catch (err) {
           console.warn(
@@ -115,7 +119,7 @@ function sessionSeoServerPlugin(): Plugin {
 
       const indexHtml = path.resolve(__dirname, 'dist/index.html');
       const notFoundHtml = path.resolve(__dirname, 'dist/404.html');
-      if (fs.existsSync(indexHtml)) {
+      if (fs.existsSync(indexHtml) && !fs.existsSync(notFoundHtml)) {
         try {
           fs.copyFileSync(indexHtml, notFoundHtml);
         } catch {

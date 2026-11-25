@@ -249,6 +249,21 @@ export function parseUrlToRouteState(pathname: string, search: string): DarsRout
     };
   }
 
+  if (
+    cleanPath === '/courses' ||
+    cleanPath === '/courses/' ||
+    cleanPath === '/kursus' ||
+    cleanPath === '/kursus/' ||
+    cleanPath === '/katalog' ||
+    cleanPath === '/katalog/'
+  ) {
+    return {
+      view: 'courses',
+      filterCategoryId,
+      searchQuery
+    };
+  }
+
   if (urlView === 'quiz-view') {
     return {
       view: 'quiz-view',

@@ -57,9 +57,17 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   const isStudentDashboardActive = currentView === 'student-dashboard';
   const isAdminDashboardActive = currentView === 'admin-dashboard';
 
-  const navItems = [
+  const navItems: Array<{
+    id: string;
+    href?: string;
+    label: string;
+    sublabel: string;
+    icon: typeof Home;
+    active: boolean;
+  }> = [
     {
       id: 'home',
+      href: '/',
       label: 'Beranda',
       sublabel: 'Ringkasan & Sorotan',
       icon: Home,
@@ -67,6 +75,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
     },
     {
       id: 'blog',
+      href: '/blog',
       label: 'Artikel & Catatan',
       sublabel: 'Kajian & Faedah Ilmiah',
       icon: FileText,
@@ -74,6 +83,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
     },
     {
       id: 'library',
+      href: '/library',
       label: 'Library Digital',
       sublabel: 'Koleksi Buku & Kitab',
       icon: Library,
@@ -81,6 +91,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
     },
     {
       id: 'public-qa',
+      href: '/tanya-jawab',
       label: 'Tanya Jawab (Q&A)',
       sublabel: 'Arsip Jawaban Ilmiah',
       icon: HelpCircle,
@@ -88,6 +99,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
     },
     {
       id: 'courses',
+      href: '/courses',
       label: 'Katalog Pembelajaran',
       sublabel: 'Kitab, Video & Kuis',
       icon: BookOpen,
@@ -95,6 +107,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
     },
     {
       id: 'instructor-profile',
+      href: '/profil-pengajar',
       label: 'Profil Pengajar',
       sublabel: 'Biografi & Sanad Keilmuan',
       icon: UserCheck,
@@ -212,21 +225,16 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
 
             {navItems.map((item) => {
               const Icon = item.icon;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  data-testid={`nav-${item.id}`}
-                  onClick={() => handleNavClick(item.id)}
-                  title={effectiveCollapsed ? item.label : undefined}
-                  className={`w-full flex items-center ${
-                    effectiveCollapsed ? 'justify-center px-0 py-1.5' : 'gap-2.5 px-2.5 py-2'
-                  } rounded-md text-left transition-all duration-150 cursor-pointer group relative border-2 ${
-                    item.active
-                      ? 'bg-[#D6AD52] text-[#171717] font-extrabold border-[#171717] dark:bg-[#1F5F63] dark:text-[#CEFEF1] dark:border-[#4CA7A1] dark:border-l-4 dark:border-l-[#4CA7A1] shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#001722]'
-                      : 'bg-white dark:bg-[#0D2B36] hover:bg-[#EFE5D2] dark:hover:bg-[#1F5F63] text-[#171717] dark:text-[#A6D6C9] dark:hover:text-[#CEFEF1] border-[#171717]/35 dark:border-[#4CA7A1] hover:border-[#171717] dark:hover:border-[#A6D6C9]'
-                  }`}
-                >
+              const sharedClassName = `w-full flex items-center ${
+                effectiveCollapsed ? 'justify-center px-0 py-1.5' : 'gap-2.5 px-2.5 py-2'
+              } rounded-md text-left transition-all duration-150 cursor-pointer group relative border-2 ${
+                item.active
+                  ? 'bg-[#D6AD52] text-[#171717] font-extrabold border-[#171717] dark:bg-[#1F5F63] dark:text-[#CEFEF1] dark:border-[#4CA7A1] dark:border-l-4 dark:border-l-[#4CA7A1] shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#001722]'
+                  : 'bg-white dark:bg-[#0D2B36] hover:bg-[#EFE5D2] dark:hover:bg-[#1F5F63] text-[#171717] dark:text-[#A6D6C9] dark:hover:text-[#CEFEF1] border-[#171717]/35 dark:border-[#4CA7A1] hover:border-[#171717] dark:hover:border-[#A6D6C9]'
+              }`;
+
+              const innerContent = (
+                <>
                   <div
                     className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 transition-colors border-[1.5px] ${
                       item.active
@@ -260,6 +268,40 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                   {item.active && !effectiveCollapsed && (
                     <span className="w-2 h-2 rounded-full bg-[#123D32] dark:bg-[#4CA7A1] shrink-0" />
                   )}
+                </>
+              );
+
+              if (item.href) {
+                return (
+                  <a
+                    key={item.id}
+                    href={item.href}
+                    data-testid={`nav-${item.id}`}
+                    aria-current={item.active ? 'page' : undefined}
+                    onClick={(e) => {
+                      if (!e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey && e.button === 0) {
+                        e.preventDefault();
+                        handleNavClick(item.id);
+                      }
+                    }}
+                    title={effectiveCollapsed ? item.label : undefined}
+                    className={sharedClassName}
+                  >
+                    {innerContent}
+                  </a>
+                );
+              }
+
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  data-testid={`nav-${item.id}`}
+                  onClick={() => handleNavClick(item.id)}
+                  title={effectiveCollapsed ? item.label : undefined}
+                  className={sharedClassName}
+                >
+                  {innerContent}
                 </button>
               );
             })}

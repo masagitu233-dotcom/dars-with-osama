@@ -52,7 +52,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
 
   const handleShare = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://darswithosama.com';
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://darswithosama.netlify.app';
     const url = buildCourseShareUrl(course, origin);
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {
@@ -99,7 +99,19 @@ export const CourseCard: React.FC<CourseCardProps> = ({
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1 min-w-0">
               <h3 className="font-serif font-bold text-sm sm:text-[15px] text-white group-hover:text-[#F5DABF] transition-colors line-clamp-2 leading-snug">
-                {course.title}
+                <a
+                  href={`/course/${encodeURIComponent(course.id)}`}
+                  onClick={(e) => {
+                    if (!e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey && e.button === 0) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onSelect(course);
+                    }
+                  }}
+                  className="hover:underline focus:outline-none"
+                >
+                  {course.title}
+                </a>
               </h3>
 
               {course.titleAr && (

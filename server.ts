@@ -522,6 +522,40 @@ async function startServer() {
     }
   });
 
+  // Serve /robots.txt and /sitemap.xml directly with proper Content-Type in dev & prod
+  app.get('/robots.txt', (_req, res) => {
+    const candidates = [
+      path.join(__dirname, 'dist', 'robots.txt'),
+      path.join(__dirname, 'public', 'robots.txt')
+    ];
+    for (const filePath of candidates) {
+      if (fs.existsSync(filePath)) {
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        res.sendFile(filePath);
+        return;
+      }
+    }
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.send(
+      'User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /student\nDisallow: /consultation\nDisallow: /konsultasi\nDisallow: /unsubscribe\nDisallow: /preferences\nDisallow: /search\n\nSitemap: https://darswithosama.netlify.app/sitemap.xml\n'
+    );
+  });
+
+  app.get('/sitemap.xml', (_req, res) => {
+    const candidates = [
+      path.join(__dirname, 'dist', 'sitemap.xml'),
+      path.join(__dirname, 'public', 'sitemap.xml')
+    ];
+    for (const filePath of candidates) {
+      if (fs.existsSync(filePath)) {
+        res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+        res.sendFile(filePath);
+        return;
+      }
+    }
+    res.status(404).setHeader('Content-Type', 'text/plain; charset=utf-8').send('Sitemap not generated yet.');
+  });
+
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -548,13 +582,18 @@ async function startServer() {
         if (identifier) {
           const resolved = await getPublishedSessionForSeo(identifier);
           if (resolved) {
-            const seoMetaTags = buildSessionMetaTagsHtml(
-              resolved.session,
-              resolved.course,
-              'https://darswithosama.com'
-            );
+            const seoMetaTags = [
+              buildSessionMetaTagsHtml(
+                resolved.session,
+                resolved.course,
+                'https://darswithosama.netlify.app'
+              ),
+              '<meta name="robots" content="noindex, nofollow" />',
+              '<meta name="googlebot" content="noindex, nofollow" />'
+            ].join('\n');
             html = injectSeoMetaIntoHtml(html, seoMetaTags);
           }
+          res.setHeader('X-Robots-Tag', 'noindex, nofollow');
         }
 
         res.setHeader('Content-Type', 'text/html; charset=utf-8');

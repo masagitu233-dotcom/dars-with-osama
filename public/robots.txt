@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /student
+Disallow: /consultation
+Disallow: /konsultasi
+Disallow: /unsubscribe
+Disallow: /preferences
+Disallow: /search
+
+Sitemap: https://darswithosama.netlify.app/sitemap.xml

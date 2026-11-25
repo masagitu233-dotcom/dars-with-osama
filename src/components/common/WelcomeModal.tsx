@@ -54,9 +54,9 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose, onL
 
           {/* Branding Title & Subtitle */}
           <div className="relative z-10 space-y-1 max-w-md">
-            <h1 className="text-2xl sm:text-3xl font-extrabold font-serif-brand text-[#FAF7F0] tracking-tight">
+            <p className="text-2xl sm:text-3xl font-extrabold font-serif-brand text-[#FAF7F0] tracking-tight">
               DARS WITH OSAMA
-            </h1>
+            </p>
             <p className="text-xs sm:text-sm text-[#D6AD52] font-sans font-bold">
               Portal Pembelajaran Kitab Turats &amp; Keilmuan Islam Interaktif
             </p>

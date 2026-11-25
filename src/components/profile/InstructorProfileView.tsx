@@ -37,6 +37,7 @@ import { useAuth } from '../../context/AuthContext';
 import { ResilientGoogleDriveImage } from '../common/ResilientGoogleDriveImage';
 import { resolveDisplayImageUrl, getGoogleDriveViewerUrl, isGoogleDriveUrl } from '../../utils/googleDriveHelper';
 import { refreshHardGlobalAOS } from '../../utils/aosManager';
+import { useGlobalSEO } from '../../hooks/useGlobalSEO';
 
 interface InstructorProfileViewProps {
   profileData?: InstructorProfile;
@@ -126,6 +127,12 @@ export const InstructorProfileView: React.FC<InstructorProfileViewProps> = ({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [retryNonce, setRetryNonce] = useState<number>(0);
   const [copied, setCopied] = useState<boolean>(false);
+
+  // Synchronize Person JSON-LD & page metadata with real live portfolio data when public profile loads
+  useGlobalSEO({
+    view: isPreviewMode ? 'admin-dashboard' : 'instructor-profile',
+    instructorProfile: portfolio
+  });
 
   // Legacy admin preview states (only used when profileData prop is explicitly passed)
   const [previewPhotoError, setPreviewPhotoError] = useState<boolean>(false);

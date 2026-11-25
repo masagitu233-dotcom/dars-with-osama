@@ -50,7 +50,7 @@ export const LibraryCard: React.FC<LibraryCardProps> = ({
   // Always shares the public Book Detail Page URL (/library/:slug)
   const handleShare = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://darswithosama.com';
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://darswithosama.netlify.app';
     const shareData = buildLibraryBookShareData(book, origin);
 
     if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
@@ -131,10 +131,20 @@ export const LibraryCard: React.FC<LibraryCardProps> = ({
           {/* 2. Header Row: Judul Kitab & 7. Tombol Bagikan */}
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1 min-w-0">
-              <h3
-                className="font-serif font-bold text-sm sm:text-[15px] text-[#0B2E2B] group-hover:text-[#071F1D] transition-colors line-clamp-2 leading-snug"
-                dangerouslySetInnerHTML={{ __html: autoWrapArabicText(book.title) }}
-              />
+              <h3 className="font-serif font-bold text-sm sm:text-[15px] text-[#0B2E2B] group-hover:text-[#071F1D] transition-colors line-clamp-2 leading-snug">
+                <a
+                  href={`/library/${encodeURIComponent(book.slug || book.id)}`}
+                  onClick={(e) => {
+                    if (!e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey && e.button === 0) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onSelect(book);
+                    }
+                  }}
+                  className="hover:underline focus:outline-none"
+                  dangerouslySetInnerHTML={{ __html: autoWrapArabicText(book.title) }}
+                />
+              </h3>
 
               {book.titleAr && (
                 <p

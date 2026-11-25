@@ -6,6 +6,9 @@ import {
 } from '../../src/utils/sessionShareHelper.ts';
 import type { Course, Session } from '../../src/types/index.ts';
 
+const CANONICAL_SITE_ORIGIN = 'https://darswithosama.netlify.app';
+const PRIVATE_ROBOTS_DIRECTIVE = 'noindex, nofollow';
+
 async function resolvePublishedSessionOnEdge(
   identifier: string,
   origin: string
@@ -52,12 +55,15 @@ export default async function sessionSeoEdgeHandler(
   }
 
   const html = await response.text();
+  const headers = new Headers(response.headers);
+  headers.set('content-type', 'text/html; charset=UTF-8');
+  headers.set('x-robots-tag', PRIVATE_ROBOTS_DIRECTIVE);
 
-  // If already statically pre-rendered with video.other OpenGraph tag, return directly
+  // If already statically pre-rendered with video.other OpenGraph tag, return directly with X-Robots-Tag
   if (html.includes('<meta property="og:type" content="video.other" />')) {
     return new Response(html, {
       status: response.status,
-      headers: response.headers
+      headers
     });
   }
 
@@ -65,19 +71,16 @@ export default async function sessionSeoEdgeHandler(
   if (!resolved) {
     return new Response(html, {
       status: response.status,
-      headers: response.headers
+      headers
     });
   }
 
-  const seoMetaTags = buildSessionMetaTagsHtml(
-    resolved.session,
-    resolved.course,
-    url.origin
-  );
+  const seoMetaTags = [
+    buildSessionMetaTagsHtml(resolved.session, resolved.course, CANONICAL_SITE_ORIGIN),
+    `<meta name="robots" content="${PRIVATE_ROBOTS_DIRECTIVE}" />`,
+    `<meta name="googlebot" content="${PRIVATE_ROBOTS_DIRECTIVE}" />`
+  ].join('\n    ');
   const updatedHtml = injectSeoMetaIntoHtml(html, seoMetaTags);
-
-  const headers = new Headers(response.headers);
-  headers.set('content-type', 'text/html; charset=UTF-8');
 
   return new Response(updatedHtml, {
     status: response.status,

@@ -86,6 +86,7 @@ import {
   matchLibraryBookByIdentifier,
   filterPublicLibraryVolumes
 } from './utils/libraryHelper';
+import { useGlobalSEO } from './hooks/useGlobalSEO';
 
 function MainApp() {
   const {
@@ -154,7 +155,15 @@ function MainApp() {
         p.startsWith('/session/') ||
         p.startsWith('/article/') ||
         p.startsWith('/library/') ||
+        p.startsWith('/course/') ||
         p.startsWith('/qa/') ||
+        p.startsWith('/tanya-jawab/') ||
+        p === '/courses' ||
+        p === '/courses/' ||
+        p === '/kursus' ||
+        p === '/kursus/' ||
+        p === '/katalog' ||
+        p === '/katalog/' ||
         p === '/library' ||
         p === '/library/' ||
         p === '/perpustakaan' ||
@@ -1160,6 +1169,32 @@ function MainApp() {
         return 'bg-neo-grid text-[#171717] dark:text-[#CEFEF1]';
     }
   };
+
+  const selectedCourseCategory = selectedCourse
+    ? categories.find((c) => c.id === selectedCourse.categoryId) || null
+    : null;
+
+  const isCurrentEntityNotFound =
+    (currentView === 'library-detail' && libraryBookNotFound) ||
+    (currentView === 'library-read' && (libraryBookNotFound || libraryVolumeNotFound));
+
+  // Global SEO synchronization across all public and private SPA views
+  // (public-qa and instructor-profile manage their own enriched useGlobalSEO with live Q&A / portfolio data)
+  const appOwnsSeo = currentView !== 'public-qa' && currentView !== 'instructor-profile';
+  useGlobalSEO(
+    {
+      view: currentView,
+      course: selectedCourse,
+      category: selectedCourseCategory,
+      session: selectedSession,
+      blogPost: selectedBlogPost,
+      libraryBook: selectedLibraryBook,
+      libraryVolume: selectedLibraryVolume,
+      searchQuery,
+      isNotFound: isCurrentEntityNotFound
+    },
+    appOwnsSeo
+  );
 
   return (
     <SmoothScrollProvider currentView={routeScrollKey}>

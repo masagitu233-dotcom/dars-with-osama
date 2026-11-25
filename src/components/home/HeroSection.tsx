@@ -91,23 +91,33 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
 
           {/* Quick Action Buttons */}
           <div className="flex flex-wrap items-center justify-center gap-2.5">
-            <button
-              type="button"
-              onClick={onExplore}
+            <a
+              href="/courses"
+              onClick={(e) => {
+                if (!e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey && e.button === 0) {
+                  e.preventDefault();
+                  onExplore();
+                }
+              }}
               className="px-4 py-2 bg-[#FFEFB3] hover:bg-[#FFE58A] text-[#013E37] font-extrabold text-xs rounded-lg border-2 border-[#171717] shadow-[2.5px_2.5px_0px_#171717] transition-all inline-flex items-center gap-1.5 cursor-pointer active:translate-x-[1px] active:translate-y-[1px]"
             >
               <Compass className="w-3.5 h-3.5 text-[#013E37]" />
               <span>Jelajahi Katalog Kitab</span>
-            </button>
+            </a>
             {onNavigate && (
-              <button
-                type="button"
-                onClick={() => onNavigate('instructor-profile')}
+              <a
+                href="/profil-pengajar"
+                onClick={(e) => {
+                  if (!e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey && e.button === 0) {
+                    e.preventDefault();
+                    onNavigate('instructor-profile');
+                  }
+                }}
                 className="px-4 py-2 bg-[#FAF7F0] hover:bg-white text-[#013E37] font-bold text-xs rounded-lg border-2 border-[#171717] shadow-[2.5px_2.5px_0px_#171717] transition-all inline-flex items-center gap-1.5 cursor-pointer active:translate-x-[1px] active:translate-y-[1px]"
               >
                 <GraduationCap className="w-3.5 h-3.5 text-[#013E37]" />
                 <span>Profil Pengajar</span>
-              </button>
+              </a>
             )}
           </div>
         </div>

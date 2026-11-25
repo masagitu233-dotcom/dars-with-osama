@@ -80,7 +80,19 @@ const HomeQACard: React.FC<{
         </div>
 
         <h3 className="font-serif font-bold text-sm sm:text-[15px] text-[#0F3D3A] group-hover:text-[#6C151E] line-clamp-2 leading-snug transition-colors">
-          {item.title}
+          <a
+            href={`/qa/${encodeURIComponent(item.id)}`}
+            onClick={(e) => {
+              if (!e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey && e.button === 0) {
+                e.preventDefault();
+                e.stopPropagation();
+                onReadMore();
+              }
+            }}
+            className="hover:underline focus:outline-none"
+          >
+            {item.title}
+          </a>
         </h3>
 
         <p className="text-[11px] sm:text-xs text-[#0F3D3A] line-clamp-2 leading-relaxed">
@@ -172,7 +184,19 @@ const HomeArticleCard: React.FC<{
           </div>
 
           <h3 className="font-serif font-bold text-sm sm:text-[15px] text-white group-hover:text-[#F5DABF] transition-colors leading-snug line-clamp-2">
-            {post.title}
+            <a
+              href={`/article/${encodeURIComponent(post.slug || post.id)}`}
+              onClick={(e) => {
+                if (!e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey && e.button === 0) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onSelect?.(post);
+                }
+              }}
+              className="hover:underline focus:outline-none"
+            >
+              {post.title}
+            </a>
           </h3>
 
           {/* Category Badge(s) in Info Area */}
@@ -325,13 +349,19 @@ export const HomeView: React.FC<HomeViewProps> = ({
               </p>
             </div>
 
-            <button
-              onClick={() => handleGo('courses')}
+            <a
+              href="/courses"
+              onClick={(e) => {
+                if (!e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey && e.button === 0) {
+                  e.preventDefault();
+                  handleGo('courses');
+                }
+              }}
               className="px-3.5 py-2 text-[11px] font-extrabold uppercase tracking-wider rounded-md border-2 border-[#171717] dark:border-[#4CA7A1] bg-transparent text-[#123D32] dark:text-[#4CA7A1] hover:bg-[#123D32] hover:text-white dark:hover:bg-[#4CA7A1] dark:hover:text-[#001722] transition-all inline-flex items-center gap-1.5 self-start sm:self-auto shrink-0 cursor-pointer shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#001722]"
             >
               <span>Lihat Seluruh Katalog</span>
               <ArrowRight className="w-3.5 h-3.5" />
-            </button>
+            </a>
           </div>
 
           <MobileCarousel
@@ -374,14 +404,19 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={() => handleGo('library')}
+              <a
+                href="/library"
+                onClick={(e) => {
+                  if (!e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey && e.button === 0) {
+                    e.preventDefault();
+                    handleGo('library');
+                  }
+                }}
                 className="px-3.5 py-2 text-[11px] font-extrabold uppercase tracking-wider rounded-md border-2 border-[#171717] dark:border-[#4CA7A1] bg-transparent text-[#123D32] dark:text-[#4CA7A1] hover:bg-[#123D32] hover:text-white dark:hover:bg-[#4CA7A1] dark:hover:text-[#001722] transition-all inline-flex items-center gap-1.5 self-start sm:self-auto shrink-0 cursor-pointer shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#001722]"
               >
                 <span>Lihat Semua Library</span>
                 <ArrowRight className="w-3.5 h-3.5" />
-              </button>
+              </a>
             </div>
 
             <MobileCarousel
@@ -427,13 +462,19 @@ export const HomeView: React.FC<HomeViewProps> = ({
               </p>
             </div>
 
-            <button
-              onClick={() => handleGo('blog')}
+            <a
+              href="/blog"
+              onClick={(e) => {
+                if (!e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey && e.button === 0) {
+                  e.preventDefault();
+                  handleGo('blog');
+                }
+              }}
               className="px-3.5 py-2 text-[11px] font-extrabold uppercase tracking-wider rounded-md border-2 border-[#171717] dark:border-[#4CA7A1] bg-transparent text-[#123D32] dark:text-[#4CA7A1] hover:bg-[#123D32] hover:text-white dark:hover:bg-[#4CA7A1] dark:hover:text-[#001722] transition-all inline-flex items-center gap-1.5 self-start sm:self-auto shrink-0 cursor-pointer shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#001722]"
             >
               <span>Lihat Semua Artikel</span>
               <ArrowRight className="w-3.5 h-3.5" />
-            </button>
+            </a>
           </div>
 
           {publishedArticles.length > 0 ? (
@@ -497,13 +538,19 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 <span>Ajukan Pertanyaan</span>
               </button>
 
-              <button
-                onClick={() => handleGo('public-qa')}
+              <a
+                href="/tanya-jawab"
+                onClick={(e) => {
+                  if (!e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey && e.button === 0) {
+                    e.preventDefault();
+                    handleGo('public-qa');
+                  }
+                }}
                 className="px-3.5 py-2 text-[11px] font-extrabold uppercase tracking-wider rounded-md border-2 border-[#171717] dark:border-[#4CA7A1] bg-transparent text-[#123D32] dark:text-[#4CA7A1] hover:bg-[#123D32] hover:text-white dark:hover:bg-[#4CA7A1] dark:hover:text-[#001722] transition-all inline-flex items-center gap-1.5 cursor-pointer shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#001722]"
               >
                 <span>Semua Tanya Jawab</span>
                 <ArrowRight className="w-3.5 h-3.5" />
-              </button>
+              </a>
             </div>
           </div>
 
