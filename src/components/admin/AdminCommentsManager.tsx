@@ -174,7 +174,7 @@ export const AdminCommentsManager: React.FC<AdminCommentsManagerProps> = ({
       )}
 
       {/* HEADER & SUMMARY STATS */}
-      <div className="nb-card bg-white dark:bg-[#16263D] p-6 space-y-6">
+      <div data-aos="fade-up" className="nb-card bg-white dark:bg-[#16263D] p-6 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-md bg-[#123D32] dark:bg-[#243A56] border-2 border-[#292D2B] dark:border-[#34465D] text-[#D6AD52] flex items-center justify-center shadow-[3px_3px_0px_#292D2B] dark:shadow-[3px_3px_0px_#34465D]">

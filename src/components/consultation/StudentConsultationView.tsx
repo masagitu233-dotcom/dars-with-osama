@@ -309,31 +309,34 @@ export const StudentConsultationView: React.FC<StudentConsultationViewProps> = (
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8 animate-fade-in font-sans">
+    <div className="max-w-[960px] mx-auto px-3.5 sm:px-6 py-4 sm:py-6 space-y-5 sm:space-y-6 font-sans">
       {/* HEADER BANNER */}
-      <div className="relative overflow-hidden rounded-lg bg-[#0F3D3A] text-[#F5DABF] p-6 sm:p-10 border-2 border-[#171717] shadow-[6px_6px_0px_#171717]">
-        <div className="relative z-10 max-w-2xl space-y-3 sm:space-y-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#D6AD52] border-2 border-[#171717] text-[#0F3D3A] text-xs font-extrabold uppercase tracking-wider">
-            <Sparkles className="w-3.5 h-3.5 text-[#0F3D3A]" />
+      <div
+        data-aos="fade-up"
+        className="relative overflow-hidden rounded-lg bg-[#0F3D3A] text-[#F5DABF] p-5 sm:p-6 border-2 border-[#171717] shadow-[5px_5px_0px_#171717]"
+      >
+        <div className="relative z-10 max-w-2xl space-y-2.5 sm:space-y-3">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-[#D6AD52] border-2 border-[#171717] text-[#0F3D3A] text-[11px] font-extrabold uppercase tracking-wider">
+            <Sparkles className="w-3 h-3 text-[#0F3D3A]" />
             <span>Ruang Bimbingan & Konsultasi Syar'i</span>
           </div>
 
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold font-serif text-[#F5DABF] leading-tight">
+          <h1 className="dars-page-title font-bold font-serif text-[#F5DABF]">
             Konsultasi & Tanya Jawab Pembelajaran
           </h1>
 
-          <p className="text-xs sm:text-sm text-[#F5DABF]/90 leading-relaxed font-sans">
+          <p className="text-xs sm:text-[13px] text-[#F5DABF]/90 leading-relaxed font-sans">
             Ajukan pertanyaan seputar materi pelajaran, pemahaman kitab, maupun pertanyaan pribadi secara tertutup dan aman bersama Ustaz & Pembimbing.
           </p>
 
           {onNavigateToPublicQA && (
-            <div className="pt-2">
+            <div className="pt-1">
               <button
                 type="button"
                 onClick={onNavigateToPublicQA}
-                className="nb-btn nb-btn-gold px-4 py-2.5 text-xs inline-flex items-center gap-2"
+                className="nb-btn nb-btn-gold px-3.5 py-2 text-xs inline-flex items-center gap-1.5"
               >
-                <BookOpen className="w-4 h-4" />
+                <BookOpen className="w-3.5 h-3.5" />
                 <span>Lihat Arsip Tanya Jawab Publik (Q&A)</span>
                 <ChevronRight className="w-3.5 h-3.5" />
               </button>
@@ -343,15 +346,15 @@ export const StudentConsultationView: React.FC<StudentConsultationViewProps> = (
       </div>
 
       {authLoading ? (
-        <div className="max-w-2xl mx-auto px-4 py-16 text-center space-y-4">
-          <div className="w-10 h-10 border-3 border-[#123D32] dark:border-[#4CA7A1] border-t-transparent rounded-full animate-spin mx-auto" />
+        <div className="max-w-2xl mx-auto px-4 py-12 text-center space-y-3">
+          <div className="w-9 h-9 border-3 border-[#123D32] dark:border-[#4CA7A1] border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="text-sm text-[#171717] dark:text-[#CEFEF1] font-bold">
             Memeriksa status akun siswa...
           </p>
         </div>
       ) : !user ? (
         /* NON-LOGGED IN STATE NOTICE */
-        <div className="p-8 text-center nb-card space-y-4">
+        <div data-aos="fade-up" className="p-6 text-center nb-card space-y-3.5">
           <div className="w-14 h-14 rounded-md bg-[#001722] border-2 border-[#171717] dark:border-[#4CA7A1] text-[#CEFEF1] flex items-center justify-center mx-auto shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#001722]">
             <Lock className="w-7 h-7" />
           </div>
@@ -423,13 +426,13 @@ export const StudentConsultationView: React.FC<StudentConsultationViewProps> = (
           const isAnswered = item.status === 'answered' || (item.status === 'closed' && hasReply) || hasReply;
 
           return (
-            <div className="space-y-6 animate-fade-in font-sans">
+            <div className="space-y-5 font-sans">
               {/* Top Navigation & Text Resizer Controls */}
-              <div className="flex flex-wrap items-center justify-between gap-3 nb-card p-3.5 sm:p-4 bg-white dark:bg-[#16263D]">
+              <div data-aos="fade-up" className="flex flex-wrap items-center justify-between gap-3 nb-card p-3 sm:p-3.5 bg-white dark:bg-[#16263D]">
                 <button
                   type="button"
                   onClick={handleCloseReadingView}
-                  className="nb-btn nb-btn-secondary px-3.5 py-2 text-xs flex items-center gap-2 font-extrabold"
+                  className="nb-btn nb-btn-secondary px-3 py-1.5 text-xs flex items-center gap-2 font-extrabold"
                   title="Kembali ke formulir dan riwayat konsultasi saya"
                 >
                   <ArrowLeft className="w-4 h-4" />
@@ -455,9 +458,9 @@ export const StudentConsultationView: React.FC<StudentConsultationViewProps> = (
               </div>
 
               {/* Main Reading Card */}
-              <article className="nb-card p-5 sm:p-8 bg-white dark:bg-[#16263D] space-y-6 border-2 border-charcoal dark:border-[#34465D]">
+              <article className="nb-card p-4 sm:p-6 bg-white dark:bg-[#16263D] space-y-5 border-2 border-charcoal dark:border-[#34465D]">
                 {/* Header Information: Badges, Title, & Metadata */}
-                <header className="space-y-3 pb-4 border-b-2 border-charcoal dark:border-[#34465D]">
+                <header data-aos="fade-up" className="space-y-3 pb-4 border-b-2 border-charcoal dark:border-[#34465D]">
                   <div className="flex flex-wrap items-center gap-2">
                     {/* Category Badge */}
                     <span
@@ -782,9 +785,9 @@ export const StudentConsultationView: React.FC<StudentConsultationViewProps> = (
         /* 1. Formulir "Kirim Pertanyaan Baru" di BAGIAN ATAS      */
         /* 2. Bagian "Riwayat Konsultasi Saya" di BAWAH FORMULIR    */
         /* ======================================================== */
-        <div className="space-y-8 animate-fade-in font-sans">
+        <div className="space-y-6 font-sans">
           {/* 1. FORMULIR KIRIM PERTANYAAN BARU (TOP SECTION) */}
-          <section className="nb-card p-6 sm:p-8 space-y-5 bg-white dark:bg-[#16263D] border-2 border-charcoal dark:border-[#34465D]">
+          <section data-aos="fade-up" className="nb-card p-4 sm:p-6 space-y-4 bg-white dark:bg-[#16263D] border-2 border-charcoal dark:border-[#34465D]">
             <div className="flex items-center gap-2.5 border-b-2 border-charcoal dark:border-[#4CA7A1] pb-3.5">
               <MessageSquare className="w-5 h-5 text-[#123D32] dark:text-[#4CA7A1]" />
               <h2 className="font-extrabold text-base sm:text-lg font-serif-brand text-charcoal dark:text-offwhite">
@@ -920,7 +923,7 @@ export const StudentConsultationView: React.FC<StudentConsultationViewProps> = (
           </section>
 
           {/* 2. BAGIAN RIWAYAT KONSULTASI SAYA (UNDERNEATH FORM) */}
-          <section className="nb-card p-6 sm:p-8 space-y-5 bg-white dark:bg-[#16263D] border-2 border-charcoal dark:border-[#34465D]">
+          <section data-aos="fade-up" className="nb-card p-4 sm:p-6 space-y-4 bg-white dark:bg-[#16263D] border-2 border-charcoal dark:border-[#34465D]">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-charcoal dark:border-[#4CA7A1] pb-3.5">
               <div className="flex items-center gap-2.5">
                 <Clock className="w-5 h-5 text-[#123D32] dark:text-[#4CA7A1]" />

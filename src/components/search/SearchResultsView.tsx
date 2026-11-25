@@ -19,6 +19,7 @@ import {
 import { Course, Category, BlogPost, Consultation, Session } from '../../types';
 import { getSessionsByCourse, getPublishedPublicQA } from '../../firebase/services';
 import { PRODUCTION_SESSIONS, PRODUCTION_CONSULTATIONS } from '../../data/productionCache.js';
+import { getAosDelay, refreshHardGlobalAOS } from '../../utils/aosManager';
 
 export interface SearchResultItem {
   id: string;
@@ -396,6 +397,10 @@ export const SearchResultsView: React.FC<SearchResultsViewProps> = ({
     return allResults.filter((r) => r.type === activeTab);
   }, [allResults, activeTab]);
 
+  useEffect(() => {
+    refreshHardGlobalAOS();
+  }, [displayedResults.length, activeTab, isLoadingData, initialQuery]);
+
   // Highlight search term in rendered text
   const renderHighlighted = (text: string) => {
     const trimmed = (initialQuery || '').trim().replace(/\s+/g, ' ');
@@ -484,9 +489,9 @@ export const SearchResultsView: React.FC<SearchResultsViewProps> = ({
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-10 space-y-6">
+    <div className="max-w-[1160px] mx-auto px-3 sm:px-5 lg:px-6 py-4 sm:py-6 space-y-5">
       {/* Top Breadcrumb & Back Navigation */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div data-aos="fade-up" className="flex flex-wrap items-center justify-between gap-3">
         <button
           type="button"
           onClick={onBackToHome}
@@ -504,14 +509,17 @@ export const SearchResultsView: React.FC<SearchResultsViewProps> = ({
       </div>
 
       {/* Main Search Query Bar */}
-      <div className="bg-[#FAF7F0] dark:bg-[#0D2B36] p-4 sm:p-6 rounded-md border-2 border-[#171717] dark:border-[#4CA7A1] shadow-[4px_4px_0px_#171717] dark:shadow-[4px_4px_0px_#001722] space-y-3">
+      <div
+        data-aos="fade-up"
+        className="bg-[#FAF7F0] dark:bg-[#0D2B36] p-4 sm:p-5 rounded-md border-2 border-[#171717] dark:border-[#4CA7A1] shadow-[4px_4px_0px_#171717] dark:shadow-[4px_4px_0px_#001722] space-y-3"
+      >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
-            <h1 className="text-lg sm:text-2xl font-bold font-serif text-[#171717] dark:text-white flex items-center gap-2">
+            <h1 className="dars-page-title font-bold font-serif text-[#171717] dark:text-white flex items-center gap-2">
               <Search className="w-5 h-5 text-[#123D32] dark:text-[#4CA7A1]" />
               <span>Hasil Pencarian Materi</span>
             </h1>
-            <p className="text-xs sm:text-sm text-[#525855] dark:text-[#A6D6C9] mt-0.5">
+            <p className="text-xs sm:text-[13px] text-[#525855] dark:text-[#A6D6C9] mt-0.5">
               Menelusuri kitab, kurikulum pembelajaran, sesi video halaqah, artikel ilmiah, dan arsip tanya jawab syar'i.
             </p>
           </div>
@@ -580,7 +588,7 @@ export const SearchResultsView: React.FC<SearchResultsViewProps> = ({
 
       {/* Category Tabs */}
       {initialQuery && (
-        <div className="flex flex-wrap items-center gap-2 border-b-2 border-[#171717]/20 dark:border-[#1F5F63] pb-3">
+        <div data-aos="fade-up" className="flex flex-wrap items-center gap-2 border-b-2 border-[#171717]/20 dark:border-[#1F5F63] pb-3">
           <button
             type="button"
             onClick={() => setActiveTab('all')}
@@ -676,12 +684,14 @@ export const SearchResultsView: React.FC<SearchResultsViewProps> = ({
       {!isLoadingData && initialQuery && (
         <>
           {displayedResults.length > 0 ? (
-            <div className="space-y-4">
-              {displayedResults.map((item) => (
+            <div className="space-y-3.5">
+              {displayedResults.map((item, idx) => (
                 <div
                   key={item.id}
                   onClick={() => handleItemClick(item)}
-                  className="p-4 sm:p-5 rounded-md bg-white dark:bg-[#0D2B36] border-2 border-[#171717] dark:border-[#4CA7A1] shadow-[3px_3px_0px_#171717] dark:shadow-[4px_4px_0px_#001722] hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[5px_5px_0px_#171717] dark:hover:shadow-[5px_5px_0px_#001722] transition-all cursor-pointer group space-y-3"
+                  data-aos="fade-up"
+                  data-aos-delay={getAosDelay(idx, 2)}
+                  className="p-3.5 sm:p-4 rounded-md bg-white dark:bg-[#0D2B36] border-2 border-[#171717] dark:border-[#4CA7A1] shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#001722] hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[5px_5px_0px_#171717] dark:hover:shadow-[5px_5px_0px_#001722] transition-all cursor-pointer group space-y-2.5"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
@@ -755,7 +765,7 @@ export const SearchResultsView: React.FC<SearchResultsViewProps> = ({
             </div>
           ) : (
             /* Clear Communicative Empty State */
-            <div className="p-8 sm:p-12 text-center bg-white dark:bg-[#0D2B36] rounded-md border-2 border-[#171717] dark:border-[#4CA7A1] shadow-[4px_4px_0px_#171717] dark:shadow-[4px_4px_0px_#001722] space-y-4">
+            <div data-aos="fade-up" className="p-6 sm:p-10 text-center bg-white dark:bg-[#0D2B36] rounded-md border-2 border-[#171717] dark:border-[#4CA7A1] shadow-[4px_4px_0px_#171717] dark:shadow-[4px_4px_0px_#001722] space-y-4">
               <div className="w-14 h-14 rounded-md bg-[#EFE5D2] dark:bg-[#1F5F63] border-2 border-[#171717] dark:border-[#4CA7A1] flex items-center justify-center mx-auto text-[#123D32] dark:text-[#CEFEF1] shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#001722]">
                 <FolderOpen className="w-7 h-7" />
               </div>
@@ -822,7 +832,7 @@ export const SearchResultsView: React.FC<SearchResultsViewProps> = ({
 
       {/* Prompt when query is empty */}
       {!isLoadingData && !initialQuery && (
-        <div className="p-8 sm:p-12 text-center bg-white dark:bg-[#0D2B36] rounded-md border-2 border-[#171717] dark:border-[#4CA7A1] shadow-[4px_4px_0px_#171717] dark:shadow-[4px_4px_0px_#001722] space-y-4">
+        <div data-aos="fade-up" className="p-6 sm:p-10 text-center bg-white dark:bg-[#0D2B36] rounded-md border-2 border-[#171717] dark:border-[#4CA7A1] shadow-[4px_4px_0px_#171717] dark:shadow-[4px_4px_0px_#001722] space-y-4">
           <div className="w-12 h-12 rounded-md bg-[#FAF7F0] dark:bg-[#1F5F63] border-2 border-[#171717] dark:border-[#4CA7A1] flex items-center justify-center mx-auto text-[#123D32] dark:text-[#4CA7A1] shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#001722]">
             <Compass className="w-6 h-6" />
           </div>

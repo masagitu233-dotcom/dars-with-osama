@@ -64,7 +64,7 @@ export const UnsubscribePreferencesView: React.FC<UnsubscribePreferencesViewProp
         <span>Kembali ke Halaman Utama</span>
       </button>
 
-      <div className="p-6 sm:p-8 rounded-md bg-white dark:bg-[#163835] border-2 border-[#171717] dark:border-[#4CA7A1] shadow-[6px_6px_0px_#171717] space-y-6">
+      <div data-aos="fade-up" className="p-6 sm:p-8 rounded-md bg-white dark:bg-[#163835] border-2 border-[#171717] dark:border-[#4CA7A1] shadow-[6px_6px_0px_#171717] space-y-6">
         <div className="flex items-center gap-3 border-b border-[#171717]/15 dark:border-[#4CA7A1]/30 pb-4">
           <div className="w-10 h-10 rounded bg-[#123D32] text-[#D6AD52] border border-[#171717] flex items-center justify-center shrink-0">
             <Mail className="w-5 h-5" />

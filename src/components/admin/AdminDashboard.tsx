@@ -891,7 +891,7 @@ export const AdminDashboard: React.FC<{
       {/* CENTRALIZED LEFT SIDEBAR NAV (FIXED VIEWPORT & MOBILE DRAWER) */}
       {/* ========================================================= */}
       <aside className={`fixed top-0 left-0 z-40 h-screen h-[100dvh] bg-[#FFFDF7] dark:bg-[#001722] text-[#171717] dark:text-[#CEFEF1] border-r-2 border-[#171717] dark:border-[#4CA7A1] flex flex-col justify-between shrink-0 transition-all duration-300 ease-in-out ${
-        sidebarCollapsed ? 'w-20' : 'w-72'
+        sidebarCollapsed ? 'w-[68px]' : 'w-[244px]'
       } ${
         sidebarOpen ? 'translate-x-0 shadow-[6px_0_0_#171717] z-50' : '-translate-x-full lg:translate-x-0 shadow-none'
       }`}>
@@ -1402,9 +1402,9 @@ export const AdminDashboard: React.FC<{
 
         {/* RIGHT CONTENT AREA - Offset by fixed sidebar width on desktop */}
         <div className={`flex-1 flex flex-col min-w-0 min-h-screen transition-all duration-300 ${
-          sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-72'
+          sidebarCollapsed ? 'lg:pl-[68px]' : 'lg:pl-[244px]'
         }`}>
-          <main className="flex-1 p-3 sm:p-6 lg:p-8 space-y-6 min-w-0">
+          <main className="flex-1 p-3 sm:p-5 lg:p-6 space-y-5 min-w-0">
           {/* Status Alert Notification */}
           {statusMessage && (
             <div className={`p-4 rounded-md border-2 border-[#171717] dark:border-[#4CA7A1] shadow-[4px_4px_0px_#171717] dark:shadow-[4px_4px_0px_#001722] text-xs sm:text-sm font-bold flex items-center gap-3 animate-fade-in-up ${
@@ -1448,8 +1448,8 @@ export const AdminDashboard: React.FC<{
           )}
 
           {/* HEADER SECTION WITH OLIVE GREEN FRAME */}
-          <div className="p-5 sm:p-6 rounded-md bg-[#4D694E] border-2 border-[#171717] shadow-[4px_4px_0px_#171717]">
-            <div className="space-y-1.5">
+          <div data-aos="fade-up" className="p-4 sm:p-5 rounded-md bg-[#4D694E] border-2 border-[#171717] shadow-[4px_4px_0px_#171717]">
+            <div className="space-y-1">
               <div className="flex items-center gap-2 text-xs text-[#FFF3D5]/90 font-bold uppercase tracking-wider">
                 <span>Admin</span>
                 <ChevronRight className="w-3.5 h-3.5 text-[#FFF3D5]" />
@@ -1461,10 +1461,10 @@ export const AdminDashboard: React.FC<{
                     : activeTab}
                 </span>
               </div>
-              <h1 className="text-xl sm:text-2xl font-bold text-[#FFF3D5] font-serif-brand tracking-tight">
+              <h1 className="dars-page-title font-bold text-[#FFF3D5] font-serif-brand tracking-tight">
                 Dashboard Administrasi Dars with Osama
               </h1>
-              <p className="text-[#E8E9DD] text-xs sm:text-sm font-medium leading-relaxed">
+              <p className="text-[#E8E9DD] text-xs sm:text-[13px] font-medium leading-relaxed">
                 Kelola kurikulum ilmu, sesi pembelajaran, kuis evaluasi, dan pemantauan santri.
               </p>
             </div>
@@ -1474,20 +1474,22 @@ export const AdminDashboard: React.FC<{
           {/* VIEW: DASHBOARD OVERVIEW */}
           {/* ========================================================= */}
           {activeTab === 'dashboard' && (
-            <div className="space-y-8 animate-fade-in">
+            <div className="space-y-6">
               {/* KARTU STATISTIK UTAMA (5 CARDS) */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
                 <div
                   onClick={() => setActiveTab('courses')}
-                  className="nb-card p-4 hover:-translate-y-1 hover:shadow-[6px_6px_0px_#171717] dark:hover:shadow-[6px_6px_0px_#001722] transition-all cursor-pointer group"
+                  data-aos="fade-up"
+                  data-aos-delay="0"
+                  className="nb-card p-3.5 hover:-translate-y-1 hover:shadow-[5px_5px_0px_#171717] dark:hover:shadow-[5px_5px_0px_#001722] transition-all cursor-pointer group"
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-stone-600 dark:text-[#A6D6C9] uppercase tracking-wider">Mata Pelajaran</span>
-                    <div className="p-2 bg-[#4CA7A1] text-[#001722] border-2 border-[#171717] dark:border-[#001722] rounded-sm group-hover:scale-110 transition">
+                    <div className="p-1.5 bg-[#4CA7A1] text-[#001722] border-2 border-[#171717] dark:border-[#001722] rounded-sm group-hover:scale-110 transition">
                       <BookOpen className="w-4 h-4" />
                     </div>
                   </div>
-                  <p className="text-2xl font-extrabold text-[#171717] dark:text-[#CEFEF1] mt-2 font-serif-brand">
+                  <p className="text-xl sm:text-2xl font-extrabold text-[#171717] dark:text-[#CEFEF1] mt-2 font-serif-brand">
                     {courses.length}
                   </p>
                   <p className="text-[10px] text-stone-600 dark:text-[#A6D6C9] mt-0.5 font-bold">
@@ -1497,15 +1499,17 @@ export const AdminDashboard: React.FC<{
 
                 <div
                   onClick={() => setActiveTab('categories')}
-                  className="nb-card p-4 hover:-translate-y-1 hover:shadow-[6px_6px_0px_#171717] dark:hover:shadow-[6px_6px_0px_#001722] transition-all cursor-pointer group"
+                  data-aos="fade-up"
+                  data-aos-delay="50"
+                  className="nb-card p-3.5 hover:-translate-y-1 hover:shadow-[5px_5px_0px_#171717] dark:hover:shadow-[5px_5px_0px_#001722] transition-all cursor-pointer group"
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-stone-600 dark:text-[#A6D6C9] uppercase tracking-wider">Bab / Modul</span>
-                    <div className="p-2 bg-[#4CA7A1] text-[#001722] border-2 border-[#171717] dark:border-[#001722] rounded-sm group-hover:scale-110 transition">
+                    <div className="p-1.5 bg-[#4CA7A1] text-[#001722] border-2 border-[#171717] dark:border-[#001722] rounded-sm group-hover:scale-110 transition">
                       <Layers className="w-4 h-4" />
                     </div>
                   </div>
-                  <p className="text-2xl font-extrabold text-[#171717] dark:text-[#CEFEF1] mt-2 font-serif-brand">
+                  <p className="text-xl sm:text-2xl font-extrabold text-[#171717] dark:text-[#CEFEF1] mt-2 font-serif-brand">
                     {categories.length}
                   </p>
                   <p className="text-[10px] text-stone-600 dark:text-[#A6D6C9] mt-0.5 font-bold">
@@ -1515,15 +1519,17 @@ export const AdminDashboard: React.FC<{
 
                 <div
                   onClick={() => setActiveTab('sessions')}
-                  className="nb-card p-4 hover:-translate-y-1 hover:shadow-[6px_6px_0px_#171717] dark:hover:shadow-[6px_6px_0px_#001722] transition-all cursor-pointer group"
+                  data-aos="fade-up"
+                  data-aos-delay="100"
+                  className="nb-card p-3.5 hover:-translate-y-1 hover:shadow-[5px_5px_0px_#171717] dark:hover:shadow-[5px_5px_0px_#001722] transition-all cursor-pointer group"
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-stone-600 dark:text-[#A6D6C9] uppercase tracking-wider">Sesi Belajar</span>
-                    <div className="p-2 bg-[#0D2B36] text-[#CEFEF1] border-2 border-[#171717] dark:border-[#4CA7A1] rounded-sm group-hover:scale-110 transition">
+                    <div className="p-1.5 bg-[#0D2B36] text-[#CEFEF1] border-2 border-[#171717] dark:border-[#4CA7A1] rounded-sm group-hover:scale-110 transition">
                       <Video className="w-4 h-4" />
                     </div>
                   </div>
-                  <p className="text-2xl font-extrabold text-[#171717] dark:text-[#CEFEF1] mt-2 font-serif-brand">
+                  <p className="text-xl sm:text-2xl font-extrabold text-[#171717] dark:text-[#CEFEF1] mt-2 font-serif-brand">
                     {totalSessionsCount}
                   </p>
                   <p className="text-[10px] text-stone-600 dark:text-[#A6D6C9] mt-0.5 font-bold">
@@ -1533,15 +1539,17 @@ export const AdminDashboard: React.FC<{
 
                 <div
                   onClick={() => setActiveTab('users')}
-                  className="nb-card p-4 hover:-translate-y-1 hover:shadow-[6px_6px_0px_#171717] dark:hover:shadow-[6px_6px_0px_#001722] transition-all cursor-pointer group"
+                  data-aos="fade-up"
+                  data-aos-delay="150"
+                  className="nb-card p-3.5 hover:-translate-y-1 hover:shadow-[5px_5px_0px_#171717] dark:hover:shadow-[5px_5px_0px_#001722] transition-all cursor-pointer group"
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-stone-600 dark:text-[#A6D6C9] uppercase tracking-wider">Pengguna</span>
-                    <div className="p-2 bg-[#001722] text-[#CEFEF1] border-2 border-[#171717] dark:border-[#4CA7A1] rounded-sm group-hover:scale-110 transition">
+                    <div className="p-1.5 bg-[#001722] text-[#CEFEF1] border-2 border-[#171717] dark:border-[#4CA7A1] rounded-sm group-hover:scale-110 transition">
                       <Users className="w-4 h-4" />
                     </div>
                   </div>
-                  <p className="text-2xl font-extrabold text-[#171717] dark:text-[#CEFEF1] mt-2 font-serif-brand">
+                  <p className="text-xl sm:text-2xl font-extrabold text-[#171717] dark:text-[#CEFEF1] mt-2 font-serif-brand">
                     {studentUsersCount}
                   </p>
                   <p className="text-[10px] text-stone-600 dark:text-[#A6D6C9] mt-0.5 font-bold">
@@ -1551,15 +1559,17 @@ export const AdminDashboard: React.FC<{
 
                 <div
                   onClick={() => setActiveTab('quizzes')}
-                  className="nb-card p-4 hover:-translate-y-1 hover:shadow-[6px_6px_0px_#171717] dark:hover:shadow-[6px_6px_0px_#001722] transition-all cursor-pointer group"
+                  data-aos="fade-up"
+                  data-aos-delay="150"
+                  className="nb-card p-3.5 hover:-translate-y-1 hover:shadow-[5px_5px_0px_#171717] dark:hover:shadow-[5px_5px_0px_#001722] transition-all cursor-pointer group"
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-stone-600 dark:text-[#A6D6C9] uppercase tracking-wider">Kuis</span>
-                    <div className="p-2 bg-[#4CA7A1] text-[#001722] border-2 border-[#171717] dark:border-[#001722] rounded-sm group-hover:scale-110 transition">
+                    <div className="p-1.5 bg-[#4CA7A1] text-[#001722] border-2 border-[#171717] dark:border-[#001722] rounded-sm group-hover:scale-110 transition">
                       <HelpCircle className="w-4 h-4" />
                     </div>
                   </div>
-                  <p className="text-2xl font-extrabold text-[#171717] dark:text-[#CEFEF1] mt-2 font-serif-brand">
+                  <p className="text-xl sm:text-2xl font-extrabold text-[#171717] dark:text-[#CEFEF1] mt-2 font-serif-brand">
                     {quizzes.length}
                   </p>
                   <p className="text-[10px] text-stone-600 dark:text-[#A6D6C9] mt-0.5 font-bold">
@@ -1569,8 +1579,8 @@ export const AdminDashboard: React.FC<{
               </div>
 
               {/* BAGIAN STATISTIK TAMBAHAN */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="nb-card p-5 flex items-center gap-4">
+              <div data-aos="fade-up" className="grid grid-cols-1 md:grid-cols-4 gap-3.5">
+                <div className="nb-card p-4 flex items-center gap-3.5">
                   <div className="p-3 bg-[#4CA7A1] text-[#001722] border-2 border-[#171717] dark:border-[#001722] rounded-md shrink-0 shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#001722]">
                     <Award className="w-6 h-6" />
                   </div>

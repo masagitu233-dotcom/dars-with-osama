@@ -416,7 +416,7 @@ _Admin Dars with Osama_`;
   return (
     <div className="space-y-6 font-sans">
       {/* HEADER TITLE */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 nb-card bg-white dark:bg-[#16263D] p-6">
+      <div data-aos="fade-up" className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 nb-card bg-white dark:bg-[#16263D] p-6">
         <div className="space-y-1.5">
           <div className="nb-badge bg-[#D6AD52] text-charcoal">
             <ShieldAlert className="w-3.5 h-3.5" />
@@ -451,7 +451,7 @@ _Admin Dars with Osama_`;
       )}
 
       {/* FILTER & SEARCH CONTROLS */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-3 nb-card bg-white dark:bg-[#16263D] p-4">
+      <div data-aos="fade-up" data-aos-delay="50" className="grid grid-cols-1 md:grid-cols-12 gap-3 nb-card bg-white dark:bg-[#16263D] p-4">
         {/* Search Input (Col 4) */}
         <div className="md:col-span-4 relative">
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-gray dark:text-blue-gray" />

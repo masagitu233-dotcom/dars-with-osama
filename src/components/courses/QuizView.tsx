@@ -329,12 +329,12 @@ export const QuizView: React.FC<QuizViewProps> = ({
     : 999;
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6 animate-in fade-in duration-200">
+    <div className="max-w-3xl mx-auto px-3.5 sm:px-6 py-5 sm:py-6 space-y-4 sm:space-y-5">
       {/* Top Header */}
-      <div className="flex items-center justify-between pb-4 border-b-2 border-[#171717]">
+      <div data-aos="fade-up" className="flex items-center justify-between pb-3.5 border-b-2 border-[#171717]">
         <button
           onClick={onBackToSession}
-          className="nb-btn border-2 border-[#F5DABF] text-[#F5DABF] bg-transparent hover:bg-[#F5DABF] hover:text-[#0F3D3A] px-4 py-2 text-xs flex items-center gap-2 font-bold cursor-pointer transition shadow-[3px_3px_0px_#171717]"
+          className="nb-btn border-2 border-[#F5DABF] text-[#F5DABF] bg-transparent hover:bg-[#F5DABF] hover:text-[#0F3D3A] px-3.5 py-2 text-xs flex items-center gap-2 font-bold cursor-pointer transition shadow-[3px_3px_0px_#171717]"
         >
           <ArrowLeft className="w-4 h-4 text-[#F5DABF]" />
           <span>Kembali ke Sesi Belajar</span>
@@ -342,7 +342,7 @@ export const QuizView: React.FC<QuizViewProps> = ({
 
         {/* Timer Badge if time limit */}
         {quiz.timeLimitMinutes > 0 && !submitted && (
-          <div className={`nb-badge px-3.5 py-1.5 text-xs font-mono ${
+          <div className={`nb-badge px-3 py-1.5 text-xs font-mono ${
             timeLeft < 60
               ? 'bg-[#F04438] text-white animate-pulse'
               : 'bg-[#D6AD52] text-[#123D32]'
@@ -355,7 +355,10 @@ export const QuizView: React.FC<QuizViewProps> = ({
 
       {/* Admin Unrestricted Access Notice */}
       {isAdmin && (
-        <div className="p-3.5 rounded-lg bg-[#4CA7A1] text-[#001722] border-2 border-[#171717] shadow-[4px_4px_0px_#171717] flex items-start gap-2.5 text-xs font-bold">
+        <div
+          data-aos="fade-up"
+          className="p-3 rounded-lg bg-[#4CA7A1] text-[#001722] border-2 border-[#171717] shadow-[3px_3px_0px_#171717] flex items-start gap-2.5 text-xs font-bold"
+        >
           <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5 text-[#001722]" />
           <div>
             <span className="font-extrabold uppercase tracking-wide">Mode Akses Admin Aktif:</span>{' '}
@@ -368,7 +371,10 @@ export const QuizView: React.FC<QuizViewProps> = ({
 
       {/* Result Screen upon submission */}
       {submitted && scoreResult ? (
-        <div className="nb-card p-6 sm:p-10 space-y-8 bg-[#FFF5E9] text-[#0F3D3A] border-2 border-[#171717] shadow-[6px_6px_0px_#171717]">
+        <div
+          data-aos="fade-up"
+          className="nb-card p-5 sm:p-7 space-y-6 bg-[#FFF5E9] text-[#0F3D3A] border-2 border-[#171717] shadow-[5px_5px_0px_#171717]"
+        >
           {/* Result Card */}
           <div className="text-center space-y-4">
             <div className={`w-20 h-20 rounded-lg mx-auto flex items-center justify-center text-3xl border-2 border-[#292D2B] dark:border-[#34465D] shadow-[4px_4px_0px_#292D2B] dark:shadow-[4px_4px_0px_#101B2D] ${
@@ -497,14 +503,17 @@ export const QuizView: React.FC<QuizViewProps> = ({
         </div>
       ) : (
         /* Examination Interface (Taking the quiz) */
-        <div className="nb-card p-6 sm:p-8 space-y-6 bg-[#FFF5E9] text-[#0F3D3A] border-2 border-[#171717] shadow-[6px_6px_0px_#171717]">
+        <div
+          data-aos="fade-up"
+          className="nb-card p-4 sm:p-6 space-y-5 bg-[#FFF5E9] text-[#0F3D3A] border-2 border-[#171717] shadow-[5px_5px_0px_#171717]"
+        >
           {/* Header info */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b-2 border-[#171717]">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3.5 border-b-2 border-[#171717]">
             <div>
-              <span className="text-xs text-[#0F3D3A] font-extrabold uppercase tracking-wider">
+              <span className="text-[11px] text-[#0F3D3A] font-extrabold uppercase tracking-wider">
                 {course.title}
               </span>
-              <h2 className="text-xl sm:text-2xl font-extrabold text-[#0F3D3A] font-serif-brand">
+              <h2 className="dars-section-title font-extrabold text-[#0F3D3A] font-serif-brand">
                 {quiz.title}
               </h2>
             </div>
@@ -520,7 +529,7 @@ export const QuizView: React.FC<QuizViewProps> = ({
           </div>
 
           {/* Progress Bar of Questions */}
-          <div className="w-full bg-[#FAF7F0] dark:bg-[#243A56] h-3 rounded-sm border-2 border-[#292D2B] dark:border-[#34465D] overflow-hidden">
+          <div className="w-full bg-[#FAF7F0] dark:bg-[#243A56] h-2.5 rounded-sm border-2 border-[#292D2B] dark:border-[#34465D] overflow-hidden">
             <div
               className="bg-[#D6AD52] h-full transition-all duration-300 ease-out"
               style={{ width: `${questions.length > 0 ? ((currentQuestionIndex + 1) / questions.length) * 100 : 0}%` }}
@@ -528,32 +537,32 @@ export const QuizView: React.FC<QuizViewProps> = ({
           </div>
 
           {questions.length === 0 && (
-            <div className="p-6 text-center rounded-md border-2 border-[#292D2B] bg-[#FAF7F0] text-sm font-bold text-[#292D2B]">
+            <div className="p-5 text-center rounded-md border-2 border-[#292D2B] bg-[#FAF7F0] text-sm font-bold text-[#292D2B]">
               Kuis ini belum memiliki daftar pertanyaan. Silakan tambahkan soal melalui Dashboard Admin.
             </div>
           )}
 
           {/* Active Question Box */}
           {currentQuestion && (
-            <div key={currentQuestion.id} className="space-y-6 py-2">
-              <div className="space-y-2">
+            <div key={currentQuestion.id} className="space-y-4 py-1">
+              <div className="space-y-1.5">
                 <span className="nb-badge bg-[#123D32] text-[#D6AD52]">
                   Bobot: {currentQuestion.points || 10} Poin
                 </span>
 
-                <h3 className="text-base sm:text-xl font-extrabold text-[#292D2B] dark:text-[#F1F4F8] font-sans leading-snug pt-1">
+                <h3 className="text-base sm:text-lg font-extrabold text-[#292D2B] dark:text-[#F1F4F8] font-sans leading-snug pt-1">
                   {currentQuestion.questionText}
                 </h3>
 
                 {currentQuestion.questionTextAr && (
-                  <p className="font-amiri text-2xl font-bold text-[#123D32] dark:text-[#D6AD52] leading-relaxed mt-2" dir="rtl">
+                  <p className="font-amiri text-xl font-bold text-[#123D32] dark:text-[#D6AD52] leading-relaxed mt-1.5" dir="rtl">
                     {currentQuestion.questionTextAr}
                   </p>
                 )}
               </div>
 
               {/* Options */}
-              <div className="space-y-3">
+              <div className="space-y-2.5">
                 {currentQuestion.options.map((option, optIdx) => {
                   const isSelected = answers[currentQuestion.id] === optIdx;
                   return (
@@ -561,9 +570,9 @@ export const QuizView: React.FC<QuizViewProps> = ({
                       key={optIdx}
                       type="button"
                       onClick={() => handleSelectOption(currentQuestion.id, optIdx)}
-                      className={`w-full text-left p-4 rounded-md border-2 text-sm sm:text-base font-bold transition-all duration-150 flex items-center justify-between cursor-pointer ${
+                      className={`w-full text-left p-3 sm:p-3.5 rounded-md border-2 text-xs sm:text-sm font-bold transition-all duration-150 flex items-center justify-between cursor-pointer ${
                         isSelected
-                          ? 'bg-[#D6AD52] border-[#292D2B] text-[#123D32] shadow-[4px_4px_0px_#292D2B] -translate-y-0.5'
+                          ? 'bg-[#D6AD52] border-[#292D2B] text-[#123D32] shadow-[3px_3px_0px_#292D2B] -translate-y-0.5'
                           : 'bg-[#FAF7F0] dark:bg-[#243A56] hover:bg-[#D6AD52]/20 border-[#292D2B] dark:border-[#34465D] text-[#292D2B] dark:text-[#F1F4F8]'
                       }`}
                     >

@@ -68,10 +68,10 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
       data-testid="app-header"
       className="sticky top-0 z-30 w-full bg-white dark:bg-[#0D2B36] border-b-2 border-[#171717] dark:border-[#1F5F63] transition-colors duration-200"
     >
-      <div className="max-w-7xl mx-auto px-2.5 md:px-6 lg:px-8 h-14 md:h-16 flex items-center justify-between gap-1.5 md:gap-3">
+      <div className="max-w-[1360px] mx-auto px-3 md:px-5 lg:px-6 h-13 md:h-14 flex items-center justify-between gap-2 md:gap-3">
         
         {/* Left: Interactive Logo as Sidebar Toggle & Dars Online Direct Link */}
-        <div className="flex items-center gap-1.5 md:gap-3 min-w-0 shrink">
+        <div className="flex items-center gap-1.5 md:gap-2.5 min-w-0 shrink">
           {/* Mobile & Tablet (< lg): Logo acts as the unified interactive sidebar toggle button */}
           <button
             type="button"
@@ -80,14 +80,14 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             title={mobileOpen ? "Tutup sidebar" : "Buka sidebar"}
             className="lg:hidden flex items-center gap-1.5 md:gap-2 py-0.5 px-1 md:p-1 -ml-0.5 md:-ml-1 rounded-md border-2 border-transparent hover:border-[#171717] dark:hover:border-[#4CA7A1] hover:bg-[#EFE5D2] dark:hover:bg-[#1F5F63] active:translate-x-[1px] active:translate-y-[1px] transition cursor-pointer group text-left min-w-0"
           >
-            <div className="w-7 h-7 md:w-9 md:h-9 rounded-md border-[1.5px] md:border-2 border-[#171717] dark:border-[#4CA7A1] shadow-[1.5px_1.5px_0px_#171717] md:shadow-[2px_2px_0px_#171717] dark:shadow-[1.5px_1.5px_0px_#001722] dark:md:shadow-[2px_2px_0px_#001722] bg-[#123D32] dark:bg-[#1F5F63] flex items-center justify-center transition-transform group-hover:scale-105 shrink-0">
-              <LogoSymbol className="w-6 h-6 md:w-8 md:h-8" />
+            <div className="w-7 h-7 md:w-8 md:h-8 rounded-md border-[1.5px] md:border-2 border-[#171717] dark:border-[#4CA7A1] shadow-[1.5px_1.5px_0px_#171717] md:shadow-[2px_2px_0px_#171717] dark:shadow-[1.5px_1.5px_0px_#001722] dark:md:shadow-[2px_2px_0px_#001722] bg-[#123D32] dark:bg-[#1F5F63] flex items-center justify-center transition-transform group-hover:scale-105 shrink-0">
+              <LogoSymbol className="w-6 h-6 md:w-7 md:h-7" />
             </div>
             <div className="flex flex-col min-w-0">
               <span className="font-serif-brand font-extrabold text-xs md:text-sm tracking-tight leading-none text-[#171717] dark:text-[#CEFEF1] whitespace-nowrap truncate">
                 Dars <span className="font-normal italic text-[#D6AD52] dark:text-[#4CA7A1]">with</span> Osama
               </span>
-              <span className="text-[7px] md:text-[8px] font-sans font-extrabold tracking-[0.11em] md:tracking-[0.16em] leading-none uppercase text-[#237A70] dark:text-[#A6D6C9] mt-0.5 md:mt-1 whitespace-nowrap">
+              <span className="text-[7px] md:text-[8px] font-sans font-extrabold tracking-[0.11em] md:tracking-[0.15em] leading-none uppercase text-[#237A70] dark:text-[#A6D6C9] mt-0.5 whitespace-nowrap">
                 {mobileOpen ? 'TUTUP SIDEBAR' : 'BUKA SIDEBAR'}
               </span>
             </div>
@@ -100,46 +100,46 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
               onClick={() => setIsCollapsed(!isCollapsed)}
               aria-label={isCollapsed ? "Buka sidebar" : "Tutup sidebar"}
               title={isCollapsed ? "Buka sidebar" : "Tutup sidebar"}
-              className="hidden lg:flex items-center gap-2 px-2 py-1 rounded-md border-2 border-transparent hover:border-[#171717]/40 dark:hover:border-[#4CA7A1] hover:bg-[#EFE5D2] dark:hover:bg-[#1F5F63] transition cursor-pointer group text-left"
+              className="hidden lg:flex items-center gap-2 px-1.5 py-1 rounded-md border-2 border-transparent hover:border-[#171717]/40 dark:hover:border-[#4CA7A1] hover:bg-[#EFE5D2] dark:hover:bg-[#1F5F63] transition cursor-pointer group text-left"
             >
-              <div className="w-8 h-8 rounded-md border-2 border-[#171717] dark:border-[#4CA7A1] shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#001722] bg-[#123D32] dark:bg-[#1F5F63] flex items-center justify-center transition-transform group-hover:scale-105 shrink-0">
-                <LogoSymbol className="w-7 h-7" />
+              <div className="w-7 h-7 rounded-md border-2 border-[#171717] dark:border-[#4CA7A1] shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#001722] bg-[#123D32] dark:bg-[#1F5F63] flex items-center justify-center transition-transform group-hover:scale-105 shrink-0">
+                <LogoSymbol className="w-6 h-6" />
               </div>
               <div className="flex flex-col">
                 <span className="font-serif-brand font-extrabold text-xs tracking-tight leading-none text-[#171717] dark:text-[#CEFEF1]">
                   Dars <span className="font-normal italic text-[#D6AD52] dark:text-[#4CA7A1]">with</span> Osama
                 </span>
-                <span className="text-[8px] font-sans font-extrabold tracking-[0.14em] uppercase text-[#237A70] dark:text-[#A6D6C9] mt-0.5">
+                <span className="text-[7.5px] font-sans font-extrabold tracking-[0.14em] uppercase text-[#237A70] dark:text-[#A6D6C9] mt-0.5">
                   {isCollapsed ? 'BUKA SIDEBAR' : 'CIUTKAN'}
                 </span>
               </div>
             </button>
           )}
 
-          {/* Dars Online Pill Button */}
+          {/* Dars Online Direct Button */}
           <button
             type="button"
             onClick={() => setCurrentView('courses')}
             title="Katalog Pembelajaran Dars Online"
-            className="hidden sm:inline-flex items-center px-2.5 py-0.5 md:px-3 md:py-1 rounded-md bg-[#123D32] dark:bg-[#1F5F63] hover:bg-[#195344] dark:hover:bg-[#287A7F] text-[#FAF7F0] dark:text-[#CEFEF1] border-[1.5px] md:border-2 border-[#171717] dark:border-[#4CA7A1] text-[11px] md:text-xs uppercase tracking-wider font-extrabold shadow-[1.5px_1.5px_0px_#171717] md:shadow-[2px_2px_0px_#171717] dark:shadow-[1.5px_1.5px_0px_#001722] dark:md:shadow-[2px_2px_0px_#001722] shrink-0 cursor-pointer active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition"
+            className="hidden sm:inline-flex items-center px-2.5 py-1 rounded-md bg-[#123D32] dark:bg-[#1F5F63] hover:bg-[#195344] dark:hover:bg-[#287A7F] text-[#FAF7F0] dark:text-[#CEFEF1] border-[1.5px] md:border-2 border-[#171717] dark:border-[#4CA7A1] text-[10px] md:text-[11px] uppercase tracking-wider font-extrabold shadow-[1.5px_1.5px_0px_#171717] md:shadow-[2px_2px_0px_#171717] dark:shadow-[1.5px_1.5px_0px_#001722] dark:md:shadow-[2px_2px_0px_#001722] shrink-0 cursor-pointer active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition"
           >
             Dars Online
           </button>
         </div>
 
         {/* Right Controls: User Auth / Profile */}
-        <div className="flex items-center gap-1.5 md:gap-3 shrink-0">
+        <div className="flex items-center gap-1.5 md:gap-2.5 shrink-0">
           
           {/* User Profile or Login CTA */}
           {user ? (
-            <div className="flex items-center gap-1 md:gap-1.5 pl-1.5 md:pl-2 border-l-[1.5px] md:border-l-2 border-[#171717]/20 dark:border-[#1F5F63]">
+            <div className="flex items-center gap-1.5 pl-1.5 md:pl-2 border-l-[1.5px] md:border-l-2 border-[#171717]/20 dark:border-[#1F5F63]">
               <button
                 type="button"
                 onClick={openProfileModal}
                 title="Pengaturan Profil & Akun"
-                className="flex items-center gap-1 md:gap-2 py-0.5 px-1 md:py-1 md:px-2 rounded-md border-[1.5px] md:border-2 border-[#171717] dark:border-[#4CA7A1] bg-white dark:bg-[#1F5F63] hover:bg-[#EFE5D2] dark:hover:bg-[#0D2B36] transition cursor-pointer shadow-[1.5px_1.5px_0px_#171717] md:shadow-[2px_2px_0px_#171717] dark:shadow-[1.5px_1.5px_0px_#001722] dark:md:shadow-[2px_2px_0px_#001722]"
+                className="flex items-center gap-1.5 py-1 px-1.5 md:px-2 rounded-md border-[1.5px] md:border-2 border-[#171717] dark:border-[#4CA7A1] bg-white dark:bg-[#1F5F63] hover:bg-[#EFE5D2] dark:hover:bg-[#0D2B36] transition cursor-pointer shadow-[1.5px_1.5px_0px_#171717] md:shadow-[2px_2px_0px_#171717] dark:shadow-[1.5px_1.5px_0px_#001722] dark:md:shadow-[2px_2px_0px_#001722]"
               >
-                <div className="w-5 h-5 md:w-6 md:h-6 rounded-sm bg-[#D6AD52] dark:bg-[#4CA7A1] text-[#171717] dark:text-[#001722] flex items-center justify-center font-extrabold text-[11px] md:text-xs uppercase border border-[#171717] dark:border-[#A6D6C9] overflow-hidden shrink-0">
+                <div className="w-5 h-5 md:w-5.5 md:h-5.5 rounded-sm bg-[#D6AD52] dark:bg-[#4CA7A1] text-[#171717] dark:text-[#001722] flex items-center justify-center font-extrabold text-[10px] md:text-[11px] uppercase border border-[#171717] dark:border-[#A6D6C9] overflow-hidden shrink-0">
                   {userProfile?.photoURL || user.photoURL ? (
                     <img
                       src={userProfile?.photoURL || user.photoURL || ''}
@@ -150,7 +150,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                     (userProfile?.displayName || user.displayName || user.email || 'U')[0]
                   )}
                 </div>
-                <span className="text-xs font-extrabold text-[#171717] dark:text-[#CEFEF1] max-w-[100px] truncate hidden md:block">
+                <span className="text-[11px] font-extrabold text-[#171717] dark:text-[#CEFEF1] max-w-[110px] truncate hidden md:block">
                   {userProfile?.displayName || user.displayName || user.email?.split('@')[0]}
                 </span>
                 <Settings className="w-3.5 h-3.5 text-[#626A66] dark:text-[#A6D6C9] hidden sm:block" />
@@ -159,17 +159,17 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
               <button
                 type="button"
                 onClick={openLogoutConfirmModal}
-                className="flex items-center justify-center w-8 h-8 md:w-auto md:h-auto md:p-2 text-white hover:bg-[#B83D3D] rounded-md border-[1.5px] md:border-2 border-[#171717] dark:border-[#A6D6C9] bg-[#D9534F] dark:bg-[#C94A4A] shadow-[1.5px_1.5px_0px_#171717] md:shadow-[2px_2px_0px_#171717] dark:shadow-[1.5px_1.5px_0px_#001722] dark:md:shadow-[2px_2px_0px_#001722] transition cursor-pointer"
+                className="flex items-center justify-center w-8 h-8 md:w-8.5 md:h-8.5 text-white hover:bg-[#B83D3D] rounded-md border-[1.5px] md:border-2 border-[#171717] dark:border-[#A6D6C9] bg-[#D9534F] dark:bg-[#C94A4A] shadow-[1.5px_1.5px_0px_#171717] md:shadow-[2px_2px_0px_#171717] dark:shadow-[1.5px_1.5px_0px_#001722] dark:md:shadow-[2px_2px_0px_#001722] transition cursor-pointer"
                 title="Keluar"
               >
-                <LogOut className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                <LogOut className="w-3.5 h-3.5" />
               </button>
             </div>
           ) : (
             <button
               type="button"
               onClick={() => openAuthModal('login')}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 md:px-4 md:py-2 bg-[#123D32] dark:bg-[#4CA7A1] hover:bg-[#0E2F26] dark:hover:bg-[#5BB7B1] text-white dark:text-[#001722] rounded-md text-[11px] md:text-xs font-extrabold transition border-[1.5px] md:border-2 border-[#171717] dark:border-[#A6D6C9] shadow-[2px_2px_0px_#171717] md:shadow-[3px_3px_0px_#171717] dark:shadow-[2px_2px_0px_#001722] dark:md:shadow-[3px_3px_0px_#001722] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none cursor-pointer shrink-0"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 md:px-3.5 md:py-1.5 bg-[#123D32] dark:bg-[#4CA7A1] hover:bg-[#0E2F26] dark:hover:bg-[#5BB7B1] text-white dark:text-[#001722] rounded-md text-[11px] md:text-xs font-extrabold transition border-[1.5px] md:border-2 border-[#171717] dark:border-[#A6D6C9] shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#001722] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none cursor-pointer shrink-0"
             >
               <UserIcon className="w-3.5 h-3.5 text-[#D6AD52] dark:text-[#001722]" />
               <span className="whitespace-nowrap">Masuk Akun</span>

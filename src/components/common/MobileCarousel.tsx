@@ -276,9 +276,7 @@ export const MobileCarousel: React.FC<MobileCarouselProps> = ({
       <div
         ref={containerRef}
         aria-label={ariaLabel}
-        data-lenis-prevent="true"
         data-lenis-prevent-touch="true"
-        data-lenis-prevent-wheel="true"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -288,7 +286,7 @@ export const MobileCarousel: React.FC<MobileCarouselProps> = ({
         onMouseLeave={handleMouseLeave}
         onClickCapture={handleClickCapture}
         onDragStart={(e) => e.preventDefault()}
-        className={`flex sm:grid overflow-x-auto overflow-y-hidden sm:overflow-visible pb-3 pt-1 px-1 sm:px-0 gap-4 sm:gap-6 snap-x snap-proximity scroll-smooth no-scrollbar -mx-2 px-2 sm:mx-0 ${
+        className={`flex sm:grid overflow-x-auto overflow-y-hidden sm:overflow-visible pb-3 pt-1 px-1 sm:px-0 gap-3.5 sm:gap-4 snap-x snap-proximity scroll-smooth no-scrollbar -mx-2 px-2 sm:mx-0 ${
           isMouseDown ? 'cursor-grabbing select-none' : 'cursor-grab sm:cursor-auto'
         } ${desktopGridClass}`}
         style={{
@@ -302,13 +300,13 @@ export const MobileCarousel: React.FC<MobileCarouselProps> = ({
         {React.Children.map(children, (child, idx) => (
           <div
             key={idx}
-            className={`${mobileItemClassName} shrink-0 snap-start sm:w-auto sm:max-w-none sm:shrink sm:snap-none h-auto sm:h-full flex flex-col transition-transform sm:!transform-none ${
-              isMouseDown ? 'transition-none' : 'duration-700 ease-in-out'
+            className={`${mobileItemClassName} shrink-0 snap-start sm:w-auto sm:max-w-none sm:shrink sm:snap-none h-auto sm:h-full flex flex-col ${
+              isHinting ? 'transition-transform duration-700 ease-in-out' : ''
             }`}
             style={{
               scrollSnapAlign: 'start',
               scrollSnapStop: 'normal',
-              transform: isHinting ? 'translateX(-18px)' : 'translateX(0px)'
+              transform: isHinting ? 'translateX(-18px)' : undefined
             }}
           >
             {child}

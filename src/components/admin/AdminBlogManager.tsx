@@ -532,7 +532,7 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
       )}
 
       {/* HEADER BAR */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 nb-card bg-white dark:bg-[#1F5F63] p-6">
+      <div data-aos="fade-up" className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 nb-card bg-white dark:bg-[#1F5F63] p-6">
         <div>
           <h2 className="text-lg font-extrabold font-serif-brand text-charcoal dark:text-[#FFFFFF] flex items-center gap-2">
             <FileText className="w-5 h-5 text-[#123D32] dark:text-[#4CA7A1]" />
@@ -564,7 +564,7 @@ export const AdminBlogManager: React.FC<AdminBlogManagerProps> = ({
       </div>
 
       {/* FILTER & SEARCH BAR */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 nb-card bg-white dark:bg-[#1F5F63] p-4">
+      <div data-aos="fade-up" data-aos-delay="50" className="flex flex-col md:flex-row md:items-center justify-between gap-3 nb-card bg-white dark:bg-[#1F5F63] p-4">
         <div className="relative flex-1 max-w-md">
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-gray dark:text-[#A6D6C9]" />
           <input

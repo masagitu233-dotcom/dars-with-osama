@@ -36,6 +36,7 @@ import { autoWrapArabicText } from '../../utils/arabicFontHelper';
 import { useAuth } from '../../context/AuthContext';
 import { ResilientGoogleDriveImage } from '../common/ResilientGoogleDriveImage';
 import { resolveDisplayImageUrl, getGoogleDriveViewerUrl, isGoogleDriveUrl } from '../../utils/googleDriveHelper';
+import { refreshHardGlobalAOS } from '../../utils/aosManager';
 
 interface InstructorProfileViewProps {
   profileData?: InstructorProfile;
@@ -83,7 +84,7 @@ const PortfolioPortrait: React.FC<{
   };
 
   return (
-    <div className="w-36 h-36 sm:w-44 sm:h-44 rounded-md overflow-hidden border-2 border-[#D6AD52] bg-[#243A56] shadow-[4px_4px_0px_#000000] flex items-center justify-center relative">
+    <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-md overflow-hidden border-2 border-[#D6AD52] bg-[#243A56] shadow-[4px_4px_0px_#000000] flex items-center justify-center relative">
       {currentSrc && !failedAll ? (
         <img
           data-testid="instructor-profile-photo"
@@ -176,6 +177,12 @@ export const InstructorProfileView: React.FC<InstructorProfileViewProps> = ({
       unsubscribe();
     };
   }, [profileData, retryNonce]);
+
+  useEffect(() => {
+    if (portfolio || !loading) {
+      refreshHardGlobalAOS();
+    }
+  }, [portfolio, loading]);
 
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://darswithosama.com';
   const profileUrl = `${origin}/profil-pengajar`;
@@ -574,11 +581,11 @@ export const InstructorProfileView: React.FC<InstructorProfileViewProps> = ({
   return (
     <div
       data-testid="instructor-profile-view"
-      className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6 sm:space-y-8 py-6 pb-16 animate-fade-in font-sans"
+      className="max-w-[1040px] mx-auto px-3.5 sm:px-6 lg:px-8 space-y-5 sm:space-y-6 py-4 sm:py-6 pb-12 font-sans"
     >
       {/* TOP NAVIGATION & SHARE BAR */}
       {!isPreviewMode && (
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div data-aos="fade-up" className="flex flex-wrap items-center justify-between gap-3">
           {onBack ? (
             <button
               type="button"
@@ -623,10 +630,10 @@ export const InstructorProfileView: React.FC<InstructorProfileViewProps> = ({
       {loading && !portfolio && (
         <section
           data-testid="instructor-profile-loading"
-          className="rounded-lg bg-[#123D32] dark:bg-[#16263D] text-[#FAF7F0] border-2 border-[#292D2B] dark:border-[#D6AD52] shadow-[6px_6px_0px_#292D2B] dark:shadow-[6px_6px_0px_#000000] p-6 sm:p-10"
+          className="rounded-lg bg-[#123D32] dark:bg-[#16263D] text-[#FAF7F0] border-2 border-[#292D2B] dark:border-[#D6AD52] shadow-[5px_5px_0px_#292D2B] dark:shadow-[5px_5px_0px_#000000] p-5 sm:p-7"
         >
-          <div className="flex flex-col md:flex-row items-center md:items-start gap-6 sm:gap-8 animate-pulse">
-            <div className="w-36 h-36 sm:w-44 sm:h-44 rounded-md bg-[#243A56] border-2 border-[#D6AD52]/50 shrink-0" />
+          <div className="flex flex-col md:flex-row items-center md:items-start gap-5 sm:gap-6 animate-pulse">
+            <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-md bg-[#243A56] border-2 border-[#D6AD52]/50 shrink-0" />
             <div className="flex-1 w-full space-y-4">
               <div className="h-5 w-44 rounded bg-[#FAF7F0]/20 mx-auto md:mx-0" />
               <div className="h-9 w-64 max-w-full rounded bg-[#FAF7F0]/25 mx-auto md:mx-0" />
@@ -691,10 +698,13 @@ export const InstructorProfileView: React.FC<InstructorProfileViewProps> = ({
       {portfolio && (
         <>
           {/* HERO PROFILE SUMMARY CARD */}
-          <section className="relative overflow-hidden rounded-lg bg-[#123D32] dark:bg-[#16263D] text-[#FAF7F0] dark:text-[#F1F4F8] border-2 border-[#292D2B] dark:border-[#D6AD52] shadow-[6px_6px_0px_#292D2B] dark:shadow-[6px_6px_0px_#000000] p-6 sm:p-10">
-            <div className="relative z-10 flex flex-col md:flex-row items-center md:items-start gap-6 sm:gap-8">
+          <section
+            data-aos="fade-up"
+            className="relative overflow-hidden rounded-lg bg-[#123D32] dark:bg-[#16263D] text-[#FAF7F0] dark:text-[#F1F4F8] border-2 border-[#292D2B] dark:border-[#D6AD52] shadow-[5px_5px_0px_#292D2B] dark:shadow-[5px_5px_0px_#000000] p-5 sm:p-7"
+          >
+            <div className="relative z-10 flex flex-col md:flex-row items-center md:items-start gap-5 sm:gap-6">
               {/* Public Google Drive Portrait */}
-              <div className="shrink-0 flex flex-col items-center space-y-2.5">
+              <div className="shrink-0 flex flex-col items-center space-y-2">
                 <PortfolioPortrait
                   photoCandidates={portfolio.photoCandidates}
                   fullName={portfolio.fullName}
@@ -702,17 +712,17 @@ export const InstructorProfileView: React.FC<InstructorProfileViewProps> = ({
               </div>
 
               {/* Core Identity & Short Bio */}
-              <div className="flex-1 text-center md:text-left space-y-4 min-w-0">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#C6A75E] border-2 border-[#171717] text-[#171923] text-xs font-extrabold uppercase tracking-wider">
-                  <UserCheck className="w-3.5 h-3.5 text-[#171923]" />
+              <div className="flex-1 text-center md:text-left space-y-3 min-w-0">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-[#C6A75E] border-2 border-[#171717] text-[#171923] text-[11px] font-extrabold uppercase tracking-wider">
+                  <UserCheck className="w-3 h-3 text-[#171923]" />
                   <span data-testid="instructor-profile-title">Profil Pengajar Dars with Osama</span>
                 </div>
 
-                <div className="space-y-1.5">
+                <div className="space-y-1">
                   {portfolio.fullName && (
                     <h1
                       data-testid="instructor-profile-name"
-                      className="text-2xl sm:text-4xl font-bold font-serif tracking-tight text-[#F0EEE8] leading-tight"
+                      className="dars-page-title font-bold font-serif tracking-tight text-[#F0EEE8]"
                     >
                       {portfolio.fullName}
                     </h1>
@@ -720,13 +730,13 @@ export const InstructorProfileView: React.FC<InstructorProfileViewProps> = ({
                   {portfolio.headline && (
                     <p
                       data-testid="instructor-profile-role"
-                      className="text-sm sm:text-base font-bold text-[#D6AD52] leading-snug"
+                      className="text-sm sm:text-[15px] font-bold text-[#D6AD52] leading-snug"
                     >
                       {portfolio.headline}
                     </p>
                   )}
                   {portfolio.domicile && (
-                    <p className="inline-flex items-center justify-center md:justify-start gap-1.5 text-xs sm:text-sm text-[#FAF7F0]/80 pt-0.5">
+                    <p className="inline-flex items-center justify-center md:justify-start gap-1.5 text-xs sm:text-[13px] text-[#FAF7F0]/80 pt-0.5">
                       <MapPin className="w-3.5 h-3.5 text-[#D6AD52] shrink-0" />
                       <span>{portfolio.domicile}</span>
                     </p>
@@ -736,7 +746,7 @@ export const InstructorProfileView: React.FC<InstructorProfileViewProps> = ({
                 {portfolio.shortBio && (
                   <p
                     data-testid="instructor-profile-biography"
-                    className="pt-1 text-sm sm:text-base text-[#F0EEE8]/95 leading-relaxed max-w-3xl"
+                    className="pt-0.5 text-xs sm:text-sm text-[#F0EEE8]/95 leading-relaxed max-w-3xl"
                   >
                     {portfolio.shortBio}
                   </p>
@@ -792,13 +802,14 @@ export const InstructorProfileView: React.FC<InstructorProfileViewProps> = ({
           {portfolio.education.length > 0 && (
             <section
               data-testid="instructor-education-section"
-              className="nb-reading-surface p-6 sm:p-8 space-y-5"
+              data-aos="fade-up"
+              className="nb-reading-surface p-4 sm:p-6 space-y-4"
             >
-              <div className="flex items-center gap-2.5 border-b-2 border-[#292D2B]/15 dark:border-[#D6AD52]/25 pb-3">
-                <div className="w-9 h-9 rounded-md bg-[#123D32] dark:bg-[#243A56] border-2 border-[#292D2B] dark:border-[#D6AD52] flex items-center justify-center shrink-0">
+              <div className="flex items-center gap-2.5 border-b-2 border-[#292D2B]/15 dark:border-[#D6AD52]/25 pb-2.5">
+                <div className="w-8 h-8 rounded-md bg-[#123D32] dark:bg-[#243A56] border-2 border-[#292D2B] dark:border-[#D6AD52] flex items-center justify-center shrink-0">
                   <GraduationCap className="w-4 h-4 text-[#D6AD52]" />
                 </div>
-                <h2 className="text-lg sm:text-xl font-bold text-[#292D2B] dark:text-white font-serif">
+                <h2 className="dars-section-title font-bold text-[#292D2B] dark:text-white font-serif">
                   Ringkasan Pendidikan
                 </h2>
               </div>
@@ -851,13 +862,14 @@ export const InstructorProfileView: React.FC<InstructorProfileViewProps> = ({
           {portfolio.experiences.length > 0 && (
             <section
               data-testid="instructor-experiences-section"
-              className="nb-reading-surface p-6 sm:p-8 space-y-5"
+              data-aos="fade-up"
+              className="nb-reading-surface p-4 sm:p-6 space-y-4"
             >
-              <div className="flex items-center gap-2.5 border-b-2 border-[#292D2B]/15 dark:border-[#D6AD52]/25 pb-3">
-                <div className="w-9 h-9 rounded-md bg-[#123D32] dark:bg-[#243A56] border-2 border-[#292D2B] dark:border-[#D6AD52] flex items-center justify-center shrink-0">
+              <div className="flex items-center gap-2.5 border-b-2 border-[#292D2B]/15 dark:border-[#D6AD52]/25 pb-2.5">
+                <div className="w-8 h-8 rounded-md bg-[#123D32] dark:bg-[#243A56] border-2 border-[#292D2B] dark:border-[#D6AD52] flex items-center justify-center shrink-0">
                   <Briefcase className="w-4 h-4 text-[#D6AD52]" />
                 </div>
-                <h2 className="text-lg sm:text-xl font-bold text-[#292D2B] dark:text-white font-serif">
+                <h2 className="dars-section-title font-bold text-[#292D2B] dark:text-white font-serif">
                   Ringkasan Pengalaman
                 </h2>
               </div>
@@ -925,13 +937,14 @@ export const InstructorProfileView: React.FC<InstructorProfileViewProps> = ({
           {portfolio.skills.length > 0 && (
             <section
               data-testid="instructor-skills-section"
-              className="nb-reading-surface p-6 sm:p-8 space-y-5"
+              data-aos="fade-up"
+              className="nb-reading-surface p-4 sm:p-6 space-y-4"
             >
-              <div className="flex items-center gap-2.5 border-b-2 border-[#292D2B]/15 dark:border-[#D6AD52]/25 pb-3">
-                <div className="w-9 h-9 rounded-md bg-[#123D32] dark:bg-[#243A56] border-2 border-[#292D2B] dark:border-[#D6AD52] flex items-center justify-center shrink-0">
+              <div className="flex items-center gap-2.5 border-b-2 border-[#292D2B]/15 dark:border-[#D6AD52]/25 pb-2.5">
+                <div className="w-8 h-8 rounded-md bg-[#123D32] dark:bg-[#243A56] border-2 border-[#292D2B] dark:border-[#D6AD52] flex items-center justify-center shrink-0">
                   <Award className="w-4 h-4 text-[#D6AD52]" />
                 </div>
-                <h2 className="text-lg sm:text-xl font-bold text-[#292D2B] dark:text-white font-serif">
+                <h2 className="dars-section-title font-bold text-[#292D2B] dark:text-white font-serif">
                   Keahlian &amp; Bidang Kompetensi
                 </h2>
               </div>
@@ -969,7 +982,7 @@ export const InstructorProfileView: React.FC<InstructorProfileViewProps> = ({
           )}
 
           {/* PORTFOLIO REDIRECT FOOTER BANNER */}
-          <section className="nb-card p-5 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <section data-aos="fade-up" className="nb-card p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="text-center sm:text-left space-y-1">
               <h2 className="text-base sm:text-lg font-bold font-serif text-[#123D32] dark:text-[#FAF7F0]">
                 Ingin Melihat Rekam Jejak Lengkap?

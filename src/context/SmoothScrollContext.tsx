@@ -1,8 +1,8 @@
-import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Lenis from 'lenis';
-import AOS from 'aos';
+import { notifyGlobalAOSScroll, refreshHardGlobalAOS } from '../utils/aosManager';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -29,7 +29,6 @@ interface ProviderProps {
 
 export const SmoothScrollProvider: React.FC<ProviderProps> = ({ children, currentView }) => {
   const lenisRef = useRef<Lenis | null>(null);
-  const [velocity, setVelocity] = useState(0);
 
   useEffect(() => {
     // Respect user prefers-reduced-motion
@@ -39,7 +38,7 @@ export const SmoothScrollProvider: React.FC<ProviderProps> = ({ children, curren
     }
 
     const lenis = new Lenis({
-      duration: 1.2,
+      duration: 1.1,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       orientation: 'vertical',
       gestureOrientation: 'vertical',
@@ -50,12 +49,10 @@ export const SmoothScrollProvider: React.FC<ProviderProps> = ({ children, curren
 
     lenisRef.current = lenis;
 
-    // Connect Lenis with GSAP ScrollTrigger
-    lenis.on('scroll', (e: any) => {
+    // Connect Lenis with GSAP ScrollTrigger and Global AOS controller without triggering React re-renders
+    lenis.on('scroll', () => {
       ScrollTrigger.update();
-      if (typeof e.velocity === 'number') {
-        setVelocity(e.velocity);
-      }
+      notifyGlobalAOSScroll();
     });
 
     const updateTicker = (time: number) => {
@@ -72,7 +69,7 @@ export const SmoothScrollProvider: React.FC<ProviderProps> = ({ children, curren
     };
   }, []);
 
-  // When view route changes, scroll to saved history scrollY (or 0 on new forward views) and refresh ScrollTrigger
+  // When view route changes, scroll to saved history scrollY (or 0 on new forward views) and refresh ScrollTrigger & AOS
   useEffect(() => {
     const savedScrollY =
       typeof window !== 'undefined' &&
@@ -96,8 +93,8 @@ export const SmoothScrollProvider: React.FC<ProviderProps> = ({ children, curren
         applyScroll();
       }
       ScrollTrigger.refresh();
-      AOS.refreshHard();
-    }, 100);
+      refreshHardGlobalAOS();
+    }, 90);
 
     return () => {
       window.cancelAnimationFrame(rafId);
@@ -128,7 +125,7 @@ export const SmoothScrollProvider: React.FC<ProviderProps> = ({ children, curren
     <SmoothScrollContext.Provider
       value={{
         lenis: lenisRef.current,
-        velocity,
+        velocity: 0,
         scrollTo,
         refreshScrollTrigger,
       }}

@@ -14,6 +14,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { getUserEnrollments, getUserQuizAttempts } from '../../firebase/services';
 import { StudentNotificationPreferencesModal } from '../student/StudentNotificationPreferencesModal';
+import { getAosDelay } from '../../utils/aosManager';
 
 interface StudentDashboardProps {
   courses: Course[];
@@ -100,30 +101,36 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     : 0;
 
   return (
-    <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-10 space-y-8 sm:space-y-10 animate-in fade-in duration-200">
+    <div className="max-w-[1320px] mx-auto px-3 sm:px-5 lg:px-6 py-4 sm:py-6 space-y-6 sm:space-y-7">
       {isAdmin && (
-        <div className="p-4 rounded-lg bg-[#4CA7A1] text-[#001722] border-2 border-[#171717] shadow-[4px_4px_0px_#171717] text-xs font-bold">
+        <div
+          data-aos="fade-up"
+          className="p-3.5 rounded-lg bg-[#4CA7A1] text-[#001722] border-2 border-[#171717] shadow-[3px_3px_0px_#171717] text-xs font-bold"
+        >
           <strong>Mode Pratinjau Admin:</strong> Halaman ini menampilkan riwayat akun Anda sendiri. Aktivitas pengerjaan kuis admin ditandai terpisah dan tidak masuk ke statistik nilai maupun progres pembelajaran santri.
         </div>
       )}
       {/* Welcome Banner */}
-      <div className="nb-card bg-white dark:bg-[#16263D] text-[#292D2B] dark:text-[#F1F4F8] border-2 border-[#292D2B] dark:border-[#D6AD52] p-6 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-[4px_4px_0px_#292D2B] dark:shadow-[4px_4px_0px_#000000]">
-        <div className="space-y-2.5">
+      <div
+        data-aos="fade-up"
+        className="nb-card bg-white dark:bg-[#16263D] text-[#292D2B] dark:text-[#F1F4F8] border-2 border-[#292D2B] dark:border-[#D6AD52] p-4 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-5 shadow-[4px_4px_0px_#292D2B] dark:shadow-[4px_4px_0px_#000000]"
+      >
+        <div className="space-y-2">
           <div className="nb-badge bg-[#D6AD52] text-[#292D2B]">
             <Sparkles className="w-3.5 h-3.5" />
             <span>Dashboard Penuntut Ilmu Syar'i</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#292D2B] dark:text-[#F1F4F8] font-serif-brand flex flex-wrap items-center gap-3">
+          <h1 className="dars-page-title font-extrabold text-[#292D2B] dark:text-[#F1F4F8] font-serif-brand flex flex-wrap items-center gap-2.5">
             <span>Ahlan wa Sahlan, {userProfile?.displayName || user.email?.split('@')[0]}</span>
-            {userProfile?.kunyah && <span className="text-[#123D32] dark:text-[#D6AD52] font-amiri text-xl">({userProfile.kunyah})</span>}
+            {userProfile?.kunyah && <span className="text-[#123D32] dark:text-[#D6AD52] font-amiri text-lg sm:text-xl">({userProfile.kunyah})</span>}
           </h1>
-          <p className="text-xs sm:text-sm text-[#626A66] dark:text-[#B4C0D0] max-w-xl">
+          <p className="text-xs sm:text-[13px] text-[#626A66] dark:text-[#B4C0D0] max-w-xl">
             Lanjutkan sesi pembelajaran Anda dan pantau kemajuan pemahaman syarah matan secara mandiri.
           </p>
-          <div className="pt-2 flex flex-wrap items-center gap-2">
+          <div className="pt-1.5 flex flex-wrap items-center gap-2">
             <button
               onClick={() => openProfileModal()}
-              className="nb-btn nb-btn-gold px-4 py-2 text-xs"
+              className="nb-btn nb-btn-gold px-3.5 py-2 text-xs"
             >
               <Settings className="w-3.5 h-3.5" />
               <span>Pengaturan Profil & Foto</span>
@@ -131,7 +138,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
             <button
               onClick={() => setNotifModalOpen(true)}
-              className="nb-btn nb-btn-secondary px-4 py-2 text-xs flex items-center gap-1.5"
+              className="nb-btn nb-btn-secondary px-3.5 py-2 text-xs flex items-center gap-1.5"
             >
               <Bell className="w-3.5 h-3.5 text-[#123D32] dark:text-[#D6AD52]" />
               <span>Preferensi Notifikasi Email</span>
@@ -140,21 +147,21 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         </div>
 
         {/* Quick Stats Counters */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 shrink-0">
-          <div className="bg-[#EFE5D2] dark:bg-[#243A56] border-2 border-[#292D2B] dark:border-[#D6AD52] p-3.5 rounded-md text-center shadow-[3px_3px_0px_#292D2B]">
-            <p className="text-xl sm:text-2xl font-extrabold text-[#123D32] dark:text-[#D6AD52]">{enrollments.length}</p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 shrink-0">
+          <div className="bg-[#EFE5D2] dark:bg-[#243A56] border-2 border-[#292D2B] dark:border-[#D6AD52] p-3 rounded-md text-center shadow-[2px_2px_0px_#292D2B]">
+            <p className="text-lg sm:text-xl font-extrabold text-[#123D32] dark:text-[#D6AD52]">{enrollments.length}</p>
             <p className="text-[11px] font-bold text-[#292D2B] dark:text-[#F1F4F8] mt-0.5">Kursus Diikuti</p>
           </div>
-          <div className="bg-[#EFE5D2] dark:bg-[#243A56] border-2 border-[#292D2B] dark:border-[#D6AD52] p-3.5 rounded-md text-center shadow-[3px_3px_0px_#292D2B]">
-            <p className="text-xl sm:text-2xl font-extrabold text-[#123D32] dark:text-[#D6AD52]">{totalSessionsDone}</p>
+          <div className="bg-[#EFE5D2] dark:bg-[#243A56] border-2 border-[#292D2B] dark:border-[#D6AD52] p-3 rounded-md text-center shadow-[2px_2px_0px_#292D2B]">
+            <p className="text-lg sm:text-xl font-extrabold text-[#123D32] dark:text-[#D6AD52]">{totalSessionsDone}</p>
             <p className="text-[11px] font-bold text-[#292D2B] dark:text-[#F1F4F8] mt-0.5">Sesi Tuntas</p>
           </div>
-          <div className="bg-[#EFE5D2] dark:bg-[#243A56] border-2 border-[#292D2B] dark:border-[#D6AD52] p-3.5 rounded-md text-center shadow-[3px_3px_0px_#292D2B]">
-            <p className="text-xl sm:text-2xl font-extrabold text-[#123D32] dark:text-[#D6AD52]">{averageQuizScore}%</p>
+          <div className="bg-[#EFE5D2] dark:bg-[#243A56] border-2 border-[#292D2B] dark:border-[#D6AD52] p-3 rounded-md text-center shadow-[2px_2px_0px_#292D2B]">
+            <p className="text-lg sm:text-xl font-extrabold text-[#123D32] dark:text-[#D6AD52]">{averageQuizScore}%</p>
             <p className="text-[11px] font-bold text-[#292D2B] dark:text-[#F1F4F8] mt-0.5">Rerata Nilai</p>
           </div>
-          <div className="bg-[#EFE5D2] dark:bg-[#243A56] border-2 border-[#292D2B] dark:border-[#D6AD52] p-3.5 rounded-md text-center shadow-[3px_3px_0px_#292D2B]">
-            <p className="text-xl sm:text-2xl font-extrabold text-[#123D32] dark:text-[#D6AD52]">{completedCourses.length}</p>
+          <div className="bg-[#EFE5D2] dark:bg-[#243A56] border-2 border-[#292D2B] dark:border-[#D6AD52] p-3 rounded-md text-center shadow-[2px_2px_0px_#292D2B]">
+            <p className="text-lg sm:text-xl font-extrabold text-[#123D32] dark:text-[#D6AD52]">{completedCourses.length}</p>
             <p className="text-[11px] font-bold text-[#292D2B] dark:text-[#F1F4F8] mt-0.5">Kursus Selesai</p>
           </div>
         </div>
@@ -162,13 +169,13 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
       {/* Enrolled Courses Section */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="space-y-1">
-            <h2 className="text-xl sm:text-2xl font-extrabold text-[#292D2B] dark:text-[#F1F4F8] font-serif-brand flex items-center gap-2">
+        <div data-aos="fade-up" className="flex flex-wrap items-center justify-between gap-3">
+          <div className="space-y-0.5">
+            <h2 className="dars-section-title font-extrabold text-[#292D2B] dark:text-[#F1F4F8] font-serif-brand flex items-center gap-2">
               <BookOpen className="w-5 h-5 text-[#123D32] dark:text-[#D6AD52]" />
               <span>Kursus yang Sedang Diikuti ({enrollments.length})</span>
             </h2>
-            <p className="text-xs sm:text-sm text-[#626A66] dark:text-[#B4C0D0]">
+            <p className="text-xs sm:text-[13px] text-[#626A66] dark:text-[#B4C0D0]">
               Pilih kursus untuk melanjutkan sesi terakhir yang Anda pelajari.
             </p>
           </div>
@@ -183,15 +190,17 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         </div>
 
         {enrollments.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {enrollments.map((enr) => {
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {enrollments.map((enr, idx) => {
               const course = courseMap.get(enr.courseId);
               if (!course) return null;
 
               return (
                 <div
                   key={enr.id}
-                  className="nb-card nb-card-interactive p-5 flex flex-col justify-between space-y-4 bg-white dark:bg-[#243A56] group"
+                  data-aos="fade-up"
+                  data-aos-delay={getAosDelay(idx, 4)}
+                  className="nb-card nb-card-interactive p-4 flex flex-col justify-between space-y-3.5 bg-white dark:bg-[#243A56] group"
                 >
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
@@ -265,19 +274,19 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
       </div>
 
       {/* Quiz Scores & History Table */}
-      <div className="space-y-4 pt-4">
-        <div className="space-y-1">
-          <h2 className="text-xl sm:text-2xl font-extrabold text-[#292D2B] dark:text-[#F1F4F8] font-serif-brand flex items-center gap-2">
+      <div className="space-y-4 pt-2">
+        <div data-aos="fade-up" className="space-y-0.5">
+          <h2 className="dars-section-title font-extrabold text-[#292D2B] dark:text-[#F1F4F8] font-serif-brand flex items-center gap-2">
             <CheckCircle2 className="w-5 h-5 text-[#123D32] dark:text-[#D6AD52]" />
             <span>Riwayat Ujian & Nilai Kuis ({attempts.length})</span>
           </h2>
-          <p className="text-xs sm:text-sm text-[#626A66] dark:text-[#B4C0D0]">
+          <p className="text-xs sm:text-[13px] text-[#626A66] dark:text-[#B4C0D0]">
             Catatan pengerjaan kuis evaluasi pemahaman yang tersimpan permanen di akun Anda.
           </p>
         </div>
 
         {attempts.length > 0 ? (
-          <div className="nb-card overflow-hidden bg-white dark:bg-[#243A56]">
+          <div data-aos="fade-up" className="nb-card overflow-hidden bg-white dark:bg-[#243A56]">
             <div className="overflow-x-auto w-full">
               <table className="w-full min-w-[550px] text-left text-xs sm:text-sm">
                 <thead className="bg-[#EFE5D2] dark:bg-[#16263D] text-[#292D2B] dark:text-[#D6AD52] uppercase text-[11px] font-extrabold border-b-2 border-[#292D2B]">

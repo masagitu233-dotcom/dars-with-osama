@@ -37,6 +37,7 @@ import {
   resolveDisplayImageUrl
 } from '../../utils/googleDriveHelper';
 import { useAuth } from '../../context/AuthContext';
+import { getAosDelay } from '../../utils/aosManager';
 
 interface BlogDetailViewProps {
   post: BlogPost;
@@ -302,9 +303,9 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
   }, [post.content, isAdmin]);
 
   return (
-    <div className="max-w-4xl mx-auto px-0 sm:px-6 lg:px-8 space-y-4 sm:space-y-8 py-3 sm:py-6 pb-16 animate-fade-in font-sans">
+    <div className="max-w-[880px] mx-auto px-0 sm:px-5 lg:px-6 space-y-4 sm:space-y-6 py-3 sm:py-5 pb-12 font-sans">
       {/* BREADCRUMB & TOP ACTIONS */}
-      <div className="flex flex-wrap items-center justify-between gap-3 px-3.5 sm:px-0">
+      <div data-aos="fade-up" className="flex flex-wrap items-center justify-between gap-3 px-3.5 sm:px-0">
         <button
           onClick={onBack}
           className="px-3.5 py-2 text-xs font-extrabold rounded-md border-2 border-[#171717] sm:border-[#F5DABF] text-[#171717] sm:text-[#F5DABF] bg-white sm:bg-transparent hover:bg-[#F5DABF] hover:text-[#6C151E] transition-all inline-flex items-center gap-2 cursor-pointer shadow-[2px_2px_0px_#171717]"
@@ -354,10 +355,10 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
       {/* EDITORIAL ARTICLE READING CARD */}
       <article
         style={fontControl.style}
-        className="w-full bg-white sm:bg-[#FFF5E9] text-[#171717] border-0 sm:border-2 sm:border-[#171717] rounded-none sm:rounded-lg shadow-none sm:shadow-[6px_6px_0px_#171717] px-4 py-4 sm:p-8 md:p-12 space-y-5 sm:space-y-8"
+        className="w-full bg-white sm:bg-[#FFF5E9] text-[#171717] border-0 sm:border-2 sm:border-[#171717] rounded-none sm:rounded-lg shadow-none sm:shadow-[5px_5px_0px_#171717] px-4 py-4 sm:p-7 md:p-9 space-y-5 sm:space-y-6"
       >
         {/* Editorial Header */}
-        <div className="space-y-4 border-b-2 border-[#171717] pb-6">
+        <div data-aos="fade-up" className="space-y-3.5 border-b-2 border-[#171717] pb-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-3">
               <span className="px-3 py-1 bg-[#6C151E] text-[#FFF5E9] font-extrabold text-xs uppercase tracking-wider rounded border-2 border-[#171717] shadow-[1.5px_1.5px_0px_#171717]">
@@ -399,7 +400,7 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
           </div>
 
           <h1
-            className="text-2xl sm:text-3xl lg:text-4xl font-bold text-[#6C151E] leading-tight font-serif tracking-tight"
+            className="dars-page-title font-bold text-[#6C151E] font-serif tracking-tight"
             dangerouslySetInnerHTML={{ __html: preparedTitleHtml }}
           />
 
@@ -428,7 +429,7 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
 
         {/* COVER IMAGE */}
         {post.coverImageUrl && (
-          <figure className="space-y-2">
+          <figure data-aos="fade-up" className="space-y-2">
             <div className="aspect-video w-full rounded-md overflow-hidden bg-[#123D32] dark:bg-[#0D2B36] border-2 border-[#171717] dark:border-[#4CA7A1]">
               <ResilientGoogleDriveImage
                 src={post.coverImageUrl}
@@ -486,7 +487,7 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
         )}
 
         {/* AUTHOR BIO CARD */}
-        <div className="p-5 sm:p-6 bg-[#FAF7F0] dark:bg-[#0D2B36] rounded-md border-2 border-[#171717] dark:border-[#4CA7A1] flex flex-col sm:flex-row items-center sm:items-start gap-4 shadow-xs">
+        <div data-aos="fade-up" className="p-4 sm:p-5 bg-[#FAF7F0] dark:bg-[#0D2B36] rounded-md border-2 border-[#171717] dark:border-[#4CA7A1] flex flex-col sm:flex-row items-center sm:items-start gap-4 shadow-xs">
           <div className="w-14 h-14 rounded-md bg-[#001722] text-[#CEFEF1] font-bold text-xl flex items-center justify-center shrink-0 border-2 border-[#171717] dark:border-[#4CA7A1] overflow-hidden relative">
             {(instructorPhoto || post.authorPhoto) && !authorPhotoError ? (
               <img
@@ -549,14 +550,14 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
       </article>
 
       {/* ARTICLE READER COMMENTS & MODERATION SECTION */}
-      <div className="px-3.5 sm:px-0">
+      <div data-aos="fade-up" className="px-3.5 sm:px-0">
         <ArticleCommentsSection articleId={post.id} articleTitle={post.title} />
       </div>
 
       {/* RELATED ARTICLES SECTION */}
       {relatedArticles.length > 0 && (
-        <div className="space-y-4 pt-4 px-3.5 sm:px-0">
-          <h3 className="text-lg font-bold font-serif text-[#171717] dark:text-[#CEFEF1] flex items-center gap-2">
+        <div className="space-y-4 pt-3 px-3.5 sm:px-0">
+          <h3 data-aos="fade-up" className="dars-section-title font-bold font-serif text-[#171717] dark:text-[#CEFEF1] flex items-center gap-2">
             <BookOpen className="w-5 h-5 text-[#123D32] dark:text-[#4CA7A1]" />
             <span>Artikel Terkait Lainnya</span>
           </h3>
@@ -565,11 +566,13 @@ export const BlogDetailView: React.FC<BlogDetailViewProps> = ({
             desktopGridClass="sm:grid sm:grid-cols-3 sm:gap-4"
             ariaLabel="Artikel Terkait Lainnya"
           >
-            {relatedArticles.map(rel => (
+            {relatedArticles.map((rel, relIdx) => (
               <div
                 key={rel.id}
                 onClick={() => onSelectArticle(rel)}
-                className="nb-card-interactive p-4 space-y-2.5 cursor-pointer group flex flex-col justify-between h-full"
+                data-aos="fade-up"
+                data-aos-delay={getAosDelay(relIdx, 3)}
+                className="nb-card-interactive p-3.5 sm:p-4 space-y-2.5 cursor-pointer group flex flex-col justify-between h-full"
               >
                 <div className="space-y-2">
                   <h4 className="font-bold font-serif text-[#171717] dark:text-[#CEFEF1] text-sm line-clamp-2 group-hover:text-[#123D32] dark:group-hover:text-white transition leading-snug">

@@ -27,6 +27,7 @@ import { TANYA_JAWAB_SHARE_CONFIG } from '../../utils/featureShareHelper';
 import { splitQAAnswer } from '../../utils/qaHelper';
 import { QATableOfContents } from './QATableOfContents';
 import { QAReadingViewer } from './QAReadingViewer';
+import { getAosDelay, refreshHardGlobalAOS } from '../../utils/aosManager';
 
 interface PublicQAViewProps {
   onNavigateToConsultation: () => void;
@@ -231,30 +232,37 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
     );
   });
 
+  useEffect(() => {
+    refreshHardGlobalAOS();
+  }, [filteredQA.length, loading, expandedId]);
+
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8 animate-fade-in font-sans">
+    <div className="max-w-[1080px] mx-auto px-3.5 sm:px-6 py-4 sm:py-6 space-y-5 sm:space-y-6 font-sans">
       {/* HEADER HERO BANNER */}
-      <div className="relative overflow-hidden rounded-lg bg-[#0F3D3A] text-[#F5DABF] p-6 sm:p-10 border-2 border-[#171717] shadow-[6px_6px_0px_#171717]">
-        <div className="relative z-10 max-w-2xl space-y-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#D6AD52] border-2 border-[#171717] text-[#0F3D3A] text-xs font-extrabold uppercase tracking-wider">
-            <Sparkles className="w-3.5 h-3.5 text-[#0F3D3A]" />
+      <div
+        data-aos="fade-up"
+        className="relative overflow-hidden rounded-lg bg-[#0F3D3A] text-[#F5DABF] p-5 sm:p-6 border-2 border-[#171717] shadow-[5px_5px_0px_#171717]"
+      >
+        <div className="relative z-10 max-w-2xl space-y-3">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-[#D6AD52] border-2 border-[#171717] text-[#0F3D3A] text-[11px] font-extrabold uppercase tracking-wider">
+            <Sparkles className="w-3 h-3 text-[#0F3D3A]" />
             <span>Arsip Tanya Jawab Pembelajaran Publik</span>
           </div>
 
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold font-serif text-[#F5DABF] leading-tight">
+          <h1 className="dars-page-title font-bold font-serif text-[#F5DABF]">
             Tanya Jawab Syar'i & Pembelajaran
           </h1>
 
-          <p className="text-xs sm:text-sm text-[#F5DABF]/90 leading-relaxed font-sans">
+          <p className="text-xs sm:text-[13px] text-[#F5DABF]/90 leading-relaxed font-sans">
             Kumpulan pertanyaan dan jawaban resmi seputar kajian, kitab turats, serta fiqih pembelajaran yang telah disetujui dan diverifikasi oleh Ustaz & Pembimbing Dars with Osama.
           </p>
 
-          <div className="pt-2 flex flex-wrap items-center gap-3">
+          <div className="pt-1 flex flex-wrap items-center gap-2.5">
             <button
               onClick={handleAskQuestion}
-              className="px-5 py-2.5 text-xs font-extrabold uppercase tracking-wider rounded-md border-2 border-[#171717] bg-[#D6AD52] hover:bg-[#E5BE65] text-[#0F3D3A] shadow-[3px_3px_0px_#171717] transition-all inline-flex items-center gap-2 cursor-pointer"
+              className="px-4 py-2 text-xs font-extrabold uppercase tracking-wider rounded-md border-2 border-[#171717] bg-[#D6AD52] hover:bg-[#E5BE65] text-[#0F3D3A] shadow-[3px_3px_0px_#171717] transition-all inline-flex items-center gap-1.5 cursor-pointer"
             >
-              <Send className="w-4 h-4" />
+              <Send className="w-3.5 h-3.5" />
               <span>Ajukan Pertanyaan Baru</span>
             </button>
 
@@ -262,10 +270,10 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
               type="button"
               data-testid="share-qa-page-btn"
               onClick={() => setFeatureShareModalOpen(true)}
-              className="px-5 py-2.5 text-xs font-extrabold uppercase tracking-wider rounded-md border-2 border-[#171717] bg-[#F5DABF] hover:bg-white text-[#0F3D3A] shadow-[3px_3px_0px_#171717] transition-all inline-flex items-center gap-2 cursor-pointer"
+              className="px-4 py-2 text-xs font-extrabold uppercase tracking-wider rounded-md border-2 border-[#171717] bg-[#F5DABF] hover:bg-white text-[#0F3D3A] shadow-[3px_3px_0px_#171717] transition-all inline-flex items-center gap-1.5 cursor-pointer"
               title="Bagikan tautan halaman utama Tanya Jawab"
             >
-              <Share2 className="w-4 h-4 text-[#0F3D3A]" />
+              <Share2 className="w-3.5 h-3.5 text-[#0F3D3A]" />
               <span>Bagikan Tanya Jawab</span>
             </button>
 
@@ -278,7 +286,10 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
       </div>
 
       {/* SEARCH & FILTER BAR + READING FONT CONTROLS */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 nb-card p-4 sm:p-5 bg-[#FFF5E9] border-2 border-[#171717] shadow-[4px_4px_0px_#171717] rounded-lg text-[#0F3D3A]">
+      <div
+        data-aos="fade-up"
+        className="flex flex-col md:flex-row md:items-center justify-between gap-3.5 nb-card p-3.5 sm:p-4 bg-[#FFF5E9] border-2 border-[#171717] shadow-[4px_4px_0px_#171717] rounded-lg text-[#0F3D3A]"
+      >
         <div className="relative w-full md:max-w-md flex-1">
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#123D32] dark:text-[#4CA7A1]" />
           <input
@@ -373,8 +384,8 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
           </div>
         )
       ) : (
-        <div style={fontControl.style} className="space-y-5">
-          {filteredQA.map((item) => {
+        <div style={fontControl.style} className="space-y-4">
+          {filteredQA.map((item, idx) => {
             const isExpanded = expandedId === item.id;
             const isDirectTarget = initialQaId === item.id;
             const plainAnswer = stripHtmlTags(item.replyContent || '');
@@ -385,12 +396,14 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
               <div
                 key={item.id}
                 id={`qa-${item.id}`}
+                data-aos={isExpanded ? undefined : 'fade-up'}
+                data-aos-delay={isExpanded ? undefined : getAosDelay(idx, 2)}
                 className={
                   isExpanded
-                    ? `-mx-4 px-4 py-4 sm:mx-0 sm:p-6 bg-white sm:bg-[#FFF5E9] border-0 border-y sm:border-2 border-[#171717] rounded-none sm:rounded-lg shadow-none sm:shadow-[4px_4px_0px_#171717] space-y-3.5 sm:space-y-4 text-[#171717] transition-all ${
+                    ? `-mx-3.5 px-3.5 py-4 sm:mx-0 sm:p-5 bg-white sm:bg-[#FFF5E9] border-0 border-y sm:border-2 border-[#171717] rounded-none sm:rounded-lg shadow-none sm:shadow-[4px_4px_0px_#171717] space-y-3.5 text-[#171717] transition-all ${
                         isDirectTarget ? 'ring-2 ring-[#0F3D3A]' : ''
                       }`
-                    : `w-full nb-card p-4 sm:p-6 space-y-3.5 sm:space-y-4 bg-[#FFF5E9] text-[#0F3D3A] border-2 border-[#171717] shadow-[4px_4px_0px_#171717] rounded-lg transition-all ${
+                    : `w-full nb-card p-4 sm:p-5 space-y-3 bg-[#FFF5E9] text-[#0F3D3A] border-2 border-[#171717] shadow-[3px_3px_0px_#171717] rounded-lg transition-all ${
                         isDirectTarget ? 'ring-2 ring-[#0F3D3A]' : ''
                       }`
                 }
@@ -597,7 +610,10 @@ export const PublicQAView: React.FC<PublicQAViewProps> = ({
       )}
 
       {/* FOOTER CTA BANNER */}
-      <div className="p-6 sm:p-8 bg-[#123D32] dark:bg-[#1F5F63] text-white dark:text-[#CEFEF1] border-2 border-[#171717] dark:border-[#4CA7A1] rounded-lg flex flex-col sm:flex-row items-center justify-between gap-4 shadow-[6px_6px_0px_#171717] dark:shadow-[6px_6px_0px_#001722]">
+      <div
+        data-aos="fade-up"
+        className="p-5 sm:p-6 bg-[#123D32] dark:bg-[#1F5F63] text-white dark:text-[#CEFEF1] border-2 border-[#171717] dark:border-[#4CA7A1] rounded-lg flex flex-col sm:flex-row items-center justify-between gap-4 shadow-[5px_5px_0px_#171717] dark:shadow-[5px_5px_0px_#001722]"
+      >
         <div className="space-y-1 text-center sm:text-left">
           <h4 className="text-base sm:text-lg font-bold font-serif text-white">
             Memiliki Pertanyaan Seputar Pelajaran?

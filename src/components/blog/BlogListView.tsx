@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   BookOpen,
   Search,
@@ -26,6 +26,7 @@ import {
   groupArticlesByGenre,
   findArticlesByGenre
 } from '../../utils/articleHistoryHelper';
+import { getAosDelay, refreshHardGlobalAOS } from '../../utils/aosManager';
 
 interface BlogListViewProps {
   posts: BlogPost[];
@@ -172,8 +173,12 @@ export const BlogListView: React.FC<BlogListViewProps> = ({
     );
   }, [posts, mobileSearchQuery]);
 
+  useEffect(() => {
+    refreshHardGlobalAOS();
+  }, [filteredPosts.length, activeGenre, loading, selectedCategory, searchQuery]);
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 animate-fade-in font-sans">
+    <div className="max-w-[1320px] mx-auto px-3 sm:px-5 lg:px-6 py-4 sm:py-6 font-sans">
       {/* =========================================================================
           MOBILE VIEW (md:hidden) — REDESAIN HALAMAN ARTIKEL KHUSUS MOBILE
           1. Artikel Terakhir Dibaca di alur normal (bukan sticky/fixed).
@@ -407,7 +412,10 @@ export const BlogListView: React.FC<BlogListViewProps> = ({
           <div className="space-y-4">
             {/* BAGIAN 1: ARTIKEL TERAKHIR DIBACA (ALUR NORMAL, BUKAN STICKY/FIXED) */}
             {lastReadArticle && (
-              <div className="rounded-xl border-2 border-[#171717] dark:border-[#4CA7A1] bg-[#123D32] dark:bg-[#1F5F63] text-[#FAF7F0] p-3 shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#001722] space-y-2">
+              <div
+                data-aos="fade-up"
+                className="rounded-xl border-2 border-[#171717] dark:border-[#4CA7A1] bg-[#123D32] dark:bg-[#1F5F63] text-[#FAF7F0] p-3 shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#001722] space-y-2"
+              >
                 <div className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider text-[#D6AD52] dark:text-[#CEFEF1]">
                   <Clock className="w-3 h-3 text-[#D6AD52] dark:text-[#CEFEF1]" />
                   <span>Artikel Terakhir Dibaca</span>
@@ -446,9 +454,11 @@ export const BlogListView: React.FC<BlogListViewProps> = ({
               </div>
             ) : (
               <div className="space-y-4">
-                {genreGroups.map((genre) => (
+                {genreGroups.map((genre, gIdx) => (
                   <div
                     key={genre.name}
+                    data-aos="fade-up"
+                    data-aos-delay={getAosDelay(gIdx, 2)}
                     className="rounded-xl border-2 border-[#171717] dark:border-[#4CA7A1] bg-white dark:bg-[#001722] p-3 shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#001722] space-y-2.5"
                   >
                     {/* Header Frame Genre (Dapat diklik untuk membuka Halaman Detail Genre) */}
@@ -512,31 +522,34 @@ export const BlogListView: React.FC<BlogListViewProps> = ({
           - Artikel Unggulan Utama
           - Daftar Artikel Terbaru (Grid desktop dengan MobileCarousel container)
          ========================================================================= */}
-      <div className="hidden md:block space-y-8 sm:space-y-10">
+      <div className="hidden md:block space-y-6 sm:space-y-7">
         {/* HERO BANNER SECTION */}
-        <div className="relative overflow-hidden rounded-lg bg-[#123D32] dark:bg-[#1F5F63] text-[#FAF7F0] dark:text-[#CEFEF1] p-6 sm:p-10 border-2 border-[#171717] dark:border-[#4CA7A1] shadow-[6px_6px_0px_#171717] dark:shadow-[6px_6px_0px_#001722]">
-          <div className="relative z-10 max-w-2xl space-y-4">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#4CA7A1] border-2 border-[#171717] dark:border-[#001722] text-[#001722] text-xs font-extrabold uppercase tracking-wider">
-              <Sparkles className="w-3.5 h-3.5 text-[#001722]" />
+        <div
+          data-aos="fade-up"
+          className="relative overflow-hidden rounded-lg bg-[#123D32] dark:bg-[#1F5F63] text-[#FAF7F0] dark:text-[#CEFEF1] p-5 sm:p-6 border-2 border-[#171717] dark:border-[#4CA7A1] shadow-[5px_5px_0px_#171717] dark:shadow-[5px_5px_0px_#001722]"
+        >
+          <div className="relative z-10 max-w-2xl space-y-3">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-[#4CA7A1] border-2 border-[#171717] dark:border-[#001722] text-[#001722] text-[11px] font-extrabold uppercase tracking-wider">
+              <Sparkles className="w-3 h-3 text-[#001722]" />
               <span>Blog & Catatan Ilmu</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold font-serif tracking-tight text-white leading-tight">
+            <h1 className="dars-page-title font-bold font-serif tracking-tight text-white">
               Naskah, Faedah Kajian, & Artikel Dars with Osama
             </h1>
-            <p className="text-[#FAF7F0]/90 dark:text-[#A6D6C9] text-xs sm:text-sm leading-relaxed">
+            <p className="text-[#FAF7F0]/90 dark:text-[#A6D6C9] text-xs sm:text-[13px] leading-relaxed">
               Temukan artikel ilmiah, rangkuman tazkiyatun nufs, panduan tadabbur Al-Qur'an, serta catatan keilmuan Islam untuk membina pembaca setia.
             </p>
 
             {/* SEARCH BAR & SHARE BUTTON */}
-            <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-              <div className="relative flex items-center flex-1 max-w-lg bg-white dark:bg-[#001722] border-2 border-[#171717] dark:border-[#4CA7A1] rounded-md shadow-[4px_4px_0px_#171717] dark:shadow-[4px_4px_0px_#001722]">
-                <Search className="w-4 h-4 absolute left-3.5 text-[#123D32] dark:text-[#4CA7A1]" />
+            <div className="pt-1 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+              <div className="relative flex items-center flex-1 max-w-lg bg-white dark:bg-[#001722] border-2 border-[#171717] dark:border-[#4CA7A1] rounded-md shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#001722]">
+                <Search className="w-4 h-4 absolute left-3 text-[#123D32] dark:text-[#4CA7A1]" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Cari artikel, topik, atau kata kunci..."
-                  className="w-full pl-10 pr-4 py-3 bg-transparent text-xs sm:text-sm font-semibold text-[#171717] dark:text-[#CEFEF1] placeholder:text-[#525855] dark:placeholder:text-[#A6D6C9] focus:outline-none"
+                  className="w-full pl-9 pr-3.5 py-2 bg-transparent text-xs sm:text-[13px] font-semibold text-[#171717] dark:text-[#CEFEF1] placeholder:text-[#525855] dark:placeholder:text-[#A6D6C9] focus:outline-none"
                 />
               </div>
 
@@ -544,10 +557,10 @@ export const BlogListView: React.FC<BlogListViewProps> = ({
                 type="button"
                 data-testid="share-blog-page-btn"
                 onClick={() => setShareModalOpen(true)}
-                className="px-4 py-3 text-xs font-extrabold uppercase tracking-wider rounded-md border-2 border-[#171717] dark:border-[#001722] bg-[#D6AD52] hover:bg-[#E5BE65] text-[#171923] shadow-[4px_4px_0px_#171717] dark:shadow-[4px_4px_0px_#001722] transition-all inline-flex items-center justify-center gap-2 cursor-pointer shrink-0"
+                className="px-3.5 py-2 text-xs font-extrabold uppercase tracking-wider rounded-md border-2 border-[#171717] dark:border-[#001722] bg-[#D6AD52] hover:bg-[#E5BE65] text-[#171923] shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#001722] transition-all inline-flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
                 title="Bagikan tautan halaman utama Artikel Ilmiah"
               >
-                <Share2 className="w-4 h-4 text-[#171923]" />
+                <Share2 className="w-3.5 h-3.5 text-[#171923]" />
                 <span>Bagikan Artikel Ilmiah</span>
               </button>
             </div>
@@ -584,7 +597,7 @@ export const BlogListView: React.FC<BlogListViewProps> = ({
 
         {/* FEATURED ARTICLE (IF AVAILABLE) */}
         {featuredPost && selectedCategory === 'all' && !searchQuery && (
-          <div className="space-y-3">
+          <div data-aos="fade-up" className="space-y-2.5">
             <h2 className="text-xs font-extrabold text-[#123D32] dark:text-[#CEFEF1] uppercase tracking-widest flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-[#123D32] dark:text-[#4CA7A1]" />
               <span>Artikel Unggulan Utama</span>
@@ -594,7 +607,7 @@ export const BlogListView: React.FC<BlogListViewProps> = ({
               onClick={() => onSelectArticle(featuredPost)}
               className="nb-card-interactive overflow-hidden group cursor-pointer grid grid-cols-1 lg:grid-cols-12"
             >
-              <div className="lg:col-span-7 aspect-video lg:aspect-auto relative overflow-hidden bg-[#123D32] dark:bg-[#0D2B36] border-b-2 lg:border-b-0 lg:border-r-2 border-[#171717] dark:border-[#4CA7A1]">
+              <div className="lg:col-span-6 aspect-video lg:aspect-auto lg:max-h-[300px] relative overflow-hidden bg-[#123D32] dark:bg-[#0D2B36] border-b-2 lg:border-b-0 lg:border-r-2 border-[#171717] dark:border-[#4CA7A1]">
                 <ResilientGoogleDriveImage
                   src={featuredPost.coverImageUrl || DEFAULT_COVER_IMAGE}
                   fallbackSrc={DEFAULT_COVER_IMAGE}
@@ -602,12 +615,12 @@ export const BlogListView: React.FC<BlogListViewProps> = ({
                   aspectRatioClass="w-full h-full aspect-video lg:aspect-auto"
                   imageClassName="w-full h-full object-cover group-hover:scale-103 transition duration-300"
                 />
-                <span className="absolute top-4 left-4 px-3 py-1 bg-[#4CA7A1] text-[#001722] font-extrabold text-xs uppercase tracking-wider rounded border-2 border-[#171717] dark:border-[#001722] shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#001722] flex items-center gap-1.5 z-10">
-                  <Sparkles className="w-3.5 h-3.5" /> Artikel Unggulan
+                <span className="absolute top-3 left-3 px-2.5 py-0.5 bg-[#4CA7A1] text-[#001722] font-extrabold text-[11px] uppercase tracking-wider rounded border-2 border-[#171717] dark:border-[#001722] shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#001722] flex items-center gap-1.5 z-10">
+                  <Sparkles className="w-3 h-3" /> Artikel Unggulan
                 </span>
               </div>
 
-              <div className="lg:col-span-5 p-6 sm:p-8 flex flex-col justify-between space-y-4">
+              <div className="lg:col-span-6 p-5 sm:p-6 flex flex-col justify-between space-y-3.5">
                 <div className="space-y-3">
                   <div className="flex items-center gap-3 text-xs text-[#525855] dark:text-[#A6D6C9] font-bold">
                     <span className="px-2.5 py-0.5 rounded bg-[#4CA7A1] text-[#001722] border border-[#171717] dark:border-[#001722] font-extrabold text-[10px] uppercase">
@@ -695,8 +708,8 @@ export const BlogListView: React.FC<BlogListViewProps> = ({
 
         {/* REGULAR ARTICLES GRID */}
         <div className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-[#171717] dark:border-[#4CA7A1] pb-3">
-            <h2 className="text-lg sm:text-xl font-bold font-serif text-[#171717] dark:text-[#CEFEF1]">
+          <div data-aos="fade-up" className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-[#171717] dark:border-[#4CA7A1] pb-2.5">
+            <h2 className="dars-section-title font-bold font-serif text-[#171717] dark:text-[#CEFEF1]">
               Daftar Artikel Terbaru ({filteredPosts.length})
             </h2>
 
@@ -749,16 +762,18 @@ export const BlogListView: React.FC<BlogListViewProps> = ({
             )
           ) : (
             <MobileCarousel
-              desktopGridClass="sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-6"
+              desktopGridClass="sm:grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 sm:gap-4"
               ariaLabel="Daftar Artikel Ilmiah"
             >
               {(selectedCategory === 'all' && !searchQuery ? regularPosts : filteredPosts).map(
-                (post) => (
+                (post, idx) => (
                   <div
                     key={post.id}
                     onClick={() => onSelectArticle(post)}
                     data-card-type="article"
-                    className="article-card card-artikel nb-card-interactive overflow-hidden flex flex-col justify-between group cursor-pointer h-full border-2 border-[#171717] shadow-[4px_4px_0px_#171717]"
+                    data-aos="fade-up"
+                    data-aos-delay={getAosDelay(idx, 4)}
+                    className="article-card card-artikel nb-card-interactive overflow-hidden flex flex-col justify-between group cursor-pointer h-full border-2 border-[#171717] shadow-[3px_3px_0px_#171717]"
                     style={{ backgroundColor: '#6C151E', color: '#FFF5E9' }}
                   >
                     <div>
@@ -774,10 +789,10 @@ export const BlogListView: React.FC<BlogListViewProps> = ({
                       </div>
 
                       {/* Title & Metadata */}
-                      <div className="p-4 sm:p-5 space-y-2.5 bg-[#6C151E] text-[#FFF5E9]">
+                      <div className="p-3.5 sm:p-4 space-y-2 bg-[#6C151E] text-[#FFF5E9]">
                         <div className="flex items-center gap-2 text-[11px] text-[#F5DABF] font-bold">
                           <span className="flex items-center gap-1">
-                            <Calendar className="w-3.5 h-3.5 text-[#F5DABF]" />
+                            <Calendar className="w-3 h-3 text-[#F5DABF]" />
                             <span className="truncate">
                               {new Date(post.publishedAt || post.createdAt).toLocaleDateString(
                                 'id-ID',
@@ -787,19 +802,19 @@ export const BlogListView: React.FC<BlogListViewProps> = ({
                           </span>
                           <span>•</span>
                           <span className="flex items-center gap-1 shrink-0">
-                            <Clock className="w-3.5 h-3.5 text-[#F5DABF]" />
+                            <Clock className="w-3 h-3 text-[#F5DABF]" />
                             <span>{post.readingTimeMinutes} min</span>
                           </span>
                         </div>
 
                         <h3
-                          className="font-serif font-bold text-white group-hover:text-[#F5DABF] text-base sm:text-lg leading-snug transition line-clamp-2"
+                          className="font-serif font-bold text-white group-hover:text-[#F5DABF] text-sm sm:text-[15px] leading-snug transition line-clamp-2"
                           dangerouslySetInnerHTML={{ __html: autoWrapArabicText(post.title) }}
                         />
 
                         {post.titleAr && (
                           <p
-                            className="font-amiri text-sm sm:text-base text-[#F5DABF] font-bold truncate leading-[1.85]"
+                            className="font-amiri text-sm text-[#F5DABF] font-bold truncate leading-[1.8]"
                             dir="rtl"
                           >
                             {post.titleAr}
@@ -813,10 +828,10 @@ export const BlogListView: React.FC<BlogListViewProps> = ({
                               .split(',')
                               .map((c) => c.trim())
                               .filter(Boolean)
-                              .map((catName, idx) => (
+                              .map((catName, catIdx) => (
                                 <span
-                                  key={idx}
-                                  className="px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider bg-[#F5DABF] text-[#6C151E] border border-[#171717] shadow-[1.5px_1.5px_0px_#171717] inline-block"
+                                  key={catIdx}
+                                  className="px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider bg-[#F5DABF] text-[#6C151E] border border-[#171717] shadow-[1.5px_1.5px_0px_#171717] inline-block"
                                 >
                                   {catName}
                                 </span>
@@ -833,18 +848,18 @@ export const BlogListView: React.FC<BlogListViewProps> = ({
                     </div>
 
                     {/* Footer info */}
-                    <div className="px-4 sm:px-5 py-3 sm:py-3.5 border-t-2 border-[#F5DABF]/20 bg-[#6C151E] text-[#FFF5E9] flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2">
+                    <div className="px-3.5 sm:px-4 py-2.5 border-t-2 border-[#F5DABF]/20 bg-[#6C151E] text-[#FFF5E9] flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2 min-w-0">
                         <div className="w-6 h-6 rounded bg-[#FAF7F0] text-[#6C151E] border border-[#171717] font-bold text-[10px] flex items-center justify-center shrink-0">
                           {post.authorName.charAt(0)}
                         </div>
-                        <span className="font-bold text-[#F5DABF] text-xs truncate max-w-[120px] sm:max-w-none">
+                        <span className="font-bold text-[#F5DABF] text-[11px] truncate max-w-[100px] sm:max-w-[120px]">
                           {post.authorName}
                         </span>
                       </div>
 
-                      <span className="px-2.5 py-0.5 rounded border-2 border-[#F5DABF] text-[#F5DABF] font-extrabold text-[11px] flex items-center gap-0.5 group-hover:bg-[#F5DABF] group-hover:text-[#6C151E] transition shrink-0">
-                        Baca Artikel <ChevronRight className="w-3.5 h-3.5" />
+                      <span className="px-2 py-0.5 rounded border-2 border-[#F5DABF] text-[#F5DABF] font-extrabold text-[10px] flex items-center gap-0.5 group-hover:bg-[#F5DABF] group-hover:text-[#6C151E] transition shrink-0">
+                        Baca <ChevronRight className="w-3 h-3" />
                       </span>
                     </div>
                   </div>

@@ -46,8 +46,7 @@ import { InstructorProfileView } from './components/profile/InstructorProfileVie
 import { SearchResultsView } from './components/search/SearchResultsView';
 import { UnsubscribePreferencesView } from './components/student/UnsubscribePreferencesView';
 import { Course, Category, Session, Quiz, Enrollment, BlogPost, LibraryBook, LibraryBookVolume } from './types';
-import AOS from 'aos';
-import 'aos/dist/aos.css';
+import { initGlobalAOS, refreshGlobalAOS, refreshHardGlobalAOS } from './utils/aosManager';
 import {
   getCategories,
   getCourses,
@@ -198,15 +197,9 @@ function MainApp() {
   const [targetQaId, setTargetQaId] = useState<string | null>(null);
   const [targetConsultationId, setTargetConsultationId] = useState<string | null>(null);
 
-  // Initialize AOS once at root level with proper trigger offsets and repeated scroll responsiveness
+  // Initialize Global AOS once at root level (repeatable fade-up across all views & async loads)
   useEffect(() => {
-    AOS.init({
-      duration: 700,
-      easing: 'ease-out-cubic',
-      once: false,
-      mirror: false,
-      offset: 120,
-    });
+    initGlobalAOS();
   }, []);
 
   // Search & Filter State
@@ -221,6 +214,14 @@ function MainApp() {
   const [libraryBooks, setLibraryBooks] = useState<LibraryBook[]>([]);
   const [enrollmentsMap, setEnrollmentsMap] = useState<Record<string, Enrollment>>({});
   const [loading, setLoading] = useState<boolean>(true);
+
+  // Refresh AOS after async Firebase data loads or desktop sidebar width toggles
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      refreshGlobalAOS();
+    }, 120);
+    return () => window.clearTimeout(timer);
+  }, [loading, courses.length, blogPosts.length, libraryBooks.length, isSidebarCollapsed]);
 
   // Firestore disruption state & debounce retry tracking
   const [loadError, setLoadError] = useState<{ category: string; summary: string; code: string } | null>(null);
@@ -748,8 +749,8 @@ function MainApp() {
   // Recalculate and re-scan newly mounted elements on view transitions and dynamic data loads
   useEffect(() => {
     const timer = setTimeout(() => {
-      AOS.refreshHard();
-    }, 150);
+      refreshHardGlobalAOS();
+    }, 120);
     return () => clearTimeout(timer);
   }, [currentView, selectedCourse, selectedSession, selectedBlogPost, selectedLibraryBook, selectedLibraryVolume, courses.length, blogPosts.length, libraryBooks.length, loading]);
 
@@ -1214,7 +1215,7 @@ function MainApp() {
 
             {/* Right Main Content Column - Properly offset on desktop to prevent overlap */}
             <div className={`flex-1 flex flex-col min-w-0 min-h-screen transition-all duration-300 ${
-              isSidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64'
+              isSidebarCollapsed ? 'lg:pl-[68px]' : 'lg:pl-[232px]'
             }`}>
               {/* Top Page Header */}
               <AppHeader
@@ -1228,7 +1229,7 @@ function MainApp() {
               />
 
               {/* Main Body Router */}
-              <main className="flex-1 pb-12 sm:pb-16">
+              <main className="flex-1 pb-10 sm:pb-12">
                 {isAdmin && loadError && currentView === 'home' && (
                   <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
                     <ServiceDisruptionBanner

@@ -135,16 +135,16 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
       <aside
         aria-label="Navigasi Utama Dars with Osama"
         className={`fixed top-0 left-0 bottom-0 z-50 flex flex-col bg-[#FAF7F0] dark:bg-[#001722] text-[#171717] dark:text-[#CEFEF1] border-r-2 border-[#171717] dark:border-[#4CA7A1] transition-all duration-300 select-none ${
-          effectiveCollapsed ? 'lg:w-20' : 'lg:w-64'
+          effectiveCollapsed ? 'lg:w-[68px]' : 'lg:w-[232px]'
         } ${
           mobileOpen
-            ? 'translate-x-0 w-[280px] sm:w-[320px] max-w-[85vw] shadow-[8px_0px_0px_#171717] dark:shadow-[8px_0px_0px_#001722]'
+            ? 'translate-x-0 w-[272px] sm:w-[300px] max-w-[85vw] shadow-[8px_0px_0px_#171717] dark:shadow-[8px_0px_0px_#001722]'
             : '-translate-x-full lg:translate-x-0'
         }`}
       >
         {/* Top Brand Section — Logo serves as the interactive sidebar toggle */}
         <div
-          className={`h-16 px-4 flex items-center border-b-2 border-[#171717] dark:border-[#1F5F63] bg-white dark:bg-[#001722] shrink-0 ${
+          className={`h-14 px-3 flex items-center border-b-2 border-[#171717] dark:border-[#1F5F63] bg-white dark:bg-[#001722] shrink-0 ${
             effectiveCollapsed ? 'justify-center' : 'justify-between'
           }`}
         >
@@ -157,7 +157,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
               className="p-1 rounded-md border-2 border-transparent hover:border-[#171717] dark:hover:border-[#4CA7A1] hover:bg-[#EFE5D2] dark:hover:bg-[#1F5F63] transition-transform duration-150 hover:scale-105 active:scale-95 cursor-pointer group"
             >
               <div className="rounded-md border-2 border-[#171717] dark:border-[#4CA7A1] shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#001722] bg-[#123D32] dark:bg-[#1F5F63] p-0.5">
-                <LogoSymbol className="w-9 h-9" />
+                <LogoSymbol className="w-7 h-7" />
               </div>
             </button>
           ) : (
@@ -201,11 +201,11 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
         </div>
 
         {/* Navigation Links Area */}
-        <div className="flex-1 overflow-y-auto px-3 py-4 space-y-5 bg-[#FAF7F0] dark:bg-[#001722]">
+        <div className="flex-1 overflow-y-auto px-2.5 py-3 space-y-4 bg-[#FAF7F0] dark:bg-[#001722]">
           {/* Primary Public & Learning Navigation */}
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             {!effectiveCollapsed && (
-              <p className="px-2 text-[10px] font-extrabold uppercase tracking-[0.18em] text-[#123D32] dark:text-[#A6D6C9] mb-2">
+              <p className="px-2 text-[9.5px] font-extrabold uppercase tracking-[0.16em] text-[#123D32] dark:text-[#A6D6C9] mb-1.5">
                 Menu Utama
               </p>
             )}
@@ -220,21 +220,21 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                   onClick={() => handleNavClick(item.id)}
                   title={effectiveCollapsed ? item.label : undefined}
                   className={`w-full flex items-center ${
-                    effectiveCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2.5'
+                    effectiveCollapsed ? 'justify-center px-0 py-1.5' : 'gap-2.5 px-2.5 py-2'
                   } rounded-md text-left transition-all duration-150 cursor-pointer group relative border-2 ${
                     item.active
-                      ? 'bg-[#D6AD52] text-[#171717] font-extrabold border-[#171717] dark:bg-[#1F5F63] dark:text-[#CEFEF1] dark:border-[#4CA7A1] dark:border-l-4 dark:border-l-[#4CA7A1] shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#001722]'
-                      : 'bg-white dark:bg-[#0D2B36] hover:bg-[#EFE5D2] dark:hover:bg-[#1F5F63] text-[#171717] dark:text-[#A6D6C9] dark:hover:text-[#CEFEF1] border-[#171717]/40 dark:border-[#4CA7A1] hover:border-[#171717] dark:hover:border-[#A6D6C9]'
+                      ? 'bg-[#D6AD52] text-[#171717] font-extrabold border-[#171717] dark:bg-[#1F5F63] dark:text-[#CEFEF1] dark:border-[#4CA7A1] dark:border-l-4 dark:border-l-[#4CA7A1] shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#001722]'
+                      : 'bg-white dark:bg-[#0D2B36] hover:bg-[#EFE5D2] dark:hover:bg-[#1F5F63] text-[#171717] dark:text-[#A6D6C9] dark:hover:text-[#CEFEF1] border-[#171717]/35 dark:border-[#4CA7A1] hover:border-[#171717] dark:hover:border-[#A6D6C9]'
                   }`}
                 >
                   <div
-                    className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 transition-colors border-2 ${
+                    className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 transition-colors border-[1.5px] ${
                       item.active
                         ? 'bg-[#123D32] text-[#D6AD52] border-[#171717] dark:bg-[#4CA7A1] dark:text-[#001722] dark:border-[#CEFEF1]'
-                        : 'bg-[#EFE5D2] dark:bg-[#001722] text-[#123D32] dark:text-[#A6D6C9] border-[#171717]/30 dark:border-[#4CA7A1] group-hover:border-[#171717] dark:group-hover:border-[#CEFEF1]'
+                        : 'bg-[#EFE5D2] dark:bg-[#001722] text-[#123D32] dark:text-[#A6D6C9] border-[#171717]/25 dark:border-[#4CA7A1] group-hover:border-[#171717] dark:group-hover:border-[#CEFEF1]'
                     }`}
                   >
-                    <Icon className="w-4 h-4" />
+                    <Icon className="w-3.5 h-3.5" />
                   </div>
 
                   {!effectiveCollapsed && (
@@ -266,9 +266,9 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
           </div>
 
           {/* Student Dashboard & Admin Navigation */}
-          <div className="space-y-2 pt-3 border-t-2 border-[#171717]/15 dark:border-[#1F5F63]">
+          <div className="space-y-1.5 pt-2.5 border-t-2 border-[#171717]/15 dark:border-[#1F5F63]">
             {!effectiveCollapsed && (
-              <p className="px-2 text-[10px] font-extrabold uppercase tracking-[0.18em] text-[#123D32] dark:text-[#A6D6C9] mb-2">
+              <p className="px-2 text-[9.5px] font-extrabold uppercase tracking-[0.16em] text-[#123D32] dark:text-[#A6D6C9] mb-1.5">
                 Ruang Siswa
               </p>
             )}
@@ -285,21 +285,21 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
               }}
               title={effectiveCollapsed ? 'Dashboard Siswa' : undefined}
               className={`w-full flex items-center ${
-                effectiveCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2.5'
+                effectiveCollapsed ? 'justify-center px-0 py-1.5' : 'gap-2.5 px-2.5 py-2'
               } rounded-md text-left transition-all duration-150 cursor-pointer group border-2 ${
                 isStudentDashboardActive
-                  ? 'bg-[#D6AD52] text-[#171717] font-extrabold border-[#171717] dark:bg-[#1F5F63] dark:text-[#CEFEF1] dark:border-[#4CA7A1] shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#001722]'
-                  : 'bg-white dark:bg-[#0D2B36] hover:bg-[#EFE5D2] dark:hover:bg-[#1F5F63] text-[#171717] dark:text-[#A6D6C9] dark:hover:text-[#CEFEF1] border-[#171717]/40 dark:border-[#4CA7A1]'
+                  ? 'bg-[#D6AD52] text-[#171717] font-extrabold border-[#171717] dark:bg-[#1F5F63] dark:text-[#CEFEF1] dark:border-[#4CA7A1] shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#001722]'
+                  : 'bg-white dark:bg-[#0D2B36] hover:bg-[#EFE5D2] dark:hover:bg-[#1F5F63] text-[#171717] dark:text-[#A6D6C9] dark:hover:text-[#CEFEF1] border-[#171717]/35 dark:border-[#4CA7A1]'
               }`}
             >
               <div
-                className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 border-2 ${
+                className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 border-[1.5px] ${
                   isStudentDashboardActive
                     ? 'bg-[#123D32] text-[#D6AD52] border-[#171717] dark:bg-[#4CA7A1] dark:text-[#001722] dark:border-[#CEFEF1]'
-                    : 'bg-[#EFE5D2] dark:bg-[#001722] text-[#123D32] dark:text-[#A6D6C9] border-[#171717]/30 dark:border-[#4CA7A1]'
+                    : 'bg-[#EFE5D2] dark:bg-[#001722] text-[#123D32] dark:text-[#A6D6C9] border-[#171717]/25 dark:border-[#4CA7A1]'
                 }`}
               >
-                <GraduationCap className="w-4 h-4" />
+                <GraduationCap className="w-3.5 h-3.5" />
               </div>
               {!effectiveCollapsed && (
                 <div className="overflow-hidden flex-1">
@@ -326,21 +326,21 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                 onClick={() => handleNavClick('admin-dashboard')}
                 title={effectiveCollapsed ? 'Admin Panel' : undefined}
                 className={`w-full flex items-center ${
-                  effectiveCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2.5'
+                  effectiveCollapsed ? 'justify-center px-0 py-1.5' : 'gap-2.5 px-2.5 py-2'
                 } rounded-md text-left transition-all duration-150 cursor-pointer group border-2 ${
                   isAdminDashboardActive
-                    ? 'bg-[#D6AD52] text-[#171717] font-extrabold border-[#171717] dark:bg-[#1F5F63] dark:text-[#CEFEF1] dark:border-[#4CA7A1] shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#001722]'
-                    : 'bg-white dark:bg-[#0D2B36] hover:bg-[#EFE5D2] dark:hover:bg-[#1F5F63] text-[#123D32] dark:text-[#A6D6C9] dark:hover:text-[#CEFEF1] border-[#171717]/40 dark:border-[#4CA7A1]'
+                    ? 'bg-[#D6AD52] text-[#171717] font-extrabold border-[#171717] dark:bg-[#1F5F63] dark:text-[#CEFEF1] dark:border-[#4CA7A1] shadow-[2px_2px_0px_#171717] dark:shadow-[2px_2px_0px_#001722]'
+                    : 'bg-white dark:bg-[#0D2B36] hover:bg-[#EFE5D2] dark:hover:bg-[#1F5F63] text-[#123D32] dark:text-[#A6D6C9] dark:hover:text-[#CEFEF1] border-[#171717]/35 dark:border-[#4CA7A1]'
                 }`}
               >
                 <div
-                  className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 border-2 ${
+                  className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 border-[1.5px] ${
                     isAdminDashboardActive
                       ? 'bg-[#123D32] text-[#D6AD52] border-[#171717] dark:bg-[#4CA7A1] dark:text-[#001722] dark:border-[#CEFEF1]'
-                      : 'bg-[#EFE5D2] dark:bg-[#001722] text-[#123D32] dark:text-[#A6D6C9] border-[#171717]/30 dark:border-[#4CA7A1]'
+                      : 'bg-[#EFE5D2] dark:bg-[#001722] text-[#123D32] dark:text-[#A6D6C9] border-[#171717]/25 dark:border-[#4CA7A1]'
                   }`}
                 >
-                  <ShieldAlert className="w-4 h-4" />
+                  <ShieldAlert className="w-3.5 h-3.5" />
                 </div>
                 {!effectiveCollapsed && (
                   <div className="overflow-hidden flex-1">

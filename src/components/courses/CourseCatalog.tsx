@@ -1,15 +1,12 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Search, Filter, BookOpen } from 'lucide-react';
-import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Course, Category, Enrollment } from '../../types';
 import { CourseCard } from './CourseCard';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
 import { ServiceDisruptionBanner } from '../common/ServiceDisruptionBanner';
 import { MobileCarousel } from '../common/MobileCarousel';
-
-gsap.registerPlugin(ScrollTrigger);
+import { getAosDelay, refreshHardGlobalAOS } from '../../utils/aosManager';
 
 interface CourseCatalogProps {
   courses: Course[];
@@ -43,8 +40,6 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({
   const [activeLevel, setActiveLevel] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>(initialSearch);
 
-  const gridRef = useRef<HTMLDivElement>(null);
-
   const filteredCourses = useMemo(() => {
     return courses.filter((course) => {
       if (activeCategory !== 'all' && course.categoryId !== activeCategory) {
@@ -75,23 +70,26 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      import('aos').then(AOS => AOS.default.refreshHard());
+      refreshHardGlobalAOS();
     }, 50);
     return () => clearTimeout(timer);
   }, [filteredCourses]);
 
   return (
-    <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-10 space-y-6 sm:space-y-8">
+    <div className="max-w-[1320px] mx-auto px-3 sm:px-5 lg:px-6 py-4 sm:py-6 space-y-5 sm:space-y-6">
       {/* Catalog Header */}
-      <div className="bg-[#123D32] dark:bg-[#1F5F63] text-[#FAF7F0] dark:text-[#CEFEF1] border-2 border-[#171717] dark:border-[#4CA7A1] rounded-lg p-5 sm:p-8 shadow-[4px_4px_0px_#171717] sm:shadow-[6px_6px_0px_#171717] dark:shadow-[4px_4px_0px_#001722] sm:dark:shadow-[6px_6px_0px_#001722] space-y-3">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#4CA7A1] border-2 border-[#171717] dark:border-[#001722] text-[#001722] text-xs font-extrabold uppercase tracking-wider">
+      <div
+        data-aos="fade-up"
+        className="bg-[#123D32] dark:bg-[#1F5F63] text-[#FAF7F0] dark:text-[#CEFEF1] border-2 border-[#171717] dark:border-[#4CA7A1] rounded-lg p-4 sm:p-6 shadow-[4px_4px_0px_#171717] dark:shadow-[4px_4px_0px_#001722] space-y-2.5"
+      >
+        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-[#4CA7A1] border-2 border-[#171717] dark:border-[#001722] text-[#001722] text-[11px] font-extrabold uppercase tracking-wider">
           <BookOpen className="w-3.5 h-3.5" />
           <span>Katalog Materi & Kurikulum Resmi</span>
         </div>
-        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white font-serif">
+        <h1 className="dars-page-title font-bold text-white font-serif">
           Daftar Kursus & Syarah Matan
         </h1>
-        <p className="text-[#FAF7F0]/90 dark:text-[#A6D6C9] text-xs sm:text-sm max-w-2xl leading-relaxed">
+        <p className="text-[#FAF7F0]/90 dark:text-[#A6D6C9] text-xs sm:text-[13px] max-w-2xl leading-relaxed">
           Pilih kurikulum yang ingin Anda pelajari. Seluruh video dan naskah materi terbuka untuk umum tanpa wajib login. Mendaftar akun diperlukan jika ingin menyimpan riwayat progres dan mengerjakan kuis evaluasi.
         </p>
       </div>
@@ -110,17 +108,17 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({
       )}
 
       {/* Filter and Search Bar */}
-      <div className="nb-card p-4 sm:p-6 space-y-4">
-        <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
+      <div data-aos="fade-up" data-aos-delay="50" className="nb-card p-3.5 sm:p-4 space-y-3">
+        <div className="flex flex-col md:flex-row gap-2.5 items-stretch md:items-center justify-between">
           {/* Search Input */}
           <div className="relative flex-1">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#123D32] dark:text-[#4CA7A1]" />
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#123D32] dark:text-[#4CA7A1]" />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Cari judul matan, topik bahasan, atau pensyarah..."
-              className="nb-input pl-10 pr-4 py-2.5"
+              className="nb-input pl-9 pr-3.5 py-2 text-xs sm:text-sm"
             />
           </div>
 
@@ -174,19 +172,19 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({
 
       {/* Course Grid & Mobile Carousel */}
       {filteredCourses.length > 0 ? (
-        <div ref={gridRef}>
+        <div>
           <MobileCarousel
-            desktopGridClass="sm:grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 sm:gap-6"
+            desktopGridClass="sm:grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 sm:gap-4"
             ariaLabel="Katalog Pembelajaran"
           >
-            {filteredCourses.map((course) => (
+            {filteredCourses.map((course, idx) => (
               <CourseCard
                 key={course.id}
                 course={course}
                 category={categoryMap.get(course.categoryId)}
                 enrollment={enrollments[course.id] || null}
                 onSelect={onSelectCourse}
-                disableAnimation={true}
+                aosDelay={getAosDelay(idx, 4)}
               />
             ))}
           </MobileCarousel>
@@ -202,7 +200,7 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({
           hasExistingData={false}
         />
       ) : (
-        <div className="text-center py-16 nb-card p-8 space-y-4">
+        <div data-aos="fade-up" className="text-center py-12 nb-card p-6 space-y-3">
           <BookOpen className="w-12 h-12 text-[#123D32] dark:text-[#4CA7A1] mx-auto" />
           <h3 className="text-lg font-bold font-serif text-[#171717] dark:text-[#CEFEF1]">
             Tidak ada kursus yang cocok

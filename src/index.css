@@ -103,7 +103,7 @@
     color: var(--nb-text);
     font-family: var(--font-sans);
     transition: background-color 0.2s ease, color 0.2s ease;
-    overflow-x: hidden;
+    overflow-x: clip;
     -webkit-font-smoothing: antialiased;
   }
 
@@ -1576,6 +1576,116 @@ table td {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* ==========================================================================
+   GLOBAL AOS FADE-UP SYSTEM (PROGRESSIVE ENHANCEMENT & REPEATABLE MIRROR)
+   - Content is ALWAYS visible by default when JS/AOS is unavailable or disabled.
+   - Only animates when html.aos-enabled is present and reduced-motion is inactive.
+   - Base hidden state resets instantly (transition: none) ONLY when fully off-screen,
+     so every re-entry (scroll down OR scroll up) plays a full crisp 600ms Fade-Up.
+   - Once settled (.aos-settled), will-change is released and hover lift stays 180ms.
+   ========================================================================== */
+
+html:not(.aos-enabled) [data-aos][data-aos],
+html.aos-reduced-motion [data-aos][data-aos] {
+  opacity: 1 !important;
+  transform: none !important;
+  transition: none !important;
+  will-change: auto !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-aos][data-aos] {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+    will-change: auto !important;
+  }
+}
+
+html.aos-enabled:not(.aos-reduced-motion) [data-aos="fade-up"][data-aos="fade-up"] {
+  opacity: 0;
+  transform: translate3d(0, 28px, 0);
+  transition-property: none;
+  transition-duration: 0ms;
+  transition-delay: 0ms;
+  will-change: opacity, transform;
+}
+
+html.aos-enabled:not(.aos-reduced-motion) [data-aos="fade-up"][data-aos="fade-up"].aos-animate {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+  transition-property: opacity, transform;
+  transition-duration: 600ms;
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: 0ms;
+}
+
+html.aos-enabled:not(.aos-reduced-motion) .nb-card-interactive[data-aos="fade-up"][data-aos="fade-up"].aos-animate {
+  transition-property: opacity, transform, box-shadow, border-color, background-color;
+  transition-duration: 600ms, 600ms, 180ms, 180ms, 180ms;
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1), cubic-bezier(0.22, 1, 0.36, 1), ease, ease, ease;
+}
+
+html.aos-enabled:not(.aos-reduced-motion) [data-aos="fade-up"][data-aos-delay="50"].aos-animate:not(.aos-settled) {
+  transition-delay: 50ms;
+}
+
+html.aos-enabled:not(.aos-reduced-motion) [data-aos="fade-up"][data-aos-delay="60"].aos-animate:not(.aos-settled) {
+  transition-delay: 60ms;
+}
+
+html.aos-enabled:not(.aos-reduced-motion) [data-aos="fade-up"][data-aos-delay="100"].aos-animate:not(.aos-settled) {
+  transition-delay: 100ms;
+}
+
+html.aos-enabled:not(.aos-reduced-motion) [data-aos="fade-up"][data-aos-delay="120"].aos-animate:not(.aos-settled) {
+  transition-delay: 120ms;
+}
+
+html.aos-enabled:not(.aos-reduced-motion) [data-aos="fade-up"][data-aos-delay="150"].aos-animate:not(.aos-settled) {
+  transition-delay: 150ms;
+}
+
+html.aos-enabled:not(.aos-reduced-motion) [data-aos="fade-up"][data-aos-delay="180"].aos-animate:not(.aos-settled) {
+  transition-delay: 180ms;
+}
+
+html.aos-enabled:not(.aos-reduced-motion) [data-aos="fade-up"][data-aos-delay="200"].aos-animate:not(.aos-settled) {
+  transition-delay: 200ms;
+}
+
+/* Once entrance animation finishes, release GPU layer & restore snappy 180ms interaction */
+html.aos-enabled:not(.aos-reduced-motion) [data-aos="fade-up"][data-aos="fade-up"].aos-animate.aos-settled {
+  will-change: auto;
+  transition-delay: 0ms;
+  transition-duration: 180ms;
+  transition-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Preserve crisp neo-brutalist hover lift on interactive cards once animated in */
+html.aos-enabled:not(.aos-reduced-motion) .nb-card-interactive[data-aos="fade-up"].aos-animate:hover {
+  transform: translate3d(-2px, -2px, 0);
+  transition-delay: 0ms;
+  transition-duration: 180ms;
+}
+
+/* Fluid responsive typography utilities (desktop/tablet/mobile balanced scale) */
+.dars-hero-title {
+  font-size: clamp(1.375rem, 1.05rem + 1.15vw, 2.1rem);
+  line-height: 1.22;
+}
+
+.dars-page-title {
+  font-size: clamp(1.3rem, 1.05rem + 0.9vw, 1.9rem);
+  line-height: 1.22;
+}
+
+.dars-section-title {
+  font-size: clamp(1.125rem, 0.98rem + 0.6vw, 1.5rem);
+  line-height: 1.25;
+}
+
 
 
 

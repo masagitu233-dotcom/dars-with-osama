@@ -12,6 +12,7 @@ interface CourseCardProps {
   onSelect: (course: Course) => void;
   className?: string;
   disableAnimation?: boolean;
+  aosDelay?: number;
 }
 
 export const CourseCard: React.FC<CourseCardProps> = ({
@@ -21,7 +22,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
   sessionCount,
   onSelect,
   className = '',
-  disableAnimation = false
+  aosDelay = 0
 }) => {
   const { t } = useLanguage();
   const [copied, setCopied] = useState(false);
@@ -76,7 +77,9 @@ export const CourseCard: React.FC<CourseCardProps> = ({
     <div
       onClick={() => onSelect(course)}
       data-card-type="course"
-      className={`course-card card-pembelajaran group nb-card-interactive overflow-hidden flex flex-col cursor-pointer h-full border-2 border-[#171717] shadow-[4px_4px_0px_#171717] ${!disableAnimation ? 'animate-fade-in-up' : ''} ${className}`}
+      data-aos="fade-up"
+      data-aos-delay={aosDelay > 0 ? String(aosDelay) : undefined}
+      className={`course-card card-pembelajaran group nb-card-interactive overflow-hidden flex flex-col cursor-pointer h-full border-2 border-[#171717] shadow-[4px_4px_0px_#171717] ${className}`}
       style={{ backgroundColor: '#0F3D3A', color: '#FFF5E9' }}
     >
       {/* Cover Image - Clean without any overlays */}
@@ -90,17 +93,17 @@ export const CourseCard: React.FC<CourseCardProps> = ({
       </div>
 
       {/* Card Content */}
-      <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between space-y-3 sm:space-y-4 bg-[#0F3D3A] text-[#FFF5E9]">
-        <div className="space-y-2.5 text-left">
+      <div className="p-3.5 sm:p-4 flex-1 flex flex-col justify-between space-y-2.5 sm:space-y-3 bg-[#0F3D3A] text-[#FFF5E9]">
+        <div className="space-y-2 text-left">
           {/* Header Row: Title & Share Button */}
-          <div className="flex items-start justify-between gap-2.5">
+          <div className="flex items-start justify-between gap-2">
             <div className="flex-1 min-w-0">
-              <h3 className="font-serif font-bold text-sm sm:text-base md:text-lg text-white group-hover:text-[#F5DABF] transition-colors line-clamp-2 leading-snug">
+              <h3 className="font-serif font-bold text-sm sm:text-[15px] text-white group-hover:text-[#F5DABF] transition-colors line-clamp-2 leading-snug">
                 {course.title}
               </h3>
 
               {course.titleAr && (
-                <p className="font-amiri text-sm sm:text-[17px] font-bold text-[#F5DABF] line-clamp-1 leading-[1.85] mt-0.5" dir="rtl">
+                <p className="font-amiri text-sm sm:text-[15px] font-bold text-[#F5DABF] line-clamp-1 leading-[1.75] mt-0.5" dir="rtl">
                   {course.titleAr}
                 </p>
               )}
@@ -110,7 +113,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
             <button
               type="button"
               onClick={handleShare}
-              className={`w-7 h-7 sm:w-8 sm:h-8 rounded-md bg-[#FAF7F0] text-[#0F3D3A] border-2 border-[#171717] shadow-[2px_2px_0px_#171717] flex items-center justify-center hover:bg-[#D6AD52] transition cursor-pointer shrink-0 mt-0.5 active:translate-x-0.5 active:translate-y-0.5 active:shadow-none ${
+              className={`w-7 h-7 rounded-md bg-[#FAF7F0] text-[#0F3D3A] border-2 border-[#171717] shadow-[1.5px_1.5px_0px_#171717] flex items-center justify-center hover:bg-[#D6AD52] transition cursor-pointer shrink-0 mt-0.5 active:translate-x-0.5 active:translate-y-0.5 active:shadow-none ${
                 copied ? 'bg-[#D6AD52] text-[#0F3D3A]' : ''
               }`}
               title={copied ? 'Tautan berhasil disalin!' : 'Bagikan Pembelajaran ini'}
@@ -121,10 +124,10 @@ export const CourseCard: React.FC<CourseCardProps> = ({
           </div>
 
           {/* Badges: Level & Category side by side below title */}
-          <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+          <div className="flex flex-wrap items-center gap-1.5">
             {/* Level Badge with distinct colors */}
             <span
-              className={`px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider border shadow-[1.5px_1.5px_0px_#171717] ${levelInfo.color}`}
+              className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider border shadow-[1.5px_1.5px_0px_#171717] ${levelInfo.color}`}
             >
               {levelInfo.text}
             </span>
@@ -137,7 +140,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
               .map((catName, idx) => (
                 <span
                   key={idx}
-                  className="px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider bg-[#F5DABF] text-[#0F3D3A] border border-[#171717] shadow-[1.5px_1.5px_0px_#171717] inline-block"
+                  className="px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider bg-[#F5DABF] text-[#0F3D3A] border border-[#171717] shadow-[1.5px_1.5px_0px_#171717] inline-block"
                 >
                   {catName}
                 </span>
@@ -145,31 +148,31 @@ export const CourseCard: React.FC<CourseCardProps> = ({
           </div>
 
           {/* Description */}
-          <p className="text-xs text-[#FAF7F0]/90 line-clamp-2 leading-relaxed font-sans">
+          <p className="text-[11px] sm:text-xs text-[#FAF7F0]/90 line-clamp-2 leading-relaxed font-sans">
             {course.description}
           </p>
         </div>
 
         {/* Footer Meta & Progress */}
-        <div className="pt-2.5 sm:pt-3 border-t-2 border-[#F5DABF]/25 space-y-2.5 sm:space-y-3">
-          <div className="flex items-center justify-between text-xs font-bold text-[#F5DABF] gap-1">
-            <span className="truncate max-w-[130px] sm:max-w-[165px]" title={course.instructor}>
+        <div className="pt-2.5 border-t-2 border-[#F5DABF]/25 space-y-2">
+          <div className="flex items-center justify-between text-[11px] font-bold text-[#F5DABF] gap-1">
+            <span className="truncate max-w-[130px] sm:max-w-[155px]" title={course.instructor}>
               {course.instructor}
             </span>
-            <span className="flex items-center gap-1 shrink-0 px-2 py-0.5 bg-[#FAF7F0] text-[#0F3D3A] border border-[#171717] rounded text-[10px] sm:text-[11px]">
-              <Clock className="w-3.5 h-3.5 text-[#0F3D3A]" />
+            <span className="flex items-center gap-1 shrink-0 px-1.5 py-0.5 bg-[#FAF7F0] text-[#0F3D3A] border border-[#171717] rounded text-[10px]">
+              <Clock className="w-3 h-3 text-[#0F3D3A]" />
               <span>{sessionDisplay}</span>
             </span>
           </div>
 
           {/* Enrollment Progress if logged in & enrolled */}
           {enrollment ? (
-            <div className="space-y-1.5 pt-0.5 sm:pt-1">
-              <div className="flex items-center justify-between text-[10px] sm:text-[11px] font-bold">
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-[10px] font-bold">
                 <span className="text-[#F5DABF] flex items-center gap-1">
                   {enrollment.isCompleted ? (
                     <>
-                      <CheckCircle2 className="w-3.5 h-3.5 text-[#D6AD52]" />
+                      <CheckCircle2 className="w-3 h-3 text-[#D6AD52]" />
                       <span>Tuntas 100%</span>
                     </>
                   ) : (
@@ -180,7 +183,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
                   {enrollment.completedSessionIds?.length || 0} Sesi Selesai
                 </span>
               </div>
-              <div className="w-full h-2 sm:h-2.5 bg-[#092624] border border-[#171717] rounded-xs sm:rounded-sm overflow-hidden">
+              <div className="w-full h-2 bg-[#092624] border border-[#171717] rounded-xs overflow-hidden">
                 <div
                   className="h-full bg-[#D6AD52] transition-all duration-500"
                   style={{ width: `${enrollment.progressPercent}%` }}
@@ -188,9 +191,9 @@ export const CourseCard: React.FC<CourseCardProps> = ({
               </div>
             </div>
           ) : (
-            <div className="flex items-center justify-between text-xs font-extrabold text-[#F5DABF] group-hover:text-white">
+            <div className="flex items-center justify-between text-[11px] sm:text-xs font-extrabold text-[#F5DABF] group-hover:text-white">
               <span>Buka Kurikulum</span>
-              <ArrowRight className="w-4 h-4 text-[#F5DABF] group-hover:text-white transform group-hover:translate-x-1 transition-transform duration-200" />
+              <ArrowRight className="w-3.5 h-3.5 text-[#F5DABF] group-hover:text-white transform group-hover:translate-x-1 transition-transform duration-200" />
             </div>
           )}
         </div>

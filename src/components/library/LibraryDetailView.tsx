@@ -275,9 +275,9 @@ export const LibraryDetailView: React.FC<LibraryDetailViewProps> = ({
           <span>{onBackToDetail ? 'Kembali ke Detail Kitab' : 'Kembali ke Library Digital'}</span>
         </button>
 
-        <div className="nb-card bg-white dark:bg-[#0D2B36] p-6 sm:p-8 flex flex-col items-center text-center gap-5">
+        <div data-aos="fade-up" className="nb-card bg-white dark:bg-[#0D2B36] p-5 sm:p-7 flex flex-col items-center text-center gap-4">
           {book.coverImageUrl && (
-            <div className="w-full max-w-[300px] sm:max-w-[340px] aspect-[3/4] rounded-md overflow-hidden bg-[#FAF7F0] dark:bg-[#001722] border-2 border-[#171717] dark:border-[#4CA7A1] shadow-[4px_4px_0px_#171717]">
+            <div className="w-full max-w-[210px] sm:max-w-[250px] aspect-[3/4] rounded-md overflow-hidden bg-[#FAF7F0] dark:bg-[#001722] border-2 border-[#171717] dark:border-[#4CA7A1] shadow-[4px_4px_0px_#171717]">
               <ResilientGoogleDriveImage
                 src={book.coverImageUrl}
                 alt={book.title}
@@ -322,10 +322,10 @@ export const LibraryDetailView: React.FC<LibraryDetailViewProps> = ({
   return (
     <div
       data-testid="library-reader-page"
-      className="max-w-4xl mx-auto px-0 sm:px-6 lg:px-8 space-y-4 sm:space-y-6 py-3 sm:py-6 pb-16 animate-fade-in font-sans"
+      className="max-w-[880px] mx-auto px-0 sm:px-5 lg:px-6 space-y-4 sm:space-y-5 py-3 sm:py-5 pb-12 font-sans"
     >
       {/* 1. NAVIGASI KEMBALI & SALIN LINK */}
-      <div className="flex flex-wrap items-center justify-between gap-3 px-3.5 sm:px-0">
+      <div data-aos="fade-up" className="flex flex-wrap items-center justify-between gap-2.5 px-3.5 sm:px-0">
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
@@ -384,17 +384,17 @@ export const LibraryDetailView: React.FC<LibraryDetailViewProps> = ({
       {/* EDITORIAL BOOK READING SURFACE — STRICT VERTICAL FLOW ON BOTH MOBILE & DESKTOP */}
       <article
         style={fontControl.style}
-        className="w-full bg-white sm:bg-[#FFF5E9] dark:bg-[#0D2B36] text-[#171717] dark:text-[#CEFEF1] border-0 sm:border-2 sm:border-[#171717] sm:dark:border-[#4CA7A1] rounded-none sm:rounded-lg shadow-none sm:shadow-[6px_6px_0px_#171717] dark:sm:shadow-[6px_6px_0px_#001722] px-4 py-6 sm:p-8 md:p-12 space-y-6 sm:space-y-8"
+        className="w-full bg-white sm:bg-[#FFF5E9] dark:bg-[#0D2B36] text-[#171717] dark:text-[#CEFEF1] border-0 sm:border-2 sm:border-[#171717] sm:dark:border-[#4CA7A1] rounded-none sm:rounded-lg shadow-none sm:shadow-[5px_5px_0px_#171717] dark:sm:shadow-[5px_5px_0px_#001722] px-4 py-5 sm:p-7 md:p-9 space-y-5 sm:space-y-6"
       >
-        {/* BOOK HEADER: COVER ALWAYS ON TOP (FIXED 3:4, LARGE), ALL INFO STRICTLY BELOW */}
-        <header className="border-b-2 border-[#171717] dark:border-[#4CA7A1]/50 pb-7 space-y-6">
-          {/* 2. COVER KITAB BESAR DENGAN RASIO TETAP 3:4 DI BAGIAN PALING ATAS */}
+        {/* BOOK HEADER: COVER ALWAYS ON TOP (FIXED 3:4, PROPORTIONAL), ALL INFO STRICTLY BELOW */}
+        <header data-aos="fade-up" className="border-b-2 border-[#171717] dark:border-[#4CA7A1]/50 pb-5 space-y-5">
+          {/* 2. COVER KITAB PROPORSIONAL DENGAN RASIO TETAP 3:4 DI BAGIAN PALING ATAS */}
           {book.coverImageUrl && (
             <div
               data-testid="library-reader-cover-container"
               className="w-full flex justify-center"
             >
-              <div className="w-full max-w-[340px] sm:max-w-[400px] md:max-w-[440px] aspect-[3/4] rounded-md overflow-hidden bg-[#FAF7F0] dark:bg-[#001722] border-2 border-[#171717] dark:border-[#4CA7A1] shadow-[5px_5px_0px_#171717] dark:shadow-[5px_5px_0px_#001722] flex items-center justify-center">
+              <div className="w-full max-w-[205px] sm:max-w-[240px] md:max-w-[265px] aspect-[3/4] rounded-md overflow-hidden bg-[#FAF7F0] dark:bg-[#001722] border-2 border-[#171717] dark:border-[#4CA7A1] shadow-[4px_4px_0px_#171717] dark:shadow-[4px_4px_0px_#001722] flex items-center justify-center">
                 <ResilientGoogleDriveImage
                   src={book.coverImageUrl}
                   alt={book.title}
@@ -454,7 +454,7 @@ export const LibraryDetailView: React.FC<LibraryDetailViewProps> = ({
 
               <h1
                 data-testid="library-reader-title"
-                className="text-2xl sm:text-3xl lg:text-4xl font-bold text-[#123D32] dark:text-[#CEFEF1] leading-tight font-serif tracking-tight"
+                className="dars-page-title font-bold text-[#123D32] dark:text-[#CEFEF1] leading-tight font-serif tracking-tight"
                 dangerouslySetInnerHTML={{
                   __html: autoWrapArabicText(volume ? volume.title : book.title)
                 }}
@@ -463,7 +463,7 @@ export const LibraryDetailView: React.FC<LibraryDetailViewProps> = ({
               {(volume ? volume.titleAr : book.titleAr) && (
                 <p
                   dir="rtl"
-                  className="font-amiri text-xl sm:text-2xl text-[#0F3D3A] dark:text-[#D6AD52] font-bold leading-[2.0]"
+                  className="font-amiri text-lg sm:text-xl text-[#0F3D3A] dark:text-[#D6AD52] font-bold leading-[1.9]"
                 >
                   {volume ? volume.titleAr : book.titleAr}
                 </p>
@@ -514,11 +514,11 @@ export const LibraryDetailView: React.FC<LibraryDetailViewProps> = ({
             - H2 = Indented non-clickable subchapter text beneath its parent H1
            ===================================================================== */}
         {parsed.hasTocEntries && (
-          <div className="max-w-[68ch] mx-auto w-full space-y-4">
+          <div data-aos="fade-up" className="max-w-[68ch] mx-auto w-full space-y-3.5">
             <nav
               data-testid="library-toc-container"
               aria-label="Daftar Isi Kitab"
-              className="rounded-lg bg-[#FAF7F0] dark:bg-[#001722] border-2 border-[#171717] dark:border-[#4CA7A1] px-4 py-3.5 sm:px-6 sm:py-5 space-y-3"
+              className="rounded-lg bg-[#FAF7F0] dark:bg-[#001722] border-2 border-[#171717] dark:border-[#4CA7A1] px-4 py-3 sm:px-5 sm:py-4 space-y-2.5"
             >
               {/* TOC Collapse Header */}
               <div className="flex items-center justify-between gap-2.5">

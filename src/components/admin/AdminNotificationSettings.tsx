@@ -222,7 +222,7 @@ export const AdminNotificationSettings: React.FC = () => {
       {/* Main Grid: Settings & Broadcast Form */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Card 1: Form Pengaturan Notifikasi */}
-        <form onSubmit={handleSaveSettings} className="p-5 rounded-md bg-white dark:bg-[#163835] border-2 border-[#171717] dark:border-[#4CA7A1] shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#071918] space-y-5">
+        <form data-aos="fade-up" onSubmit={handleSaveSettings} className="p-5 rounded-md bg-white dark:bg-[#163835] border-2 border-[#171717] dark:border-[#4CA7A1] shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#071918] space-y-5">
           <div className="flex items-center justify-between border-b border-[#171717]/15 dark:border-[#4CA7A1]/30 pb-3">
             <div className="flex items-center gap-2">
               <Settings className="w-4 h-4 text-[#123D32] dark:text-[#D6AD52]" />

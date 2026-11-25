@@ -6220,4 +6220,415 @@ test('Case 120: Integrasi Profil Pengajar dengan Portofolio (isolated read-only 
   assert.ok(viewSrc.includes('portfolio.skills.length > 0'), 'Bagian keahlian hanya ditampilkan jika data tidak kosong');
 });
 
+// Case 121: Global AOS Fade-Up Engine, Repeatable Mirror Visibility, Progressive Enhancement & Responsive UI Coverage
+test('Case 121: Global AOS fade-up (once:false, mirror:true), bounded stagger, desktop Lenis sync, progressive fallback, dan cakupan halaman global', async () => {
+  const fs = await import('node:fs');
+  const { GLOBAL_AOS_CONFIG, getAosDelay, isElementVisibleInViewport } = await import('./aosManager.js');
 
+  // 1. Konfigurasi Global AOS wajib repeatable (once: false, mirror: true) dan fade-up
+  assert.strictEqual(GLOBAL_AOS_CONFIG.once, false, 'AOS harus berulang (once: false)');
+  assert.strictEqual(GLOBAL_AOS_CONFIG.mirror, true, 'AOS harus mendukung mirror saat elemen keluar & masuk viewport');
+  assert.strictEqual(GLOBAL_AOS_CONFIG.animation, 'fade-up', 'Animasi global harus fade-up');
+  assert.ok(
+    GLOBAL_AOS_CONFIG.duration >= 450 && GLOBAL_AOS_CONFIG.duration <= 700,
+    'Durasi animasi harus halus dan proporsional (450-700ms)'
+  );
+
+  // 2. Bounded stagger delay per baris agar kartu tidak terasa lamban pada daftar panjang
+  assert.strictEqual(getAosDelay(0, 4), 0);
+  assert.strictEqual(getAosDelay(1, 4), 50);
+  assert.strictEqual(getAosDelay(2, 4), 100);
+  assert.strictEqual(getAosDelay(3, 4), 150);
+  assert.strictEqual(getAosDelay(4, 4), 0, 'Delay harus reset di baris baru agar tidak menumpuk');
+  assert.strictEqual(getAosDelay(11, 4), 150, 'Delay tidak boleh melebihi 150ms');
+
+  // 3. Logika deteksi visibilitas viewport untuk initial load, scroll bawah, scroll atas (mirror), & elemen tinggi
+  assert.strictEqual(
+    isElementVisibleInViewport({ top: 100, bottom: 320, height: 220 }, 800, 40),
+    true,
+    'Elemen dalam viewport saat initial load harus langsung terlihat'
+  );
+  assert.strictEqual(
+    isElementVisibleInViewport({ top: 790, bottom: 1000, height: 210 }, 800, 40),
+    false,
+    'Elemen di bawah offset masuk tidak boleh memicu terlalu dini'
+  );
+  assert.strictEqual(
+    isElementVisibleInViewport({ top: 740, bottom: 950, height: 210 }, 800, 40),
+    true,
+    'Elemen yang melewati threshold bawah viewport harus memicu fade-up'
+  );
+  assert.strictEqual(
+    isElementVisibleInViewport({ top: -300, bottom: -20, height: 280 }, 800, 40),
+    false,
+    'Elemen yang keluar penuh ke atas viewport harus reset agar dapat beranimasi ulang saat scroll naik'
+  );
+  assert.strictEqual(
+    isElementVisibleInViewport({ top: -200, bottom: 950, height: 1150 }, 800, 40),
+    true,
+    'Elemen yang lebih tinggi dari viewport tetap dianggap terlihat selama beririsan dengan viewport'
+  );
+
+  // 4. Progressive Enhancement, Reduced Motion, Fluid Typography & Hover Preservation di index.css
+  const indexCss = fs.readFileSync(new URL('../index.css', import.meta.url), 'utf8');
+  assert.ok(indexCss.includes('overflow-x: clip'), 'body harus menggunakan overflow-x: clip agar sticky & scroll tetap normal');
+  assert.ok(indexCss.includes('html.aos-enabled:not(.aos-reduced-motion) [data-aos="fade-up"]'), 'Animasi awal tersembunyi hanya aktif saat html.aos-enabled terpasang dan reduced-motion tidak aktif');
+  assert.ok(indexCss.includes('html:not(.aos-enabled) [data-aos]'), 'Harus ada CSS fallback agar konten tetap terlihat jika JS/AOS tidak aktif');
+  assert.ok(indexCss.includes('[data-aos-delay="50"]'), 'Harus mendukung stagger transition-delay secara native di CSS');
+  assert.ok(indexCss.includes('prefers-reduced-motion: reduce'), 'Harus menghormati preferensi reduced-motion pengguna');
+  assert.ok(indexCss.includes('.nb-card-interactive[data-aos="fade-up"].aos-animate:hover'), 'Efek hover kartu neo-brutalist tetap bekerja setelah fade-up');
+  assert.ok(indexCss.includes('.dars-hero-title') && indexCss.includes('.dars-page-title') && indexCss.includes('.dars-section-title'), 'Fluid clamp() typography classes harus terdefinisi');
+
+  // 5. Desktop Scroll & Single Root Initialization
+  const appSrc = fs.readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
+  const smoothScrollSrc = fs.readFileSync(new URL('../context/SmoothScrollContext.tsx', import.meta.url), 'utf8');
+  const mobileCarouselSrc = fs.readFileSync(new URL('../components/common/MobileCarousel.tsx', import.meta.url), 'utf8');
+
+  assert.ok(appSrc.includes('initGlobalAOS()'), 'App.tsx wajib menginisialisasi AOS global satu kali di root');
+  assert.ok(smoothScrollSrc.includes('notifyGlobalAOSScroll'), 'SmoothScrollContext wajib menghubungkan event scroll Lenis ke aosManager');
+  assert.ok(smoothScrollSrc.includes('refreshHardGlobalAOS'), 'SmoothScrollContext wajib me-refresh AOS saat route/halaman berubah');
+  assert.strictEqual(
+    mobileCarouselSrc.includes('data-lenis-prevent-wheel'),
+    false,
+    'MobileCarousel tidak boleh memblokir wheel scroll desktop dengan data-lenis-prevent-wheel'
+  );
+  assert.strictEqual(
+    mobileCarouselSrc.includes('sm:!transform-none'),
+    false,
+    'MobileCarousel tidak boleh menimpa transform animasi AOS pada kartu desktop'
+  );
+
+  // 6. Cakupan Global data-aos="fade-up" di seluruh halaman utama aplikasi
+  const globalPageFiles = [
+    '../components/home/HeroSection.tsx',
+    '../components/home/HomeView.tsx',
+    '../components/courses/CourseCatalog.tsx',
+    '../components/courses/CourseDetail.tsx',
+    '../components/courses/CourseCard.tsx',
+    '../components/courses/SessionView.tsx',
+    '../components/courses/QuizView.tsx',
+    '../components/library/LibraryListView.tsx',
+    '../components/library/LibraryCard.tsx',
+    '../components/library/LibraryBookDetailView.tsx',
+    '../components/library/LibraryDetailView.tsx',
+    '../components/blog/BlogListView.tsx',
+    '../components/blog/BlogDetailView.tsx',
+    '../components/consultation/PublicQAView.tsx',
+    '../components/consultation/StudentConsultationView.tsx',
+    '../components/profile/InstructorProfileView.tsx',
+    '../components/dashboard/StudentDashboard.tsx',
+    '../components/search/SearchResultsView.tsx',
+    '../components/admin/AdminDashboard.tsx'
+  ];
+
+  for (const relPath of globalPageFiles) {
+    const content = fs.readFileSync(new URL(relPath, import.meta.url), 'utf8');
+    assert.ok(
+      content.includes('data-aos="fade-up"') || content.includes("data-aos={isExpanded ? undefined : 'fade-up'}"),
+      `${relPath} wajib menerapkan animasi data-aos="fade-up"`
+    );
+    assert.strictEqual(
+      content.includes("from 'aos'") || content.includes("import('aos')"),
+      false,
+      `${relPath} tidak boleh menginisialisasi/mengimpor paket aos secara terpisah`
+    );
+  }
+});
+
+// Case 122: Runtime Lifecycle Verification — Paint Barrier, Bidirectional Repeat Hysteresis, Capture Scroll, MutationObserver & Reduced Motion
+test('Case 122: Runtime AOS paint-barrier, flicker-proof hysteresis, scroll repeat (turun & naik), capture scroll, dynamic DOM, dan reduced-motion', async () => {
+  const fs = await import('node:fs');
+  const {
+    GLOBAL_AOS_CONFIG,
+    isElementVisibleInViewport,
+    shouldResetElementInViewport,
+    initGlobalAOS,
+    destroyGlobalAOS,
+    getGlobalAOSStatus,
+  } = await import('./aosManager.js');
+
+  // 1. Verifikasi matematis hysteresis anti-flicker terhadap translasi +28px (batas atas & batas bawah)
+  const vh = 800;
+  const shiftY = GLOBAL_AOS_CONFIG.translateY;
+  assert.ok(shiftY >= 20 && shiftY <= 36, 'Translasi vertikal fade-up harus jelas terlihat (20-36px)');
+  assert.ok(
+    GLOBAL_AOS_CONFIG.topExitBuffer > shiftY,
+    'Buffer reset batas atas harus lebih besar dari translasi Y agar reset tidak mendorong elemen kembali ke area aktif'
+  );
+
+  // Batas atas: keluar penuh (-45px) -> reset -> setelah bergeser +28px (bottom = -17px) tetap tidak langsung reveal
+  assert.strictEqual(
+    shouldResetElementInViewport({ top: -245, bottom: -45, height: 200 }, vh),
+    true,
+    'Elemen yang sudah melewati -40px di atas viewport harus di-reset'
+  );
+  assert.strictEqual(
+    isElementVisibleInViewport({ top: -245 + shiftY, bottom: -45 + shiftY, height: 200 }, vh),
+    false,
+    'Setelah reset di atas viewport + pergeseran +28px, elemen tidak boleh langsung reveal (anti-flicker)'
+  );
+
+  // Batas bawah: keluar penuh (vh + 20) -> reset -> setelah bergeser +28px tetap tidak langsung reveal
+  assert.strictEqual(
+    shouldResetElementInViewport({ top: vh + 20, bottom: vh + 220, height: 200 }, vh),
+    true,
+    'Elemen yang sudah melewati vh + 16px di bawah viewport harus di-reset'
+  );
+  assert.strictEqual(
+    isElementVisibleInViewport({ top: vh + 20 + shiftY, bottom: vh + 220 + shiftY, height: 200 }, vh),
+    false,
+    'Setelah reset di bawah viewport + pergeseran +28px, elemen tidak boleh langsung reveal (anti-flicker)'
+  );
+
+  // Zona hysteresis tengah (baru sedikit keluar -15px di atas) tidak boleh flicker reset
+  assert.strictEqual(
+    shouldResetElementInViewport({ top: -215, bottom: -15, height: 200 }, vh),
+    false,
+    'Elemen yang baru menyentuh tepi atas (-15px) tidak boleh reset prematur'
+  );
+
+  // 2. Simulasi Runtime DOM Penuh (Paint Barrier -> Initial Load -> Scroll Turun -> Reset -> Scroll Naik Repeat -> Dynamic Node -> Reduced Motion)
+  const prevWindow = (globalThis as any).window;
+  const prevDocument = (globalThis as any).document;
+  const prevIO = (globalThis as any).IntersectionObserver;
+  const prevMO = (globalThis as any).MutationObserver;
+
+  try {
+    const createClassList = () => {
+      const set = new Set<string>();
+      return {
+        add: (...cls: string[]) => cls.forEach((c) => set.add(c)),
+        remove: (...cls: string[]) => cls.forEach((c) => set.delete(c)),
+        contains: (c: string) => set.has(c),
+        toArray: () => Array.from(set),
+      };
+    };
+
+    type MockNode = {
+      nodeType: number;
+      classList: ReturnType<typeof createClassList>;
+      attrs: Record<string, string>;
+      rect: { top: number; bottom: number; width: number; height: number };
+      hasAttribute: (k: string) => boolean;
+      getAttribute: (k: string) => string | null;
+      setAttribute: (k: string, v: string) => void;
+      getBoundingClientRect: () => { top: number; bottom: number; width: number; height: number };
+      querySelector: () => null;
+    };
+
+    const makeNode = (top: number, height: number, delay?: string): MockNode => ({
+      nodeType: 1,
+      classList: createClassList(),
+      attrs: { 'data-aos': 'fade-up', ...(delay ? { 'data-aos-delay': delay } : {}) },
+      rect: { top, bottom: top + height, width: 320, height },
+      hasAttribute(k: string) {
+        return k in this.attrs;
+      },
+      getAttribute(k: string) {
+        return this.attrs[k] ?? null;
+      },
+      setAttribute(k: string, v: string) {
+        this.attrs[k] = v;
+      },
+      getBoundingClientRect() {
+        return this.rect;
+      },
+      querySelector: () => null,
+    });
+
+    const heroCard = makeNode(80, 220);
+    const belowFoldCard = makeNode(1100, 220, '50');
+    const domNodes: MockNode[] = [heroCard, belowFoldCard];
+
+    const rafQueue: Array<() => void> = [];
+    const flushNextRaf = () => {
+      const batch = rafQueue.splice(0, rafQueue.length);
+      batch.forEach((cb) => cb());
+    };
+
+    const docListeners: Record<string, Array<() => void>> = {};
+    const winListeners: Record<string, Array<() => void>> = {};
+    const hooks: {
+      mutationCb: ((mutations: any[]) => void) | null;
+      reducedMotionHandler: ((e: any) => void) | null;
+    } = {
+      mutationCb: null,
+      reducedMotionHandler: null,
+    };
+    let reducedMotionMatches = false;
+
+    const htmlClassList = createClassList();
+    const mockDoc = {
+      documentElement: {
+        classList: htmlClassList,
+        clientHeight: 800,
+        scrollTop: 0,
+        get offsetHeight() {
+          return 2400;
+        },
+      },
+      body: {
+        attrs: {} as Record<string, string>,
+        setAttribute(k: string, v: string) {
+          this.attrs[k] = v;
+        },
+      },
+      querySelectorAll: (sel: string) => (sel === '[data-aos]' ? domNodes : []),
+      addEventListener: (ev: string, fn: () => void) => {
+        (docListeners[ev] ||= []).push(fn);
+      },
+      removeEventListener: (ev: string, fn: () => void) => {
+        if (docListeners[ev]) docListeners[ev] = docListeners[ev].filter((f) => f !== fn);
+      },
+      fonts: undefined,
+    };
+
+    const mockWin: any = {
+      innerHeight: 800,
+      scrollY: 0,
+      pageYOffset: 0,
+      requestAnimationFrame: (cb: () => void) => {
+        rafQueue.push(cb);
+        return rafQueue.length;
+      },
+      cancelAnimationFrame: () => {},
+      setTimeout: (fn: () => void, ms: number) => globalThis.setTimeout(fn, ms),
+      clearTimeout: (id: any) => globalThis.clearTimeout(id),
+      addEventListener: (ev: string, fn: () => void) => {
+        (winListeners[ev] ||= []).push(fn);
+      },
+      removeEventListener: (ev: string, fn: () => void) => {
+        if (winListeners[ev]) winListeners[ev] = winListeners[ev].filter((f) => f !== fn);
+      },
+      matchMedia: () => ({
+        get matches() {
+          return reducedMotionMatches;
+        },
+        addEventListener: (_: string, fn: (e: any) => void) => {
+          hooks.reducedMotionHandler = fn;
+        },
+        removeEventListener: () => {
+          hooks.reducedMotionHandler = null;
+        },
+      }),
+    };
+
+    class MockIntersectionObserver {
+      cb: any;
+      constructor(cb: any) {
+        this.cb = cb;
+      }
+      observe() {
+        // Simulate real browser firing initial IO immediately before paint!
+        this.cb([]);
+      }
+      disconnect() {}
+    }
+
+    class MockMutationObserver {
+      constructor(cb: (mutations: any[]) => void) {
+        hooks.mutationCb = cb;
+      }
+      observe() {}
+      disconnect() {}
+    }
+
+    mockWin.IntersectionObserver = MockIntersectionObserver;
+    mockWin.MutationObserver = MockMutationObserver;
+
+    (globalThis as any).window = mockWin;
+    (globalThis as any).document = mockDoc;
+    (globalThis as any).IntersectionObserver = MockIntersectionObserver;
+    (globalThis as any).MutationObserver = MockMutationObserver;
+
+    destroyGlobalAOS();
+    initGlobalAOS();
+
+    // Paint Barrier Check: tepat setelah init (sebelum 2 frame paint), heroCard BELUM boleh mendapat .aos-animate!
+    assert.strictEqual(htmlClassList.contains('aos-enabled'), true, 'html.aos-enabled harus aktif saat init');
+    assert.strictEqual(
+      heroCard.classList.contains('aos-animate'),
+      false,
+      'Paint barrier wajib menahan .aos-animate pada frame 0 agar browser melukis opacity:0 terlebih dahulu'
+    );
+
+    // Frame 1 (style commit) -> masih tertahan sampai Frame 2
+    flushNextRaf();
+    assert.strictEqual(heroCard.classList.contains('aos-animate'), false, 'Frame 1 hanya commit style tersembunyi');
+
+    // Frame 2 -> heroCard (di dalam viewport) langsung fade-up; belowFoldCard tetap tersembunyi!
+    flushNextRaf();
+    assert.strictEqual(heroCard.classList.contains('aos-animate'), true, 'Hero di viewport wajib fade-up pada first load tanpa scroll');
+    assert.strictEqual(belowFoldCard.classList.contains('aos-animate'), false, 'Kartu di bawah fold harus tetap menunggu hingga di-scroll');
+
+    // Simulasi Scroll Turun: heroCard keluar melewati atas (-80px), belowFoldCard masuk ke tengah viewport (300px)
+    mockWin.scrollY = 900;
+    heroCard.rect = { top: -300, bottom: -80, width: 320, height: 220 };
+    belowFoldCard.rect = { top: 300, bottom: 520, width: 320, height: 220 };
+    // Trigger melalui capture-phase document scroll (menguji container overflow-y:auto juga!)
+    (docListeners['scroll'] || []).forEach((fn) => fn());
+    flushNextRaf();
+
+    assert.strictEqual(heroCard.classList.contains('aos-animate'), false, 'Hero yang keluar penuh ke atas wajib reset untuk repeat');
+    assert.strictEqual(belowFoldCard.classList.contains('aos-animate'), true, 'Kartu bawah yang masuk viewport wajib fade-up saat scroll turun');
+
+    // Simulasi Scroll Naik kembali ke atas (Mirror Repeat): heroCard masuk kembali, belowFoldCard keluar penuh ke bawah
+    mockWin.scrollY = 0;
+    heroCard.rect = { top: 80, bottom: 300, width: 320, height: 220 };
+    belowFoldCard.rect = { top: 920, bottom: 1140, width: 320, height: 220 };
+    (winListeners['scroll'] || []).forEach((fn) => fn());
+    flushNextRaf();
+
+    assert.strictEqual(heroCard.classList.contains('aos-animate'), true, 'Hero wajib beranimasi Fade-Up ulang saat scroll naik');
+    assert.strictEqual(belowFoldCard.classList.contains('aos-animate'), false, 'Kartu bawah yang keluar penuh ke bawah wajib reset untuk repeat berikutnya');
+
+    // Simulasi Firebase Async / SPA Navigation node baru melalui MutationObserver
+    const asyncFirebaseCard = makeNode(240, 200);
+    domNodes.push(asyncFirebaseCard);
+    hooks.mutationCb?.([{ addedNodes: [asyncFirebaseCard] }]);
+    assert.strictEqual(asyncFirebaseCard.classList.contains('aos-animate'), false, 'Node dinamis baru wajib melalui paint barrier');
+    flushNextRaf();
+    flushNextRaf();
+    assert.strictEqual(asyncFirebaseCard.classList.contains('aos-animate'), true, 'Node dinamis di viewport wajib fade-up setelah paint barrier');
+
+    // Status diagnostik akurat
+    const status = getGlobalAOSStatus();
+    assert.strictEqual(status.initialized, true);
+    assert.strictEqual(status.enabled, true);
+    assert.strictEqual(status.totalNodes, 3);
+    assert.strictEqual(status.animatedNodes, 2);
+
+    // Simulasi Reduced Motion aktif -> semua konten langsung terlihat tanpa menyembunyikan apa pun
+    reducedMotionMatches = true;
+    hooks.reducedMotionHandler?.({ matches: true });
+    assert.strictEqual(htmlClassList.contains('aos-reduced-motion'), true);
+    assert.strictEqual(htmlClassList.contains('aos-enabled'), false);
+    assert.strictEqual(belowFoldCard.classList.contains('aos-animate'), true, 'Saat reduced-motion aktif, semua elemen wajib langsung terlihat');
+
+    destroyGlobalAOS();
+  } finally {
+    (globalThis as any).window = prevWindow;
+    (globalThis as any).document = prevDocument;
+    (globalThis as any).IntersectionObserver = prevIO;
+    (globalThis as any).MutationObserver = prevMO;
+  }
+
+  // 3. Pastikan CSS memiliki reset off-screen instan & kelas settled, serta cakupan admin/student views
+  const indexCss = fs.readFileSync(new URL('../index.css', import.meta.url), 'utf8');
+  assert.ok(indexCss.includes('transition-property: none;'), 'Base hidden state harus reset instan saat di luar layar');
+  assert.ok(indexCss.includes('.aos-animate.aos-settled'), 'Harus ada kelas .aos-settled untuk mengembalikan transisi hover 180ms dan melepas will-change');
+
+  const extraCoveredFiles = [
+    '../components/student/UnsubscribePreferencesView.tsx',
+    '../components/admin/AdminBlogManager.tsx',
+    '../components/admin/AdminLibraryManager.tsx',
+    '../components/admin/AdminConsultationManager.tsx',
+    '../components/admin/AdminInstructorProfileManager.tsx',
+    '../components/admin/AdminCommentsManager.tsx',
+    '../components/admin/AdminNotificationSettings.tsx',
+  ];
+  for (const relPath of extraCoveredFiles) {
+    const content = fs.readFileSync(new URL(relPath, import.meta.url), 'utf8');
+    assert.ok(content.includes('data-aos="fade-up"'), `${relPath} wajib menerapkan data-aos="fade-up"`);
+  }
+});

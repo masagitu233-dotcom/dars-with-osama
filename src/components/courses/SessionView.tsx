@@ -371,13 +371,16 @@ export const SessionView: React.FC<SessionViewProps> = ({
   const currentQuizCheck = canCompleteSession(session, quiz, userAttempts, { isAdmin });
   const isCompletionEligible = !precedingCheck.hasBlockingQuiz && currentQuizCheck.allowed;
 
-  const playlistMarginClass = isPlaylistOpen ? 'lg:mr-[340px] xl:mr-[400px]' : 'mr-0';
+  const playlistMarginClass = isPlaylistOpen ? 'lg:mr-[320px] xl:mr-[368px]' : 'mr-0';
 
 
   return (
-    <div className="max-w-7xl mx-auto px-0 sm:px-6 lg:px-8 py-3 sm:py-6 space-y-3.5 sm:space-y-6">
+    <div className="max-w-[1320px] mx-auto px-0 sm:px-5 lg:px-6 py-3 sm:py-5 space-y-3.5 sm:space-y-5">
       {/* Top Breadcrumb & Navigation */}
-      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b-2 border-[#171717] transition-all duration-300 ${playlistMarginClass} px-3.5 sm:px-0`}>
+      <div
+        data-aos="fade-up"
+        className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b-2 border-[#171717] transition-all duration-300 ${playlistMarginClass} px-3.5 sm:px-0`}
+      >
         <button
           onClick={onBackToCourse}
           className="inline-flex items-center gap-2 text-[#F5DABF] hover:text-white transition text-sm font-bold cursor-pointer"
@@ -507,11 +510,12 @@ export const SessionView: React.FC<SessionViewProps> = ({
         </div>
 
         {/* Left Primary Learning Content (Scrolls smoothly beneath sticky video on mobile) */}
-        <div className={`space-y-4 sm:space-y-6 transition-all duration-300 ${playlistMarginClass}`}>
+        <div className={`space-y-4 sm:space-y-5 transition-all duration-300 ${playlistMarginClass}`}>
           {/* Session Headings & Info Panel */}
           <div
             key={session.id}
-            className="w-full border-x-0 border-y sm:border-2 rounded-none sm:rounded-lg shadow-none sm:shadow-[6px_6px_0px_#171717] px-4 py-4 sm:p-6 space-y-3.5 sm:space-y-4 bg-[#FFF5E9] text-[#0F3D3A] border-[#171717]"
+            data-aos="fade-up"
+            className="w-full border-x-0 border-y sm:border-2 rounded-none sm:rounded-lg shadow-none sm:shadow-[5px_5px_0px_#171717] px-4 py-4 sm:p-5 space-y-3 bg-[#FFF5E9] text-[#0F3D3A] border-[#171717]"
           >
             <div className="flex flex-wrap items-center justify-between gap-3">
               <span className="nb-badge bg-[#0F3D3A] text-[#F5DABF] border-[#171717]">
@@ -586,8 +590,8 @@ export const SessionView: React.FC<SessionViewProps> = ({
 
           {/* PDF Resource Card (if available) */}
           {session.pdfUrl && (
-            <div className="px-3.5 sm:px-0">
-              <div className="nb-card p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#FAF7F0] dark:bg-[#1F5F63]">
+            <div data-aos="fade-up" className="px-3.5 sm:px-0">
+              <div className="nb-card p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 bg-[#FAF7F0] dark:bg-[#1F5F63]">
                 <div className="flex items-start gap-3.5">
                   <div className="p-3 bg-[#4CA7A1] text-[#001722] rounded-md shrink-0 border-2 border-[#171717] dark:border-[#001722]">
                     <FileText className="w-6 h-6" />
@@ -649,8 +653,8 @@ export const SessionView: React.FC<SessionViewProps> = ({
 
           {/* Google Drive PDF Card (if available) */}
           {session.googleDriveUrl && (
-            <div className="px-3.5 sm:px-0">
-              <div className="nb-card p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-[#1F5F63]">
+            <div data-aos="fade-up" className="px-3.5 sm:px-0">
+              <div className="nb-card p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 bg-white dark:bg-[#1F5F63]">
                 <div className="flex items-start gap-3.5">
                   <div className="p-3 bg-[#001722] text-[#CEFEF1] rounded-md shrink-0 border-2 border-[#171717] dark:border-[#4CA7A1]">
                     <ExternalLink className="w-6 h-6" />
@@ -692,8 +696,9 @@ export const SessionView: React.FC<SessionViewProps> = ({
           {/* Arabic Matan / Syarah Naskah Box (if present) - Reading Surface */}
           {session.descriptionAr && (
             <div
+              data-aos="fade-up"
               style={fontControl.style}
-              className="w-full border-x-0 border-y sm:border-2 rounded-none sm:rounded-lg shadow-none sm:shadow-[5px_5px_0px_#171717] px-4 py-4 sm:p-6 md:p-8 space-y-3 bg-[#FAF7F0] dark:bg-[#1F5F63] border-[#171717] dark:border-[#4CA7A1]"
+              className="w-full border-x-0 border-y sm:border-2 rounded-none sm:rounded-lg shadow-none sm:shadow-[4px_4px_0px_#171717] px-4 py-4 sm:p-5 md:p-6 space-y-3 bg-[#FAF7F0] dark:bg-[#1F5F63] border-[#171717] dark:border-[#4CA7A1]"
             >
               <div className="text-xs font-sans font-extrabold uppercase tracking-wider text-[#123D32] dark:text-[#CEFEF1] border-b-2 border-[#171717] dark:border-[#4CA7A1] pb-3 flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
@@ -736,7 +741,7 @@ export const SessionView: React.FC<SessionViewProps> = ({
 
 
         {/* Right Sidebar: Sessions Playlist & Progress (Fixed to Viewport on Desktop & Responsive on Mobile) */}
-        <aside className={`${isPlaylistOpen ? 'flex' : 'hidden'} lg:fixed lg:top-[72px] lg:right-4 xl:right-8 lg:w-[320px] xl:w-[380px] lg:h-[calc(100dvh-5.5rem)] lg:z-20 flex-col space-y-4 mt-8 lg:mt-0 animate-fade-in px-3.5 sm:px-0 lg:px-0`}>
+        <aside className={`${isPlaylistOpen ? 'flex' : 'hidden'} lg:fixed lg:top-[64px] lg:right-4 xl:right-6 lg:w-[300px] xl:w-[348px] lg:h-[calc(100dvh-5rem)] lg:z-20 flex-col space-y-3.5 mt-6 lg:mt-0 px-3.5 sm:px-0 lg:px-0`}>
           {/* Completed Notice */}
           {enrollment?.isCompleted && (
             <div className="nb-card bg-[#4CA7A1] text-[#001722] p-4 text-center space-y-1.5 shrink-0">

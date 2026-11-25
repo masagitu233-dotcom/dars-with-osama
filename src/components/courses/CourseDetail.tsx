@@ -29,6 +29,7 @@ import {
   SessionQuizStatus
 } from '../../utils/quizFlowHelper';
 import { QuizRequiredModal } from './QuizRequiredModal';
+import { getAosDelay } from '../../utils/aosManager';
 
 interface CourseDetailProps {
   course: Course;
@@ -291,21 +292,25 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
   const completedIds = new Set(enrollment?.completedSessionIds || []);
 
   return (
-    <div className="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 sm:space-y-8 animate-fade-in-up">
+    <div className="max-w-[1200px] mx-auto px-3 sm:px-5 lg:px-6 py-4 sm:py-6 space-y-5 sm:space-y-6">
       {/* Back Button */}
       <button
         onClick={onBack}
-        className="nb-btn border-2 border-[#F5DABF] text-[#F5DABF] bg-transparent hover:bg-[#F5DABF] hover:text-[#0F3D3A] px-4 py-2 text-xs flex items-center gap-2 font-bold cursor-pointer transition shadow-[3px_3px_0px_#171717]"
+        data-aos="fade-up"
+        className="nb-btn border-2 border-[#F5DABF] text-[#F5DABF] bg-transparent hover:bg-[#F5DABF] hover:text-[#0F3D3A] px-3.5 py-2 text-xs flex items-center gap-2 font-bold cursor-pointer transition shadow-[3px_3px_0px_#171717]"
       >
         <ArrowLeft className="w-4 h-4 text-[#F5DABF]" />
         <span>Kembali ke Katalog Kursus</span>
       </button>
 
       {/* Hero Header Card */}
-      <div className="nb-card overflow-hidden relative bg-[#FFF5E9] border-2 border-[#171717] shadow-[6px_6px_0px_#171717] text-[#0F3D3A]">
+      <div
+        data-aos="fade-up"
+        className="nb-card overflow-hidden relative bg-[#FFF5E9] border-2 border-[#171717] shadow-[5px_5px_0px_#171717] text-[#0F3D3A]"
+      >
         <div className="flex flex-col lg:grid lg:grid-cols-12 gap-0 relative">
           {/* 1. Thumbnail Cover Image (Mobile: #1 after Back Button; Desktop: Top Right Column) */}
-          <div className="order-1 lg:order-none lg:col-span-5 lg:col-start-8 lg:row-start-1 relative aspect-[16/10] lg:aspect-auto lg:h-64 w-full overflow-hidden border-b-2 lg:border-b-2 lg:border-l-2 border-[#171717]">
+          <div className="order-1 lg:order-none lg:col-span-5 lg:col-start-8 lg:row-start-1 relative aspect-[16/10] lg:aspect-auto lg:h-56 w-full overflow-hidden border-b-2 lg:border-b-2 lg:border-l-2 border-[#171717]">
             <img
               src={course.coverImageUrl || 'https://images.unsplash.com/photo-1542816417-0983c9c9ad53?auto=format&fit=crop&w=1200&q=80'}
               alt={course.title}
@@ -317,8 +322,8 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
           </div>
 
           {/* 2. Left Details (Mobile: #2 after Cover Image; Desktop: Left Column) */}
-          <div className="order-2 lg:order-none lg:col-span-7 lg:col-start-1 lg:row-span-2 p-6 sm:p-8 md:p-10 flex flex-col justify-between space-y-6">
-            <div className="space-y-4">
+          <div className="order-2 lg:order-none lg:col-span-7 lg:col-start-1 lg:row-span-2 p-5 sm:p-6 md:p-7 flex flex-col justify-between space-y-4">
+            <div className="space-y-3">
               {/* Category & Level Badges */}
               <div className="flex flex-wrap items-center gap-2">
                 {category && (
@@ -332,32 +337,32 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
               </div>
 
               {/* Course Titles */}
-              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-[#0F3D3A] font-serif-brand leading-tight">
+              <h1 className="dars-page-title font-extrabold text-[#0F3D3A] font-serif-brand leading-tight">
                 {course.title}
               </h1>
 
               {course.titleAr && (
-                <p className="font-amiri text-xl sm:text-2xl font-bold text-[#6C151E] leading-[2.0]" dir="rtl">
+                <p className="font-amiri text-lg sm:text-xl font-bold text-[#6C151E] leading-[1.9]" dir="rtl">
                   {course.titleAr}
                 </p>
               )}
 
               {/* Description */}
-              <p className="text-[#171717]/80 text-sm md:text-base leading-relaxed">
+              <p className="text-[#171717]/80 text-xs sm:text-sm leading-relaxed">
                 {course.description}
               </p>
 
               {/* Instructor Box */}
-              <div className="p-4 bg-[#FAF7F0] border-2 border-[#171717] rounded-lg flex items-center justify-between text-xs sm:text-sm text-[#0F3D3A]">
+              <div className="p-3.5 bg-[#FAF7F0] border-2 border-[#171717] rounded-lg flex items-center justify-between text-xs sm:text-sm text-[#0F3D3A]">
                 <div>
-                  <p className="text-[#0F3D3A]/70 text-xs font-bold uppercase tracking-wider">Pensyarah / Pengajar:</p>
-                  <p className="font-extrabold text-[#0F3D3A] text-sm md:text-base mt-0.5">{course.instructor}</p>
+                  <p className="text-[#0F3D3A]/70 text-[11px] font-bold uppercase tracking-wider">Pensyarah / Pengajar:</p>
+                  <p className="font-extrabold text-[#0F3D3A] text-sm mt-0.5">{course.instructor}</p>
                   {course.instructorTitle && (
                     <p className="text-[#0F3D3A]/80 text-xs font-semibold">{course.instructorTitle}</p>
                   )}
                 </div>
                 {course.instructorAr && (
-                  <p className="font-amiri text-base sm:text-lg font-bold text-[#6C151E] text-right leading-[1.9]" dir="rtl">
+                  <p className="font-amiri text-base font-bold text-[#6C151E] text-right leading-[1.8]" dir="rtl">
                     {course.instructorAr}
                   </p>
                 )}
@@ -365,25 +370,25 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
             </div>
 
             {/* Action Bar */}
-            <div className="pt-4 border-t-2 border-[#171717] flex flex-wrap items-center gap-4">
+            <div className="pt-3.5 border-t-2 border-[#171717] flex flex-wrap items-center gap-3">
               {enrollment ? (
                 <button
                   onClick={handleStartOrContinue}
-                  className="nb-btn nb-btn-gold px-6 py-3.5 text-sm"
+                  className="nb-btn nb-btn-gold px-5 py-2.5 text-xs sm:text-sm"
                 >
-                  <PlayCircle className="w-5 h-5" />
+                  <PlayCircle className="w-4 h-4" />
                   <span>Lanjutkan Belajar ({enrollment.progressPercent}%)</span>
                 </button>
               ) : (
                 <button
                   onClick={handleEnrollClick}
                   disabled={enrolling}
-                  className="nb-btn nb-btn-primary px-6 py-3.5 text-sm disabled:opacity-50"
+                  className="nb-btn nb-btn-primary px-5 py-2.5 text-xs sm:text-sm disabled:opacity-50"
                 >
                   {enrolling ? (
-                    <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                   ) : (
-                    <Sparkles className="w-5 h-5" />
+                    <Sparkles className="w-4 h-4" />
                   )}
                   <span>{enrolling ? 'Mendaftar...' : 'Mulai Belajar Kursus Ini'}</span>
                 </button>
@@ -393,7 +398,7 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
               <button
                 type="button"
                 onClick={handleShareCourse}
-                className="nb-btn nb-btn-secondary px-5 py-3.5 text-sm flex items-center gap-2 cursor-pointer"
+                className="nb-btn nb-btn-secondary px-4 py-2.5 text-xs sm:text-sm flex items-center gap-2 cursor-pointer"
                 title="Bagikan tautan permanen kurikulum pembelajaran ini"
               >
                 {copiedCourseUrl ? (
@@ -407,10 +412,10 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
           </div>
 
           {/* 3. Quick Info & Rincian Program (Mobile: #3 after Left Details & Action Bar; Desktop: Bottom Right Column) */}
-          <div className="order-3 lg:order-none lg:col-span-5 lg:col-start-8 lg:row-start-2 p-6 space-y-4 bg-[#FAF7F0] border-t-2 lg:border-l-2 border-[#171717] text-[#0F3D3A] flex flex-col justify-between">
-            <div className="space-y-4">
-              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#0F3D3A]">Rincian Program</h4>
-              <div className="space-y-3 text-xs md:text-sm">
+          <div className="order-3 lg:order-none lg:col-span-5 lg:col-start-8 lg:row-start-2 p-4 sm:p-5 space-y-3.5 bg-[#FAF7F0] border-t-2 lg:border-l-2 border-[#171717] text-[#0F3D3A] flex flex-col justify-between">
+            <div className="space-y-3">
+              <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-[#0F3D3A]">Rincian Program</h4>
+              <div className="space-y-2 text-xs sm:text-[13px]">
                 <div className="flex items-center justify-between text-[#0F3D3A] py-1.5 border-b-2 border-[#171717]/20">
                   <span className="flex items-center gap-2 font-semibold text-[#0F3D3A]/80">
                     <Clock className="w-4 h-4 text-[#0F3D3A]" />
@@ -430,22 +435,22 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
             </div>
 
             {/* Guest Information Notice */}
-            <div className="p-3.5 bg-[#FFF5E9] border-2 border-[#171717] rounded-md text-[#0F3D3A] text-xs space-y-1">
+            <div className="p-3 bg-[#FFF5E9] border-2 border-[#171717] rounded-md text-[#0F3D3A] text-xs space-y-1">
               <p className="font-extrabold text-[#0F3D3A]">Akses Terbuka untuk Kaum Muslimin:</p>
-              <p className="text-[#171717]/80">Pengunjung bebas menonton rekaman dan membaca materi. Daftarkan akun untuk menyimpan riwayat nilai dan kemajuan belajar Anda.</p>
+              <p className="text-[#171717]/80 leading-relaxed">Pengunjung bebas menonton rekaman dan membaca materi. Daftarkan akun untuk menyimpan riwayat nilai dan kemajuan belajar Anda.</p>
             </div>
           </div>
         </div>
       </div>
 
       {/* Syllabus / Sessions List */}
-      <div className="space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="space-y-1">
-            <h2 className="text-xl sm:text-2xl font-extrabold text-[#F5DABF] font-serif-brand">
+      <div className="space-y-3.5">
+        <div data-aos="fade-up" className="flex flex-wrap items-center justify-between gap-2">
+          <div className="space-y-0.5">
+            <h2 className="dars-section-title font-extrabold text-[#F5DABF] font-serif-brand">
               Daftar Sesi Pembelajaran ({sessions.length})
             </h2>
-            <p className="text-xs sm:text-sm text-[#FFF5E9]/90">
+            <p className="text-xs sm:text-[13px] text-[#FFF5E9]/90">
               Klik pada sesi untuk mulai menyimak materi video, naskah PDF, catatan kajian, dan evaluasi kuis.
             </p>
           </div>
@@ -457,7 +462,7 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
         </div>
 
         {sessions.length > 0 ? (
-          <div className="space-y-3.5">
+          <div className="space-y-3">
             {sessions.map((session, idx) => {
               const isSessionDone = completedIds.has(session.id);
               const validQuizId = extractValidQuizId(session.quizId);
@@ -467,8 +472,10 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({
               return (
                 <div
                   key={session.id}
+                  data-aos="fade-up"
+                  data-aos-delay={getAosDelay(idx, 2)}
                   onClick={() => handleSessionItemClick(session)}
-                  className={`group rounded-lg border-2 border-[#171717] dark:border-[#4CA7A1] shadow-[4px_4px_0px_#171717] dark:shadow-[4px_4px_0px_#001722] hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[6px_6px_0px_#171717] dark:hover:shadow-[6px_6px_0px_#001722] transition-all p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer ${
+                  className={`group rounded-lg border-2 border-[#171717] dark:border-[#4CA7A1] shadow-[3px_3px_0px_#171717] dark:shadow-[3px_3px_0px_#001722] hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[5px_5px_0px_#171717] dark:hover:shadow-[5px_5px_0px_#001722] transition-all p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer ${
                     isSessionDone
                       ? 'bg-[#EFE5D2] dark:bg-[#1F5F63]'
                       : 'bg-white dark:bg-[#0D2B36]'

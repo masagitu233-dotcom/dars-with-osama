@@ -377,7 +377,7 @@ export const AdminInstructorProfileManager: React.FC<AdminInstructorProfileManag
       )}
 
       {/* TOP HEADER BAR */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 nb-card bg-white dark:bg-[#16263D] p-6">
+      <div data-aos="fade-up" className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 nb-card bg-white dark:bg-[#16263D] p-6">
         <div>
           <h2 className="text-lg font-extrabold font-serif-brand text-[#292D2B] dark:text-[#F1F4F8] flex items-center gap-2">
             <UserCheck className="w-5 h-5 text-[#123D32] dark:text-[#D6AD52]" />

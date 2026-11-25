@@ -621,6 +621,7 @@ export const AdminLibraryManager: React.FC<AdminLibraryManagerProps> = ({
         {/* Total Kunjungan Library (Admin Only) */}
         <div
           data-testid="admin-library-visit-stats"
+          data-aos="fade-up"
           className="nb-card bg-white dark:bg-[#0D2B36] p-5 flex items-center justify-between gap-3"
         >
           <div>
@@ -647,7 +648,7 @@ export const AdminLibraryManager: React.FC<AdminLibraryManagerProps> = ({
         </div>
 
         {/* Koleksi Terbit */}
-        <div className="nb-card bg-white dark:bg-[#0D2B36] p-5">
+        <div data-aos="fade-up" data-aos-delay="50" className="nb-card bg-white dark:bg-[#0D2B36] p-5">
           <p className="text-[11px] font-extrabold uppercase tracking-wider text-[#525855] dark:text-[#A6D6C9]">
             Buku Terbit (Publik)
           </p>
