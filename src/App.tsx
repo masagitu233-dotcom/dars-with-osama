@@ -1251,10 +1251,13 @@ function MainApp() {
               setIsCollapsed={setIsSidebarCollapsed}
             />
 
-            {/* Right Main Content Column - Properly offset on desktop to prevent overlap */}
-            <div className={`flex-1 flex flex-col min-w-0 min-h-screen transition-all duration-300 ${
-              isSidebarCollapsed ? 'lg:pl-[68px]' : 'lg:pl-[232px]'
-            }`}>
+            {/* Right Main Content Column - Full width when sidebar is closed, offset 232px when open */}
+            <div
+              data-testid="main-content-column"
+              className={`flex-1 flex flex-col min-w-0 min-h-screen transition-[padding] duration-300 ease-in-out ${
+                isSidebarCollapsed ? 'lg:pl-0' : 'lg:pl-[232px]'
+              }`}
+            >
               {/* Top Page Header */}
               <AppHeader
                 currentView={currentView}

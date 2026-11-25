@@ -66,16 +66,19 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
     <header
       ref={headerRef}
       data-testid="app-header"
-      className="sticky top-0 z-30 w-full bg-white dark:bg-[#0D2B36] border-b-2 border-[#171717] dark:border-[#1F5F63] transition-colors duration-200"
+      className="sticky top-0 z-40 lg:z-30 w-full bg-white dark:bg-[#0D2B36] border-b-2 border-[#171717] dark:border-[#1F5F63] transition-colors duration-200"
     >
       <div className="max-w-[1360px] mx-auto px-3 md:px-5 lg:px-6 h-13 md:h-14 flex items-center justify-between gap-2 md:gap-3">
         
-        {/* Left: Interactive Logo as Sidebar Toggle & Dars Online Direct Link */}
+        {/* Left: Interactive Logo as the sole Sidebar Toggle & Dars Online Direct Link */}
         <div className="flex items-center gap-1.5 md:gap-2.5 min-w-0 shrink">
-          {/* Mobile & Tablet (< lg): Logo acts as the unified interactive sidebar toggle button */}
+          {/* Mobile & Tablet (< lg): Logo acts as the sole interactive sidebar toggle button */}
           <button
             type="button"
+            data-testid="sidebar-toggle-mobile"
             onClick={() => setMobileOpen(!mobileOpen)}
+            aria-expanded={mobileOpen}
+            aria-controls="app-sidebar"
             aria-label={mobileOpen ? "Tutup sidebar" : "Buka sidebar"}
             title={mobileOpen ? "Tutup sidebar" : "Buka sidebar"}
             className="lg:hidden flex items-center gap-1.5 md:gap-2 py-0.5 px-1 md:p-1 -ml-0.5 md:-ml-1 rounded-md border-2 border-transparent hover:border-[#171717] dark:hover:border-[#4CA7A1] hover:bg-[#EFE5D2] dark:hover:bg-[#1F5F63] active:translate-x-[1px] active:translate-y-[1px] transition cursor-pointer group text-left min-w-0"
@@ -93,11 +96,14 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             </div>
           </button>
 
-          {/* Desktop: Header Logo also toggles sidebar collapse/expansion */}
+          {/* Desktop (>= lg): Header Logo is the sole interactive sidebar toggle button */}
           {setIsCollapsed && (
             <button
               type="button"
+              data-testid="sidebar-toggle-desktop"
               onClick={() => setIsCollapsed(!isCollapsed)}
+              aria-expanded={!isCollapsed}
+              aria-controls="app-sidebar"
               aria-label={isCollapsed ? "Buka sidebar" : "Tutup sidebar"}
               title={isCollapsed ? "Buka sidebar" : "Tutup sidebar"}
               className="hidden lg:flex items-center gap-2 px-1.5 py-1 rounded-md border-2 border-transparent hover:border-[#171717]/40 dark:hover:border-[#4CA7A1] hover:bg-[#EFE5D2] dark:hover:bg-[#1F5F63] transition cursor-pointer group text-left"
@@ -110,7 +116,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                   Dars <span className="font-normal italic text-[#D6AD52] dark:text-[#4CA7A1]">with</span> Osama
                 </span>
                 <span className="text-[7.5px] font-sans font-extrabold tracking-[0.14em] uppercase text-[#237A70] dark:text-[#A6D6C9] mt-0.5">
-                  {isCollapsed ? 'BUKA SIDEBAR' : 'CIUTKAN'}
+                  {isCollapsed ? 'BUKA SIDEBAR' : 'TUTUP SIDEBAR'}
                 </span>
               </div>
             </button>
